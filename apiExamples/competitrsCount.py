@@ -1,7 +1,7 @@
 import requests
 import json
 import re
-from competitor_matcher import match_competitors_with_csv
+from competitor_matcher import match_competitors
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_types=None, max_results=10, rank_preference="POPULARITY"):
     """
@@ -64,8 +64,8 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
     # The documentation example for DISTANCE ranking does not use includedTypes.
     if rank_preference:
         payload["rankPreference"] = rank_preference
-        if rank_preference == "DISTANCE" and "includedTypes" in payload:
-            print("Warning: When rankPreference is 'DISTANCE', 'includedTypes' might not be effective or could be ignored by the API for optimal distance ranking.")
+        # if rank_preference == "DISTANCE" and "includedTypes" in payload:
+        #     print("Warning: When rankPreference is 'DISTANCE', 'includedTypes' might not be effective or could be ignored by the API for optimal distance ranking.")
 
 
     print(f"Request Payload: {json.dumps(payload, indent=2)}") # For debugging
@@ -87,8 +87,10 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
 if __name__ == "__main__":
     # --- Configuration ---
     API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"  # <--- REPLACE WITH YOUR ACTUAL API KEY
-    LATITUDE = 28.1879225 # <--- REPLACE WITH YOUR LATITUDE (e.g., 37.7937)
-    LONGITUDE = -80.6727404 # <--- REPLACE WITH YOUR LONGITUDE (e.g., -122.3965)
+    # LATITUDE = 28.1879225 # <--- REPLACE WITH YOUR LATITUDE (e.g., 37.7937)
+    # LONGITUDE = -80.6727404 # <--- REPLACE WITH YOUR LONGITUDE (e.g., -122.3965)
+    LATITUDE = 33.8621251
+    LONGITUDE = -84.6719291
     
     # Optional: Specify types of places you're interested in.
     # If you want all types, you can set this to None or an empty list.
@@ -108,7 +110,7 @@ if __name__ == "__main__":
         print("Please replace 'YOUR_API_KEY', 'YOUR_LATITUDE', and 'YOUR_LONGITUDE' with actual values in the script.")
     else:
         # --- Perform the Search ---
-        print(f"Searching for places near Latitude: {LATITUDE}, Longitude: {LONGITUDE} within a 1-mile radius.")
+        print(f"Searching for places near Latitude: {LATITUDE}, Longitude: {LONGITUDE}.")
         
         results = find_nearby_places(
             API_KEY,
@@ -145,8 +147,9 @@ if __name__ == "__main__":
                 print(f"  Rating: {rating} (from {user_rating_count} reviews)")
 
             # Use the matching function from competitor_matcher.py
-            csv_filepath = 'Car_Wash_Advisory_Companies.csv'
-            found_count, found_competitors, not_found_competitors = match_competitors_with_csv(competitor_names, csv_filepath)
+            # csv_filepath = 'Car_Wash_Advisory_Companies.csv'
+            
+            found_count, found_competitors, not_found_competitors = match_competitors(competitor_names)
 
             # Display results
             print("\n--- Matching Results ---")

@@ -28,7 +28,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
     base_url = "https://places.googleapis.com/v1/places:searchNearby"
 
     # Convert radius from miles to meters (1 mile = 1609.34 meters)
-    radius_meters = 3 * 1609.34
+    radius_meters = 1 * 1609.34
     if not (0.0 < radius_meters <= 50000.0):
         print("Error: Radius must be between 0.0 (exclusive) and 50000.0 meters (inclusive).")
         return None
@@ -85,37 +85,46 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
     return None
 
 if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 3:
+        print("Usage: python countCompetitors.py <latitude> <longitude>")
+        sys.exit(1)
+
+    try:
+        LATITUDE = float(sys.argv[1])
+        LONGITUDE = float(sys.argv[2])
+    except ValueError:
+        print("Invalid latitude or longitude provided. Please provide numeric values.")
+        sys.exit(1)
+
     # --- Configuration ---
     API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"  # <--- REPLACE WITH YOUR ACTUAL API KEY
-    # LATITUDE = 28.1879225 # <--- REPLACE WITH YOUR LATITUDE (e.g., 37.7937)
-    # LONGITUDE = -80.6727404 # <--- REPLACE WITH YOUR LONGITUDE (e.g., -122.3965)
-    LATITUDE = 33.8621251
-    LONGITUDE = -84.6719291
-    
+
     # Optional: Specify types of places you're interested in.
     # If you want all types, you can set this to None or an empty list.
     # Example: place_types_to_search = ["restaurant", "cafe"]
     place_types_to_search = ['car_wash']# None  Search for all types by default when None
 
     # Optional: Maximum number of results
-    max_num_results = 10
+    max_num_results = 20
 
     # Optional: Rank preference ("POPULARITY" or "DISTANCE")
     # If using "DISTANCE", it's often best to not specify place_types_to_search
     # ranking_method = "POPULARITY"
     ranking_method = "DISTANCE" # Uncomment to rank by distance
 
-    # --- Validate API Key and Coordinates ---
-    if API_KEY == "YOUR_API_KEY" or LATITUDE == 0.0 or LONGITUDE == 0.0:
-        print("Please replace 'YOUR_API_KEY', 'YOUR_LATITUDE', and 'YOUR_LONGITUDE' with actual values in the script.")
+    # --- Validate API Key ---
+    if API_KEY == "YOUR_API_KEY":
+        print("Please replace 'YOUR_API_KEY' with your actual value in the script.")
     else:
         # --- Perform the Search ---
         print(f"Searching for places near Latitude: {LATITUDE}, Longitude: {LONGITUDE}.")
-        
+
         results = find_nearby_places(
             API_KEY,
-            LATITUDE,
-            LONGITUDE,
+            latitude=LATITUDE,
+            longitude=LONGITUDE,
             radius_miles=1,
             included_types=place_types_to_search,
             max_results=max_num_results,
@@ -148,7 +157,7 @@ if __name__ == "__main__":
 
             # Use the matching function from competitor_matcher.py
             # csv_filepath = 'Car_Wash_Advisory_Companies.csv'
-            
+
             found_count, found_competitors, not_found_competitors = match_competitors(competitor_names)
 
             # Display results
@@ -160,12 +169,30 @@ if __name__ == "__main__":
                 for competitor in found_competitors:
                     print(competitor)
 
-            if not_found_competitors:
+            not_found_competitor_details = []
+            if not_found_competitors and results and "places" in results:
                 print("\nCompetitors not found in CSV:")
-                for competitor in not_found_competitors:
-                    print(competitor)
-            else:
-                print("\nAll competitors were found in the CSV.")
+                for competitor_name in not_found_competitors:
+                    print(competitor_name)
+                    # Find the details of the not found competitor in the results
+                    for place in results["places"]:
+                        display_name = place.get("displayName", {}).get("text", "N/A")
+                        if display_name == competitor_name:
+                            place_id = place.get("id", "N/A")
+                            location = place.get("location", {})
+                            latitude = location.get('latitude', 'N/A')
+                            longitude = location.get('longitude', 'N/A')
+                            not_found_competitor_details.append({
+                                "name": display_name,
+                                "place_id": place_id,
+                                "latitude": latitude,
+                                "longitude": longitude
+                            })
+                            break # Found the competitor, move to the next not_found_competitor
+
+            # Print the details of not found competitors in a structured format for easy parsing
+            print("\n--- Not Found Competitor Details ---")
+            print(json.dumps(not_found_competitor_details))
 
         elif results:
             print("\nNo places found or an unexpected response format.")

@@ -8,10 +8,11 @@ from google.genai import types
 from google import genai
 
 
-client = genai.Client(api_key="AIzaSyAt59WZAmoN2FVj_FZM6wYvAdJa5Q3MFL0")
+# client = genai.Client(api_key="AIzaSyAt59WZAmoN2FVj_FZM6wYvAdJa5Q3MFL0")
+client = genai.Client(api_key="408dd71674a433cf696bb5109e8e2a183b211b02")
 
 
-with open('../notFoundData/collegeSelfServe.png', 'rb') as f:
+with open('notFoundData/collegeSelfServe.png', 'rb') as f:
     image_bytes = f.read()
 
 response = client.models.generate_content(
