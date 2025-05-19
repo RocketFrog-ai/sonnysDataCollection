@@ -1,0 +1,18 @@
+bp
+Based on the satellite image, the structure identified as the car wash facility near the Exxon station appears to have multiple bays under a roof, characteristic of a self-service or in-bay automatic wash rather than a tunnel wash facility.
+
+Brevalds
+This is a satellite image showing "Brevards Mobile Detailing" at a residential location. Mobile detailing services typically operate by traveling to the customer's location to clean vehicles, rather than having a fixed facility like a car wash with a tunnel. The image shows a house with a driveway, which is not a structure consistent with a tunnel wash facility.
+Therefore, based on the name "Mobile Detailing" and the appearance of the location in the satellite image, this business does not appear to have a tunnel wash facility.
+
+College Self serve
+Based on the satellite image, the facility is labeled "College Self Serve Car Wash". The structures visible appear to be individual self-serve bays and potentially other covered areas, rather than a long, enclosed building typical of a tunnel wash.
+Therefore, it does not appear to have a tunnel wash facility; it is primarily a self-serve car wash.
+
+Seaway
+Based on the satellite image and the shape of the building labeled "Seaway Car Wash", it appears to be a long structure with areas for cars to enter and exit, which is characteristic of a tunnel wash facility.
+Yes, it seems to have a tunnel wash facility.
+
+yoyo
+Based on the satellite image and the name "YOYO'S HAND CAR WASH", it is **unlikely** to have a tunnel wash facility.
+A tunnel wash is typically a long structure that cars drive through. The building visible in the image appears to be a more compact structure, and the name "Hand Car Wash" strongly suggests that the washing process is done manually, not via an automated tunnel system.

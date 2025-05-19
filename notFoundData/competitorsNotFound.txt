@@ -1,0 +1,79 @@
+Name: Seaway Car Wash
+  Address: 142 Heineberg Dr, Colchester, VT 05446, USA
+  Place ID: ChIJ_xGn3cZvykwRR6qxCx6EPrA
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=44.534890000000004, Lng=-73.249658
+  Rating: 4.4 (from 96 reviews)
+
+Name: bp
+  Address: 4001 N Wickham Rd, Melbourne, FL 32935, USA
+  Place ID: ChIJR2cpoX4F3ogRzNzwnpYhg1o
+  Primary Type: gas_station
+  All Types: gas_station, atm, convenience_store, food_store, car_wash, finance, restaurant, store, food, point_of_interest, establishment
+  Location: Lat=28.172403499999998, Lng=-80.6717115
+  Rating: 2.6 (from 5 reviews)
+
+Name: College Self Serve Car Wash
+  Address: 3720 N Wickham Rd, Melbourne, FL 32935, USA
+  Place ID: ChIJtRbspYAP3ogR4IdusXBkkkQ
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=28.1674954, Lng=-80.6723524
+  Rating: 3.9 (from 227 reviews)
+
+Name: Brevards Mobile Detailing
+  Address: 3512 Sandpiper Ln, Melbourne, FL 32935, USA
+  Place ID: ChIJpd6caQ0Fr0gRz8bVKuWBNpE
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=28.163348, Lng=-80.6516997
+  Rating: 5 (from 3 reviews)
+
+Name: YOYO’S HAND CAR WASH LLC
+  Address: 3934 Austell Powder Springs Rd SW, Powder Springs, GA 30127, USA
+  Place ID: ChIJ-2VHxC8j9YgRnd82_Q4jPIg
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=33.858181, Lng=-84.67257769999999
+  Rating: 4.8 (from 27 reviews)
+
+Name: Stars Emission Testing
+  Address: 3915 Austell Powder Springs Rd SW, Powder Springs, GA 30127, USA
+  Place ID: ChIJNbfvLQwj9YgR0oe-yqvoB2E
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=33.857752399999995, Lng=-84.6709676
+  Rating: 5 (from 3 reviews)
+
+Name: Trail Wash
+  Address: 3459 Powder Springs Rd, Powder Springs, GA 30127, USA
+  Place ID: ChIJS9KsNNM89YgRHA4lXRVM26o
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=33.859380699999996, Lng=-84.6547497
+  Rating: 3.6 (from 171 reviews)
+
+Name: Royal Wash Touchless Automatic
+  Address: Powder Springs, GA 30127, USA
+  Place ID: ChIJZ0xcNdM89YgRwPr5-c7iqzo
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=33.8594432, Lng=-84.65447859999999
+  Rating: 5 (from 1 reviews)
+
+Name: Banana hand car wash
+  Address: 3180 Florence Rd, Powder Springs, GA 30127, USA
+  Place ID: ChIJ-w0xdDA79YgRnDB5ISK6osQ
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=33.880035400000004, Lng=-84.70434569999999
+  Rating: 2.8 (from 5 reviews)
+
+Name: WS HAND CAR WASH
+  Address: 3265 Florence Rd, Powder Springs, GA 30127, USA
+  Place ID: ChIJf0Xt_oM79YgRXBastIXKAYM
+  Primary Type: car_wash
+  All Types: car_wash, point_of_interest, establishment
+  Location: Lat=33.875639, Lng=-84.7029999
+  Rating: 4.5 (from 2 reviews)
