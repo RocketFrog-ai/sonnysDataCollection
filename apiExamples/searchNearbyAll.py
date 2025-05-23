@@ -84,7 +84,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
 if __name__ == "__main__":
     # --- Configuration ---
     # IMPORTANT: Replace YOUR_API_KEY with your actual key. Do not share your key publicly.
-    API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg" 
+    API_KEY = "AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA" 
     LATITUDE =  35.1361115
     LONGITUDE = -106.6422295
     

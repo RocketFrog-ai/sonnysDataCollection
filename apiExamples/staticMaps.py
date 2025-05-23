@@ -15,6 +15,7 @@ params = {
     "center": f"{latitude},{longitude}",
     "zoom": 20,               # Higher zoom = more detail (max ~21)
     "size": "640x640",        # Max allowed size without premium plan
+    "scale": 2,
     "maptype": "hybrid",   # Use satellite imagery
     "key": API_KEY
 }
