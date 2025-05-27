@@ -1,7 +1,7 @@
 import requests
 import json
 import re
-from competitor_matcher import match_competitors
+from app.competitor_matcher import match_competitors
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_types=None, max_results=10, rank_preference="POPULARITY"):
     """
