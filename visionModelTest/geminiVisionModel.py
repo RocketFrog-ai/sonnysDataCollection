@@ -6,11 +6,11 @@ client = genai.Client(api_key="AIzaSyAt59WZAmoN2FVj_FZM6wYvAdJa5Q3MFL0")
 # client = genai.Client(api_key="408dd71674a433cf696bb5109e8e2a183b211b02")
 
 
-with open('/home/arpit/dataCollection/collectedImages/_StoneWash__Car_Care_Center__818_Paris_Rd__Mayfield__KY__42066/ChIJP4czgyoweogRwvkgFMe5lIY.png', 'rb') as f:
+with open('/home/arpit/dataCollection/collectedImages/Autobahn_Express__1225_Guyer_Ave__Richland__WA__99352/ChIJ1RPAbtN6mFQRrheeTWiaft0.png', 'rb') as f:
     image_bytes = f.read()
 
 response = client.models.generate_content(
-model='gemini-2.5-flash-preview-04-17',
+model='gemini-2.5-flash-preview-05-20',
 contents=[
     types.Part.from_bytes(
     data=image_bytes,

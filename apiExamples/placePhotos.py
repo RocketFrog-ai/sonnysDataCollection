@@ -43,8 +43,8 @@ def get_photo_references_and_name(place_id):
 
     return photo_refs, place_name
 
-def download_photo(photo_reference, identifier_for_filename, index, max_width=800):
-    """Downloads a photo given its reference and saves it."""
+def download_photo(photo_reference, original_name, found_car_wash_name, index, max_width=800):
+    """Downloads a photo given its reference and saves it into a structured subfolder."""
     if not photo_reference:
         return
 
@@ -56,9 +56,15 @@ def download_photo(photo_reference, identifier_for_filename, index, max_width=80
     response = requests.get(PLACE_PHOTO_URL, params=params, stream=True) # stream=True for image
     response.raise_for_status()
 
-    # Sanitize identifier for filename
-    safe_identifier = "".join(c if c.isalnum() else "_" for c in identifier_for_filename)
-    filename = os.path.join(IMAGE_DIR, f"{safe_identifier}_photo_{index + 1}.jpg") # Assuming JPEG
+    # Sanitize original_name and found_car_wash_name for folder creation
+    safe_original_name = "".join(c if c.isalnum() or c.isspace() else "_" for c in original_name).strip()
+    safe_found_car_wash_name = "".join(c if c.isalnum() or c.isspace() else "_" for c in found_car_wash_name).strip()
+
+    # Create nested directory path
+    nested_dir = os.path.join(IMAGE_DIR, safe_original_name, safe_found_car_wash_name)
+    os.makedirs(nested_dir, exist_ok=True)
+
+    filename = os.path.join(nested_dir, f"photo_{index + 1}.jpg") # Assuming JPEG
 
     try:
         with open(filename, "wb") as f:
@@ -96,12 +102,11 @@ if __name__ == "__main__":
                 filename_prefix = place_name if place_name else place_id
 
                 if photo_references:
-                    print(f"Downloading up to {len(photo_references)} photos for '{filename_prefix}'...")
+                    print(f"Downloading {len(photo_references)} photos for '{filename_prefix}'...")
                     for i, ref in enumerate(photo_references):
-                        # You might want to limit the number of downloads
-                        # if i >= 5: # Example: download only the first 5 photos
-                        #     print("Reached download limit for this example.")
-                        #     break
-                        download_photo(ref, filename_prefix, i)
+                        # In the __main__ block, we don't have original_name and found_car_wash_name
+                        # so we'll use filename_prefix for both for demonstration purposes.
+                        # This part will be updated in countCompetitors.py to pass correct values.
+                        download_photo(ref, filename_prefix, filename_prefix, i)
                 else:
                     print(f"No photos to download for Place ID: {place_id}")

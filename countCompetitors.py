@@ -1,7 +1,15 @@
 import requests
 import json
 import re
+import pandas as pd
+import os
 from competitor_matcher import match_competitors
+from apiExamples.placePhotos import get_photo_references_and_name, download_photo
+
+# Directory to save downloaded images
+IMAGE_DIR = "place_images"
+if not os.path.exists(IMAGE_DIR):
+    os.makedirs(IMAGE_DIR)
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_types=None, max_results=10, rank_preference="POPULARITY"):
     """
@@ -28,7 +36,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
     base_url = "https://places.googleapis.com/v1/places:searchNearby"
 
     # Convert radius from miles to meters (1 mile = 1609.34 meters)
-    radius_meters = 1 * 1609.34
+    radius_meters = radius_miles * 1609.34
     if not (0.0 < radius_meters <= 50000.0):
         print("Error: Radius must be between 0.0 (exclusive) and 50000.0 meters (inclusive).")
         return None
@@ -36,10 +44,6 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
     headers = {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": api_key,
-        # Specify the fields you want in the response. This is REQUIRED.
-        # Common fields: places.id, places.displayName, places.formattedAddress, places.types,
-        #                places.location, places.primaryType, places.websiteUri, places.rating
-        # "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.types,places.location,places.primaryType,places.rating,places.userRatingCount"
         "X-Goog-FieldMask": "*"
     }
 
@@ -53,26 +57,18 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
                 "radius": radius_meters
             }
         },
-        "maxResultCount": min(max(1, max_results), 20) # Ensure it's between 1 and 20
+        "maxResultCount": min(max(1, max_results), 20)
     }
 
-    # Add includedTypes only if provided and not empty
     if included_types and len(included_types) > 0:
         payload["includedTypes"] = included_types
     
-    # Add rankPreference. If 'DISTANCE', usually you wouldn't specify includedTypes.
-    # The documentation example for DISTANCE ranking does not use includedTypes.
     if rank_preference:
         payload["rankPreference"] = rank_preference
-        # if rank_preference == "DISTANCE" and "includedTypes" in payload:
-        #     print("Warning: When rankPreference is 'DISTANCE', 'includedTypes' might not be effective or could be ignored by the API for optimal distance ranking.")
-
-
-    print(f"Request Payload: {json.dumps(payload, indent=2)}") # For debugging
 
     try:
         response = requests.post(base_url, headers=headers, data=json.dumps(payload))
-        response.raise_for_status()  # Raises an HTTPError for bad responses (4XX or 5XX)
+        response.raise_for_status()
         return response.json()
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
@@ -88,114 +84,109 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 3:
-        print("Usage: python countCompetitors.py <latitude> <longitude>")
+        print("Usage: python countCompetitors.py <start_index> <end_index>")
         sys.exit(1)
 
     try:
-        LATITUDE = float(sys.argv[1])
-        LONGITUDE = float(sys.argv[2])
+        start_index_to_process = int(sys.argv[1])
+        end_index_to_process = int(sys.argv[2])
     except ValueError:
-        print("Invalid latitude or longitude provided. Please provide numeric values.")
+        print("Invalid start or end index provided. Please provide integers.")
         sys.exit(1)
 
     # --- Configuration ---
     API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"  # <--- REPLACE WITH YOUR ACTUAL API KEY
+    EXCEL_PATH = '/home/arpit/dataCollection/datasets/1mile_raw_data.xlsx'
+    OUTPUT_DIR = '/home/arpit/dataCollection/output_csv'
+    OUTPUT_FILENAME = 'competitor_analysis.csv'
+
+    # Create output directory if it doesn't exist
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    output_filepath = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
 
     # Optional: Specify types of places you're interested in.
-    # If you want all types, you can set this to None or an empty list.
-    # Example: place_types_to_search = ["restaurant", "cafe"]
-    place_types_to_search = ['car_wash']# None  Search for all types by default when None
-
-    # Optional: Maximum number of results
+    place_types_to_search = ['car_wash']
     max_num_results = 20
-
-    # Optional: Rank preference ("POPULARITY" or "DISTANCE")
-    # If using "DISTANCE", it's often best to not specify place_types_to_search
-    # ranking_method = "POPULARITY"
-    ranking_method = "DISTANCE" # Uncomment to rank by distance
+    ranking_method = "DISTANCE"
 
     # --- Validate API Key ---
     if API_KEY == "YOUR_API_KEY":
         print("Please replace 'YOUR_API_KEY' with your actual value in the script.")
-    else:
-        # --- Perform the Search ---
-        print(f"Searching for places near Latitude: {LATITUDE}, Longitude: {LONGITUDE}.")
+        sys.exit(1)
 
-        results = find_nearby_places(
-            API_KEY,
-            latitude=LATITUDE,
-            longitude=LONGITUDE,
-            radius_miles=1,
-            included_types=place_types_to_search,
-            max_results=max_num_results,
-            rank_preference=ranking_method
-        )
+    # Prepare a list to store all results
+    all_results = []
 
-        # --- Display Results ---
-        competitor_names = []
-        if results and "places" in results:
-            print(f"\nFound {len(results['places'])} places:")
-            for i, place in enumerate(results["places"]):
-                print(f"\n--- Result {i+1} ---")
-                display_name = place.get("displayName", {}).get("text", "N/A")
-                competitor_names.append(display_name)
-                address = place.get("formattedAddress", "N/A")
-                place_id = place.get("id", "N/A")
-                types = place.get("types", [])
-                primary_type = place.get("primaryType", "N/A")
-                location = place.get("location", {})
-                rating = place.get("rating", "N/A")
-                user_rating_count = place.get("userRatingCount", "N/A")
+    try:
+        df = pd.read_excel(EXCEL_PATH, engine='openpyxl')
 
-                print(f"  Name: {display_name}")
-                print(f"  Address: {address}")
-                print(f"  Place ID: {place_id}")
-                print(f"  Primary Type: {primary_type}")
-                print(f"  All Types: {', '.join(types)}")
-                print(f"  Location: Lat={location.get('latitude', 'N/A')}, Lng={location.get('longitude', 'N/A')}")
-                print(f"  Rating: {rating} (from {user_rating_count} reviews)")
+        # Ensure indices are within the DataFrame bounds
+        if start_index_to_process < 0 or end_index_to_process > len(df) or start_index_to_process >= end_index_to_process:
+            print(f"Error: Invalid record range. Please provide a valid range between 0 and {len(df) -1}.")
+            sys.exit(1)
 
-            # Use the matching function from competitor_matcher.py
-            # csv_filepath = 'Car_Wash_Advisory_Companies.csv'
+        for index, row in df.iloc[start_index_to_process:end_index_to_process].iterrows():
+            site_address = row.iloc[0]
+            latitude = row.iloc[1]
+            longitude = row.iloc[2]
 
-            found_count, found_competitors, not_found_competitors = match_competitors(competitor_names)
+            print(f"Processing record {index}: {site_address}, Latitude: {latitude}, Longitude: {longitude}")
 
-            # Display results
-            print("\n--- Matching Results ---")
-            print(f"Total competitors found in CSV: {found_count}")
+            results = find_nearby_places(
+                API_KEY,
+                latitude=latitude,
+                longitude=longitude,
+                radius_miles=1,
+                included_types=place_types_to_search,
+                max_results=max_num_results,
+                rank_preference=ranking_method
+            )
 
-            if found_competitors:
-                print("\nCompetitors found in CSV:")
-                for competitor in found_competitors:
-                    print(competitor)
+            if results and "places" in results:
+                for place in results["places"]:
+                    display_name = place.get("displayName", {}).get("text", "N/A")
+                    
+                    # Determine if it's a competitor using competitor_matcher.py
+                    _, found_competitors, _ = match_competitors([display_name])
+                    is_competitor = bool(found_competitors) # True if found, False otherwise
 
-            not_found_competitor_details = []
-            if not_found_competitors and results and "places" in results:
-                print("\nCompetitors not found in CSV:")
-                for competitor_name in not_found_competitors:
-                    print(competitor_name)
-                    # Find the details of the not found competitor in the results
-                    for place in results["places"]:
-                        display_name = place.get("displayName", {}).get("text", "N/A")
-                        if display_name == competitor_name:
-                            place_id = place.get("id", "N/A")
-                            location = place.get("location", {})
-                            latitude = location.get('latitude', 'N/A')
-                            longitude = location.get('longitude', 'N/A')
-                            not_found_competitor_details.append({
-                                "name": display_name,
-                                "place_id": place_id,
-                                "latitude": latitude,
-                                "longitude": longitude
-                            })
-                            break # Found the competitor, move to the next not_found_competitor
+                    place_id = place.get("id") # Get the place ID
+                    
+                    all_results.append({
+                        "Original_Name_Address": site_address,
+                        "Original_Latitude": latitude,
+                        "Original_Longitude": longitude,
+                        "Found_Car_Wash_Name": display_name,
+                        "Is_Competitor": is_competitor
+                    })
 
-            # Print the details of not found competitors in a structured format for easy parsing
-            print("\n--- Not Found Competitor Details ---")
-            print(json.dumps(not_found_competitor_details))
+                    # Download photos if place_id is available and it's a competitor
+                    if place_id and is_competitor:
+                        photo_references, place_name_for_photo = get_photo_references_and_name(place_id)
+                        if photo_references:
+                            print(f"Downloading photos for '{display_name}'...")
+                            for i, ref in enumerate(photo_references):
+                                download_photo(ref, site_address, display_name, i)
+                        else:
+                            print(f"No photos found for '{display_name}' (ID: {place_id}).")
+            else:
+                print(f"No nearby car washes found for {site_address} or an error occurred.")
+                # Optionally, add a record for sites with no found car washes
+                all_results.append({
+                    "Original_Name_Address": site_address,
+                    "Original_Latitude": latitude,
+                    "Original_Longitude": longitude,
+                    "Found_Car_Wash_Name": "N/A",
+                    "Is_Competitor": False
+                })
 
-        elif results:
-            print("\nNo places found or an unexpected response format.")
-            print(f"API Response: {json.dumps(results, indent=2)}")
+        # Write all collected results to a CSV
+        if all_results:
+            output_df = pd.DataFrame(all_results)
+            output_df.to_csv(output_filepath, index=False)
+            print(f"\nSuccessfully wrote competitor analysis to {output_filepath}")
         else:
-            print("\nSearch failed.")
+            print("\nNo data to write to CSV.")
+
+    except Exception as e:
+        print(f"An error occurred during processing: {e}")
