@@ -4,17 +4,18 @@ import re
 import pandas as pd
 import os
 import glob # Added for file counting
+import time # Added for sleep
 from competitor_matcher import match_competitors
 from apiExamples.placePhotos import get_photo_references_and_name, download_photo
 from apiExamples.keyword_classification import keywordclassifier # Import the classifier function
 
 # Directory to save downloaded images (relative to app/)
-IMAGE_DIR = "app/place_images"
+IMAGE_DIR = "place_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
 # Directory for satellite images (relative to app/)
-SATELLITE_IMAGE_BASE_DIR = "app/satellite_images"
+SATELLITE_IMAGE_BASE_DIR = "satellite_images"
 if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
     os.makedirs(SATELLITE_IMAGE_BASE_DIR)
 
@@ -45,6 +46,8 @@ def get_place_image_count(original_name, found_car_wash_name):
 
 def get_satellite_image_name(place_id):
     """Gets the name of the satellite image if it exists, using place_id as filename."""
+    if place_id is None:
+        return None
     satellite_filename = f"{place_id}.jpg"
     satellite_filepath = os.path.join(SATELLITE_IMAGE_BASE_DIR, satellite_filename)
     
@@ -204,7 +207,37 @@ if __name__ == "__main__":
             original_latitude = row.iloc[1] # Renamed for clarity
             original_longitude = row.iloc[2] # Renamed for clarity
 
+            if pd.isna(site_address) or str(site_address).strip() == "":
+                print(f"Skipping record {index} due to missing or empty site address.")
+                all_results.append({
+                    "Original_Name_Address": site_address,
+                    "Original_Latitude": original_latitude,
+                    "Original_Longitude": original_longitude,
+                    "Found_Car_Wash_Name": "N/A",
+                    "FoundInCompetitorList": False,
+                    "keywordClassification": "Skipped (Missing Address)",
+                    "keywordClassificationExplanation": "Record skipped due to missing or empty site address.",
+                    "number of place images": None,
+                    "satellite image": None
+                })
+                continue # Skip to the next record
+
             print(f"Processing record {index}: {site_address}, Latitude: {original_latitude}, Longitude: {original_longitude}")
+
+            if pd.isna(original_latitude) or pd.isna(original_longitude):
+                print(f"Skipping record {index} due to missing latitude or longitude.")
+                all_results.append({
+                    "Original_Name_Address": site_address,
+                    "Original_Latitude": original_latitude,
+                    "Original_Longitude": original_longitude,
+                    "Found_Car_Wash_Name": "N/A",
+                    "FoundInCompetitorList": False,
+                    "keywordClassification": "Skipped (Missing Lat/Lon)",
+                    "keywordClassificationExplanation": "Record skipped due to missing latitude or longitude.",
+                    "number of place images": None,
+                    "satellite image": None
+                })
+                continue # Skip to the next record
 
             results = find_nearby_places(
                 API_KEY,
@@ -241,10 +274,10 @@ if __name__ == "__main__":
                         classification_result = keywordclassifier(display_name)
                         keyword_classification = classification_result.get("classification")
                         keyword_explanation = classification_result.get("explanation")
+                        time.sleep(7) # Add sleep to avoid rate limiting
 
                         # Collect images only if keywordClassification is 'Can't say'
                         if keyword_classification == "Can't say":
-                            num_place_images = get_place_image_count(site_address, display_name)
                             satellite_image_name = get_satellite_image_name(place_id) # Pass place_id
 
                             # If satellite image doesn't exist, attempt to download it
@@ -265,8 +298,11 @@ if __name__ == "__main__":
                                     print(f"Downloading photos for '{display_name}'...")
                                     for i, ref in enumerate(photo_references):
                                         download_photo(ref, site_address, display_name, i, IMAGE_DIR) # Pass IMAGE_DIR
+                                    # After downloading, count the images
+                                    num_place_images = get_place_image_count(site_address, display_name)
                                 else:
                                     print(f"No photos found for '{display_name}' (ID: {place_id}).")
+                                    num_place_images = 0 # Set to 0 if no photos found/downloaded
                         else:
                             # If not 'Can't say', then no images are collected, so set to None
                             num_place_images = None

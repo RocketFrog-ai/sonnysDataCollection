@@ -42,10 +42,13 @@ def get_photo_references_and_name(place_id):
 def sanitize_filename(name):
     """Sanitizes a string to be used as a filename or directory name by replacing non-alphanumeric
     characters (including spaces) with underscores. This ensures consistency for path creation.
+    Handles None input by returning an empty string.
     """
+    if name is None:
+        return ""
     # Replace all non-alphanumeric characters (including spaces) with a single underscore
     # and strip leading/trailing underscores.
-    return re.sub(r'[^a-zA-Z0-9]+', '_', name).strip('_')
+    return re.sub(r'[^a-zA-Z0-9]+', '_', str(name)).strip('_')
 
 def download_photo(photo_reference, original_name, found_car_wash_name, index, image_base_dir, max_width=800):
     """Downloads a photo given its reference and saves it into a structured subfolder."""
