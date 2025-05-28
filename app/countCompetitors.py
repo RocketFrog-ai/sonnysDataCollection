@@ -8,6 +8,7 @@ import time # Added for sleep
 from competitor_matcher import match_competitors
 from apiExamples.placePhotos import get_photo_references_and_name, download_photo
 from apiExamples.keyword_classification import keywordclassifier # Import the classifier function
+from apiExamples.images_classification import visionModelResponse # Import the image classification function
 
 # Directory to save downloaded images (relative to app/)
 IMAGE_DIR = "place_images"
@@ -267,6 +268,8 @@ if __name__ == "__main__":
                     satellite_image_name = None
                     keyword_classification = None
                     keyword_explanation = None
+                    image_classification = None
+                    image_justification = None
 
                     # Apply filteration: if it's a competitor, subsequent columns are N/A
                     if not is_competitor:
@@ -276,7 +279,7 @@ if __name__ == "__main__":
                         keyword_explanation = classification_result.get("explanation")
                         time.sleep(7) # Add sleep to avoid rate limiting
 
-                        # Collect images only if keywordClassification is 'Can't say'
+                        # Collect images and perform image classification only if keywordClassification is 'Can't say'
                         if keyword_classification == "Can't say":
                             satellite_image_name = get_satellite_image_name(place_id) # Pass place_id
 
@@ -303,10 +306,39 @@ if __name__ == "__main__":
                                 else:
                                     print(f"No photos found for '{display_name}' (ID: {place_id}).")
                                     num_place_images = 0 # Set to 0 if no photos found/downloaded
+                            
+                                # Determine paths for image classification
+                                current_place_images_folder_path = os.path.join(IMAGE_DIR, sanitize_filename(site_address), sanitize_filename(display_name))
+                                current_satellite_image_full_path = os.path.join(SATELLITE_IMAGE_BASE_DIR, satellite_image_name) if satellite_image_name else ""
+
+                                # Perform image classification if (place images or satellite image are available)
+                                if (num_place_images is not None and num_place_images > 0) or satellite_image_name is not None:
+                                    print(f"Performing image classification for {display_name}...")
+                                    image_classification_result = visionModelResponse(
+                                        place_images_folder_path=current_place_images_folder_path,
+                                        satellite_image_path=current_satellite_image_full_path
+                                    )
+                                    image_classification = image_classification_result.get("classification")
+                                    image_justification = image_classification_result.get("justification")
+                                    time.sleep(7) # Add sleep to avoid rate limiting
+                                else:
+                                    print(f"Skipping image classification for {display_name} due to missing images or satellite image.")
+                                    image_classification = None
+                                    image_justification = None
                         else:
                             # If not 'Can't say', then no images are collected, so set to None
                             num_place_images = None
                             satellite_image_name = None
+                            image_classification = None
+                            image_justification = None
+                    else:
+                        # If it is a competitor, set all subsequent columns to N/A or None
+                        keyword_classification = None
+                        keyword_explanation = None
+                        num_place_images = None
+                        satellite_image_name = None
+                        image_classification = None
+                        image_justification = None
                     
                     all_results.append({
                         "Original_Name_Address": site_address,
@@ -317,7 +349,9 @@ if __name__ == "__main__":
                         "keywordClassification": keyword_classification,
                         "keywordClassificationExplanation": keyword_explanation,
                         "number of place images": num_place_images,
-                        "satellite image": satellite_image_name
+                        "satellite image": satellite_image_name,
+                        "imageClassification": image_classification,
+                        "imageClassificationJustification": image_justification
                     })
 
             else:
@@ -333,7 +367,9 @@ if __name__ == "__main__":
                     "keywordClassification": None, # Default for no found car wash
                     "keywordClassificationExplanation": None, # Default for no found car wash
                     "number of place images": None, # Default for no found car wash
-                    "satellite image": None # Default for no found car wash
+                    "satellite image": None, # Default for no found car wash
+                    "imageClassification": None, # Default for no found car wash
+                    "imageClassificationJustification": None # Default for no found car wash
                 })
 
         # Write all collected results to a CSV
