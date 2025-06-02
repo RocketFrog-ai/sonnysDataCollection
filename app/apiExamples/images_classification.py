@@ -20,7 +20,7 @@ def get_mime_type(file_path):
             return 'image/webp'
         else:
             return 'application/octet-stream' # Generic binary, might cause issues if not an image
-    return mime_type
+    return mime_type if mime_type is not None else 'application/octet-stream'
 
 def visionModelResponse(place_images_folder_path: str, satellite_image_path: str) -> dict:
     """
@@ -37,11 +37,11 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
         or an error dictionary if issues occur.
     """
     client = genai.Client(
-        api_key="AIzaSyAt59WZAmoN2FVj_FZM6wYvAdJa5Q3MFL0",
+        api_key="AIzaSyDMRaUltpo6pBXoSVs46L51Js70pLAketo",
     )
 
     # Use the specified model
-    model = "gemini-2.5-flash-preview-05-20"
+    model = "gemini-2.5-pro-preview-05-06"
 
     # --- Prepare image parts from both sources ---
     image_parts = []
@@ -57,12 +57,14 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
                     try:
                         with open(file_path, 'rb') as f:
                             img_bytes = f.read()
-                        image_parts.append(
-                            types.Part.from_bytes(
-                                data=img_bytes,
-                                mime_type=get_mime_type(file_path)
-                            )
+                        part = types.Part.from_bytes(
+                            data=img_bytes,
+                            mime_type=get_mime_type(file_path)
                         )
+                        if part is not None: # Ensure the part is not None
+                            image_parts.append(part)
+                        else:
+                            print(f"  - Warning: Failed to create Part for {filename}. Skipping.")
                         print(f"  - Loaded: {filename}")
                     except Exception as e:
                         print(f"  - Error reading image {file_path}: {e}. Skipping.")
@@ -94,40 +96,74 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
 
     # --- Construct the text prompt ---
     classification_criteria_prompt = """
-You are analyzing publicly available images of car wash locations (from Google or Yelp), either uploaded by the business or its customers, including satellite images. Your goal is to determine whether the location is an express car wash that uses a tunnel system.
+You are analyzing publicly available images of car wash locations (from Google or Yelp), either uploaded by the business or its customers. Your goal is to determine whether the location is an express car wash that uses a tunnel system.
 
 Classify a car wash as an “Express Tunnel Car Wash” if the following indicators are present:
 1. Tunnel Structure:
 Look for images showing a long, narrow building or open-ended structure through which cars appear to enter and exit in a straight line.
+
+
 The tunnel should:
-- Have entry and exit arches or doors (often labeled "Enter" and "Exit").
-- Sometimes show rollers, brushes, or overhead sprayers inside.
-- May be visibly wet or shiny at the exit — this is a common sign of high-frequency washes.
-- Inside the tunnel you will find many cleaning and drying equipments, soaps and brushes working on the exterior surface of the car.
+
+
+Have entry and exit arches or doors (often labeled "Enter" and "Exit").
+Sometimes show rollers, brushes, or overhead sprayers inside.
+May be visibly wet or shiny at the exit — this is a common sign of high-frequency washes.
+Inside the tunnel you will find many cleaning and drying equipment, soaps and brushes working specifically on the exterior surface of the car.
+Make sure that inside the tunnel, the cleaning is done using automated equipments and NOT done manually by a human.
+Try to figure out the length of the tunnel, it should be at least 34 feet. The more extensive the tunnel’s length is, the better.
+If the tunnel wash is not happening via an automated express system, it is not a competitor.
+
 
 2. Conveyor System (if visible):
 Look for guide rails, rollers, or tracks on the ground inside the tunnel that cars align with — these indicate a conveyorized wash.
 May see multiple cars lined up in a sequence inside or outside the tunnel.
 
+
 3. Drive-Through Experience:
 Customers typically stay in the vehicle during the wash. You might observe:
-- Cars entering one by one.
-- No staff manually cleaning during the wash phase.
-- No interior cleaning being shown (no opened car doors, no attendants inside cars).
+
+
+Cars entering one by one.
+No staff manually cleaning during the wash phase.
+No interior cleaning being shown (no opened car doors, no attendants inside cars).
+
 
 4. Branding or Signage Clues:
 The business name or visible signage includes words like:
-- "Express"
-- "Exterior"
-- "Tunnel Wash"
+
+
+"Express"
+
+
+"Exterior"
+
+
+"Tunnel Wash"
+
+
 These are strong indicators of an express tunnel model.
+If the signage says “Full serve”, we will not consider it as a competitor until and unless it has a lot of real estate area where it can expand its express wash tunnel and use that space for the tunnel experience. In this case we need to judge the length of the tunnel. If it is very short, does not have enough cleaning equipments, has like an open roof, then it will not be considered as a competitor.
+Do not consider Truck washes, or truck wash companies like “Blue Beacon” as competitors.
+Do not consider Window tinting services of a car wash as a competitor.
+If a Mobile car wash offers Public car wash services too with a clearly visible Express Tunnel available for service, only then consider it as a competitor.
+In any case, a tunnel is a must.
+
 
 5. Vacuum Station Nearby (Optional):
 Rows of covered or uncovered self-serve vacuums with hoses may appear adjacent to the tunnel.
 While common, this is not required for classification.
 
-Based on ALL the provided images (place images and satellite image), classify this car wash location and provide a detailed justification.
-Generate the response in JSON format according to the provided schema.
+
+
+📝 Response Format (per location):
+
+Classification: Express Tunnel Car Wash(Competitor) / Not an Express Tunnel(Not a Competitor)
+
+Justification:
+- [Mention visible features: tunnel structure, entrance/exit, equipment, signage, conveyor, vacuum area, etc.]
+- [If classification is unclear, explain what data was missing or ambiguous.]
+
 """
 
     # The contents list starts with the text prompt, followed by all loaded image parts.
@@ -156,7 +192,10 @@ Generate the response in JSON format according to the provided schema.
     )
 
     # --- Call the Generative Model ---
-    print("\nSending request to Gemini API...")
+    print(f"\nSending request to Gemini API with {len(image_parts)} image parts...")
+    # Debug: Print the first few parts of the contents list to inspect
+    # Note: Printing full image bytes can be very verbose, so we'll just print types
+    print(f"Contents parts: {[type(p) for p in contents[:5]]}...") 
     try:
         response = client.models.generate_content(
             model=model,
@@ -165,13 +204,19 @@ Generate the response in JSON format according to the provided schema.
         )
 
         # The response.text will now contain a JSON string
+        if response is None or not hasattr(response, 'text') or response.text is None:
+            return {"error": "Gemini API response was empty or invalid (response.text is None).", "raw_response": str(response)}
+        
         try:
             return json.loads(response.text)
         except json.JSONDecodeError as e:
             return {"error": f"Failed to parse JSON response from model: {e}", "raw_response": response.text}
 
     except Exception as e:
-        return {"error": f"Error during AI model inference: {e}\nEnsure your GEMINI_API_KEY is set and the API is accessible."}
+        # Catch any exception during the API call and print its type and message
+        print(f"DEBUG: Exception type: {type(e).__name__}, Message: {e}")
+        # Re-raise the exception to get the full traceback in countCompetitors.py
+        raise e
 
 # --- Example Usage (for testing) ---
 if __name__ == "__main__":

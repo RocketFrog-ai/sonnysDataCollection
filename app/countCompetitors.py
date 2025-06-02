@@ -5,6 +5,7 @@ import pandas as pd
 import os
 import glob # Added for file counting
 import time # Added for sleep
+import traceback # Added for detailed error logging
 from competitor_matcher import match_competitors
 from apiExamples.placePhotos import get_photo_references_and_name, download_photo
 from apiExamples.keyword_classification import keywordclassifier # Import the classifier function
@@ -23,10 +24,15 @@ if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
 def sanitize_filename(name):
     """Sanitizes a string to be used as a filename or directory name by replacing non-alphanumeric
     characters (including spaces) with underscores. This ensures consistency for path creation.
+    Handles None input by returning an empty string.
     """
+    if name is None:
+        return ""
+    # Ensure name is a string before applying regex
+    name_str = str(name)
     # Replace all non-alphanumeric characters (including spaces) with a single underscore
     # and strip leading/trailing underscores.
-    return re.sub(r'[^a-zA-Z0-9]+', '_', name).strip('_')
+    return re.sub(r'[^a-zA-Z0-9]+', '_', name_str).strip('_')
 
 def get_place_image_count(original_name, found_car_wash_name):
     """Counts the number of place images for a given record."""
@@ -173,7 +179,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # --- Configuration ---
-    API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"  # <--- REPLACE WITH YOUR ACTUAL API KEY
+    API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"  # Standardized API Key
     EXCEL_PATH = '/home/arpit/dataCollection/app/datasets/1mile_raw_data.xlsx'
     OUTPUT_DIR = '/home/arpit/dataCollection/app/output_csv'
     OUTPUT_FILENAME = 'competitor_analysis.csv'
@@ -192,9 +198,6 @@ if __name__ == "__main__":
         print("Please replace 'YOUR_API_KEY' with your actual value in the script.")
         sys.exit(1)
 
-    # Prepare a list to store all results
-    all_results = []
-
     try:
         df = pd.read_excel(EXCEL_PATH, engine='openpyxl')
 
@@ -203,6 +206,21 @@ if __name__ == "__main__":
             print(f"Error: Invalid record range. Please provide a valid range between 0 and {len(df) -1}.")
             sys.exit(1)
 
+        # Define CSV headers
+        csv_headers = [
+            "Original_Name_Address", "Original_Latitude", "Original_Longitude",
+            "Found_Car_Wash_Name", "FoundInCompetitorList", "keywordClassification",
+            "keywordClassificationExplanation", "number of place images",
+            "satellite image", "imageClassification", "imageClassificationJustification"
+        ]
+
+        # Check if CSV file exists, if not, create it with headers
+        if not os.path.exists(output_filepath):
+            pd.DataFrame(columns=csv_headers).to_csv(output_filepath, index=False, mode='w')
+            print(f"Created new CSV file with headers: {output_filepath}")
+        else:
+            print(f"Appending to existing CSV file: {output_filepath}")
+
         for index, row in df.iloc[start_index_to_process:end_index_to_process].iterrows():
             site_address = row.iloc[0]
             original_latitude = row.iloc[1] # Renamed for clarity
@@ -210,7 +228,7 @@ if __name__ == "__main__":
 
             if pd.isna(site_address) or str(site_address).strip() == "":
                 print(f"Skipping record {index} due to missing or empty site address.")
-                all_results.append({
+                record_data = {
                     "Original_Name_Address": site_address,
                     "Original_Latitude": original_latitude,
                     "Original_Longitude": original_longitude,
@@ -219,15 +237,18 @@ if __name__ == "__main__":
                     "keywordClassification": "Skipped (Missing Address)",
                     "keywordClassificationExplanation": "Record skipped due to missing or empty site address.",
                     "number of place images": None,
-                    "satellite image": None
-                })
+                    "satellite image": None,
+                    "imageClassification": None,
+                    "imageClassificationJustification": None
+                }
+                pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
                 continue # Skip to the next record
 
             print(f"Processing record {index}: {site_address}, Latitude: {original_latitude}, Longitude: {original_longitude}")
 
             if pd.isna(original_latitude) or pd.isna(original_longitude):
                 print(f"Skipping record {index} due to missing latitude or longitude.")
-                all_results.append({
+                record_data = {
                     "Original_Name_Address": site_address,
                     "Original_Latitude": original_latitude,
                     "Original_Longitude": original_longitude,
@@ -236,8 +257,11 @@ if __name__ == "__main__":
                     "keywordClassification": "Skipped (Missing Lat/Lon)",
                     "keywordClassificationExplanation": "Record skipped due to missing latitude or longitude.",
                     "number of place images": None,
-                    "satellite image": None
-                })
+                    "satellite image": None,
+                    "imageClassification": None,
+                    "imageClassificationJustification": None
+                }
+                pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
                 continue # Skip to the next record
 
             results = find_nearby_places(
@@ -277,7 +301,7 @@ if __name__ == "__main__":
                         classification_result = keywordclassifier(display_name)
                         keyword_classification = classification_result.get("classification")
                         keyword_explanation = classification_result.get("explanation")
-                        time.sleep(7) # Add sleep to avoid rate limiting
+                        time.sleep(1) # Add sleep to avoid rate limiting
 
                         # Collect images and perform image classification only if keywordClassification is 'Can't say'
                         if keyword_classification == "Can't say":
@@ -314,13 +338,24 @@ if __name__ == "__main__":
                                 # Perform image classification if (place images or satellite image are available)
                                 if (num_place_images is not None and num_place_images > 0) or satellite_image_name is not None:
                                     print(f"Performing image classification for {display_name}...")
-                                    image_classification_result = visionModelResponse(
-                                        place_images_folder_path=current_place_images_folder_path,
-                                        satellite_image_path=current_satellite_image_full_path
-                                    )
-                                    image_classification = image_classification_result.get("classification")
-                                    image_justification = image_classification_result.get("justification")
-                                    time.sleep(7) # Add sleep to avoid rate limiting
+                                    try:
+                                        image_classification_result = visionModelResponse(
+                                            place_images_folder_path=current_place_images_folder_path,
+                                            satellite_image_path=current_satellite_image_full_path
+                                        )
+                                        image_classification = image_classification_result.get("classification")
+                                        image_justification = image_classification_result.get("justification")
+                                        time.sleep(1) # Add sleep to avoid rate limiting
+                                    except TypeError as e: # Specifically catch TypeError
+                                        print(f"ERROR: TypeError calling visionModelResponse for {display_name}: {e}")
+                                        print(traceback.format_exc()) # Print full traceback
+                                        image_classification = "Error during classification (TypeError)"
+                                        image_justification = f"A TypeError occurred during image classification: {e}"
+                                    except Exception as e: # Catch any other general exceptions
+                                        print(f"ERROR: Unexpected Exception calling visionModelResponse for {display_name}: {e}")
+                                        print(traceback.format_exc()) # Print full traceback
+                                        image_classification = "Error during classification (Unexpected)"
+                                        image_justification = f"An unexpected error occurred during image classification: {e}"
                                 else:
                                     print(f"Skipping image classification for {display_name} due to missing images or satellite image.")
                                     image_classification = None
@@ -340,7 +375,7 @@ if __name__ == "__main__":
                         image_classification = None
                         image_justification = None
                     
-                    all_results.append({
+                    record_data = {
                         "Original_Name_Address": site_address,
                         "Original_Latitude": original_latitude,
                         "Original_Longitude": original_longitude,
@@ -352,13 +387,13 @@ if __name__ == "__main__":
                         "satellite image": satellite_image_name,
                         "imageClassification": image_classification,
                         "imageClassificationJustification": image_justification
-                    })
+                    }
+                    pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
 
             else:
                 print(f"No nearby car washes found for {site_address} or an error occurred.")
-                # Optionally, add a record for sites with no found car washes
                 # Also add default values for new columns, respecting the filteration logic
-                all_results.append({
+                record_data = {
                     "Original_Name_Address": site_address,
                     "Original_Latitude": original_latitude,
                     "Original_Longitude": original_longitude,
@@ -370,15 +405,10 @@ if __name__ == "__main__":
                     "satellite image": None, # Default for no found car wash
                     "imageClassification": None, # Default for no found car wash
                     "imageClassificationJustification": None # Default for no found car wash
-                })
+                }
+                pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
 
-        # Write all collected results to a CSV
-        if all_results:
-            output_df = pd.DataFrame(all_results)
-            output_df.to_csv(output_filepath, index=False)
-            print(f"\nSuccessfully wrote competitor analysis to {output_filepath}")
-        else:
-            print("\nNo data to write to CSV.")
+        print(f"\nProcessing complete. Results appended to {output_filepath}")
 
     except Exception as e:
         print(f"An error occurred during processing: {e}")

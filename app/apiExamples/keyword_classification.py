@@ -6,7 +6,7 @@ import json
 
 def keywordclassifier(car_wash_name: str):
     client = genai.Client(
-        api_key="AIzaSyAt59WZAmoN2FVj_FZM6wYvAdJa5Q3MFL0",
+        api_key="AIzaSyDMRaUltpo6pBXoSVs46L51Js70pLAketo",
     )
 
     model = "gemini-2.5-flash-preview-05-20" # Consider 'gemini-1.5-flash' or 'gemini-1.5-pro' for more complex classification or longer inputs if needed.
@@ -14,21 +14,51 @@ def keywordclassifier(car_wash_name: str):
         types.Content(
             role="user",
             parts=[
-                types.Part.from_text(text="""You are a smart classifier for car wash businesses. Your goal is to decide whether a business is a Competitor or Not Competitor based on its name or description. If the information is insufficient to classify, output "Can't say".
+                types.Part.from_text(text="""You are a smart classifier for car wash businesses. Your goal is to decide whether a business is a Competitor or Not Competitor based on its name or description.
 
 Classification Logic:
 
-    Competitor: Businesses that emphasize automated, full-service, or drive-through-style washes, typically using words like:
-        "Express", "Xpress", "Full Serve", "Flex Serve", "Quick Wash", "Tunnel", "Automated", etc.
-        You may encounter variations, misspellings, or synonyms indicating fast, full-service, or automated experiences.
+Competitor: Businesses that emphasize automated, full-service, or drive-through-style washes, typically using words like:
 
-    Not Competitor: Businesses that emphasize manual, customer-operated, or value-added services, typically using terms like:
-        "Self Serve", "Hand Wash", "Lube", "Detailing", "Oil Change", "DIY", "Do-It-Yourself", etc.
-        These are more traditional or niche service providers, not direct competitors.
+"Express", "Xpress", "Flex Serve", "Quick Wash", "Tunnel", “Exterior”,  etc.
 
-    ⚠️ Important: If the input contains both types of keywords, default to Competitor — automation usually implies higher overlap.
+You may encounter variations, misspellings, or synonyms indicating fast, full-service, or automated experiences.
 
-Provide your classification and a brief explanation based on the input string.
+Not Competitor: Businesses that emphasize manual, customer-operated, or value-added services, typically using terms like:
+
+"Self Serve", “Full Serve”, "Hand Wash", "Mobile", “Truck Wash”, “Blue Beacon”, “Window Tinting” "Detailing", "Oil Change", etc.
+
+These are more traditional or niche service providers, not direct competitors.
+
+Can’t Say: If a car wash name is generic and cannot be identified using above criteria or it has the following keywords:
+ “Lube”, “Auto”, etc.
+
+
+
+⚠️ Important: If the input contains both types of keywords, default to Competitor — automation usually implies higher overlap.
+
+Examples:
+Input: "Drive-Thru Express Wash"
+Output: Competitor
+                                     
+Input: "Eco Hand Wash & Detail"
+Output: Not Competitor
+
+Input: "Quick Lube"
+Output: Can’t Say
+
+Input: "Flex Serve Tunnel Wash and Lube"
+Output: Competitor
+                                     
+Input: "Self Serve Car Wash and Oil Center"
+Output: Not Competitor
+                                     
+Input: "Speedy Xpress Car Wash"
+Output: Competitor
+                                     
+Input: "Downtown Detail & Hand Wash"
+Output: Not Competitor
+
 
 Now classify this input:
 {{""" + car_wash_name + """}}"""),

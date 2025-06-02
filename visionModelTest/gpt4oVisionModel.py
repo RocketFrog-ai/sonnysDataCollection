@@ -3,7 +3,9 @@ from openai import OpenAI, AzureOpenAI
 # from langchain_openai import AzureChatOpenAI
 import os
 
-client = OpenAI(api_key='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')
+client = OpenAI(api_key='5sPwzEUN6KlaevseHDUJ4CAt733wG7bJUuSTpssVV9GtB5Lyq7QKJQQJ99BDACHYHv6XJ3w3AAABACOGbWjz')
+
+# client = OpenAI(api_key='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')
 # client = AzureChatOpenAI(
 #         model="gpt-4o",
 #         api_version='2024-08-01-preview',
