@@ -1,11 +1,11 @@
 /collectedImages
-app/datasets
+competitors/datasets
 .env
 /streetViewImages
-app/place_images
+competitors/place_images
 /yelp_images
-app/satellite_images
-app/output_csv
-app/__pycache__
-app/apiExamples/__pycache__
+competitors/satellite_images
+competitors/output_csv
+competitors/__pycache__
+competitors/apiExamples/__pycache__
 Data+Code
