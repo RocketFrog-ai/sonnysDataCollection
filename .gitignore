@@ -9,3 +9,5 @@ competitors/output_csv
 competitors/__pycache__
 competitors/apiExamples/__pycache__
 Data+Code
+siteAccessibility/satellite_images
+siteAccessibility/apiExamples/__pycache__
