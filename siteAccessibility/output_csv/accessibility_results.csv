@@ -1,41 +1,5 @@
-site_name,accessibility_score,justification
-"#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032",8,"- Prime corner lot at the intersection of a major multi-lane road and a significant secondary road (N 40th St), offering good visibility.
-- Features multiple wide entry/exit points, allowing generally convenient access, particularly from N 40th St and for eastbound traffic on the main road.
-- Sufficient on-site maneuvering and queuing space is visible, shared with a co-located convenience store which can also be a traffic driver.
-- Direct access for westbound traffic on the main E-W road is restricted by a median, requiring a U-turn or alternative routing, slightly reducing convenience for some approaches."
-"#27 WEISS GUYS EXPRESS , 8365 W McDowell Rd , Tolleson , AZ , 85353",7,"*   The car wash benefits from access via a shared driveway leading directly to McDowell Rd, a major multi-lane thoroughfare, and also has a secondary access point from W Lynwood St to the south, offering multiple entry/exit options.
-*   Potential for traffic congestion exists at the primary access point shared with the Waffle House, which could impede smooth ingress/egress during busy periods for either business.
-*   The car wash structure is set back from McDowell Rd, partially behind other commercial buildings (Waffle House, food truck location), which may slightly reduce its direct visibility to fast-moving traffic on the main road.
-*   On-site circulation appears relatively clear, with visible queuing space for the wash tunnel and ample area for maneuvering to vacuum stations and self-serve bays."
-"#28 WEISS GUYS EXPRESS , 121 E Van Buren St , St. Avondale , AZ , 85323",4,"* The car wash is significantly set back from main public roads, requiring vehicles to navigate through a shared internal road network of a larger commercial plaza, which can be inconvenient and less intuitive for first-time customers.
-* Direct visibility from primary thoroughfares is likely poor due to the setback and obstruction by other commercial buildings, making it harder to attract passing traffic unless they are already destined for the plaza.
-* Access routes and parking areas are shared with multiple other businesses (including a Jiffy Lube, a church, and other retail/service establishments), potentially leading to internal traffic congestion and competition for space, especially during peak hours.
-* While the on-site layout for entering the wash tunnel and accessing vacuum bays appears functional once a customer reaches the car wash area, the indirect approach and dependency on the plaza's overall accessibility are notable drawbacks."
-"*** StoneWash *** Car Care Center , 818 Paris Rd , Mayfield , KY , 42066",9,"*   Excellent access from Paris Rd (Highway 121), a major thoroughfare, facilitated by a center turn lane allowing easy ingress for traffic from both directions.
-*   Multiple distinct entry and exit points on Paris Rd, complemented by an additional access point from Jones St at the rear, providing versatile options for customers.
-*   The site offers a very spacious paved area, ensuring ample room for vehicles to queue without blocking public roadways and allowing for easy on-site circulation and maneuvering to various service points.
-*   Good visibility from Paris Rd due to substantial frontage and proximity to the road, with ample space for prominent signage."
-"1287 DEER PARK CAR WASH , 1287 Deer Park Ave , North Babylon , NY , 11703",4,"Access from/to northbound Deer Park Ave (Route 231) is challenging due to the need to make unprotected left turns across multiple lanes of a busy road, as no dedicated turn lanes are visible.
-The single main entrance/exit point on Deer Park Ave is shared with at least two other businesses (AutoZone, True Value Hardware), potentially leading to internal lot congestion and competition for access.
-The car wash structure is set back from Deer Park Ave, behind other commercial buildings and parking, which reduces its immediate visibility from the main thoroughfare.
-While there is direct access from a major road, the overall convenience and safety are significantly impacted by the lack of protected turns and shared access design."
-"330 S. Broadway Lawrence , 330 S Broadway , Lawrence , MA , 1843",4,"The car wash benefits from direct access and visibility from a main road (Road 330).
-However, a single primary ingress/egress point appears overwhelmed by demand, as evidenced by a very long queue that nearly extends back to the public road, potentially obstructing traffic and making entry difficult.
-This extensive queuing significantly limits on-site maneuvering space and suggests insufficient capacity to handle peak customer flow without impacting access or potentially spilling onto the main thoroughfare.
-The exit path shares the entry point and is close to an intersection, which could complicate departures, especially during busy periods."
-"360 Car Wash , 180 South US-175 , Seagoville , TX , 75159",9,"*   Excellent access with two distinct entry/exit points: one directly from the busy US-175 Frontage Rd and another from S Crestview Dr, allowing for flexible ingress/egress.
-*   High visibility from the US-175 Frontage Rd, with a prominent position and ample space for signage.
-*   Generous on-site maneuvering space, including clear queuing lanes for the wash tunnel and numerous well-spaced vacuum bays, minimizing potential for off-site congestion.
-*   Logical internal circulation pattern appears to facilitate easy navigation from entry to wash, then to finishing areas, and finally to either exit."
-"4th u0026 Douglas , 5301 4th Street NW , Albuquerque , NM , 87107",6,"*   The car wash benefits from a corner lot location, providing visibility and access points from both Douglas MacArthur Rd NW and 4th St NW.
-*   On-site circulation appears well-planned, with a clear path from the likely entrance on Douglas MacArthur Rd NW, through the wash, to a spacious vacuum area, and then to a separate exit probably onto 4th St NW.
-*   A significant drawback is the apparent lack of dedicated left-turn lanes for vehicles approaching from eastbound Douglas MacArthur Rd NW or northbound on 4th St NW, which could make site access difficult and potentially hazardous during moderate to heavy traffic.
-*   Sufficient on-site queuing space before the wash tunnel and ample room in the vacuum area help prevent vehicles from backing up onto public roadways."
-"A-KEY CAR WASH , 2210 N Prince St , Clovis , NM , 88101",8,"Positioned on a major thoroughfare (Prince St/SR 209) with good visibility, and benefits from a corner location with secondary access from Ross St.
-Multiple clear entry/exit points from both Prince St and Ross St provide convenient access options for customers approaching from different directions.
-Sufficient on-site space appears available for vehicle queuing, maneuvering through wash services, and accessing vacuum areas without obstructing through traffic.
-Access for southbound traffic on Prince St might be less direct if no dedicated left-turn lane exists directly into the property, potentially requiring a turn at a nearby intersection (e.g., Lexington Rd then Ross St) or a U-turn."
-"AGGIELAND EXPRESS #2 , 2526 Texas Ave , College Station , TX , 77840",4,"- Located on a major road (Texas Ave) providing good visibility, but a median restricts direct left turns, significantly complicating access for westbound traffic.
-- The primary access point on Texas Ave is very close to a major signalized intersection, which could lead to traffic queuing conflicts that block entry or exit.
-- Access for eastbound traffic on Texas Ave (right-in/right-out) is relatively straightforward, offering convenient entry and exit for this direction.
-- Exiting to travel westbound on Texas Ave is complicated, likely requiring use of the side street and the signalized intersection or a U-turn further down the road."
+site_name,location_name,address,accessibility_score,justification
+"#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032","#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032",Address Not Found,8,"Located directly on N 40th St, a major multi-lane road, with access facilitated by a median break allowing left turns in and out, and situated near a major signalized intersection.
+Offers multiple entry/exit points, including direct access from N 40th St and a secondary access from E Ludlow Dr, catering to both through-traffic and local residents.
+Shares a lot with a Circle K, providing good co-tenancy draw, and appears to have adequate on-site queuing and circulation space for car wash operations and vacuum use.
+High visibility due to its corner-influenced location on a busy commercial corridor, surrounded by other retail and service businesses, despite the wash structure itself being slightly set back from N 40th St."
