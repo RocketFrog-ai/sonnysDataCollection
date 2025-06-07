@@ -26,13 +26,13 @@ def get_mime_type(file_path):
 def visionModelResponse(satellite_image_path: str) -> dict:
     """
     Analyzes a single satellite image of a car wash location to determine
-    its site accessibility score (1-10) and provides a justification.
+    its site accessibility classification and provides a justification.
 
     Args:
         satellite_image_path: Path to a single satellite image of the car wash location.
 
     Returns:
-        A dictionary containing the accessibility score and justification from the vision model,
+        A dictionary containing the accessibility classification and justification from the vision model,
         or an error dictionary if issues occur.
     """
     api_key = "AIzaSyDMRaUltpo6pBXoSVs46L51Js70pLAketo" # Replace with your actual API key or use environment variables
@@ -75,12 +75,13 @@ def visionModelResponse(satellite_image_path: str) -> dict:
 
     # --- Construct the text prompt for Site Accessibility ---
     site_accessibility_prompt = """
-You are an expert site selection analyst specializing in car wash businesses in the United States. Your task is to evaluate the **vehicular accessibility** of the car wash location shown in the provided satellite image and assign it a score from 1 to 10.
+You are an expert site selection analyst specializing in car wash businesses in the United States. Your task is to evaluate the **vehicular accessibility** of the car wash location shown in the provided satellite image and assign it one of the following classifications:
 
-**Scoring Scale:**
-*   **1:** Extremely Poor Accessibility (Very difficult to enter/exit, dangerous, hidden, extremely inconvenient)
-*   **5:** Average Accessibility (Functional, but with some noticeable drawbacks or no significant advantages)
-*   **10:** Excellent Accessibility (Easy, safe, and convenient multi-directional access, highly visible, ample maneuvering space)
+**Classification Classes:**
+1.  **Easy In & Easy Out**
+2.  **Easy In/Out With Divided Highway**
+3.  **Easy In Or Easy Out One Way**
+4.  **Difficult In and Out**
 
 **Based solely on the visual information in the satellite image, consider the following factors:**
 
@@ -105,8 +106,8 @@ You are an expert site selection analyst specializing in car wash businesses in 
     *   **Proximity to Traffic Generators:** Being near other high-traffic retail or services can be good, but can also complicate access if not managed well.
 
 **Output Requirements:**
-1.  **Accessibility Score:** A single integer number from 1 to 10.
-2.  **Justification (2-4 bullet points):** Briefly explain the key positive and negative factors observed in the image that led to your score. Focus on aspects directly impacting how easily a customer can drive into, use, and exit the car wash.
+1.  **Accessibility Classification:** One of the four classification strings listed above.
+2.  **Justification (2-4 bullet points):** Briefly explain the key positive and negative factors observed in the image that led to your classification. Focus on aspects directly impacting how easily a customer can drive into, use, and exit the car wash.
 
 **Important Considerations:**
 *   Focus *only* on what can be reasonably inferred from the satellite image.
@@ -126,15 +127,21 @@ You are an expert site selection analyst specializing in car wash businesses in 
         response_mime_type="application/json",
         response_schema=types.Schema(
             type=types.Type.OBJECT,
-            required=["accessibility_score", "justification"],
+            required=["accessibility_classification", "justification"],
             properties={
-                "accessibility_score": types.Schema(
-                    type=types.Type.INTEGER,
-                    description="The site accessibility score from 1 (worst) to 10 (best)."
+                "accessibility_classification": types.Schema(
+                    type=types.Type.STRING,
+                    description="The site accessibility classification. Must be one of: 'Easy In & Easy Out', 'Easy In/Out With Divided Highway', 'Easy In Or Easy Out One Way', 'Difficult In and Out'.",
+                    enum=[
+                        "Easy In & Easy Out",
+                        "Easy In/Out With Divided Highway",
+                        "Easy In Or Easy Out One Way",
+                        "Difficult In and Out"
+                    ]
                 ),
                 "justification": types.Schema(
                     type=types.Type.STRING,
-                    description="A brief explanation (2-4 bullet points) of the factors leading to the score, based on the satellite image."
+                    description="A brief explanation (2-4 bullet points) of the factors leading to the classification, based on the satellite image."
                 ),
             },
         ),
@@ -148,7 +155,7 @@ You are an expert site selection analyst specializing in car wash businesses in 
         response = client.models.generate_content(
             model=model,            # The model name string (e.g., "gemini-1.5-pro-preview-05-06")
             contents=contents,
-            config=generate_config  # The GenerateContentConfig object passed as 'config'
+            config=generate_config  # Reverted to original 'config'
         )
 
         if response is None or not hasattr(response, 'text') or not response.text:

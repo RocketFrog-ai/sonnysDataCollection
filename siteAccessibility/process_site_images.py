@@ -7,11 +7,12 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'apiExamples'))
 from apiExamples.mapsStatic import get_static_map_image
 from apiExamples.visionModel import visionModelResponse
+from apiExamples.geocoding import get_address_from_coords
 
 def process_excel_data(start_index, end_index):
-    excel_file_path = 'siteAccesibility/datasets/1mile_raw_data.xlsx'
-    satellite_image_output_dir = 'siteAccesibility/satellite_images'
-    csv_output_dir = 'siteAccesibility/output_csv'
+    excel_file_path = 'siteAccessibility/datasets/1mile_raw_data.xlsx'
+    satellite_image_output_dir = 'siteAccessibility/satellite_images'
+    csv_output_dir = 'siteAccessibility/output_csv'
     output_csv_filename = os.path.join(csv_output_dir, 'accessibility_results.csv')
 
     # Create necessary directories
@@ -49,6 +50,11 @@ def process_excel_data(start_index, end_index):
 
         print(f"Processing record {index}: Site Name='{site_name}', Lat={latitude}, Lon={longitude}")
 
+        # 0. Get address from coordinates
+        print(f"  - Attempting to get address for Lat={latitude}, Lon={longitude}")
+        address = get_address_from_coords(latitude, longitude)
+        print(f"  - Retrieved Address: {address}")
+
         # 1. Get and save satellite image
         try:
             print(f"  - Attempting to save satellite image to {image_filename}")
@@ -60,35 +66,38 @@ def process_excel_data(start_index, end_index):
                 print(f"  - Sending image to vision model: {image_filename}")
                 vision_response = visionModelResponse(satellite_image_path=image_filename)
 
-                accessibility_score = None
+                accessibility_classification = None
                 justification = None
 
                 if vision_response and "error" not in vision_response:
-                    accessibility_score = vision_response.get("accessibility_score")
+                    accessibility_classification = vision_response.get("accessibility_classification")
                     justification = vision_response.get("justification")
-                    print(f"  - Vision Model Response: Score={accessibility_score}, Justification='{justification[:50]}...'")
+                    print(f"  - Vision Model Response: Classification={accessibility_classification}, Justification='{justification[:50]}...'")
                 else:
                     print(f"  - Error from Vision Model: {vision_response.get('error', 'Unknown error')}")
-                    accessibility_score = "Error"
+                    accessibility_classification = "Error"
                     justification = vision_response.get('error', 'Failed to get response')
 
                 results.append({
                     "site_name": site_name,
-                    "accessibility_score": accessibility_score,
+                    "address": address,
+                    "accessibility_classification": accessibility_classification,
                     "justification": justification
                 })
             else:
                 print(f"  - Failed to save image for '{site_name}'. Skipping vision model analysis.")
                 results.append({
                     "site_name": site_name,
-                    "accessibility_score": "Image Save Failed",
+                    "address": address,
+                    "accessibility_classification": "Image Save Failed",
                     "justification": "Image could not be saved."
                 })
         except Exception as e:
             print(f"Error processing record {index} ('{site_name}'): {e}")
             results.append({
                 "site_name": site_name,
-                "accessibility_score": "Processing Error",
+                "address": address, # Still include address even if other processing fails
+                "accessibility_classification": "Processing Error",
                 "justification": str(e)
             })
 

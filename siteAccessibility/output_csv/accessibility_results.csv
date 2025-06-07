@@ -1,5 +1,3 @@
-site_name,location_name,address,accessibility_score,justification
-"#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032","#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032",Address Not Found,8,"Located directly on N 40th St, a major multi-lane road, with access facilitated by a median break allowing left turns in and out, and situated near a major signalized intersection.
-Offers multiple entry/exit points, including direct access from N 40th St and a secondary access from E Ludlow Dr, catering to both through-traffic and local residents.
-Shares a lot with a Circle K, providing good co-tenancy draw, and appears to have adequate on-site queuing and circulation space for car wash operations and vacuum use.
-High visibility due to its corner-influenced location on a busy commercial corridor, surrounded by other retail and service businesses, despite the wash structure itself being slightly set back from N 40th St."
+site_name,address,accessibility_classification,justification
+"#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032",Error: Geocoding API request failed. Status: REQUEST_DENIED. Message: This API key is not authorized to use this service or API.,Error,Error calling Gemini API: Models.generate_content() got an unexpected keyword argument 'generation_config'
+"#27 WEISS GUYS EXPRESS , 8365 W McDowell Rd , Tolleson , AZ , 85353",Error: Geocoding API request failed. Status: REQUEST_DENIED. Message: This API key is not authorized to use this service or API.,Error,Error calling Gemini API: Models.generate_content() got an unexpected keyword argument 'generation_config'
