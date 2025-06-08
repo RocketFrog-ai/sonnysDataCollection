@@ -3,6 +3,9 @@ import mimetypes
 import json # Import json to parse the model's output
 from google import genai
 from google.genai import types
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_mime_type(file_path):
     """Determines the MIME type of a file based on its extension."""
@@ -37,7 +40,7 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
         or an error dictionary if issues occur.
     """
     client = genai.Client(
-        api_key="AIzaSyDMRaUltpo6pBXoSVs46L51Js70pLAketo",
+        api_key=os.environ.get("GEMINI_API_KEY"),
     )
 
     # Use the specified model

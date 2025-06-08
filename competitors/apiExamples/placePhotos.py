@@ -1,9 +1,13 @@
 import requests
 import os
 import re # Added for sanitize_filename
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # --- Configuration ---
-API_KEY = "AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA"  # <--- REPLACE WITH YOUR ACTUAL API KEY
+API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY") # <--- REPLACE WITH YOUR ACTUAL API KEY
 # Ensure this API key has "Places API" enabled in your Google Cloud Console.
 
 # --- API Endpoints ---

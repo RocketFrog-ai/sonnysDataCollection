@@ -3,7 +3,8 @@ import json
 import re
 import pandas as pd
 import os
-import glob # Added for file counting
+import glob
+from dotenv import load_dotenv
 import time # Added for sleep
 import traceback # Added for detailed error logging
 from competitor_matcher import match_competitors
@@ -11,12 +12,12 @@ from apiExamples.placePhotos import get_photo_references_and_name, download_phot
 from apiExamples.keyword_classification import keywordclassifier # Import the classifier function
 from apiExamples.images_classification import visionModelResponse # Import the image classification function
 
-# Directory to save downloaded images (relative to app/)
+# Directory to save downloaded images (relative to competitors/)
 IMAGE_DIR = "place_images"
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-# Directory for satellite images (relative to app/)
+# Directory for satellite images (relative to competitors/)
 SATELLITE_IMAGE_BASE_DIR = "satellite_images"
 if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
     os.makedirs(SATELLITE_IMAGE_BASE_DIR)
@@ -178,10 +179,11 @@ if __name__ == "__main__":
         print("Invalid start or end index provided. Please provide integers.")
         sys.exit(1)
 
+    load_dotenv()
     # --- Configuration ---
-    API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"  # Standardized API Key
-    EXCEL_PATH = '/home/arpit/dataCollection/app/datasets/1mile_raw_data.xlsx'
-    OUTPUT_DIR = '/home/arpit/dataCollection/app/output_csv'
+    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")  # Standardized API Key
+    EXCEL_PATH = '/home/arpit/dataCollection/competitors/datasets/1mile_raw_data.xlsx'
+    OUTPUT_DIR = '/home/arpit/dataCollection/competitors/output_csv'
     OUTPUT_FILENAME = 'competitor_analysis.csv'
 
     # Create output directory if it doesn't exist

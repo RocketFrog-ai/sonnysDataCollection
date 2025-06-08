@@ -1,9 +1,12 @@
 import requests
 import sys
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Replace with your Google Static Maps API key
-API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"
+API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
 
 if __name__ == "__main__":
     if len(sys.argv) != 4:

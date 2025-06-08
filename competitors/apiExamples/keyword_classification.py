@@ -3,10 +3,13 @@ import os
 from google import genai
 from google.genai import types
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def keywordclassifier(car_wash_name: str):
     client = genai.Client(
-        api_key="AIzaSyDMRaUltpo6pBXoSVs46L51Js70pLAketo",
+        api_key=os.environ.get("GEMINI_API_KEY"),
     )
 
     model = "gemini-2.5-flash-preview-05-20" # Consider 'gemini-1.5-flash' or 'gemini-1.5-pro' for more complex classification or longer inputs if needed.
