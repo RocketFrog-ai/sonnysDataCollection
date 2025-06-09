@@ -11,35 +11,44 @@ API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY") # <--- REPLACE WITH YOUR ACTUAL 
 # Ensure this API key has "Places API" enabled in your Google Cloud Console.
 
 # --- API Endpoints ---
-PLACE_DETAILS_URL = "https://maps.googleapis.com/maps/api/place/details/json"
-PLACE_PHOTO_URL = "https://maps.googleapis.com/maps/api/place/photo"
+PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
+PLACE_PHOTO_URL = "https://places.googleapis.com/v1/"
 
 def get_photo_references_and_name(place_id):
-    """Gets photo references and the place name for a given place_id."""
+    """Gets photo references and the place name for a given place_id using the new Places API."""
     if not place_id:
         return [], None
 
-    params = {
-        "place_id": place_id,
-        "fields": "photo,name",  # Request photo information and name
-        "key": API_KEY
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": API_KEY,
+        "X-Goog-FieldMask": "id,displayName,photos"
     }
-    response = requests.get(PLACE_DETAILS_URL, params=params)
-    response.raise_for_status() # Raise an exception for HTTP errors
-    result = response.json()
+    
+    url = f"{PLACE_DETAILS_URL}{place_id}"
+    
+    response = requests.get(url, headers=headers)
+    
+    try:
+        response.raise_for_status()
+        result = response.json()
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred: {http_err}")
+        print(f"Response content: {response.text}")
+        return [], None
+    except Exception as err:
+        print(f"An error occurred: {err}")
+        return [], None
 
-    place_name = None
+    place_name = result.get("displayName", {}).get("text", place_id)
     photo_refs = []
 
-    if result["status"] == "OK" and "result" in result:
-        place_name = result["result"].get("name", place_id) # Default to place_id if name not found
-        if "photos" in result["result"]:
-            photo_refs = [photo["photo_reference"] for photo in result["result"]["photos"]]
-            print(f"Found {len(photo_refs)} photo references for '{place_name}' (ID: {place_id}).")
-        else:
-            print(f"No photos found for '{place_name}' (ID: {place_id}).")
+    if "photos" in result and result["photos"]:
+        # The photo reference is now in a different format, we need to extract the name
+        photo_refs = [photo.get("name") for photo in result["photos"]]
+        print(f"Found {len(photo_refs)} photo references for '{place_name}' (ID: {place_id}).")
     else:
-        print(f"Error fetching details for Place ID {place_id}: {result.get('status')}, {result.get('error_message', '')}")
+        print(f"No photos found for '{place_name}' (ID: {place_id}).")
 
     return photo_refs, place_name
 
@@ -59,13 +68,16 @@ def download_photo(photo_reference, original_name, found_car_wash_name, index, i
     if not photo_reference:
         return
 
-    params = {
-        "photoreference": photo_reference,
-        "maxwidth": max_width, # You can also use maxheight
-        "key": API_KEY
-    }
-    response = requests.get(PLACE_PHOTO_URL, params=params, stream=True) # stream=True for image
-    response.raise_for_status()
+    url = f"{PLACE_PHOTO_URL}{photo_reference}/media?maxHeightPx={max_width}&key={API_KEY}"
+    
+    response = requests.get(url, stream=True)
+    
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as http_err:
+        print(f"HTTP error occurred while downloading photo: {http_err}")
+        print(f"Response content: {response.text}")
+        return
 
     # Sanitize original_name and found_car_wash_name for folder creation using the consistent function
     safe_original_name = sanitize_filename(original_name)

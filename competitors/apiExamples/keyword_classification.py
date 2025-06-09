@@ -4,6 +4,7 @@ from google import genai
 from google.genai import types
 import json
 from dotenv import load_dotenv
+import traceback
 
 load_dotenv()
 
@@ -64,7 +65,7 @@ Output: Not Competitor
 
 
 Now classify this input:
-{{""" + car_wash_name + """}}"""),
+{{""" + str(car_wash_name) + """}}"""),
             ],
         ),
     ]
@@ -88,12 +89,18 @@ Now classify this input:
     )
 
     full_response_content = ""
-    for chunk in client.models.generate_content_stream(
-        model=model,
-        contents=contents,
-        config=generate_content_config,
-    ):
-        full_response_content += chunk.text
+    try:
+        for chunk in client.models.generate_content_stream(
+            model=model,
+            contents=contents,
+            config=generate_content_config,
+        ):
+            if chunk and chunk.text:
+                full_response_content += chunk.text
+    except Exception as e:
+        print(f"Error during content generation stream: {e}")
+        print(traceback.format_exc())
+        return {"classification": "Error", "explanation": f"Streaming error: {e}"}
     
     # Assuming the response is a single JSON object
     try:

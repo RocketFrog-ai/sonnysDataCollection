@@ -11,6 +11,7 @@ from competitor_matcher import match_competitors
 from apiExamples.placePhotos import get_photo_references_and_name, download_photo
 from apiExamples.keyword_classification import keywordclassifier # Import the classifier function
 from apiExamples.images_classification import visionModelResponse # Import the image classification function
+from math import radians, sin, cos, sqrt, atan2
 
 # Directory to save downloaded images (relative to competitors/)
 IMAGE_DIR = "place_images"
@@ -21,6 +22,26 @@ if not os.path.exists(IMAGE_DIR):
 SATELLITE_IMAGE_BASE_DIR = "satellite_images"
 if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
     os.makedirs(SATELLITE_IMAGE_BASE_DIR)
+
+def calculate_distance(lat1, lon1, lat2, lon2):
+    """Calculate the distance between two points in miles."""
+    if pd.isna(lat1) or pd.isna(lon1) or pd.isna(lat2) or pd.isna(lon2):
+        return None
+    R = 3958.8  # Radius of Earth in miles
+
+    lat1_rad = radians(lat1)
+    lon1_rad = radians(lon1)
+    lat2_rad = radians(lat2)
+    lon2_rad = radians(lon2)
+
+    dlon = lon2_rad - lon1_rad
+    dlat = lat2_rad - lat1_rad
+
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+    distance = R * c
+    return distance
 
 def sanitize_filename(name):
     """Sanitizes a string to be used as a filename or directory name by replacing non-alphanumeric
@@ -42,14 +63,10 @@ def get_place_image_count(original_name, found_car_wash_name):
     
     place_images_path = os.path.join(IMAGE_DIR, safe_original_name, safe_found_car_wash_name)
     
-    print(f"Checking place images path: {place_images_path}") # Debug print
-    
     if os.path.exists(place_images_path):
         # Count only .jpg files
         count = len(glob.glob(os.path.join(place_images_path, "*.jpg")))
-        print(f"Found {count} images in {place_images_path}") # Debug print
         return count
-    print(f"Path does not exist: {place_images_path}") # Debug print
     return 0
 
 def get_satellite_image_name(place_id):
@@ -99,28 +116,9 @@ def download_satellite_image(api_key, latitude, longitude, place_id):
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_types=None, max_results=10, rank_preference="POPULARITY"):
     """
     Finds nearby places using the Google Places API (Nearby Search New).
-
-    Args:
-        api_key (str): Your Google Maps Platform API Key.
-        latitude (float): The latitude of the center point for the search.
-        longitude (float): The longitude of the center point for the search.
-        radius_miles (float, optional): The radius for the search in miles. Defaults to 1.
-                                       This will be converted to meters.
-        included_types (list, optional): A list of place types to search for (e.g., ["restaurant", "cafe"]).
-                                         If None or empty, the API attempts to return all types. Defaults to None.
-        max_results (int, optional): The maximum number of results to return (1-20). Defaults to 10.
-        rank_preference (str, optional): How to rank results. "POPULARITY" or "DISTANCE".
-                                         Defaults to "POPULARITY". If "DISTANCE" is used,
-                                         included_types should not be specified as per some API guidelines
-                                         (though the new API might be more flexible, typically distance ranking
-                                         is for a general search).
-
-    Returns:
-        dict: The JSON response from the API, or None if an error occurs.
     """
     base_url = "https://places.googleapis.com/v1/places:searchNearby"
 
-    # Convert radius from miles to meters (1 mile = 1609.34 meters)
     radius_meters = radius_miles * 1609.34
     if not (0.0 < radius_meters <= 50000.0):
         print("Error: Radius must be between 0.0 (exclusive) and 50000.0 meters (inclusive).")
@@ -181,90 +179,75 @@ if __name__ == "__main__":
 
     load_dotenv()
     # --- Configuration ---
-    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")  # Standardized API Key
-    EXCEL_PATH = '/home/arpit/dataCollection/competitors/datasets/1mile_raw_data.xlsx'
-    OUTPUT_DIR = '/home/arpit/dataCollection/competitors/output_csv'
+    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+    EXCEL_PATH = 'datasets/1mile_raw_data.xlsx'
+    OUTPUT_DIR = 'output_csv'
     OUTPUT_FILENAME = 'competitor_analysis.csv'
+    SUMMARY_OUTPUT_FILENAME = 'competitor_summary.csv'
 
-    # Create output directory if it doesn't exist
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     output_filepath = os.path.join(OUTPUT_DIR, OUTPUT_FILENAME)
+    summary_output_filepath = os.path.join(OUTPUT_DIR, SUMMARY_OUTPUT_FILENAME)
 
-    # Optional: Specify types of places you're interested in.
     place_types_to_search = ['car_wash']
     max_num_results = 20
     ranking_method = "DISTANCE"
 
-    # --- Validate API Key ---
-    if API_KEY == "YOUR_API_KEY":
+    if not API_KEY or API_KEY == "YOUR_API_KEY":
         print("Please replace 'YOUR_API_KEY' with your actual value in the script.")
         sys.exit(1)
 
     try:
         df = pd.read_excel(EXCEL_PATH, engine='openpyxl')
 
-        # Ensure indices are within the DataFrame bounds
         if start_index_to_process < 0 or end_index_to_process > len(df) or start_index_to_process >= end_index_to_process:
             print(f"Error: Invalid record range. Please provide a valid range between 0 and {len(df) -1}.")
             sys.exit(1)
 
-        # Define CSV headers
         csv_headers = [
             "Original_Name_Address", "Original_Latitude", "Original_Longitude",
             "Found_Car_Wash_Name", "FoundInCompetitorList", "keywordClassification",
             "keywordClassificationExplanation", "number of place images",
-            "satellite image", "imageClassification", "imageClassificationJustification"
+            "satellite image", "imageClassification", "imageClassificationJustification",
+            "is_competitor"
         ]
 
-        # Check if CSV file exists, if not, create it with headers
         if not os.path.exists(output_filepath):
             pd.DataFrame(columns=csv_headers).to_csv(output_filepath, index=False, mode='w')
             print(f"Created new CSV file with headers: {output_filepath}")
         else:
             print(f"Appending to existing CSV file: {output_filepath}")
 
+        summary_csv_headers = [
+            "original_address", "competitors_count", "distance_from_nearest_competitor",
+            "rating_of_nearest_competitor", "count_for_ratings_of_nearest_competitors"
+        ]
+        if not os.path.exists(summary_output_filepath):
+            pd.DataFrame(columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='w')
+            print(f"Created new summary CSV file with headers: {summary_output_filepath}")
+        else:
+            print(f"Appending to existing summary CSV file: {summary_output_filepath}")
+        
         for index, row in df.iloc[start_index_to_process:end_index_to_process].iterrows():
             site_address = row.iloc[0]
-            original_latitude = row.iloc[1] # Renamed for clarity
-            original_longitude = row.iloc[2] # Renamed for clarity
+            original_latitude = row.iloc[1]
+            original_longitude = row.iloc[2]
 
             if pd.isna(site_address) or str(site_address).strip() == "":
                 print(f"Skipping record {index} due to missing or empty site address.")
-                record_data = {
-                    "Original_Name_Address": site_address,
-                    "Original_Latitude": original_latitude,
-                    "Original_Longitude": original_longitude,
-                    "Found_Car_Wash_Name": "N/A",
-                    "FoundInCompetitorList": False,
-                    "keywordClassification": "Skipped (Missing Address)",
-                    "keywordClassificationExplanation": "Record skipped due to missing or empty site address.",
-                    "number of place images": None,
-                    "satellite image": None,
-                    "imageClassification": None,
-                    "imageClassificationJustification": None
-                }
-                pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
-                continue # Skip to the next record
+                continue
 
-            print(f"Processing record {index}: {site_address}, Latitude: {original_latitude}, Longitude: {original_longitude}")
+            print(f"\n--- Processing Record {index}: {site_address} ---")
+
+            competitors_count = 0
+            nearest_competitor_distance = None
+            nearest_competitor_rating = None
+            nearest_competitor_rating_count = None
+            first_competitor_found = False
 
             if pd.isna(original_latitude) or pd.isna(original_longitude):
                 print(f"Skipping record {index} due to missing latitude or longitude.")
-                record_data = {
-                    "Original_Name_Address": site_address,
-                    "Original_Latitude": original_latitude,
-                    "Original_Longitude": original_longitude,
-                    "Found_Car_Wash_Name": "N/A",
-                    "FoundInCompetitorList": False,
-                    "keywordClassification": "Skipped (Missing Lat/Lon)",
-                    "keywordClassificationExplanation": "Record skipped due to missing latitude or longitude.",
-                    "number of place images": None,
-                    "satellite image": None,
-                    "imageClassification": None,
-                    "imageClassificationJustification": None
-                }
-                pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
-                continue # Skip to the next record
+                continue
 
             results = find_nearby_places(
                 API_KEY,
@@ -277,140 +260,112 @@ if __name__ == "__main__":
             )
 
             if results and "places" in results:
-                for place in results["places"]:
+                for i, place in enumerate(results["places"]):
+                    if i == 0:
+                        continue
+                        
                     display_name = place.get("displayName", {}).get("text", "N/A")
-                    
-                    # Extract latitude and longitude for the found place
                     place_latitude = place.get("location", {}).get("latitude")
                     place_longitude = place.get("location", {}).get("longitude")
-
-                    # Determine if it's a competitor using competitor_matcher.py
-                    _, found_competitors, _ = match_competitors([display_name])
-                    is_competitor = bool(found_competitors) # True if found, False otherwise
-
-                    place_id = place.get("id") # Get the place ID
-
-                    num_place_images = None
-                    satellite_image_name = None
+                    place_id = place.get("id")
+                    is_competitor = False
+                    
+                    # Initialize filter results
                     keyword_classification = None
                     keyword_explanation = None
+                    num_place_images = 0
+                    satellite_image_name = None
                     image_classification = None
                     image_justification = None
 
-                    # Apply filteration: if it's a competitor, subsequent columns are N/A
-                    if not is_competitor:
-                        # Perform keyword classification if not a competitor
+                    # Filter 1: Name Matching
+                    _, found_competitors, _ = match_competitors([display_name])
+                    found_in_competitor_list = bool(found_competitors)
+                    
+                    if found_in_competitor_list:
+                        is_competitor = True
+                    else:
+                        # Filter 2: Keyword Classification
                         classification_result = keywordclassifier(display_name)
                         keyword_classification = classification_result.get("classification")
                         keyword_explanation = classification_result.get("explanation")
-                        time.sleep(1) # Add sleep to avoid rate limiting
+                        time.sleep(1)
 
-                        # Collect images and perform image classification only if keywordClassification is 'Can't say'
-                        if keyword_classification == "Can't say":
-                            satellite_image_name = get_satellite_image_name(place_id) # Pass place_id
-
-                            # If satellite image doesn't exist, attempt to download it
-                            if satellite_image_name is None:
-                                if place_latitude is not None and place_longitude is not None:
-                                    if download_satellite_image(API_KEY, place_latitude, place_longitude, place_id): # Pass place_latitude, place_longitude, place_id
-                                        satellite_image_name = f"{place_id}.jpg"
-                                    else:
-                                        satellite_image_name = None # Ensure it's None if download fails
-                                else:
-                                    print(f"Skipping satellite image download for {display_name} due to missing latitude/longitude.")
-                                    satellite_image_name = None
+                        if keyword_classification == "Competitor":
+                            is_competitor = True
+                        elif keyword_classification == "Can't say":
+                            # Filter 3: Vision Model
+                            satellite_image_name = get_satellite_image_name(place_id)
+                            if satellite_image_name is None and place_id and place_latitude and place_longitude:
+                                if download_satellite_image(API_KEY, place_latitude, place_longitude, place_id):
+                                    satellite_image_name = f"{place_id}.jpg"
                             
-                            # Download place photos if place_id is available and keywordClassification is 'Can't say'
-                            if place_id: # No need for is_competitor here, as we are already in `if not is_competitor` block
-                                photo_references, place_name_for_photo = get_photo_references_and_name(place_id)
+                            if place_id:
+                                photo_references, _ = get_photo_references_and_name(place_id)
                                 if photo_references:
-                                    print(f"Downloading photos for '{display_name}'...")
-                                    for i, ref in enumerate(photo_references):
-                                        download_photo(ref, site_address, display_name, i, IMAGE_DIR) # Pass IMAGE_DIR
-                                    # After downloading, count the images
+                                    for photo_idx, ref in enumerate(photo_references):
+                                        download_photo(ref, site_address, display_name, photo_idx, IMAGE_DIR)
                                     num_place_images = get_place_image_count(site_address, display_name)
-                                else:
-                                    print(f"No photos found for '{display_name}' (ID: {place_id}).")
-                                    num_place_images = 0 # Set to 0 if no photos found/downloaded
-                            
-                                # Determine paths for image classification
-                                current_place_images_folder_path = os.path.join(IMAGE_DIR, sanitize_filename(site_address), sanitize_filename(display_name))
-                                current_satellite_image_full_path = os.path.join(SATELLITE_IMAGE_BASE_DIR, satellite_image_name) if satellite_image_name else ""
 
-                                # Perform image classification if (place images or satellite image are available)
-                                if (num_place_images is not None and num_place_images > 0) or satellite_image_name is not None:
-                                    print(f"Performing image classification for {display_name}...")
-                                    try:
-                                        image_classification_result = visionModelResponse(
-                                            place_images_folder_path=current_place_images_folder_path,
-                                            satellite_image_path=current_satellite_image_full_path
-                                        )
-                                        image_classification = image_classification_result.get("classification")
-                                        image_justification = image_classification_result.get("justification")
-                                        time.sleep(1) # Add sleep to avoid rate limiting
-                                    except TypeError as e: # Specifically catch TypeError
-                                        print(f"ERROR: TypeError calling visionModelResponse for {display_name}: {e}")
-                                        print(traceback.format_exc()) # Print full traceback
-                                        image_classification = "Error during classification (TypeError)"
-                                        image_justification = f"A TypeError occurred during image classification: {e}"
-                                    except Exception as e: # Catch any other general exceptions
-                                        print(f"ERROR: Unexpected Exception calling visionModelResponse for {display_name}: {e}")
-                                        print(traceback.format_exc()) # Print full traceback
-                                        image_classification = "Error during classification (Unexpected)"
-                                        image_justification = f"An unexpected error occurred during image classification: {e}"
-                                else:
-                                    print(f"Skipping image classification for {display_name} due to missing images or satellite image.")
-                                    image_classification = None
-                                    image_justification = None
-                        else:
-                            # If not 'Can't say', then no images are collected, so set to None
-                            num_place_images = None
-                            satellite_image_name = None
-                            image_classification = None
-                            image_justification = None
-                    else:
-                        # If it is a competitor, set all subsequent columns to N/A or None
-                        keyword_classification = None
-                        keyword_explanation = None
-                        num_place_images = None
-                        satellite_image_name = None
-                        image_classification = None
-                        image_justification = None
+                            current_place_images_folder_path = os.path.join(IMAGE_DIR, sanitize_filename(site_address), sanitize_filename(display_name))
+                            current_satellite_image_full_path = os.path.join(SATELLITE_IMAGE_BASE_DIR, satellite_image_name) if satellite_image_name else ""
+
+                            if num_place_images > 0 or (current_satellite_image_full_path and os.path.exists(current_satellite_image_full_path)):
+                                try:
+                                    image_classification_result = visionModelResponse(
+                                        place_images_folder_path=current_place_images_folder_path,
+                                        satellite_image_path=current_satellite_image_full_path
+                                    )
+                                    image_classification = image_classification_result.get("classification")
+                                    image_justification = image_classification_result.get("justification")
+                                    if image_classification == "Express Tunnel Car Wash":
+                                        is_competitor = True
+                                    time.sleep(1)
+                                except Exception as e:
+                                    print(f"ERROR calling visionModelResponse for {display_name}: {e}")
+                                    print(traceback.format_exc())
+                                    image_classification = "Error"
+                                    image_justification = str(e)
+                    
+                    if is_competitor:
+                        competitors_count += 1
+                        if not first_competitor_found:
+                            first_competitor_found = True
+                            nearest_competitor_distance = calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
+                            nearest_competitor_rating = place.get("rating")
+                            nearest_competitor_rating_count = place.get("userRatingCount")
                     
                     record_data = {
                         "Original_Name_Address": site_address,
                         "Original_Latitude": original_latitude,
                         "Original_Longitude": original_longitude,
                         "Found_Car_Wash_Name": display_name,
-                        "FoundInCompetitorList": is_competitor,
+                        "FoundInCompetitorList": found_in_competitor_list,
                         "keywordClassification": keyword_classification,
                         "keywordClassificationExplanation": keyword_explanation,
                         "number of place images": num_place_images,
                         "satellite image": satellite_image_name,
                         "imageClassification": image_classification,
-                        "imageClassificationJustification": image_justification
+                        "imageClassificationJustification": image_justification,
+                        "is_competitor": is_competitor
                     }
                     pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
 
             else:
                 print(f"No nearby car washes found for {site_address} or an error occurred.")
-                # Also add default values for new columns, respecting the filteration logic
-                record_data = {
-                    "Original_Name_Address": site_address,
-                    "Original_Latitude": original_latitude,
-                    "Original_Longitude": original_longitude,
-                    "Found_Car_Wash_Name": "N/A",
-                    "FoundInCompetitorList": False,
-                    "keywordClassification": None, # Default for no found car wash
-                    "keywordClassificationExplanation": None, # Default for no found car wash
-                    "number of place images": None, # Default for no found car wash
-                    "satellite image": None, # Default for no found car wash
-                    "imageClassification": None, # Default for no found car wash
-                    "imageClassificationJustification": None # Default for no found car wash
-                }
-                pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
+            
+            summary_data = {
+                "original_address": site_address,
+                "competitors_count": competitors_count,
+                "distance_from_nearest_competitor": nearest_competitor_distance,
+                "rating_of_nearest_competitor": nearest_competitor_rating,
+                "count_for_ratings_of_nearest_competitors": nearest_competitor_rating_count
+            }
+            pd.DataFrame([summary_data], columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='a', header=False)
 
         print(f"\nProcessing complete. Results appended to {output_filepath}")
+        print(f"Summary results appended to {summary_output_filepath}")
 
     except Exception as e:
         print(f"An error occurred during processing: {e}")
+        print(traceback.format_exc())
