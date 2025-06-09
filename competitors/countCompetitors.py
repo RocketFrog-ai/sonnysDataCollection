@@ -7,10 +7,10 @@ import glob
 from dotenv import load_dotenv
 import time # Added for sleep
 import traceback # Added for detailed error logging
-from competitor_matcher import match_competitors
-from apiExamples.placePhotos import get_photo_references_and_name, download_photo
-from apiExamples.keyword_classification import keywordclassifier # Import the classifier function
-from apiExamples.images_classification import visionModelResponse # Import the image classification function
+from utils.competitor_matcher import match_competitors
+from utils.placePhotos import get_photo_references_and_name, download_photo
+from utils.keyword_classification import keywordclassifier # Import the classifier function
+from utils.images_classification import visionModelResponse # Import the image classification function
 from math import radians, sin, cos, sqrt, atan2
 
 # Directory to save downloaded images (relative to competitors/)
@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
         summary_csv_headers = [
             "original_address", "competitors_count", "distance_from_nearest_competitor",
-            "rating_of_nearest_competitor", "count_for_ratings_of_nearest_competitors"
+            "rating_of_nearest_competitor", "count_for_ratings_of_nearest_competitor"
         ]
         if not os.path.exists(summary_output_filepath):
             pd.DataFrame(columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='w')
@@ -318,7 +318,7 @@ if __name__ == "__main__":
                                     )
                                     image_classification = image_classification_result.get("classification")
                                     image_justification = image_classification_result.get("justification")
-                                    if image_classification == "Express Tunnel Car Wash":
+                                    if image_classification == "Competitor":
                                         is_competitor = True
                                     time.sleep(1)
                                 except Exception as e:
@@ -359,7 +359,7 @@ if __name__ == "__main__":
                 "competitors_count": competitors_count,
                 "distance_from_nearest_competitor": nearest_competitor_distance,
                 "rating_of_nearest_competitor": nearest_competitor_rating,
-                "count_for_ratings_of_nearest_competitors": nearest_competitor_rating_count
+                "count_for_ratings_of_nearest_competitor": nearest_competitor_rating_count
             }
             pd.DataFrame([summary_data], columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='a', header=False)
 

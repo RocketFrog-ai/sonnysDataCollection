@@ -18,7 +18,7 @@ def keywordclassifier(car_wash_name: str):
         types.Content(
             role="user",
             parts=[
-                types.Part.from_text(text="""You are a smart classifier for car wash businesses. Your goal is to decide whether a business is a Competitor or Not Competitor based on its name or description.
+                types.Part.from_text(text="""You are a smart classifier for car wash businesses. Your goal is to decide whether a business is a Competitor or Not a Competitor based on its name or description.
 
 Classification Logic:
 
@@ -28,7 +28,7 @@ Competitor: Businesses that emphasize automated, full-service, or drive-through-
 
 You may encounter variations, misspellings, or synonyms indicating fast, full-service, or automated experiences.
 
-Not Competitor: Businesses that emphasize manual, customer-operated, or value-added services, typically using terms like:
+Not a Competitor: Businesses that emphasize manual, customer-operated, or value-added services, typically using terms like:
 
 "Self Serve", “Full Serve”, "Hand Wash", "Mobile", “Truck Wash”, “Blue Beacon”, “Window Tinting” "Detailing", "Oil Change", etc.
 
@@ -46,7 +46,7 @@ Input: "Drive-Thru Express Wash"
 Output: Competitor
                                      
 Input: "Eco Hand Wash & Detail"
-Output: Not Competitor
+Output: Not a Competitor
 
 Input: "Quick Lube"
 Output: Can’t Say
@@ -55,13 +55,13 @@ Input: "Flex Serve Tunnel Wash and Lube"
 Output: Competitor
                                      
 Input: "Self Serve Car Wash and Oil Center"
-Output: Not Competitor
+Output: Not a Competitor
                                      
 Input: "Speedy Xpress Car Wash"
 Output: Competitor
                                      
 Input: "Downtown Detail & Hand Wash"
-Output: Not Competitor
+Output: Not a Competitor
 
 
 Now classify this input:
@@ -77,7 +77,7 @@ Now classify this input:
             properties = {
                 "classification": genai.types.Schema(
                     type = genai.types.Type.STRING,
-                    enum = ["Competitor", "Not Competitor", "Can't say"], # Added "Can't say"
+                    enum = ["Competitor", "Not a Competitor", "Can't say"], # Added "Can't say"
                     description = "The classification of the car wash business.",
                 ),
                 "explanation": genai.types.Schema(

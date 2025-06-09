@@ -3,6 +3,7 @@ import re
 reference_company_names = ['Whistle Express Car Wash',
  'Mister Car Wash',
  'Tidal Wave Auto Spa',
+ 'ZIPS Car Wash',
  'Quick Quack Express Car Wash',
  'Club Car Wash',
  'Tommy�s Express Car Wash',

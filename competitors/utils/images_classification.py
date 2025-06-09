@@ -101,7 +101,7 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
     classification_criteria_prompt = """
 You are analyzing publicly available images of car wash locations (from Google or Yelp), either uploaded by the business or its customers. Your goal is to determine whether the location is an express car wash that uses a tunnel system.
 
-Classify a car wash as an “Express Tunnel Car Wash” if the following indicators are present:
+Classify a car wash as a “Competitor” if the following indicators are present:
 1. Tunnel Structure:
 Look for images showing a long, narrow building or open-ended structure through which cars appear to enter and exit in a straight line.
 
@@ -161,7 +161,7 @@ While common, this is not required for classification.
 
 📝 Response Format (per location):
 
-Classification: Express Tunnel Car Wash(Competitor) / Not an Express Tunnel(Not a Competitor)
+Classification: (Express Tunnel Car Wash)Competitor / (Not an Express Tunnel)Not a Competitor
 
 Justification:
 - [Mention visible features: tunnel structure, entrance/exit, equipment, signage, conveyor, vacuum area, etc.]
@@ -183,8 +183,8 @@ Justification:
             properties={
                 "classification": genai.types.Schema(
                     type=genai.types.Type.STRING,
-                    description="The classification of the car wash: 'Express Tunnel Car Wash' or 'Not an Express Tunnel'.",
-                    enum=["Express Tunnel Car Wash", "Not an Express Tunnel"] # Using enum for stricter classification
+                    description="The classification of the car wash: 'Competitor' or 'Not a Competitor'.",
+                    enum=["Competitor", "Not a Competitor"] # Using enum for stricter classification
                 ),
                 "justification": genai.types.Schema(
                     type=genai.types.Type.STRING,
