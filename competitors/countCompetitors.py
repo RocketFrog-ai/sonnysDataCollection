@@ -6,7 +6,8 @@ import traceback
 from utils.competitor_matcher import match_competitors
 from utils.placePhotos import get_photo_references_and_name, download_photo
 from utils.keyword_classification import keywordclassifier
-from utils.images_classification import visionModelResponse
+from utils.gemini_images_classification import visionModelResponse
+# from utils.gpt_images_classification import visionModelResponse
 from utils.file_utils import sanitize_filename, get_place_image_count
 from utils.geo_utils import calculate_distance
 from utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
@@ -131,7 +132,7 @@ if __name__ == "__main__":
                     # Initialize filter results
                     keyword_classification = None
                     keyword_explanation = None
-                    num_place_images = 0
+                    num_place_images = None
                     satellite_image_name = None
                     image_classification = None
                     image_justification = None
@@ -168,7 +169,7 @@ if __name__ == "__main__":
                             current_place_images_folder_path = os.path.join(IMAGE_DIR, sanitize_filename(site_address), sanitize_filename(display_name))
                             current_satellite_image_full_path = os.path.join(SATELLITE_IMAGE_BASE_DIR, satellite_image_name) if satellite_image_name else ""
 
-                            if num_place_images > 0 or (current_satellite_image_full_path and os.path.exists(current_satellite_image_full_path)):
+                            if (num_place_images is not None and num_place_images > 0) or (current_satellite_image_full_path and os.path.exists(current_satellite_image_full_path)):
                                 try:
                                     image_classification_result = visionModelResponse(
                                         place_images_folder_path=current_place_images_folder_path,
