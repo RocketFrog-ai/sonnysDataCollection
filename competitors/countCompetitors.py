@@ -6,8 +6,8 @@ import traceback
 from utils.competitor_matcher import match_competitors
 from utils.placePhotos import get_photo_references_and_name, download_photo
 from utils.keyword_classification import keywordclassifier
-from utils.gemini_images_classification import visionModelResponse
-# from utils.gpt_images_classification import visionModelResponse
+# from utils.gemini_images_classification import visionModelResponse
+from utils.gpt_images_classification import visionModelResponse
 from utils.file_utils import sanitize_filename, get_place_image_count
 from utils.geo_utils import calculate_distance
 from utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
@@ -65,7 +65,8 @@ if __name__ == "__main__":
 
         csv_headers = [
             "Original_Name_Address", "Original_Latitude", "Original_Longitude",
-            "Found_Car_Wash_Name", "FoundInCompetitorList", "keywordClassification",
+            "Found_Car_Wash_Name", "distance", "rating", "userRatingCount",
+            "FoundInCompetitorList", "keywordClassification",
             "keywordClassificationExplanation", "number of place images",
             "satellite image", "imageClassification", "imageClassificationJustification",
             "is_competitor"
@@ -77,10 +78,13 @@ if __name__ == "__main__":
         else:
             print(f"Appending to existing CSV file: {output_filepath}")
 
-        summary_csv_headers = [
-            "original_address", "competitors_count", "distance_from_nearest_competitor",
-            "rating_of_nearest_competitor", "count_for_ratings_of_nearest_competitor"
-        ]
+        summary_csv_headers = ["original_address", "competitors_count"]
+        for i in range(1, 7):
+            summary_csv_headers.extend([
+                f"distance_{i}",
+                f"rating_{i}",
+                f"userRatingCount_{i}"
+            ])
         if not os.path.exists(summary_output_filepath):
             pd.DataFrame(columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='w')
             print(f"Created new summary CSV file with headers: {summary_output_filepath}")
@@ -98,11 +102,7 @@ if __name__ == "__main__":
 
             print(f"\n--- Processing Record {index}: {site_address} ---")
 
-            competitors_count = 0
-            nearest_competitor_distance = None
-            nearest_competitor_rating = None
-            nearest_competitor_rating_count = None
-            first_competitor_found = False
+            competitors_data = []
 
             if pd.isna(original_latitude) or pd.isna(original_longitude):
                 print(f"Skipping record {index} due to missing latitude or longitude.")
@@ -128,6 +128,9 @@ if __name__ == "__main__":
                     place_longitude = place.get("location", {}).get("longitude")
                     place_id = place.get("id")
                     is_competitor = False
+                    distance = calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
+                    rating = place.get("rating")
+                    user_rating_count = place.get("userRatingCount")
                     
                     # Initialize filter results
                     keyword_classification = None
@@ -187,18 +190,20 @@ if __name__ == "__main__":
                                     image_justification = str(e)
                     
                     if is_competitor:
-                        competitors_count += 1
-                        if not first_competitor_found:
-                            first_competitor_found = True
-                            nearest_competitor_distance = calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
-                            nearest_competitor_rating = place.get("rating")
-                            nearest_competitor_rating_count = place.get("userRatingCount")
+                        competitors_data.append({
+                            "distance": distance,
+                            "rating": rating,
+                            "userRatingCount": user_rating_count
+                        })
                     
                     record_data = {
                         "Original_Name_Address": site_address,
                         "Original_Latitude": original_latitude,
                         "Original_Longitude": original_longitude,
                         "Found_Car_Wash_Name": display_name,
+                        "distance": distance,
+                        "rating": rating,
+                        "userRatingCount": user_rating_count,
                         "FoundInCompetitorList": found_in_competitor_list,
                         "keywordClassification": keyword_classification,
                         "keywordClassificationExplanation": keyword_explanation,
@@ -215,11 +220,21 @@ if __name__ == "__main__":
             
             summary_data = {
                 "original_address": site_address,
-                "competitors_count": competitors_count,
-                "distance_from_nearest_competitor": nearest_competitor_distance,
-                "rating_of_nearest_competitor": nearest_competitor_rating,
-                "count_for_ratings_of_nearest_competitor": nearest_competitor_rating_count
+                "competitors_count": len(competitors_data)
             }
+            
+            # Sort competitors by distance
+            competitors_data.sort(key=lambda x: x['distance'])
+
+            for i in range(6):
+                if i < len(competitors_data):
+                    summary_data[f"distance_{i+1}"] = competitors_data[i]["distance"]
+                    summary_data[f"rating_{i+1}"] = competitors_data[i]["rating"]
+                    summary_data[f"userRatingCount_{i+1}"] = competitors_data[i]["userRatingCount"]
+                else:
+                    summary_data[f"distance_{i+1}"] = None
+                    summary_data[f"rating_{i+1}"] = None
+                    summary_data[f"userRatingCount_{i+1}"] = None
             pd.DataFrame([summary_data], columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='a', header=False)
 
         print(f"\nProcessing complete. Results appended to {output_filepath}")

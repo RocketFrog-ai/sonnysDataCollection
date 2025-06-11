@@ -97,53 +97,73 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
         return {"error": "No valid images were found to analyze. Please ensure the paths are correct and images exist."}
 
     system_prompt = """
-You are an expert AI assistant specializing in analyzing car wash locations from publicly available images (satellite views, Google/Yelp photos, etc.). Your primary goal is to determine if a given car wash location is an "Express Tunnel Car Wash" and therefore a competitor, based on specific visual criteria.
+You are analyzing publicly available images of car wash locations (from Google or Yelp), either uploaded by the business or its customers. Your goal is to determine whether the location is an express car wash that uses a tunnel system.
 
-You will be provided with a set of images for a location. Analyze these images carefully against the following criteria:
+Classify a car wash as a “Competitor” if the following indicators are present:
+1. Tunnel Structure:
+Look for images showing a long, narrow building or open-ended structure through which cars appear to enter and exit in a straight line.
 
-**Classification Criteria for "Express Tunnel Car Wash" (Competitor):**
 
-1.  **Tunnel Structure (Mandatory):**
-    *   Look for images showing a long, narrow building or an open-ended structure through which cars appear to enter and exit in a continuous, straight line.
-    *   The tunnel must have discernible entry and exit points (e.g., arches, doors, often labeled "Enter" and "Exit").
-    *   Interior views (if available) might show automated equipment like rollers, brushes, overhead sprayers, or drying systems.
-    *   The tunnel interior should be equipped for automated exterior cleaning of a car. Manual cleaning by humans inside the tunnel means it's NOT an express tunnel system.
-    *   A visibly wet or shiny surface at the tunnel exit can be an indicator of frequent use.
-    *   Attempt to visually estimate if the tunnel length is substantial (e.g., appears to be at least 34 feet / 10 meters or longer). Shorter, rudimentary tunnels might not qualify.
-    *   If a tunnel structure is not clearly visible or identifiable as automated, it's likely not an express tunnel.
+The tunnel should:
 
-2.  **Conveyor System (Strong Indicator, if visible):**
-    *   Look for guide rails, rollers, or tracks on the ground inside or leading into the tunnel. These are characteristic of a conveyorized (automated) wash.
-    *   Multiple cars lined up in sequence, either inside the tunnel or waiting to enter, can also suggest a conveyor system.
 
-3.  **Drive-Through Experience (Typical):**
-    *   Customers typically remain in their vehicles throughout the wash process.
-    *   Observe if cars are entering the tunnel one by one.
-    *   There should be no signs of staff manually cleaning the car's exterior during the main wash phase within the tunnel.
-    *   Absence of interior cleaning services being performed simultaneously (e.g., no open car doors with attendants, no vacuuming inside the car by staff during the tunnel pass).
+Have entry and exit arches or doors (often labeled "Enter" and "Exit").
+Sometimes show rollers, brushes, or overhead sprayers inside.
+May be visibly wet or shiny at the exit — this is a common sign of high-frequency washes.
+Inside the tunnel you will find many cleaning and drying equipment, soaps and brushes working specifically on the exterior surface of the car.
+Make sure that inside the tunnel, the cleaning is done using automated equipments and NOT done manually by a human.
+Try to figure out the length of the tunnel, it should be at least 34 feet. The more extensive the tunnel’s length is, the better.
+If the tunnel wash is not happening via an automated express system, it is not a competitor.
 
-4.  **Branding or Signage Clues (Important):**
-    *   Look for words like "Express," "Exterior," "Tunnel Wash," "Automatic Car Wash," or similar terms in the business name or on visible signage. These are strong indicators.
-    *   If signage clearly indicates "Full Serve," "Hand Wash," or "Detailing" as the primary service, it's less likely to be an express tunnel model *unless* there's also a clear, separate, and substantial express tunnel operation visible.
-    *   A "Full Serve" location might be considered a competitor *only if* it has a very clearly identifiable, automated express tunnel of significant length and automation, suggesting it *also* offers express exterior services. If the tunnel at a "Full Serve" is short, open-roofed, or lacks extensive automated equipment, it's not a competitor.
 
-5.  **Exclusions:**
-    *   Do NOT classify "Truck Washes" (e.g., "Blue Beacon") as competitors, even if they use a tunnel. Focus on passenger vehicle car washes.
-    *   Services like "Window Tinting," "Oil Change," or "Gas Station" car washes are not competitors unless they feature a distinct, standalone, automated express tunnel car wash as described above.
-    *   Mobile car washes are NOT competitors unless they also operate a fixed-location public car wash with a clearly visible, qualifying Express Tunnel.
-    *   Self-service bays (where customers wash their own cars) are NOT express tunnels.
+2. Conveyor System (if visible):
+Look for guide rails, rollers, or tracks on the ground inside the tunnel that cars align with — these indicate a conveyorized wash.
+May see multiple cars lined up in a sequence inside or outside the tunnel.
 
-6.  **Vacuum Station Nearby (Optional, Supporting Evidence):**
-    *   The presence of rows of self-serve vacuum stations (covered or uncovered) adjacent to the tunnel exit is common for express models but not a mandatory criterion.
 
-**Your Response Format (Strictly Adhere):**
+3. Drive-Through Experience:
+Customers typically stay in the vehicle during the wash. You might observe:
 
-You MUST provide your response in the following JSON format:
-```json
-{
-"classification": "Competitor" | "Not a Competitor",
-"justification": "Detailed explanation covering: - Visible features supporting your classification (tunnel presence/type, entrance/exit, equipment, signage, conveyor, vacuum area if relevant). - How the location meets or fails the criteria."
-}
+
+Cars entering one by one.
+No staff manually cleaning during the wash phase.
+No interior cleaning being shown (no opened car doors, no attendants inside cars).
+
+
+4. Branding or Signage Clues:
+The business name or visible signage includes words like:
+
+
+"Express"
+
+
+"Exterior"
+
+
+"Tunnel Wash"
+
+
+These are strong indicators of an express tunnel model.
+If the signage says “Full serve”, we will not consider it as a competitor until and unless it has a lot of real estate area where it can expand its express wash tunnel and use that space for the tunnel experience. In this case we need to judge the length of the tunnel. If it is very short, does not have enough cleaning equipments, has like an open roof, then it will not be considered as a competitor.
+Do not consider Truck washes, or truck wash companies like “Blue Beacon” as competitors.
+Do not consider Window tinting services of a car wash as a competitor.
+If a Mobile car wash offers Public car wash services too with a clearly visible Express Tunnel available for service, only then consider it as a competitor.
+In any case, a tunnel is a must.
+
+
+5. Vacuum Station Nearby (Optional):
+Rows of covered or uncovered self-serve vacuums with hoses may appear adjacent to the tunnel.
+While common, this is not required for classification.
+
+
+
+📝 Response Format (per location):
+
+Classification: (Express Tunnel Car Wash)Competitor / (Not an Express Tunnel)Not a Competitor
+
+Justification:
+- [Mention visible features: tunnel structure, entrance/exit, equipment, signage, conveyor, vacuum area, etc.]
+- [If classification is unclear, explain what data was missing or ambiguous.]
 """
     user_query_prompt = "Analyze the provided images for the car wash location and determine if it is an Express Tunnel Car Wash competitor based on the criteria."
 
