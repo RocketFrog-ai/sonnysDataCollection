@@ -86,8 +86,8 @@ if __name__ == "__main__":
     # --- Configuration ---
     # IMPORTANT: Replace YOUR_API_KEY with your actual key. Do not share your key publicly.
     API_KEY = "AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA" 
-    LATITUDE =  35.9412871
-    LONGITUDE = -78.5612498
+    LATITUDE =  42.55114
+    LONGITUDE = -71.7638088
     
     place_types_to_search = ['car_wash']
     max_num_results = 20

@@ -3,6 +3,7 @@ import os
 import re # Added for sanitize_filename
 from dotenv import load_dotenv
 import os
+import time
 
 load_dotenv()
 
@@ -27,30 +28,29 @@ def get_photo_references_and_name(place_id):
     
     url = f"{PLACE_DETAILS_URL}{place_id}"
     
-    response = requests.get(url, headers=headers)
-    
-    try:
-        response.raise_for_status()
-        result = response.json()
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        print(f"Response content: {response.text}")
-        return [], None
-    except Exception as err:
-        print(f"An error occurred: {err}")
-        return [], None
+    for attempt in range(3):
+        try:
+            response = requests.get(url, headers=headers)
+            response.raise_for_status()
+            result = response.json()
+            
+            place_name = result.get("displayName", {}).get("text", place_id)
+            photo_refs = []
 
-    place_name = result.get("displayName", {}).get("text", place_id)
-    photo_refs = []
+            if "photos" in result and result["photos"]:
+                photo_refs = [photo.get("name") for photo in result["photos"]]
+                print(f"Found {len(photo_refs)} photo references for '{place_name}' (ID: {place_id}).")
+            else:
+                print(f"No photos found for '{place_name}' (ID: {place_id}).")
 
-    if "photos" in result and result["photos"]:
-        # The photo reference is now in a different format, we need to extract the name
-        photo_refs = [photo.get("name") for photo in result["photos"]]
-        print(f"Found {len(photo_refs)} photo references for '{place_name}' (ID: {place_id}).")
-    else:
-        print(f"No photos found for '{place_name}' (ID: {place_id}).")
-
-    return photo_refs, place_name
+            return photo_refs, place_name
+        except requests.exceptions.RequestException as e:
+            print(f"Error on attempt {attempt + 1}: {e}")
+            if attempt < 2:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                print("Final attempt failed. Moving on.")
+    return [], None
 
 def sanitize_filename(name):
     """Sanitizes a string to be used as a filename or directory name by replacing non-alphanumeric
@@ -70,32 +70,33 @@ def download_photo(photo_reference, original_name, found_car_wash_name, index, i
 
     url = f"{PLACE_PHOTO_URL}{photo_reference}/media?maxHeightPx={max_width}&key={API_KEY}"
     
-    response = requests.get(url, stream=True)
-    
-    try:
-        response.raise_for_status()
-    except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred while downloading photo: {http_err}")
-        print(f"Response content: {response.text}")
-        return
+    for attempt in range(3):
+        try:
+            response = requests.get(url, stream=True)
+            response.raise_for_status()
 
-    # Sanitize original_name and found_car_wash_name for folder creation using the consistent function
-    safe_original_name = sanitize_filename(original_name)
-    safe_found_car_wash_name = sanitize_filename(found_car_wash_name)
+            safe_original_name = sanitize_filename(original_name)
+            safe_found_car_wash_name = sanitize_filename(found_car_wash_name)
 
-    # Create nested directory path using the provided image_base_dir
-    nested_dir = os.path.join(image_base_dir, safe_original_name, safe_found_car_wash_name)
-    os.makedirs(nested_dir, exist_ok=True)
+            nested_dir = os.path.join(image_base_dir, safe_original_name, safe_found_car_wash_name)
+            os.makedirs(nested_dir, exist_ok=True)
 
-    filename = os.path.join(nested_dir, f"photo_{index + 1}.jpg") # Assuming JPEG
+            filename = os.path.join(nested_dir, f"photo_{index + 1}.jpg")
 
-    try:
-        with open(filename, "wb") as f:
-            for chunk in response.iter_content(1024):
-                f.write(chunk)
-        print(f"Successfully downloaded: {filename}")
-    except IOError as e:
-        print(f"Error saving photo {filename}: {e}")
+            with open(filename, "wb") as f:
+                for chunk in response.iter_content(1024):
+                    f.write(chunk)
+            print(f"Successfully downloaded: {filename}")
+            return
+        except requests.exceptions.RequestException as e:
+            print(f"Error on attempt {attempt + 1} downloading photo: {e}")
+            if attempt < 2:
+                time.sleep(2 ** attempt)
+            else:
+                print("Final attempt to download photo failed.")
+        except IOError as e:
+            print(f"Error saving photo {filename}: {e}")
+            return
 
 if __name__ == "__main__":
     if API_KEY == "YOUR_API_KEY":

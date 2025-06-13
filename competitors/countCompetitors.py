@@ -64,11 +64,11 @@ if __name__ == "__main__":
             sys.exit(1)
 
         csv_headers = [
-            "Original_Name_Address", "Original_Latitude", "Original_Longitude",
-            "Found_Car_Wash_Name", "distance", "rating", "userRatingCount",
-            "FoundInCompetitorList", "keywordClassification",
-            "keywordClassificationExplanation", "number of place images",
-            "satellite image", "imageClassification", "imageClassificationJustification",
+            "original_name_address", "original_latitude", "original_longitude",
+            "found_car_wash_name", "distance_miles", "google_rating", "google_user_rating_count",
+            "found_in_competitor_list", "keyword_classification",
+            "keyword_classification_explanation", "place_images_count",
+            "satellite_image_filename", "image_classification", "image_classification_justification",
             "is_competitor"
         ]
 
@@ -81,9 +81,9 @@ if __name__ == "__main__":
         summary_csv_headers = ["original_address", "competitors_count"]
         for i in range(1, 7):
             summary_csv_headers.extend([
-                f"distance_{i}",
-                f"rating_{i}",
-                f"userRatingCount_{i}"
+                f"competitor_{i}_distance_miles",
+                f"competitor_{i}_google_rating",
+                f"competitor_{i}_google_user_rating_count"
             ])
         if not os.path.exists(summary_output_filepath):
             pd.DataFrame(columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='w')
@@ -197,20 +197,20 @@ if __name__ == "__main__":
                         })
                     
                     record_data = {
-                        "Original_Name_Address": site_address,
-                        "Original_Latitude": original_latitude,
-                        "Original_Longitude": original_longitude,
-                        "Found_Car_Wash_Name": display_name,
-                        "distance": distance,
-                        "rating": rating,
-                        "userRatingCount": user_rating_count,
-                        "FoundInCompetitorList": found_in_competitor_list,
-                        "keywordClassification": keyword_classification,
-                        "keywordClassificationExplanation": keyword_explanation,
-                        "number of place images": num_place_images,
-                        "satellite image": satellite_image_name,
-                        "imageClassification": image_classification,
-                        "imageClassificationJustification": image_justification,
+                        "original_name_address": site_address,
+                        "original_latitude": original_latitude,
+                        "original_longitude": original_longitude,
+                        "found_car_wash_name": display_name,
+                        "distance_miles": distance,
+                        "google_rating": rating,
+                        "google_user_rating_count": user_rating_count,
+                        "found_in_competitor_list": found_in_competitor_list,
+                        "keyword_classification": keyword_classification,
+                        "keyword_classification_explanation": keyword_explanation,
+                        "place_images_count": num_place_images,
+                        "satellite_image_filename": satellite_image_name,
+                        "image_classification": image_classification,
+                        "image_classification_justification": image_justification,
                         "is_competitor": is_competitor
                     }
                     pd.DataFrame([record_data], columns=csv_headers).to_csv(output_filepath, index=False, mode='a', header=False)
@@ -228,13 +228,13 @@ if __name__ == "__main__":
 
             for i in range(6):
                 if i < len(competitors_data):
-                    summary_data[f"distance_{i+1}"] = competitors_data[i]["distance"]
-                    summary_data[f"rating_{i+1}"] = competitors_data[i]["rating"]
-                    summary_data[f"userRatingCount_{i+1}"] = competitors_data[i]["userRatingCount"]
+                    summary_data[f"competitor_{i+1}_distance_miles"] = competitors_data[i]["distance"]
+                    summary_data[f"competitor_{i+1}_google_rating"] = competitors_data[i]["rating"]
+                    summary_data[f"competitor_{i+1}_google_user_rating_count"] = competitors_data[i]["userRatingCount"]
                 else:
-                    summary_data[f"distance_{i+1}"] = None
-                    summary_data[f"rating_{i+1}"] = None
-                    summary_data[f"userRatingCount_{i+1}"] = None
+                    summary_data[f"competitor_{i+1}_distance_miles"] = None
+                    summary_data[f"competitor_{i+1}_google_rating"] = None
+                    summary_data[f"competitor_{i+1}_google_user_rating_count"] = None
             pd.DataFrame([summary_data], columns=summary_csv_headers).to_csv(summary_output_filepath, index=False, mode='a', header=False)
 
         print(f"\nProcessing complete. Results appended to {output_filepath}")

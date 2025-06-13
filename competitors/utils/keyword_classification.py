@@ -5,6 +5,7 @@ from google.genai import types
 import json
 from dotenv import load_dotenv
 import traceback
+import time
 
 load_dotenv()
 
@@ -89,18 +90,23 @@ Now classify this input:
     )
 
     full_response_content = ""
-    try:
-        for chunk in client.models.generate_content_stream(
-            model=model,
-            contents=contents,
-            config=generate_content_config,
-        ):
-            if chunk and chunk.text:
-                full_response_content += chunk.text
-    except Exception as e:
-        print(f"Error during content generation stream: {e}")
-        print(traceback.format_exc())
-        return {"classification": "Error", "explanation": f"Streaming error: {e}"}
+    for attempt in range(3):
+        try:
+            for chunk in client.models.generate_content_stream(
+                model=model,
+                contents=contents,
+                config=generate_content_config,
+            ):
+                if chunk and chunk.text:
+                    full_response_content += chunk.text
+            break  # Exit loop if successful
+        except Exception as e:
+            print(f"Error on attempt {attempt + 1}: {e}")
+            if attempt < 2:
+                time.sleep(2 ** attempt)  # Exponential backoff
+            else:
+                print("Final attempt failed. Moving on.")
+                return {"classification": "Error", "explanation": f"Streaming error: {e}"}
     
     # Assuming the response is a single JSON object
     try:
