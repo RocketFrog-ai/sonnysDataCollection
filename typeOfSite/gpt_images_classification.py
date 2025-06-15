@@ -54,9 +54,9 @@ def image_to_data_url(file_path: str) -> Optional[str]:
         print(f"Error encoding image {file_path} to data URL: {e}")
         return None
 
-def visionModelResponse(place_images_folder_path: str, satellite_image_path: str) -> dict:
+def visionModelResponse(satellite_images_folder_path: str, car_wash_name: Optional[str] = None) -> dict:
     """
-    Analyzes car wash images (satellite image)
+    Analyzes car wash images (satellite images)
     to determine if it's a corner or inside lot, returning structured JSON.
     """
     if not all([AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_KEY, AZURE_OPENAI_MODEL_DEPLOYMENT_NAME]):
@@ -64,34 +64,22 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
 
     all_image_content_parts = []
 
-    # 1. Load Satellite Image
-    print(f"Loading satellite image from: {satellite_image_path}")
-    if os.path.isfile(satellite_image_path):
-        satellite_data_url = image_to_data_url(satellite_image_path)
-        if satellite_data_url:
-            all_image_content_parts.append({
-                "type": "image_url",
-                "image_url": {"url": satellite_data_url, "detail": "high"}
-            })
-            print(f"  - Loaded: {os.path.basename(satellite_image_path)}")
-    else:
-        return {"error": f"Satellite image file not found at '{satellite_image_path}'. Please check the path."}
-
-    # 2. Load Place Photos (up to 9)
-    print(f"Loading images from: {place_images_folder_path}")
-    if os.path.isdir(place_images_folder_path):
-        image_files = [f for f in os.listdir(place_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
-        for filename in image_files[:9]:
-            file_path = os.path.join(place_images_folder_path, filename)
-            place_data_url = image_to_data_url(file_path)
-            if place_data_url:
+    # Load Satellite Images
+    print(f"Loading images from: {satellite_images_folder_path}")
+    if os.path.isdir(satellite_images_folder_path):
+        image_files = [f for f in os.listdir(satellite_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
+        for filename in image_files:
+            file_path = os.path.join(satellite_images_folder_path, filename)
+            data_url = image_to_data_url(file_path)
+            if data_url:
                 all_image_content_parts.append({
                     "type": "image_url",
-                    "image_url": {"url": place_data_url, "detail": "high"}
+                    "image_url": {"url": data_url, "detail": "high"}
                 })
                 print(f"  - Loaded: {filename}")
     else:
-        print(f"Place images folder not found or is not a directory at '{place_images_folder_path}'. Skipping place images.")
+        return {"error": f"Satellite images folder not found or is not a directory at '{satellite_images_folder_path}'. Please check the path."}
+
 
     if not all_image_content_parts:
         return {"error": "No valid images were found to analyze. Please ensure the paths are correct and images exist."}
@@ -128,6 +116,8 @@ Look for sidewalks, markings, or driveways suggesting road access.
 Use text in the image like road names or arrows to judge road importance and access.
 """
     user_query_prompt = "Analyze the provided images for the car wash location and determine if it is a corner lot or an inside lot based on the criteria."
+    if car_wash_name:
+        user_query_prompt += f"\nThe name of the car wash is '{car_wash_name}'."
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -168,28 +158,3 @@ Use text in the image like road names or arrows to judge road importance and acc
         return {"error": f"Bad request (e.g. invalid schema, model output issue, model does not support structured outputs, invalid inputs): {e}"}
     except Exception as e:
         return {"error": f"An unexpected error occurred during OpenAI call: {e}"}
-
-if __name__ == "__main__":
-    # --- IMPORTANT: Configure your image paths here for testing ---
-    # Create a .env file in your project root with:
-    # AZURE_OPENAI_ENDPOINT="your_endpoint"
-    # AZURE_OPENAI_API_KEY="your_api_key"
-    # AZURE_OPENAI_MODEL_DEPLOYMENT_NAME="your_deployment_name"
-
-    # Example paths:
-    my_place_images_folder = "path/to/your/place_images"
-    my_satellite_image = "path/to/your/satellite_image.jpg"
-
-    # Check if the required env vars are set before running
-    if not all([os.getenv("AZURE_OPENAI_ENDPOINT"), os.getenv("AZURE_OPENAI_API_KEY")]):
-        print("Error: Please set AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY in your .env file.")
-    else:
-        print("\n--- Attempting to run visionModelResponse with example paths ---")
-        # Note: This will fail if the example paths are not valid.
-        # Replace them with actual paths to test.
-        response_dict = visionModelResponse(
-            place_images_folder_path=my_place_images_folder,
-            satellite_image_path=my_satellite_image
-        )
-        print("\n--- Model Response (Structured JSON) ---")
-        print(json.dumps(response_dict, indent=2))
