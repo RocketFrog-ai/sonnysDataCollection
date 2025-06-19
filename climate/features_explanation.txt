@@ -1,0 +1,117 @@
+    total_precipitation_mm: 403.73
+
+        Meaning: On average, this location receives approximately 403.73 millimeters of precipitation per year. This includes all forms of precipitation (rain, drizzle, snow, hail, sleet) melted down to its liquid water equivalent.
+
+        How it's Calculated (Conceptual Steps by the Script):
+
+            For each day: Get the precipitation_sum (e.g., in mm) from Open-Meteo.
+
+            For each year: Sum up all these daily precipitation_sum values for all 365/366 days in that year. This gives the total annual precipitation for that specific year.
+
+            Across all years: Calculate the average of these total annual precipitation values over all the years in your period (e.g., 2015-2024).
+
+    rainy_days: 34.50
+
+        Meaning: On average, this location experiences approximately 34.5 days per year where the amount of precipitation is greater than a defined threshold (in the script, RAIN_DAY_THRESHOLD_MM = 1.0 mm).
+
+        How it's Calculated:
+
+            For each day: Check if precipitation_sum > RAIN_DAY_THRESHOLD_MM (1.0 mm).
+
+            For each year: Count how many days in that year met this condition. This gives the number of rainy days for that specific year.
+
+            Across all years: Calculate the average of these annual counts of rainy days over all the years in your period.
+
+    total_snowfall_cm: 0.08
+
+        Meaning: On average, this location receives a negligible amount of snowfall, approximately 0.08 centimeters per year.
+
+        How it's Calculated:
+
+            For each day: Get the snowfall_sum (e.g., in cm) from Open-Meteo.
+
+            For each year: Sum up all these daily snowfall_sum values for all days in that year. This gives the total annual snowfall for that specific year.
+
+            Across all years: Calculate the average of these total annual snowfall values over all the years in your period. (For LA, this will be very close to zero).
+
+    snowy_days: 0.10
+
+        Meaning: On average, this location experiences approximately 0.1 days per year (i.e., very rarely, perhaps one day every 10 years on average) where any measurable amount of snow falls (greater than SNOW_DAY_THRESHOLD_CM = 0.1 cm).
+
+        How it's Calculated:
+
+            For each day: Check if snowfall_sum > SNOW_DAY_THRESHOLD_CM (0.1 cm).
+
+            For each year: Count how many days in that year met this condition. This gives the number of snowy days for that specific year.
+
+            Across all years: Calculate the average of these annual counts of snowy days over all the years in your period.
+
+    days_below_freezing: 0.10
+
+        Meaning: On average, this location experiences approximately 0.1 days per year where the minimum temperature for the day drops below freezing (0°C or 32°F, based on FREEZING_THRESHOLD_C = 0.0).
+
+        How it's Calculated:
+
+            For each day: Get the temperature_2m_min (minimum temperature at 2 meters).
+
+            For each day: Check if temperature_2m_min < FREEZING_THRESHOLD_C (0.0 °C).
+
+            For each year: Count how many days in that year met this condition. This gives the number of days below freezing for that specific year.
+
+            Across all years: Calculate the average of these annual counts of days below freezing over all the years in your period.
+
+    total_sunshine_hours: 3678.56
+
+        Meaning: On average, this location receives approximately 3678.56 hours of sunshine per year.
+
+        How it's Calculated:
+
+            For each day: Get the sunshine_duration from Open-Meteo (this is usually given in seconds).
+
+            For each day: Convert this duration from seconds to hours (divide by 3600).
+
+            For each year: Sum up all these daily sunshine hours for all days in that year. This gives the total annual sunshine hours for that specific year.
+
+            Across all years: Calculate the average of these total annual sunshine hours over all the years in your period.
+
+    days_pleasant_temp: 231.40
+
+        Meaning: On average, this location experiences approximately 231.4 days per year where the average daily temperature falls within a "pleasant" range (defined in the script as between PLEASANT_TEMP_MIN_C = 15.0°C and PLEASANT_TEMP_MAX_C = 25.0°C).
+
+        How it's Calculated:
+
+            For each day: Get temperature_2m_min and temperature_2m_max.
+
+            For each day: Calculate an approximate daily average temperature: (temperature_2m_min + temperature_2m_max) / 2.
+
+            For each day: Check if this daily average temperature is >= PLEASANT_TEMP_MIN_C AND <= PLEASANT_TEMP_MAX_C.
+
+            For each year: Count how many days in that year met this condition. This gives the number of pleasant temperature days for that specific year.
+
+            Across all years: Calculate the average of these annual counts of pleasant temperature days over all the years in your period.
+
+    avg_daily_max_windspeed_ms: 16.66
+
+        Meaning: On average, the average of the daily maximum wind speeds at this location is approximately 16.66 meters per second. This is NOT the overall average wind speed, nor the absolute highest wind speed ever recorded. It means if you take the highest wind speed recorded each day, and then average those daily maximums over a whole year, that yearly average is typically 16.66 m/s.
+
+        How it's Calculated:
+
+            For each day: Get the windspeed_10m_max (maximum wind speed observed on that day at 10 meters height).
+
+            For each year: Calculate the average of these daily windspeed_10m_max values over all days in that year. This gives the average daily maximum wind speed for that specific year.
+
+            Across all years: Calculate the average of these yearly averages of daily maximum wind speeds over all the years in your period.
+
+    avg_daily_max_windgust_ms: 34.03
+
+        Meaning: Similar to the above, but for wind gusts. On average, the average of the daily maximum wind gusts at this location is approximately 34.03 meters per second. Wind gusts are short, sudden increases in wind speed.
+
+        How it's Calculated:
+
+            For each day: Get the windgusts_10m_max (maximum wind gust observed on that day at 10 meters height).
+
+            For each year: Calculate the average of these daily windgusts_10m_max values over all days in that year. This gives the average daily maximum wind gust for that specific year.
+
+            Across all years: Calculate the average of these yearly averages of daily maximum wind gusts over all the years in your period.
+
+In summary: Each of these values represents a long-term (e.g., 10-year) average of an annual weather characteristic. The script first processes daily data to get yearly totals or counts, and then averages those yearly figures to produce these climatological means. These features provide a snapshot of the typical weather conditions at the location, which can then be used in your car wash prediction model.

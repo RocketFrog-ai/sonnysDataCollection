@@ -7,7 +7,7 @@ import json # For pretty printing the raw response
 # API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"
 # API_KEY = "AIzaSyDq7-QEyUIezRe5xMf7LxsQBmnNOmRnfho"
 # API_KEY = 'AIzaSyCZphNk0uM3e1sbOJG2wBTFjPR_E-Dm-Vw'
-API_KEY = 'AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA'
+API_KEY = 'AIzaSyBt8VC_pohJU1cDObr9S8uMaBmLR8ORa5c'
 ROADS_API_SPEED_LIMITS_URL = "https://roads.googleapis.com/v1/speedLimits"
 
 def get_speed_limits_for_path(lat_lon_pairs, units="KPH"):
@@ -66,12 +66,12 @@ def get_speed_limits_for_path(lat_lon_pairs, units="KPH"):
     return None
 
 def main():
-    print("Google Roads API - Speed Limit Demo")
-    print("------------------------------------")
-    print("Notice: The Speed Limit service is primarily available to customers with an")
-    print("Asset Tracking license from Google Maps Platform.")
-    print("The accuracy of speed limit data returned by the Roads API")
-    print("cannot be guaranteed. The data may be estimated, inaccurate, incomplete, or outdated.\n")
+    # print("Google Roads API - Speed Limit Demo")
+    # print("------------------------------------")
+    # print("Notice: The Speed Limit service is primarily available to customers with an")
+    # print("Asset Tracking license from Google Maps Platform.")
+    # print("The accuracy of speed limit data returned by the Roads API")
+    # print("cannot be guaranteed. The data may be estimated, inaccurate, incomplete, or outdated.\n")
 
     # --- Define your input latitude and longitude pairs here ---
     # Example coordinates (from Vasco da Gama bridge example in API documentation)
