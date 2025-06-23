@@ -2,14 +2,14 @@ import requests
 import json
 from geo_utils import calculate_distance
 
-def get_nearby_traffic_lights(lat, lon, radius=1609.34):
+def get_nearby_traffic_lights(lat, lon, radius=3218.68):
     """
     Fetches nearby traffic lights from the Overpass API and sorts them by distance.
 
     Args:
         lat (float): Latitude of the query location.
         lon (float): Longitude of the query location.
-        radius (int, optional): Search radius in meters. Defaults to 1000.
+        radius (int, optional): Search radius in meters. Defaults to 3218.68 (2 miles).
 
     Returns:
         list: A sorted list of traffic light dictionaries, each including a 'distance_miles' key.
