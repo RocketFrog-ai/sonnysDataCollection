@@ -2,6 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
+from geo_utils import calculate_distance
 
 load_dotenv()
 
@@ -86,10 +87,9 @@ def get_nearby_business_count(latitude: float, longitude: float):
         print("ERROR: GOOGLE_MAPS_API_KEY environment variable not set.")
         return None
 
-    # --- Step 1: Find the nearest car wash within 50m ---
-    # print(f"Searching for a car wash within 50m of ({latitude}, {longitude})...")
+    # --- Step 1: Find the nearest car wash ---
     
-    car_wash_radius_miles = 500 / 1609.34 # Convert meters to miles
+    car_wash_radius_miles = 500/1609
     carwash_data = find_nearby_places(
         API_KEY,
         latitude,
@@ -100,7 +100,7 @@ def get_nearby_business_count(latitude: float, longitude: float):
     )
 
     if not carwash_data or "places" not in carwash_data or not carwash_data["places"]:
-        print(f"No car wash found within 500m.")
+        print(f"No car wash found within 500m")
         return None
 
     # Assume the first result is the one we want
@@ -112,10 +112,9 @@ def get_nearby_business_count(latitude: float, longitude: float):
     
     # print(f"\nFound car wash: '{car_wash_name}'")
 
-    # --- Step 2: Find all businesses within 50m of the car wash ---
-    print(f"Now searching for all businesses within 50m of '{car_wash_name}'...")
+    # print(f"Now searching for all businesses within 50m of '{car_wash_name}'...")
 
-    nearby_radius_miles = 50 / 1609.34 # Convert meters to miles
+    nearby_radius_miles = 500/1609
     nearby_data = find_nearby_places(
         API_KEY,
         car_wash_latitude,
@@ -128,27 +127,58 @@ def get_nearby_business_count(latitude: float, longitude: float):
         print(f"Could not find nearby places for the car wash.")
         return None
 
-    # --- Step 3: Filter and count the results ---
-    # We must filter out the car wash itself from the list of "nearby businesses"
-    associated_businesses = []
+    # --- Step 3: Find the 5 nearest businesses (excluding the car wash itself) ---
+    nearest_businesses = []
     for place in nearby_data['places']:
         place_name = place.get('displayName', {}).get('text', 'N/A')
         if place_name != car_wash_name:
-            associated_businesses.append({
-                'name': place_name,
-                'types': place.get('types', []),
-            })
+            nearest_businesses.append(place)
+        if len(nearest_businesses) >= 5:
+            break
+
+    car_wash_address = target_car_wash.get('formattedAddress', 'N/A')
 
     # Prepare the final results
     final_result = {
         'target_car_wash': {
             'name': car_wash_name,
-            'location': car_wash_location,
+            'address': car_wash_address,
         },
-        'nearby_business_count': len(associated_businesses),
-        'associated_businesses': associated_businesses
+        'nearest_businesses': []
     }
 
+    for i, business in enumerate(nearest_businesses):
+        business_name = business.get('displayName', {}).get('text', 'N/A')
+        business_address = business.get('formattedAddress', 'N/A')
+        final_result['nearest_businesses'].append({
+            'name': business_name,
+            'address': business_address,
+        })
+
+    if final_result:
+        distance = calculate_distance(latitude, longitude, float(car_wash_latitude), float(car_wash_longitude))
+        final_result['distance'] = distance
+        
+        # Calculate distance between car wash and nearest businesses
+        for i, business in enumerate(nearest_businesses):
+            business_latitude = business.get('location', {}).get('latitude')
+            business_longitude = business.get('location', {}).get('longitude')
+            if business_latitude and business_longitude:
+                distance_car_wash_nearest_business = calculate_distance(
+                    float(car_wash_latitude), float(car_wash_longitude),
+                    float(business_latitude), float(business_longitude)
+                )
+                final_result['distance_car_wash_nearest_business_' + str(i+1)] = distance_car_wash_nearest_business
+            else:
+                final_result['distance_car_wash_nearest_business_' + str(i+1)] = None
+
+        # print(f"Distance from input location: {distance:.2f} miles")
+        # print(f"Car Wash: '{final_result['target_car_wash']['name']}'")
+        # print(f"Address: {final_result['target_car_wash']['address']}'")
+        # for i, business in enumerate(nearest_businesses):
+        #     print(f"Nearest Business {i+1}: '{final_result['nearest_businesses'][i]['name']}'")
+        #     print(f"Address: {final_result['nearest_businesses'][i]['address']}'")
+        # print("--------------------")
     return final_result
 
 
@@ -159,16 +189,4 @@ if __name__ == "__main__":
     EXAMPLE_LATITUDE = 34.4211501
     EXAMPLE_LONGITUDE = -103.1969689
 
-    results = get_nearby_business_count(EXAMPLE_LATITUDE, EXAMPLE_LONGITUDE)
-
-    if results:
-        print(f"Car Wash: '{results['target_car_wash']['name']}'")
-        print(f"Number of other businesses found on the same lot: {results['nearby_business_count']}")
-        
-        if results['associated_businesses']:
-            print("\nList of Associated Businesses:")
-            for business in results['associated_businesses']:
-                # The 'types' list can be long, so we'll show the first few
-                types_str = ', '.join(business['types'][:3])
-                print(f"  - Name: {business['name']} (Types: {types_str})")
-        print("--------------------")
+    get_nearby_business_count(EXAMPLE_LATITUDE, EXAMPLE_LONGITUDE)

@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import csv
 import sys
+from geo_utils import calculate_distance
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -23,7 +24,13 @@ def process_data(start_index, end_index):
         return
 
     fieldnames = [
-        'full_site_address', 'Latitude', 'Longitude', 'display_name', 'actual_latitude', 'actual_longitude', 'nearby_businesses_count', 'business_names'
+        'full_site_address', 'Latitude', 'Longitude', 'car_wash_name', 'distance_from_original_location', 'car_wash_address',
+        'nearest_business_name_1', 'nearest_business_address_1', 'distance_car_wash_nearest_business_1',
+        'nearest_business_name_2', 'nearest_business_address_2', 'distance_car_wash_nearest_business_2',
+        'nearest_business_name_3', 'nearest_business_address_3', 'distance_car_wash_nearest_business_3',
+        'nearest_business_name_4', 'nearest_business_address_4', 'distance_car_wash_nearest_business_4',
+        'nearest_business_name_5', 'nearest_business_address_5', 'distance_car_wash_nearest_business_5',
+        'multiple_business_count'
     ]
     
     # Prepare CSV file
@@ -40,31 +47,71 @@ def process_data(start_index, end_index):
         longitude = row['Longitude']
 
         print(f"--- Processing record {index}: {full_site_address} ---")
+        print(f"  - Latitude: {latitude}, Longitude: {longitude}")
 
         try:
             nearby_businesses_data = get_nearby_business_count(latitude, longitude)
             
+            # print(f"  - Nearby businesses data: {nearby_businesses_data}")
+
             if nearby_businesses_data:
+                # print(f"  - Target car wash: {nearby_businesses_data['target_car_wash']}")
+                distance = nearby_businesses_data.get('distance', '')
+                
+                # Extract nearest businesses data
+                nearest_businesses = nearby_businesses_data.get('nearest_businesses', [])
+                
+                # Calculate multiple_business_count
+                multiple_business_count = sum(1 for business in nearest_businesses if business['address'] == nearby_businesses_data['target_car_wash']['address'])
+                
                 output_row = {
                     'full_site_address': full_site_address,
                     'Latitude': latitude,
                     'Longitude': longitude,
-                    'display_name': nearby_businesses_data['target_car_wash']['name'],
-                    'actual_latitude': nearby_businesses_data['target_car_wash']['location']['latitude'],
-                    'actual_longitude': nearby_businesses_data['target_car_wash']['location']['longitude'],
-                    'nearby_businesses_count': nearby_businesses_data['nearby_business_count'],
-                    'business_names': ', '.join([business['name'] for business in nearby_businesses_data['associated_businesses']])
+                    'car_wash_name': nearby_businesses_data['target_car_wash']['name'],
+                    'distance_from_original_location': distance,
+                    'car_wash_address': nearby_businesses_data['target_car_wash']['address'],
+                    'nearest_business_name_1': nearest_businesses[0]['name'] if len(nearest_businesses) > 0 else '',
+                    'nearest_business_address_1': nearest_businesses[0]['address'] if len(nearest_businesses) > 0 else '',
+                    'distance_car_wash_nearest_business_1': nearby_businesses_data.get('distance_car_wash_nearest_business_1', ''),
+                    'nearest_business_name_2': nearest_businesses[1]['name'] if len(nearest_businesses) > 1 else '',
+                    'nearest_business_address_2': nearest_businesses[1]['address'] if len(nearest_businesses) > 1 else '',
+                    'distance_car_wash_nearest_business_2': nearby_businesses_data.get('distance_car_wash_nearest_business_2', ''),
+                    'nearest_business_name_3': nearest_businesses[2]['name'] if len(nearest_businesses) > 2 else '',
+                    'nearest_business_address_3': nearest_businesses[2]['address'] if len(nearest_businesses) > 2 else '',
+                    'distance_car_wash_nearest_business_3': nearby_businesses_data.get('distance_car_wash_nearest_business_3', ''),
+                    'nearest_business_name_4': nearest_businesses[3]['name'] if len(nearest_businesses) > 3 else '',
+                    'nearest_business_address_4': nearest_businesses[3]['address'] if len(nearest_businesses) > 3 else '',
+                    'distance_car_wash_nearest_business_4': nearby_businesses_data.get('distance_car_wash_nearest_business_4', ''),
+                    'nearest_business_name_5': nearest_businesses[4]['name'] if len(nearest_businesses) > 4 else '',
+                    'nearest_business_address_5': nearest_businesses[4]['address'] if len(nearest_businesses) > 4 else '',
+                    'distance_car_wash_nearest_business_5': nearby_businesses_data.get('distance_car_wash_nearest_business_5', ''),
+                    'multiple_business_count': multiple_business_count
                 }
             else:
                 output_row = {
                     'full_site_address': full_site_address,
                     'Latitude': latitude,
                     'Longitude': longitude,
-                    'display_name': 'ERROR',
-                    'actual_latitude': 'ERROR',
-                    'actual_longitude': 'ERROR',
-                    'nearby_businesses_count': 'ERROR',
-                    'business_names': 'ERROR'
+                    'car_wash_name': '',
+                    'distance_from_original_location': '',
+                    'car_wash_address': '',
+                    'nearest_business_name_1': '',
+                    'nearest_business_address_1': '',
+                    'distance_car_wash_nearest_business_1': '',
+                    'nearest_business_name_2': '',
+                    'nearest_business_address_2': '',
+                    'distance_car_wash_nearest_business_2': '',
+                    'nearest_business_name_3': '',
+                    'nearest_business_address_3': '',
+                    'distance_car_wash_nearest_business_3': '',
+                    'nearest_business_name_4': '',
+                    'nearest_business_address_4': '',
+                    'distance_car_wash_nearest_business_4': '',
+                    'nearest_business_name_5': '',
+                    'nearest_business_address_5': '',
+                    'distance_car_wash_nearest_business_5': '',
+                    'multiple_business_count': 0
                 }
 
         except Exception as e:
@@ -73,11 +120,25 @@ def process_data(start_index, end_index):
                 'full_site_address': full_site_address,
                 'Latitude': latitude,
                 'Longitude': longitude,
-                'display_name': 'ERROR',
-                'actual_latitude': 'ERROR',
-                'actual_longitude': 'ERROR',
-                'nearby_businesses_count': 'ERROR',
-                'business_names': 'ERROR'
+                'car_wash_name': '',
+                'distance_from_original_location': '',
+                'car_wash_address': '',
+                'nearest_business_name_1': '',
+                'nearest_business_address_1': '',
+                'distance_car_wash_nearest_business_1': '',
+                'nearest_business_name_2': '',
+                'nearest_business_address_2': '',
+                'distance_car_wash_nearest_business_2': '',
+                'nearest_business_name_3': '',
+                'nearest_business_address_3': '',
+                'distance_car_wash_nearest_business_3': '',
+                'nearest_business_name_4': '',
+                'nearest_business_address_4': '',
+                'distance_car_wash_nearest_business_4': '',
+                'nearest_business_name_5': '',
+                'nearest_business_address_5': '',
+                'distance_car_wash_nearest_business_5': '',
+                'multiple_business_count': 0
             }
 
 
