@@ -17,3 +17,6 @@ tunnelIdentification/satellite_images
 tunnelIdentification/place_images
 tunnelIdentification/output_csv
 *.pyc
+tennis_court_images
+tunnelLength/satellite_images
+tunnelLength/satellite_images.zip
