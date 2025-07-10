@@ -10,7 +10,7 @@ from typeOfSite.get_satellite_images import download_satellite_images
 from typeOfSite.gpt_images_classification import visionModelResponse
 
 def process_data(start_index, end_index):
-    excel_file_path = 'typeOfSite/7min_v4_2023_1kmin.xlsx'
+    excel_file_path = 'climate/unscaled_clean_dataset.xlsx'
     output_csv_path = 'typeOfSite/classification_output.csv'
 
     try:
@@ -59,7 +59,7 @@ def process_data(start_index, end_index):
             vision_response = {"error": "Image download failed"}
         else:
             # Step 2: Get vision model response
-            vision_response = visionModelResponse(location_dir, nearby_car_wash_name)
+            vision_response = visionModelResponse(location_dir)
 
         # Step 3: Write to CSV
         with open(output_csv_path, 'a', newline='', encoding='utf-8') as csvfile:

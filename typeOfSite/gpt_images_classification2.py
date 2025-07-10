@@ -86,7 +86,7 @@ def image_to_data_url(file_path: str) -> Optional[str]:
         print(f"Error encoding image {file_path} to data URL: {e}")
         return None
 
-def visionModelResponse(satellite_images_folder_path: str) -> dict:
+def visionModelResponse(satellite_images_folder_path: str, car_wash_name: Optional[str] = None) -> dict:
     """
     Analyzes car wash images (satellite images)
     to determine if it's a corner or inside lot, returning structured JSON.
@@ -117,7 +117,7 @@ def visionModelResponse(satellite_images_folder_path: str) -> dict:
         return {"error": "No valid images were found to analyze. Please ensure the paths are correct and images exist."}
 
     system_prompt = """
-You are an AI assistant that analyzes satellite images of car wash locations.
+You are analyzing satellite images of car wash location.
 Your task is to classify whether the car wash is located on a Corner Lot or an Inside Lot and provide a justification for your decision.
 
 Your response must be a JSON object with the following structure:
