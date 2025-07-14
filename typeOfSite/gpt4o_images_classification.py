@@ -3,7 +3,6 @@ import base64
 import mimetypes
 import json
 from typing import List, Dict, Optional
-import re
 import openai
 from openai import AzureOpenAI
 from pydantic import BaseModel, Field
@@ -16,7 +15,7 @@ load_dotenv()
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
-AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_MODEL_DEPLOYMENT_NAME", "o4-mini")
+AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_MODEL_DEPLOYMENT_NAME", "gpt-4o")
 
 # --- Pydantic Model for Car Wash Classification ---
 class CarWashClassification(BaseModel):
@@ -26,37 +25,6 @@ class CarWashClassification(BaseModel):
     justification: str = Field(
         description="Detailed justification for the classification, mentioning visible features, adherence to criteria, or missing/ambiguous data."
     )
-
-def parse_json_from_string(json_string: str) -> Optional[Dict]:
-    """
-    Parses a JSON object from a string, handling cases where it's embedded in other text,
-    including markdown code blocks.
-    """
-    if not isinstance(json_string, str):
-        return None
-
-    # First, try to find a JSON markdown block
-    match = re.search(r'```json\s*(\{.*?\})\s*```', json_string, re.DOTALL)
-    if match:
-        json_part = match.group(1)
-        try:
-            return json.loads(json_part)
-        except json.JSONDecodeError:
-            # If markdown parsing fails, fall through to the next method
-            pass
-
-    # If no markdown block or parsing failed, try to find the first and last curly brace
-    try:
-        start_index = json_string.find('{')
-        if start_index == -1:
-            return None
-        end_index = json_string.rfind('}')
-        if end_index == -1:
-            return None
-        json_part = json_string[start_index:end_index + 1]
-        return json.loads(json_part)
-    except (json.JSONDecodeError, IndexError):
-        return None
 
 def get_mime_type(file_path):
     """Determines the MIME type of a file based on its extension."""
@@ -117,43 +85,63 @@ def visionModelResponse(satellite_images_folder_path: str, car_wash_name: Option
         return {"error": "No valid images were found to analyze. Please ensure the paths are correct and images exist."}
 
     system_prompt = """
-You are analyzing satellite images of car wash location.
+You are an AI assistant that analyzes satellite images of car wash locations.
 Your task is to classify whether the car wash is located on a Corner Lot or an Inside Lot and provide a justification for your decision.
+
+
+🖼️ Input Images:
+For each car wash location, you will be provided with three satellite images (Google Static Maps API) at zoom levels 17, 18, and 19.
+
+    Zoom 17: broader context (identify main roads, highways, and intersections)
+
+    Zoom 18 & 19: finer details (lane markings, driveways, lot boundaries)
+
+🚩 Red Circle:
+Each image will have a red circle marking the lot of interest. Focus your analysis on that circled area.
+
+🛣️ Lot Type Definitions:
+
+Corner Lot
+A car wash is considered a Corner Lot if:
+
+    It sits at an intersection of two major roads or highways—not small residential streets, drives, lanes, service roads, or alleys.
+
+    At least two wide roads meet adjacent to the red‑circled lot, forming a visible corner.
+
+    One or more sides of the lot face these main roads, even if other sides are blocked by fences or one‑way restrictions.
+
+    Look for signs of road importance: multiple lanes, turn arrows, crosswalks, highway shields, or clear road names.
+
+Inside Lot
+A car wash is considered an Inside Lot if:
+
+    It lies mid‑block between properties or alongside only one major road.
+
+    No intersection of two main roads is adjacent to the red‑circled lot.
+
+    Ignore streets, service drives, alleys, private lanes, or dead‑end residential roads—even if they border the lot, they do not qualify it as a Corner Lot.
+
+🔍 Visual Clues & Process:
+
+    Identify and confirm major road status by width, lane markings, labels, or traffic features.
+
+    Check for intersections of these major roads next to the red circle.
+
+    Disregard any narrow or private access ways.
+
+    Use higher zoom levels to verify driveway access, curb cuts, and lot boundaries.
+
+Proceed by examining the red‑circled lot in each zoom image, determine its classification, and justify your answer with specific visual and contextual evidence.
 
 Your response must be a JSON object with the following structure:
 {
   "classification": "Corner" | "Inside",
   "justification": "A detailed explanation for the classification."
 }
-
-🖼️ Input Images:
-For a car wash location, you will be provided with three satellite images sourced from the Google Static Maps API. These images will be at zoom levels 18, 19, and 20 respectively. Utilize these different zoom levels to get a comprehensive view: zoom 18 for broader context (e.g., identifying main roads and intersections) and zooms 19 and 20 for finer details (e.g., lane markings, access points, lot boundaries).
-
-Use the following visual and contextual rules:
-
-🛣️ Lot Type Definitions:
-
-Corner Lot
-A car wash is considered a Corner Lot if:
-It is located at an intersection of two main roads (not small residential lanes).
-At least two roads meet near or adjacent to the lot, forming a visible corner.
-At least one side of the lot should be accessible from the road, even if the other side is blocked or restricted (due to walls, fences, one-way flow, etc.).
-The roads must be visibly wide enough or show signs of being major roads (e.g., lane markings, road labels, crosswalks, or traffic flow features like turn arrows).
-Diagonal or angled corner lots are also valid if road edges clearly meet at a point.
-
-Inside Lot
-A car wash is considered an Inside Lot if:
-It is located mid-block or between other properties.
-It has access from only one main road, with no visible road intersection adjacent to the lot.
-Even if a tiny lane or alley runs behind or beside it, do not classify it as a Corner Lot unless it connects two major roads.
-
-🔍 Use These Visual Clues
-Look at road intersections: Two roads must visibly connect at a corner.
-Ignore narrow alleyways or dead-end residential roads.
-Look for sidewalks, markings, or driveways suggesting road access.
-Use text in the image like road names or arrows to judge road importance and access.
 """
     user_query_prompt = "Analyze the provided images for the car wash location and determine if it is a corner lot or an inside lot based on the criteria."
+    if car_wash_name:
+        user_query_prompt += f"\nThe name of the car wash is '{car_wash_name}'."
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -174,45 +162,23 @@ Use text in the image like road names or arrows to judge road importance and acc
 
         print(f"\nSending request to Azure OpenAI with {len(all_image_content_parts)} image(s)...")
         
-        completion = client.chat.completions.create(
+        completion = client.beta.chat.completions.parse(
             model=AZURE_OPENAI_MODEL_DEPLOYMENT_NAME,
             messages=messages,
-            max_completion_tokens=1500,
-            reasoning_effort="high"
+            response_format=CarWashClassification,
+            max_tokens=1500,
         )
         
-        response_content = completion.choices[0].message.content
-
-        if not response_content:
-            return {"error": "Model returned an empty response.", "raw_response": response_content}
-        
-        # Attempt to parse the JSON from the response content
-        parsed_output = parse_json_from_string(response_content)
-        
-        if parsed_output:
-            # Validate with Pydantic
-            try:
-                validated_output = CarWashClassification(**parsed_output)
-                return validated_output.model_dump()
-            except Exception as e:
-                return {"error": f"Pydantic validation failed: {e}", "raw_response": response_content}
-        else:
-            return {"error": "Failed to parse JSON from model response.", "raw_response": response_content}
+        parsed_output: CarWashClassification = completion.choices[0].message.parsed
+        return parsed_output.model_dump()
     
     except openai.APIConnectionError as e:
         return {"error": f"The server could not be reached: {e.__cause__}"}
     except openai.RateLimitError as e:
         return {"error": f"A 429 status code was received; we should back off a bit: {e}"}
     except openai.APIStatusError as e:
-        print(f"API Status Error: {e.status_code}")
-        try:
-            print(f"Response Body: {e.response.json()}")
-        except Exception:
-            print(f"Response Text: {e.response.text}")
         return {"error": f"Another non-200-range status code was received: {e.status_code}", "response": str(e.response)}
     except openai.BadRequestError as e:
         return {"error": f"Bad request (e.g. invalid schema, model output issue, model does not support structured outputs, invalid inputs): {e}"}
     except Exception as e:
         return {"error": f"An unexpected error occurred during OpenAI call: {e}"}
-if __name__ == '__main__':
-    print(visionModelResponse('typeOfSite/satellite_images/26 WEISS GUYS EXPRESS  13820 N 40TH STREET  PHOENIX  AZ  85032'))

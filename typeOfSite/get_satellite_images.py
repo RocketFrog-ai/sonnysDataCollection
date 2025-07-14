@@ -3,6 +3,12 @@ import os
 import sys
 import requests
 import time
+from dotenv import load_dotenv
+import cv2
+import numpy as np
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -10,7 +16,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from competitors.utils.google_maps_utils import find_nearby_places
 
 # Replace with your Google Static Maps API key
-API_KEY = "AIzaSyCHIa_N__Q6wOe8LlLaJdArlqM8_HfedQg"
+API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 def get_static_map_image(latitude, longitude, zoom, output_filepath, retries=3, backoff_factor=0.5):
     """
@@ -27,14 +33,40 @@ def get_static_map_image(latitude, longitude, zoom, output_filepath, retries=3, 
     for attempt in range(retries):
         try:
             response = requests.get(base_url, params=params, timeout=15)
-            if response.status_code == 200:
-                with open(output_filepath, "wb") as f:
-                    f.write(response.content)
+            response.raise_for_status()  # Raise an exception for bad status codes
+
+            # Decode the image
+            image_data = np.frombuffer(response.content, np.uint8)
+            image = cv2.imdecode(image_data, cv2.IMREAD_COLOR)
+
+            if image is None:
+                print(f"Attempt {attempt + 1} failed: OpenCV could not decode the image.")
+                continue
+
+            # Get image dimensions
+            height, width, _ = image.shape
+            center_x, center_y = width // 2, height // 2
+
+            # Draw a filled red circle at the center
+            cv2.circle(image, (center_x, center_y), 10, (0, 0, 255), -1)  # Red circle, filled
+
+            # Encode the image back to PNG format
+            success, buffer = cv2.imencode('.png', image)
+            if not success:
+                print(f"Attempt {attempt + 1} failed: OpenCV could not encode the image.")
+                continue
+            
+            with open(output_filepath, "wb") as f:
+                f.write(buffer)
+
+            # Final check: ensure file is not empty
+            if os.path.getsize(output_filepath) > 0:
                 return True
             else:
-                print(f"Attempt {attempt + 1} failed: Status {response.status_code} for {output_filepath}")
-                print(response.text)
-        except requests.exceptions.RequestException as e:
+                print(f"Attempt {attempt + 1} failed: Saved image file is empty.")
+                continue
+
+        except Exception as e:
             print(f"Attempt {attempt + 1} failed with exception: {e}")
         
         if attempt < retries - 1:
@@ -82,7 +114,7 @@ def download_satellite_images(latitude, longitude, site_name):
     if not os.path.exists(location_dir):
         os.makedirs(location_dir)
 
-    for zoom_level in [18, 19, 20]:
+    for zoom_level in [17, 18, 19]:
         image_filename = os.path.join(location_dir, f"zoom_{zoom_level}.png")
         print(f"  - Downloading image with zoom level {zoom_level}...")
         if get_static_map_image(new_latitude, new_longitude, zoom_level, image_filename):

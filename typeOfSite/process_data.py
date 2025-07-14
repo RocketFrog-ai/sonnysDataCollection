@@ -2,16 +2,17 @@ import pandas as pd
 import os
 import csv
 import sys
+import time
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from typeOfSite.get_satellite_images import download_satellite_images
-from typeOfSite.gpt_images_classification import visionModelResponse
+from typeOfSite.o4mini_images_classification import visionModelResponse
 
 def process_data(start_index, end_index):
     excel_file_path = 'climate/unscaled_clean_dataset.xlsx'
-    output_csv_path = 'typeOfSite/classification_output.csv'
+    output_csv_path = 'typeOfSite/type_of_lot.csv'
 
     try:
         df = pd.read_excel(excel_file_path)
@@ -58,8 +59,16 @@ def process_data(start_index, end_index):
             print("  - Failed to download images or folder is empty, skipping vision model.")
             vision_response = {"error": "Image download failed"}
         else:
-            # Step 2: Get vision model response
-            vision_response = visionModelResponse(location_dir)
+            # Step 2: Get vision model response with retry logic
+            retries = 10
+            for attempt in range(retries):
+                vision_response = visionModelResponse(location_dir)
+                if "error" not in vision_response:
+                    break
+                print(f"  - Attempt {attempt + 1} failed: {vision_response.get('error')}. Retrying in 5 seconds...")
+                time.sleep(5)
+            else:
+                print(f"  - All {retries} attempts failed. Skipping record.")
 
         # Step 3: Write to CSV
         with open(output_csv_path, 'a', newline='', encoding='utf-8') as csvfile:

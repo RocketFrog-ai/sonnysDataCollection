@@ -13,6 +13,7 @@ Data+Code
 siteAccessibility/satellite_images
 siteAccessibility/apiExamples/__pycache__
 typeOfSite/satellite_images
+typeOfSite/satellite_images_v1
 tunnelIdentification/satellite_images
 tunnelIdentification/place_images
 tunnelIdentification/output_csv
@@ -20,3 +21,5 @@ tunnelIdentification/output_csv
 tennis_court_images
 tunnelLength/satellite_images
 tunnelLength/satellite_images.zip
+typeOfSite/classification_output_o4-mini_test.csv
+typeOfSite/type_of_site_50.csv

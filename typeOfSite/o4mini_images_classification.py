@@ -120,38 +120,56 @@ def visionModelResponse(satellite_images_folder_path: str) -> dict:
 You are an AI assistant that analyzes satellite images of car wash locations.
 Your task is to classify whether the car wash is located on a Corner Lot or an Inside Lot and provide a justification for your decision.
 
-Your response must be a JSON object with the following structure:
-{
-  "classification": "Corner" | "Inside",
-  "justification": "A detailed explanation for the classification."
-}
 
 🖼️ Input Images:
-For a car wash location, you will be provided with three satellite images sourced from the Google Static Maps API. These images will be at zoom levels 18, 19, and 20 respectively. Utilize these different zoom levels to get a comprehensive view: zoom 18 for broader context (e.g., identifying main roads and intersections) and zooms 19 and 20 for finer details (e.g., lane markings, access points, lot boundaries).
+For each car wash location, you will be provided with three satellite images (Google Static Maps API) at zoom levels 17, 18, and 19.
 
-Use the following visual and contextual rules:
+    Zoom 17: broader context (identify main roads, highways, and intersections)
+
+    Zoom 18 & 19: finer details (lane markings, driveways, lot boundaries)
+
+🚩 Red Circle:
+Each image will have a red circle marking the lot of interest. Focus your analysis on that circled area.
 
 🛣️ Lot Type Definitions:
 
 Corner Lot
 A car wash is considered a Corner Lot if:
-It is located at an intersection of two main roads (not small residential lanes).
-At least two roads meet near or adjacent to the lot, forming a visible corner.
-At least one side of the lot should be accessible from the road, even if the other side is blocked or restricted (due to walls, fences, one-way flow, etc.).
-The roads must be visibly wide enough or show signs of being major roads (e.g., lane markings, road labels, crosswalks, or traffic flow features like turn arrows).
-Diagonal or angled corner lots are also valid if road edges clearly meet at a point.
+
+    It sits at an intersection of two major roads or highways—not small residential streets, drives, lanes, service roads, or alleys.
+
+    At least two wide roads meet adjacent to the red‑circled lot, forming a visible corner.
+
+    One or more sides of the lot face these main roads, even if other sides are blocked by fences or one‑way restrictions.
+
+    Look for signs of road importance: multiple lanes, turn arrows, crosswalks, highway shields, or clear road names.
 
 Inside Lot
 A car wash is considered an Inside Lot if:
-It is located mid-block or between other properties.
-It has access from only one main road, with no visible road intersection adjacent to the lot.
-Even if a tiny lane or alley runs behind or beside it, do not classify it as a Corner Lot unless it connects two major roads.
 
-🔍 Use These Visual Clues
-Look at road intersections: Two roads must visibly connect at a corner.
-Ignore narrow alleyways or dead-end residential roads.
-Look for sidewalks, markings, or driveways suggesting road access.
-Use text in the image like road names or arrows to judge road importance and access.
+    It lies mid‑block between properties or alongside only one major road.
+
+    No intersection of two main roads is adjacent to the red‑circled lot.
+
+    Ignore streets, service drives, alleys, private lanes, or dead‑end residential roads—even if they border the lot, they do not qualify it as a Corner Lot.
+
+🔍 Visual Clues & Process:
+
+    Identify and confirm major road status by width, lane markings, labels, or traffic features.
+
+    Check for intersections of these major roads next to the red circle.
+
+    Disregard any narrow or private access ways.
+
+    Use higher zoom levels to verify driveway access, curb cuts, and lot boundaries.
+
+Proceed by examining the red‑circled lot in each zoom image, determine its classification, and justify your answer with specific visual and contextual evidence.
+
+Your response must be a JSON object with the following structure:
+{
+  "classification": "Corner" | "Inside",
+  "justification": "A detailed explanation for the classification."
+}
 """
     user_query_prompt = "Analyze the provided images for the car wash location and determine if it is a corner lot or an inside lot based on the criteria."
 
@@ -177,7 +195,7 @@ Use text in the image like road names or arrows to judge road importance and acc
         completion = client.chat.completions.create(
             model=AZURE_OPENAI_MODEL_DEPLOYMENT_NAME,
             messages=messages,
-            max_completion_tokens=1500,
+            max_completion_tokens=3000,
             reasoning_effort="high"
         )
         
