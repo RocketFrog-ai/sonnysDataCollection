@@ -20,6 +20,5 @@ tunnelIdentification/output_csv
 *.pyc
 tennis_court_images
 tunnelLength/satellite_images
-tunnelLength/satellite_images.zip
-typeOfSite/classification_output_o4-mini_test.csv
-typeOfSite/type_of_site_50.csv
+tunnelLength/satellite_images
+entranceStackup/satellite_images
