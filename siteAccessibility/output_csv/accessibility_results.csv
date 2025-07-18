@@ -1,3 +1,0 @@
-site_name,address,accessibility_classification,justification
-"#26 WEISS GUYS EXPRESS , 13820 N 40TH STREET , PHOENIX , AZ , 85032",Error: Geocoding API request failed. Status: REQUEST_DENIED. Message: This API key is not authorized to use this service or API.,Error,Error calling Gemini API: Models.generate_content() got an unexpected keyword argument 'generation_config'
-"#27 WEISS GUYS EXPRESS , 8365 W McDowell Rd , Tolleson , AZ , 85353",Error: Geocoding API request failed. Status: REQUEST_DENIED. Message: This API key is not authorized to use this service or API.,Error,Error calling Gemini API: Models.generate_content() got an unexpected keyword argument 'generation_config'
