@@ -6,11 +6,11 @@ import sys
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from costco.nearby_costcos import get_costco_info
+from nearbyStores.nearby_costcos import get_costco_info
 
 def process_data(start_index, end_index):
     excel_file_path = 'climate/unscaled_clean_dataset.xlsx'
-    output_csv_path = 'costco/IKEA_5miles.csv'
+    output_csv_path = 'nearbyStores/Kohls_5miles.csv'
 
     try:
         df = pd.read_excel(excel_file_path)

@@ -2,7 +2,7 @@ import requests
 import json
 import os
 from dotenv import load_dotenv
-from costco.geo_utils import calculate_distance
+from nearbyStores.geo_utils import calculate_distance
 
 load_dotenv()
 
@@ -132,7 +132,7 @@ def get_costco_info(latitude: float, longitude: float):
         car_wash_latitude,
         car_wash_longitude,
         radius_miles=5,
-        keyword='ikea',
+        keyword="kohl's",
         max_results=20
     )
 
@@ -142,7 +142,7 @@ def get_costco_info(latitude: float, longitude: float):
     if costco_data and "places" in costco_data:
         costco_places = [
             p for p in costco_data["places"] 
-            if ''.join(p.get('displayName', {}).get('text', '').lower().split()).strip() == 'ikea'
+            if ''.join(p.get('displayName', {}).get('text', '').lower().split()).strip() == "kohl's"
         ]
         
         if costco_places:
