@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from core import analyze_site_from_dict
 
-app = FastAPI(title="Site Analysis Agentic Pipeline API")
+app = FastAPI(title="Site Analysis Agentic Pipeline API ")
 
 class SiteFeatures(BaseModel):
     total_sunshine_hours: Optional[float] = None
