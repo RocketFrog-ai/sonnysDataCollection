@@ -82,7 +82,8 @@ def get_nearby_business_count(latitude: float, longitude: float):
     Returns:
         A dictionary with the results, or None if an error occurs.
     """
-    API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+    # API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
     if not API_KEY:
         print("ERROR: GOOGLE_MAPS_API_KEY environment variable not set.")
         return None

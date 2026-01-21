@@ -63,17 +63,19 @@ def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, ret
     print(f"Failed to fetch weather data for {latitude},{longitude} after {retries} retries.")
     return pd.DataFrame()
 
-def get_climate_data(latitude, longitude):
+def get_climate_data(latitude, longitude, start_year, end_year):
     """
     Calculates climatological averages for a given location.
     """
+    START_DATE_STR = f"{start_year}-01-01"
+    END_DATE_STR = f"{end_year}-12-31"
     weather_df = fetch_open_meteo_weather_data(latitude, longitude, START_DATE_STR, END_DATE_STR)
 
     if weather_df.empty:
         return None
 
     annual_metrics_list = []
-    for year_val in range(START_YEAR, END_YEAR + 1):
+    for year_val in range(int(start_year), int(end_year) + 1):
         year_df = weather_df[weather_df.index.year == year_val]
 
         if year_df.empty:
@@ -127,7 +129,7 @@ if __name__ == "__main__":
     print(f"Location: Lat={LATITUDE}, Lon={LONGITUDE}")
     print(f"Period: {START_DATE_STR} to {END_DATE_STR}\n")
 
-    climate_data = get_climate_data(LATITUDE, LONGITUDE)
+    climate_data = get_climate_data(LATITUDE, LONGITUDE, "2024", "2025")
 
     if climate_data:
         print("\n--- Open-Meteo Climatological Weather Averages ---")
