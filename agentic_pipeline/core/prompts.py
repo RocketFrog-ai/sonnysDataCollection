@@ -19,11 +19,20 @@ Positive Features:
 Negative Features:
 {cons_data}
 
-Generate 3-5 specific pros and 3-5 specific cons as bullet points. Be specific about why each factor matters for a car wash business. Format as:
-PROS:
-- [specific pro 1]
-- [specific pro 2]
+Generate 3-5 specific pros and 3-5 specific cons. Be specific about why each factor matters for a car wash business.
 
-CONS:
-- [specific con 1]
-- [specific con 2]"""
+IMPORTANT: Respond ONLY with valid JSON in this exact format:
+{{
+  "pros": [
+    "specific pro 1",
+    "specific pro 2",
+    "specific pro 3"
+  ],
+  "cons": [
+    "specific con 1",
+    "specific con 2",
+    "specific con 3"
+  ]
+}}
+
+Do not include any text before or after the JSON. Only return the JSON object."""
