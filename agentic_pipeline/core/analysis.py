@@ -1,4 +1,7 @@
 from typing import Dict, List, Tuple
+import json
+import re
+import requests
 from utils import get_llm_response
 from .prompts import build_rationale_prompt, build_pros_cons_prompt
 
@@ -78,8 +81,17 @@ def generate_llm_rationale(feature_values: Dict[str, float], pros: List[Dict], c
     
     try:
         response = get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
-        return response.get("generated_text", "Analysis completed based on feature correlations.")
-    except:
+        text = response.get("generated_text", "")
+        print(f"[DEBUG] Raw LLM response for rationale:\n{text}\n{'='*80}")
+        return text if text else "Analysis completed based on feature correlations."
+    except requests.exceptions.Timeout as e:
+        print(f"[ERROR] LLM rationale request timed out: {e}")
+        return "Analysis completed based on feature correlations."
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] LLM rationale request failed: {e}")
+        return "Analysis completed based on feature correlations."
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in generate_llm_rationale: {type(e).__name__}: {e}")
         return "Analysis completed based on feature correlations."
 
 def generate_llm_pros_cons(feature_values: Dict[str, float], pros: List[Dict], cons: List[Dict]) -> Tuple[List[str], List[str]]:
@@ -92,13 +104,47 @@ def generate_llm_pros_cons(feature_values: Dict[str, float], pros: List[Dict], c
         response = get_llm_response(prompt, reasoning_effort="medium", temperature=0.4)
         text = response.get("generated_text", "")
         
+        print(f"[DEBUG] Raw LLM response for pros/cons:\n{text}\n{'='*80}")
+        
+        if not text:
+            print("[WARNING] Empty LLM response")
+            return [], []
+        
         llm_pros = []
         llm_cons = []
+        
+        try:
+            text_clean = text.strip()
+            
+            json_match = re.search(r'\{[^{}]*"pros"[^{}]*\[[^\]]*\][^{}]*"cons"[^{}]*\[[^\]]*\][^{}]*\}', text_clean, re.DOTALL)
+            if json_match:
+                json_str = json_match.group(0)
+                parsed = json.loads(json_str)
+                llm_pros = parsed.get("pros", [])
+                llm_cons = parsed.get("cons", [])
+                print(f"[DEBUG] Successfully parsed JSON: {len(llm_pros)} pros, {len(llm_cons)} cons")
+                return llm_pros[:5], llm_cons[:5]
+            
+            try:
+                parsed = json.loads(text_clean)
+                llm_pros = parsed.get("pros", [])
+                llm_cons = parsed.get("cons", [])
+                print(f"[DEBUG] Successfully parsed JSON (direct): {len(llm_pros)} pros, {len(llm_cons)} cons")
+                return llm_pros[:5], llm_cons[:5]
+            except json.JSONDecodeError:
+                pass
+            
+        except json.JSONDecodeError as e:
+            print(f"[WARNING] JSON parsing failed: {e}, falling back to text parsing")
+        
         in_pros = False
         in_cons = False
         
         for line in text.split('\n'):
             line = line.strip()
+            if not line:
+                continue
+                
             if 'PROS:' in line.upper() or 'PRO:' in line.upper():
                 in_pros = True
                 in_cons = False
@@ -107,15 +153,34 @@ def generate_llm_pros_cons(feature_values: Dict[str, float], pros: List[Dict], c
                 in_cons = True
                 in_pros = False
                 continue
-            if line.startswith('-') or line.startswith('•'):
-                content = line.lstrip('- •').strip()
+                
+            if line.startswith('-') or line.startswith('•') or line.startswith('*'):
+                content = line.lstrip('- •*').strip()
                 if in_pros and content:
                     llm_pros.append(content)
                 elif in_cons and content:
                     llm_cons.append(content)
+            elif in_pros and line and not line.startswith('{') and not line.startswith('['):
+                llm_pros.append(line)
+            elif in_cons and line and not line.startswith('{') and not line.startswith('['):
+                llm_cons.append(line)
         
+        print(f"[DEBUG] Text parsing result: {len(llm_pros)} pros, {len(llm_cons)} cons")
         return llm_pros[:5], llm_cons[:5]
-    except:
+        
+    except requests.exceptions.Timeout as e:
+        print(f"[ERROR] LLM request timed out: {e}")
+        return [], []
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] LLM request failed: {e}")
+        return [], []
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] JSON decode error: {e}")
+        return [], []
+    except Exception as e:
+        print(f"[ERROR] Unexpected error in generate_llm_pros_cons: {type(e).__name__}: {e}")
+        import traceback
+        print(f"[ERROR] Traceback: {traceback.format_exc()}")
         return [], []
 
 def analyze_site_features(feature_values: Dict[str, float]) -> Dict:
