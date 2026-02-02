@@ -7,9 +7,6 @@ from nearbyStores.geo_utils import calculate_distance
 load_dotenv()
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=None, included_types=None, max_results=10):
-    """
-    Finds nearby places using the Google Places API.
-    """
     if keyword:
         base_url = "https://places.googleapis.com/v1/places:searchText"
     else:
@@ -54,7 +51,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=Non
         payload["includedTypes"] = included_types
     if keyword:
         payload["textQuery"] = keyword
-    
+
     if not keyword:
         payload["rankPreference"] = "DISTANCE"
     else:
@@ -63,23 +60,17 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=Non
     try:
         response = requests.post(base_url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
-        
         data = response.json()
-        
-        # Filter places by distance
         if "places" in data:
             filtered_places = []
             for place in data["places"]:
                 place_lat = place.get("location", {}).get("latitude")
                 place_lon = place.get("location", {}).get("longitude")
-                
                 if place_lat and place_lon:
                     distance = calculate_distance(latitude, longitude, place_lat, place_lon)
                     if distance <= radius_miles:
                         filtered_places.append(place)
-            
             data["places"] = filtered_places
-        
         return data
     except requests.exceptions.HTTPError as http_err:
         print(f"HTTP error occurred: {http_err}")
@@ -91,7 +82,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=Non
         print(f"Response content: {response.text}")
     return None
 
-def get_costco_info(latitude: float, longitude: float):
+def get_walmart_info(latitude: float, longitude: float):
     API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
     if not API_KEY:
         print("ERROR: GOOGLE_MAPS_API_KEY environment variable not set.")
@@ -118,25 +109,25 @@ def get_costco_info(latitude: float, longitude: float):
             center_latitude = cw_lat
             center_longitude = cw_lon
 
-    costco_data = find_nearby_places(
+    walmart_data = find_nearby_places(
         API_KEY,
         center_latitude,
         center_longitude,
         radius_miles=5,
-        keyword="Costco",
+        keyword="Walmart",
         max_results=20
     )
 
-    distance_from_nearest_costco = float('inf')
-    count_of_costco_5miles = 0
+    distance_from_nearest_walmart = float('inf')
+    count_of_walmart_5miles = 0
 
-    if costco_data and "places" in costco_data:
-        costco_places = [
-            p for p in costco_data["places"]
-            if "costco" in p.get('displayName', {}).get('text', '').lower()
+    if walmart_data and "places" in walmart_data:
+        walmart_places = [
+            p for p in walmart_data["places"]
+            if "walmart" in p.get('displayName', {}).get('text', '').lower()
         ]
-        if costco_places:
-            for place in costco_places:
+        if walmart_places:
+            for place in walmart_places:
                 place_loc = place.get('location', {})
                 plat = place_loc.get('latitude')
                 plon = place_loc.get('longitude')
@@ -145,14 +136,14 @@ def get_costco_info(latitude: float, longitude: float):
                         center_latitude, center_longitude,
                         plat, plon
                     )
-                    if distance < distance_from_nearest_costco:
-                        distance_from_nearest_costco = distance
-            count_of_costco_5miles = len(costco_places)
+                    if distance < distance_from_nearest_walmart:
+                        distance_from_nearest_walmart = distance
+            count_of_walmart_5miles = len(walmart_places)
 
-    if distance_from_nearest_costco == float('inf'):
-        distance_from_nearest_costco = None
+    if distance_from_nearest_walmart == float('inf'):
+        distance_from_nearest_walmart = None
 
     return {
-        'distance_from_nearest_costco': distance_from_nearest_costco,
-        'count_of_costco_5miles': count_of_costco_5miles
+        'distance_from_nearest_walmart': distance_from_nearest_walmart,
+        'count_of_walmart_5miles': count_of_walmart_5miles
     }

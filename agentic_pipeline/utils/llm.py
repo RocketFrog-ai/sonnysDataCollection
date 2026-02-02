@@ -17,7 +17,7 @@ def get_llm_response(user_content: str, reasoning_effort: str = "medium", temper
         "temperature": temperature
     }
     try:
-        response = requests.post(LOCAL_LLM_URL, json=payload, headers=headers, timeout=700)
+        response = requests.post(LOCAL_LLM_URL, json=payload, headers=headers, timeout=1000)
         response.raise_for_status()
         response_dict = response.json()
         return response_dict

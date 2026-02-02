@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'competi
 from fastapi import FastAPI
 from climate.open_meteo import get_climate_data
 from nearbyBusinesses.nearby_businesses import get_nearby_business_count
+# from nearbyStores.nearby_stores import get_nearby_stores_data
 from trafficLights.nearby_traffic_lights import get_nearby_traffic_lights, filter_duplicate_locations
 from speedLimits.speed_limits import get_nearest_roads_with_speed
 from operationalHours.searchNearby import find_nearby_places
@@ -181,6 +182,13 @@ def get_tunnel_identification(lat: float, lon: float):
         return tunnel_data
     else:
         return {"error": "Could not retrieve tunnel identification data."}
+
+# @app.get("/nearby-stores")
+# def get_nearby_stores(lat: float, lon: float):
+#     data = get_nearby_stores_data(lat, lon)
+#     if data:
+#         return data
+#     return {"error": "Could not retrieve nearby stores data."}
 
 @app.get("/competitors")
 def get_competitors(lat: float, lon: float):
