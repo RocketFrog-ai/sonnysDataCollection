@@ -284,21 +284,17 @@ def analyze_site_from_dict(address:str) -> Dict:
     geo_cord = calib.get_lat_long(address)
     lat = geo_cord["lat"]
     lon = geo_cord["lon"]
-    # weather_details = get_climate(lat, lon)
+    weather_details = get_climate(lat, lon)
 
-    # total_sunshine_hours = weather_details["total_sunshine_hours"]
-    # total_precipitation_mm = weather_details["total_precipitation_mm"]
-    # days_pleasant_temp = weather_details["days_pleasant_temp"]
-    # rainy_days = weather_details["rainy_days"]
-    # avg_daily_max_windspeed_ms = weather_details["avg_daily_max_windspeed_ms"]
-    # days_below_freezing = weather_details["days_below_freezing"]
-    # total_snowfall_cm = weather_details["total_snowfall_cm"]
+    total_sunshine_hours = weather_details["total_sunshine_hours"]
+    total_precipitation_mm = weather_details["total_precipitation_mm"]
+    days_pleasant_temp = weather_details["days_pleasant_temp"]
+    rainy_days = weather_details["rainy_days"]
+    avg_daily_max_windspeed_ms = weather_details["avg_daily_max_windspeed_ms"]
+    days_below_freezing = weather_details["days_below_freezing"]
+    total_snowfall_cm = weather_details["total_snowfall_cm"]
 
-    nearby_business_data = get_nearby_businesses(lat, lon)
-    print("---------------------------")
-    print("NearBy Business Data")
-    print(nearby_business_data)
-    print("---------------------------")
+
     # distance_from_nearest_costco = nearby_business_data["distance_from_nearest_costco"]
     # count_of_walmart_5miles = nearby_business_data["count_of_walmart_5miles"]
     # distance_from_nearest_walmart = nearby_business_data["distance_from_nearest_walmart"]
@@ -311,36 +307,36 @@ def analyze_site_from_dict(address:str) -> Dict:
     # competitor_1_google_user_rating_count = competitors_data["competitor_1_google_user_rating_count"]
     # competitors_count = competitors_data["competitors_count"]
     
-    # traffic_data = get_traffic_lights(lat, lon)
-    # nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
-    # distance_nearest_traffic_light_2 = traffic_data["distance_nearest_traffic_light_2"]
-    # distance_nearest_traffic_light_3 = traffic_data["distance_nearest_traffic_light_3"]
-    # distance_nearest_traffic_light_4 = traffic_data["distance_nearest_traffic_light_4"]
-    # distance_nearest_traffic_light_7 = traffic_data["distance_nearest_traffic_light_7"]
-    # distance_nearest_traffic_light_9 = traffic_data["distance_nearest_traffic_light_9"]    
+    traffic_data = get_traffic_lights(lat, lon)
+    nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
+    distance_nearest_traffic_light_2 = traffic_data["distance_nearest_traffic_light_2"]
+    distance_nearest_traffic_light_3 = traffic_data["distance_nearest_traffic_light_3"]
+    distance_nearest_traffic_light_4 = traffic_data["distance_nearest_traffic_light_4"]
+    distance_nearest_traffic_light_7 = traffic_data["distance_nearest_traffic_light_7"]
+    distance_nearest_traffic_light_9 = traffic_data["distance_nearest_traffic_light_9"]    
     
-    # feature_values = {}
-    # feature_values["total_sunshine_hours"] = total_sunshine_hours
-    # feature_values["total_precipitation_mm"] = total_precipitation_mm
-    # feature_values["days_pleasant_temp"] = days_pleasant_temp
-    # feature_values["rainy_days"] = rainy_days
-    # feature_values["avg_daily_max_windspeed_ms"] = avg_daily_max_windspeed_ms
-    # feature_values["days_below_freezing"] = days_below_freezing
-    # feature_values["total_snowfall_cm"] = total_snowfall_cm
-    # # feature_values["distance_from_nearest_costco"] = distance_from_nearest_costco
-    # # feature_values["count_of_walmart_5miles"] = count_of_walmart_5miles
-    # # feature_values["distance_from_nearest_walmart"] = distance_from_nearest_walmart
-    # # feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
-    # # feature_values["competitors_count"] = competitors_count
-    # feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
-    # feature_values["distance_nearest_traffic_light_2"] = distance_nearest_traffic_light_2
-    # feature_values["distance_nearest_traffic_light_3"] = distance_nearest_traffic_light_3
-    # feature_values["distance_nearest_traffic_light_4"] = distance_nearest_traffic_light_4
-    # feature_values["distance_nearest_traffic_light_7"] = distance_nearest_traffic_light_7
-    # feature_values["distance_nearest_traffic_light_9"] = distance_nearest_traffic_light_9
-    # # return analyze_site_features(feature_values)
+    feature_values = {}
+    feature_values["total_sunshine_hours"] = total_sunshine_hours
+    feature_values["total_precipitation_mm"] = total_precipitation_mm
+    feature_values["days_pleasant_temp"] = days_pleasant_temp
+    feature_values["rainy_days"] = rainy_days
+    feature_values["avg_daily_max_windspeed_ms"] = avg_daily_max_windspeed_ms
+    feature_values["days_below_freezing"] = days_below_freezing
+    feature_values["total_snowfall_cm"] = total_snowfall_cm
+    # feature_values["distance_from_nearest_costco"] = distance_from_nearest_costco
+    # feature_values["count_of_walmart_5miles"] = count_of_walmart_5miles
+    # feature_values["distance_from_nearest_walmart"] = distance_from_nearest_walmart
+    # feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
+    # feature_values["competitors_count"] = competitors_count
+    feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
+    feature_values["distance_nearest_traffic_light_2"] = distance_nearest_traffic_light_2
+    feature_values["distance_nearest_traffic_light_3"] = distance_nearest_traffic_light_3
+    feature_values["distance_nearest_traffic_light_4"] = distance_nearest_traffic_light_4
+    feature_values["distance_nearest_traffic_light_7"] = distance_nearest_traffic_light_7
+    feature_values["distance_nearest_traffic_light_9"] = distance_nearest_traffic_light_9
+    return analyze_site_features(feature_values)
     # return feature_values
-    return None
+    # return None
 
 if __name__ == "__main__":
     address = "cartersville , 1330 joe frank harris pkwy se , cartersville , ga , 30120"
