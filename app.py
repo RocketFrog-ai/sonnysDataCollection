@@ -23,7 +23,7 @@ def get_climate(lat: float, lon: float):
     fetches climate data using the get_climate_data function,
     and returns the data as a JSON response.
     """
-    climate_data = get_climate_data(lat, lon)
+    climate_data = get_climate_data(lat, lon, "2024", "2025")
     if climate_data:
         return climate_data
     else:

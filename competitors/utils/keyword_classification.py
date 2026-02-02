@@ -14,7 +14,7 @@ def keywordclassifier(car_wash_name: str):
         api_key=os.environ.get("GEMINI_API_KEY"),
     )
 
-    model = "gemini-2.5-flash-preview-05-20" # Consider 'gemini-1.5-flash' or 'gemini-1.5-pro' for more complex classification or longer inputs if needed.
+    model = "gemini-3-flash-preview" # Consider 'gemini-1.5-flash' or 'gemini-1.5-pro' for more complex classification or longer inputs if needed.
     contents = [
         types.Content(
             role="user",
