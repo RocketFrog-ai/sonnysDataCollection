@@ -1,6 +1,11 @@
 /collectedImages
 competitors/datasets
 .env
+venv/
+.venv/
+env/
+.DS_Store
+*.DS_Store
 /streetViewImages
 competitors/place_images
 /yelp_images
