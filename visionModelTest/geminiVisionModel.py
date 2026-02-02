@@ -3,7 +3,7 @@ from google import genai
 
 
 # client = genai.Client(api_key="AIzaSyAt59WZAmoN2FVj_FZM6wYvAdJa5Q3MFL0")
-client = genai.Client(api_key="AIzaSyBIxKeikH2BF-TKvjdz_W-ztp45IYjS7-w")
+client = genai.Client(api_key="AIzaSyATs0pjterfjMVLOdzmC6mBQLCYw5oWhgw")
 # client = genai.Client(vertexai=True, api_key="AIzaSyDq7-QEyUIezRe5xMf7LxsQBmnNOmRnfho")
 
 
@@ -11,7 +11,7 @@ with open('/home/arpit/dataCollection/collectedImages/Autobahn_Express__1225_Guy
     image_bytes = f.read()
 
 response = client.models.generate_content(
-model='gemini-2.5-flash-preview-05-20',
+model='gemini-3-flash-preview',
 contents=[
     types.Part.from_bytes(
     data=image_bytes,

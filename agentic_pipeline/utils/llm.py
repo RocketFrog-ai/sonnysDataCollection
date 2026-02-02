@@ -1,7 +1,7 @@
 import requests
 import traceback
 from typing import Any, Dict
-from config.settings import LOCAL_LLM_URL, LOCAL_LLM_API_KEY
+from agentic_pipeline.config.settings import LOCAL_LLM_URL, LOCAL_LLM_API_KEY
 
 def get_llm_response(user_content: str, reasoning_effort: str = "medium", temperature: float = 0.5, developer_prompt: str = "") -> Dict[str, Any]:
     headers = {"x-api-key": LOCAL_LLM_API_KEY}
