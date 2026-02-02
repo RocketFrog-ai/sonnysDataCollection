@@ -2,10 +2,15 @@ from typing import Dict, List, Tuple
 import json
 import re
 import requests
+from datetime import datetime
+from pathlib import Path
 from agentic_pipeline.utils import get_llm_response
 from .prompts import build_rationale_prompt, build_pros_cons_prompt
-from app import get_climate,get_nearby_businesses, get_competitors, get_traffic_lights
+from app import get_climate, get_competitors, get_traffic_lights
+from nearbyStores.nearby_stores import get_nearby_stores_data
 from agentic_pipeline.utils import commons as calib
+
+FEATURE_VALUES_LOG = Path(__file__).resolve().parent.parent / "feature_values.log"
 
 POSITIVE_SIGNALS = {
     'total_sunshine_hours': {'score': 0.8523, 'corr': 0.1442, 'description': 'Total sunshine hours'},
@@ -13,6 +18,7 @@ POSITIVE_SIGNALS = {
     'days_pleasant_temp': {'score': 0.5601, 'corr': 0.1307, 'description': 'Days with pleasant temperature'},
     'nearby_traffic_lights_count': {'score': 0.4658, 'corr': 0.1372, 'description': 'Count of nearby traffic lights'},
     'rainy_days': {'score': 0.3574, 'corr': 0.0399, 'description': 'Number of rainy days'},
+    'count_of_costco_5miles': {'score': 0.2188, 'corr': 0.1097, 'description': 'Costco stores within 5 miles'},
     'count_of_walmart_5miles': {'score': 0.2188, 'corr': 0.1097, 'description': 'Walmart stores within 5 miles'},
     'competitor_1_google_user_rating_count': {'score': 0.2182, 'corr': 0.0354, 'description': 'Top competitor rating count'},
     'competitors_count': {'score': 0.0432, 'corr': 0.0257, 'description': 'Total competitors count'}
@@ -284,6 +290,10 @@ def analyze_site_from_dict(address:str) -> Dict:
     geo_cord = calib.get_lat_long(address)
     lat = geo_cord["lat"]
     lon = geo_cord["lon"]
+    # print("---------------------------")
+    # print("Geocode Details")
+    # print(geo_cord)
+    # print("---------------------------")
     weather_details = get_climate(lat, lon)
 
     total_sunshine_hours = weather_details["total_sunshine_hours"]
@@ -294,10 +304,11 @@ def analyze_site_from_dict(address:str) -> Dict:
     days_below_freezing = weather_details["days_below_freezing"]
     total_snowfall_cm = weather_details["total_snowfall_cm"]
 
-
-    # distance_from_nearest_costco = nearby_business_data["distance_from_nearest_costco"]
-    # count_of_walmart_5miles = nearby_business_data["count_of_walmart_5miles"]
-    # distance_from_nearest_walmart = nearby_business_data["distance_from_nearest_walmart"]
+    nearby_stores_data = get_nearby_stores_data(lat, lon)
+    distance_from_nearest_costco = nearby_stores_data.get("distance_from_nearest_costco")
+    count_of_costco_5miles = nearby_stores_data.get("count_of_costco_5miles", 0) or 0
+    count_of_walmart_5miles = nearby_stores_data.get("count_of_walmart_5miles", 0) or 0
+    distance_from_nearest_walmart = nearby_stores_data.get("distance_from_nearest_walmart")
 
     competitors_data = get_competitors(lat, lon)
     print("---------------------------")
@@ -323,9 +334,12 @@ def analyze_site_from_dict(address:str) -> Dict:
     feature_values["avg_daily_max_windspeed_ms"] = avg_daily_max_windspeed_ms
     feature_values["days_below_freezing"] = days_below_freezing
     feature_values["total_snowfall_cm"] = total_snowfall_cm
-    # feature_values["distance_from_nearest_costco"] = distance_from_nearest_costco
-    # feature_values["count_of_walmart_5miles"] = count_of_walmart_5miles
-    # feature_values["distance_from_nearest_walmart"] = distance_from_nearest_walmart
+    if distance_from_nearest_costco is not None:
+        feature_values["distance_from_nearest_costco"] = distance_from_nearest_costco
+    feature_values["count_of_costco_5miles"] = count_of_costco_5miles
+    feature_values["count_of_walmart_5miles"] = count_of_walmart_5miles
+    if distance_from_nearest_walmart is not None:
+        feature_values["distance_from_nearest_walmart"] = distance_from_nearest_walmart
     # feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
     # feature_values["competitors_count"] = competitors_count
     feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
@@ -334,11 +348,21 @@ def analyze_site_from_dict(address:str) -> Dict:
     feature_values["distance_nearest_traffic_light_4"] = distance_nearest_traffic_light_4
     feature_values["distance_nearest_traffic_light_7"] = distance_nearest_traffic_light_7
     feature_values["distance_nearest_traffic_light_9"] = distance_nearest_traffic_light_9
+
+    try:
+        with open(FEATURE_VALUES_LOG, "a") as f:
+            f.write(f"\n{'='*60}\n")
+            f.write(f"run_at={datetime.utcnow().isoformat()}Z address={address}\n")
+            f.write(f"lat={lat} lon={lon}\n")
+            f.write(json.dumps(feature_values, indent=2) + "\n")
+    except Exception as e:
+        print(f"Error log: {e}")
+
     return analyze_site_features(feature_values)
     # return feature_values
     # return None
 
 if __name__ == "__main__":
-    address = "cartersville , 1330 joe frank harris pkwy se , cartersville , ga , 30120"
+    address = "1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA"
     feature_values = analyze_site_from_dict(address)
     # print(feature_values)
