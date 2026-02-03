@@ -32,7 +32,7 @@ def download_satellite_image(api_key, latitude, longitude, place_id, satellite_i
 
     for attempt in range(3):
         try:
-            response = requests.get(base_url, params=params, timeout=15)
+            response = requests.get(base_url, params=params, timeout=30)
             response.raise_for_status()
 
             output_dir = os.path.dirname(output_filepath)
@@ -92,9 +92,9 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
 
     for attempt in range(3):
         try:
-            response = requests.post(base_url, headers=headers, data=json.dumps(payload), timeout=15)
+            response = requests.post(base_url, headers=headers, data=json.dumps(payload), timeout=30)
             response.raise_for_status()
-            return response.json()
+            return response.json()  
         except RequestException as e:
             print(f"Attempt {attempt + 1} for find_nearby_places failed: {e}")
             if attempt < 2:

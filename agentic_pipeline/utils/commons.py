@@ -15,7 +15,7 @@ def get_lat_long(address):
     retry=1
     while retry<=max_retry:
         try:
-            response = requests.get(url, params=params, timeout=30)
+            response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
             data = response.json()
 

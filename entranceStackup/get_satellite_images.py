@@ -32,7 +32,7 @@ def get_static_map_image(latitude, longitude, zoom, output_filepath, retries=3, 
     }
     for attempt in range(retries):
         try:
-            response = requests.get(base_url, params=params, timeout=15)
+            response = requests.get(base_url, params=params, timeout=30)
             response.raise_for_status()  # Raise an exception for bad status codes
 
             # Decode the image

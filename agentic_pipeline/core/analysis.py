@@ -196,7 +196,7 @@ def analyze_site_features(feature_values: Dict[str, float]) -> Dict:
     cons = []
     
     for feature_name, signal_info in POSITIVE_SIGNALS.items():
-        if feature_name in feature_values:
+        if feature_name in feature_values and feature_values[feature_name] is not None:
             value = feature_values[feature_name]
             impact, strength = calculate_feature_impact(feature_name, value, signal_info)
             normalized = normalize_feature_value(feature_name, value, 'positive')
@@ -223,7 +223,7 @@ def analyze_site_features(feature_values: Dict[str, float]) -> Dict:
                 })
     
     for feature_name, signal_info in NEGATIVE_SIGNALS.items():
-        if feature_name in feature_values:
+        if feature_name in feature_values and feature_values[feature_name] is not None:
             value = feature_values[feature_name]
             impact, strength = calculate_feature_impact(feature_name, value, signal_info)
             normalized = normalize_feature_value(feature_name, value, 'negative')
@@ -315,8 +315,8 @@ def analyze_site_from_dict(address:str) -> Dict:
     print("Competitors Data")
     print(competitors_data)
     print("---------------------------")
-    # competitor_1_google_user_rating_count = competitors_data["competitor_1_google_user_rating_count"]
-    # competitors_count = competitors_data["competitors_count"]
+    competitor_1_google_user_rating_count = competitors_data["competitor_1_google_user_rating_count"]
+    competitors_count = competitors_data["competitors_count"]
     
     traffic_data = get_traffic_lights(lat, lon)
     nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
@@ -340,14 +340,14 @@ def analyze_site_from_dict(address:str) -> Dict:
     feature_values["count_of_walmart_5miles"] = count_of_walmart_5miles
     if distance_from_nearest_walmart is not None:
         feature_values["distance_from_nearest_walmart"] = distance_from_nearest_walmart
-    # feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
-    # feature_values["competitors_count"] = competitors_count
     feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
     feature_values["distance_nearest_traffic_light_2"] = distance_nearest_traffic_light_2
     feature_values["distance_nearest_traffic_light_3"] = distance_nearest_traffic_light_3
     feature_values["distance_nearest_traffic_light_4"] = distance_nearest_traffic_light_4
     feature_values["distance_nearest_traffic_light_7"] = distance_nearest_traffic_light_7
     feature_values["distance_nearest_traffic_light_9"] = distance_nearest_traffic_light_9
+    feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
+    feature_values["competitors_count"] = competitors_count
 
     try:
         with open(FEATURE_VALUES_LOG, "a") as f:
