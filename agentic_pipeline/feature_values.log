@@ -1,48 +1,6 @@
 
 ============================================================
-run_at=2026-02-02T20:04:19.348725Z address=cartersville , 1330 joe frank harris pkwy se , cartersville , ga , 30120
-lat=34.2062036 lon=-84.8162081
-{
-  "total_sunshine_hours": 3326.638922222222,
-  "total_precipitation_mm": 1266.15,
-  "days_pleasant_temp": 163.0,
-  "rainy_days": 121.5,
-  "avg_daily_max_windspeed_ms": 16.640629912418596,
-  "days_below_freezing": 37.5,
-  "total_snowfall_cm": 4.375,
-  "count_of_walmart_5miles": 6,
-  "distance_from_nearest_walmart": 1.6408627246385588,
-  "nearby_traffic_lights_count": 21,
-  "distance_nearest_traffic_light_2": 0.18187265918405682,
-  "distance_nearest_traffic_light_3": 0.754785357281829,
-  "distance_nearest_traffic_light_4": 0.9787239880182727,
-  "distance_nearest_traffic_light_7": 1.1284694501329726,
-  "distance_nearest_traffic_light_9": 1.2155858414646288
-}
-
-============================================================
-run_at=2026-02-02T20:16:38.254955Z address=1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA
-lat=34.1848994 lon=-118.326125
-{
-  "total_sunshine_hours": 3828.680111111111,
-  "total_precipitation_mm": 657.25,
-  "days_pleasant_temp": 201.5,
-  "rainy_days": 46.0,
-  "avg_daily_max_windspeed_ms": 12.096356388951268,
-  "days_below_freezing": 0.0,
-  "total_snowfall_cm": 0.175,
-  "count_of_costco_5miles": 0,
-  "count_of_walmart_5miles": 0,
-  "nearby_traffic_lights_count": 170,
-  "distance_nearest_traffic_light_2": 0.17563210191309625,
-  "distance_nearest_traffic_light_3": 0.19642028167707157,
-  "distance_nearest_traffic_light_4": 0.21990999184926988,
-  "distance_nearest_traffic_light_7": 0.39648563084695637,
-  "distance_nearest_traffic_light_9": 0.4221420899894331
-}
-
-============================================================
-run_at=2026-02-02T20:19:30.000303Z address=1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA
+run_at=2026-02-03T12:41:39.963146Z address=1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA
 lat=34.1848994 lon=-118.326125
 {
   "total_sunshine_hours": 3828.680111111111,
@@ -53,7 +11,32 @@ lat=34.1848994 lon=-118.326125
   "days_below_freezing": 0.0,
   "total_snowfall_cm": 0.175,
   "distance_from_nearest_costco": 0.11207741046733326,
-  "count_of_costco_5miles": 6,
+  "count_of_costco_5miles": 7,
+  "count_of_walmart_5miles": 4,
+  "distance_from_nearest_walmart": 0.2317370490938458,
+  "nearby_traffic_lights_count": 170,
+  "distance_nearest_traffic_light_2": 0.17563210191309625,
+  "distance_nearest_traffic_light_3": 0.19642028167707157,
+  "distance_nearest_traffic_light_4": 0.21990999184926988,
+  "distance_nearest_traffic_light_7": 0.39648563084695637,
+  "distance_nearest_traffic_light_9": 0.4221420899894331,
+  "competitor_1_google_user_rating_count": null,
+  "competitors_count": 0
+}
+
+============================================================
+run_at=2026-02-03T12:49:13.092726Z address=1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA
+lat=34.1848994 lon=-118.326125
+{
+  "total_sunshine_hours": 3828.680111111111,
+  "total_precipitation_mm": 657.25,
+  "days_pleasant_temp": 201.5,
+  "rainy_days": 46.0,
+  "avg_daily_max_windspeed_ms": 12.096356388951268,
+  "days_below_freezing": 0.0,
+  "total_snowfall_cm": 0.175,
+  "distance_from_nearest_costco": 0.11207741046733326,
+  "count_of_costco_5miles": 7,
   "count_of_walmart_5miles": 7,
   "distance_from_nearest_walmart": 0.2317370490938458,
   "nearby_traffic_lights_count": 170,
@@ -61,5 +44,7 @@ lat=34.1848994 lon=-118.326125
   "distance_nearest_traffic_light_3": 0.19642028167707157,
   "distance_nearest_traffic_light_4": 0.21990999184926988,
   "distance_nearest_traffic_light_7": 0.39648563084695637,
-  "distance_nearest_traffic_light_9": 0.4221420899894331
+  "distance_nearest_traffic_light_9": 0.4221420899894331,
+  "competitor_1_google_user_rating_count": null,
+  "competitors_count": 0
 }

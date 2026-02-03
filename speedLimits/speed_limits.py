@@ -28,7 +28,7 @@ def get_nearest_roads_with_speed(lat, lon, radius_meters):
     # This query finds all 'ways' (roads) with a 'highway' and 'maxspeed' tag
     # that are within the specified radius of the lat/lon.
     query = f"""
-    [out:json][timeout:25];
+    [out:json][timeout:120];
     (
       way(around:{radius_meters},{lat},{lon})["highway"]["maxspeed"];
     );
