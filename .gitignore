@@ -1,29 +1,72 @@
-/collectedImages
-competitors/datasets
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
 .env
-venv/
-.venv/
+*.pid
+.venv
 env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+testing_pipeline.py
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
-*.DS_Store
-/streetViewImages
-competitors/place_images
-/yelp_images
-competitors/satellite_images
-competitors/output_csv
-competitors/__pycache__
-competitors/apiExamples/__pycache__
-competitors/.env
-Data+Code
-siteAccessibility/satellite_images
-siteAccessibility/apiExamples/__pycache__
-typeOfSite/satellite_images
-typeOfSite/satellite_images_v1
-tunnelIdentification/satellite_images
-tunnelIdentification/place_images
-tunnelIdentification/output_csv
-*.pyc
-tennis_court_images
-tunnelLength/satellite_images
-tunnelLength/satellite_images
-entranceStackup/satellite_images
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+
+# Redis
+dump.rdb
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
