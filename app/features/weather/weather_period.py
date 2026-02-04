@@ -1,6 +1,6 @@
+import sys
 import requests
 from datetime import datetime, timedelta
-import sys
 
 # --- Configuration ---
 BASE_URL_HISTORICAL_WEATHER = "https://archive-api.open-meteo.com/v1/archive"

@@ -1,12 +1,11 @@
-import pandas as pd
 import os
 import csv
 import sys
+import pandas as pd
+from nearbyStores.nearby_costcos import get_costco_info
 
-# Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from nearbyStores.nearby_costcos import get_costco_info
 
 def process_data(start_index, end_index):
     excel_file_path = 'climate/unscaled_clean_dataset.xlsx'

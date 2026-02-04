@@ -1,10 +1,10 @@
-import requests
-import json
 import os
-from dotenv import load_dotenv
-from geo_utils import calculate_distance
+import json
+import requests
+from app.utils import common as calib
 
-load_dotenv()
+API_KEY = calib.GOOGLE_MAPS_API_KEY
+
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=2, included_types=None, max_results=10):
     """
@@ -83,7 +83,7 @@ def get_nearby_business_count(latitude: float, longitude: float):
         A dictionary with the results, or None if an error occurs.
     """
     # API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+    # API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
     if not API_KEY:
         print("ERROR: GOOGLE_MAPS_API_KEY environment variable not set.")
         return None
@@ -157,7 +157,7 @@ def get_nearby_business_count(latitude: float, longitude: float):
         })
 
     if final_result:
-        distance = calculate_distance(latitude, longitude, float(car_wash_latitude), float(car_wash_longitude))
+        distance = calib.calculate_distance(latitude, longitude, float(car_wash_latitude), float(car_wash_longitude))
         final_result['distance'] = distance
         
         # Calculate distance between car wash and nearest businesses

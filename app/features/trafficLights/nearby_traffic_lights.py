@@ -1,6 +1,6 @@
-import requests
 import json
-from geo_utils import calculate_distance
+import requests
+from app.utils import common as calib
 
 def get_nearby_traffic_lights(lat, lon, radius=3218.68):
     """
@@ -36,7 +36,7 @@ def get_nearby_traffic_lights(lat, lon, radius=3218.68):
         light_lat = light.get('lat')
         light_lon = light.get('lon')
         if light_lat is not None and light_lon is not None:
-            distance = calculate_distance(lat, lon, light_lat, light_lon)
+            distance = calib.calculate_distance(lat, lon, light_lat, light_lon)
             light['distance_miles'] = distance
 
     # Filter out lights that couldn't have distance calculated and sort
@@ -66,7 +66,7 @@ def filter_duplicate_locations(sorted_lights, threshold_miles=0.05):
     for light in sorted_lights:
         is_duplicate = False
         for unique_light in unique_lights:
-            distance = calculate_distance(
+            distance = calib.calculate_distance(
                 light['lat'], light['lon'],
                 unique_light['lat'], unique_light['lon']
             )

@@ -4,7 +4,7 @@ import re
 import requests
 from datetime import datetime
 from pathlib import Path
-from agentic_pipeline.utils import get_llm_response
+from app.utils.llm import local_llm as llm
 from .prompts import build_rationale_prompt, build_pros_cons_prompt
 from sonnysDataCollection.app.server.app import get_climate, get_competitors, get_traffic_lights
 from nearbyStores.nearby_stores import get_nearby_stores_data
@@ -88,7 +88,7 @@ def generate_llm_rationale(feature_values: Dict[str, float], pros: List[Dict], c
     prompt = build_rationale_prompt(pros_text, cons_text)
     
     try:
-        response = get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
+        response = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
         text = response.get("generated_text", "")
         print(f"[DEBUG] Raw LLM response for rationale:\n{text}\n{'='*80}")
         return text if text else "Analysis completed based on feature correlations."
@@ -109,7 +109,7 @@ def generate_llm_pros_cons(feature_values: Dict[str, float], pros: List[Dict], c
     prompt = build_pros_cons_prompt(pros_data, cons_data)
     
     try:
-        response = get_llm_response(prompt, reasoning_effort="medium", temperature=0.4)
+        response = llm.get_llm_response(prompt, reasoning_effort="medium", temperature=0.4)
         text = response.get("generated_text", "")
         
         print(f"[DEBUG] Raw LLM response for pros/cons:\n{text}\n{'='*80}")

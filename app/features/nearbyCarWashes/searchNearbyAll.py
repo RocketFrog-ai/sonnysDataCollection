@@ -1,6 +1,9 @@
-import requests
 import json
 import math
+import requests
+from app.utils import common as calib
+
+API_KEY = calib.GOOGLE_MAPS_API_KEY
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_types=None, max_results=10, rank_preference="POPULARITY"):
     """
@@ -85,7 +88,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, included_ty
 if __name__ == "__main__":
     # --- Configuration ---
     # IMPORTANT: Replace YOUR_API_KEY with your actual key. Do not share your key publicly.
-    API_KEY = "AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA" 
+    # API_KEY = "AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA" 
     LATITUDE =  42.55114
     LONGITUDE = -71.7638088
     

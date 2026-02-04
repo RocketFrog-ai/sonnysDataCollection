@@ -1,11 +1,11 @@
 import pandas as pd
 import json
 import math
-from searchNearbyAll import find_nearby_places # Import the function
+from searchNearbyAll import find_nearby_places
+from app.utils import common as calib
 
-# --- Configuration ---
-# IMPORTANT: Replace YOUR_API_KEY with your actual key. Do not share your key publicly.
-API_KEY = "AIzaSyCXxpPx_liQXml0e6Wc0v4Zg_uvEhlOTcA" 
+
+API_KEY = calib.GOOGLE_MAPS_API_KEY
 EXCEL_FILE_PATH = "nearbyCarWashes/1mile_raw_data.xlsx" # Assuming this is the correct file based on previous context
 OUTPUT_CSV_PATH = "nearbyCarWashes/car_wash_analysis.csv"
 

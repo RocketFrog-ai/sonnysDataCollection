@@ -5,7 +5,7 @@ import time
 
 # --- Configuration ---
 START_YEAR = 2015
-END_YEAR = 2024 # Inclusive, last completed year
+END_YEAR = 2024
 START_DATE_STR = f"{START_YEAR}-01-01"
 END_DATE_STR = f"{END_YEAR}-12-31"
 
