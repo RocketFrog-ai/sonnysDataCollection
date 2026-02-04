@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 from app.utils import common as calib
 from app.server.models import *
 from app.ai.analysis import analyze_site_from_dict
+from app.celery.tasks import analyse_site
 
 
 REDIS_HOST = calib.REDIS_HOST
@@ -38,8 +39,12 @@ def analyze_site(features: AnalyseRequest):
         raise HTTPException(status_code=400, detail="No site adddress provided")
     
     try:
-        result = analyze_site_from_dict(features["address"])
-        return result
+        result = analyse_site.delay(features["address"])
+        return TaskResponse(
+            task_id=result.id,
+            status=TaskStatus.PENDING,
+            message="Site succesfully submitted for Analysis"
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing site: {str(e)}")
 
