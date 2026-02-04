@@ -1,10 +1,7 @@
 import json
 import time
-from dotenv import load_dotenv
+from app.utils.llm import local_llm as llm
 
-from agentic_pipeline.utils import get_llm_response
-
-load_dotenv()
 
 CLASSIFIER_PROMPT = """You are a smart classifier for car wash businesses. Your goal is to decide whether a business is a Competitor or Not a Competitor based on its name or description.
 
@@ -61,7 +58,7 @@ def keywordclassifier(car_wash_name: str):
 
     for attempt in range(3):
         try:
-            response = get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
+            response = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
             full_response_content = response.get("generated_text", "")
             if full_response_content:
                 break

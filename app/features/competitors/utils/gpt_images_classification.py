@@ -7,15 +7,13 @@ import openai
 from openai import AzureOpenAI
 from pydantic import BaseModel, Field
 from typing import Literal
-from dotenv import load_dotenv
-
-load_dotenv()
+from app.utils import common as calib
 
 # --- Azure OpenAI Configuration ---
-AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
-AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
-AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_MODEL_DEPLOYMENT_NAME", "gpt-4o")
+AZURE_OPENAI_ENDPOINT = calib.AZURE_OPENAI_ENDPOINT
+AZURE_OPENAI_API_KEY = calib.AZURE_OPENAI_API_KEY
+AZURE_OPENAI_API_VERSION = calib.AZURE_OPENAI_API_VERSION
+AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = calib.AZURE_OPENAI_MODEL_DEPLOYMENT_NAME
 
 # --- Pydantic Model for Car Wash Classification ---
 class CarWashClassification(BaseModel):

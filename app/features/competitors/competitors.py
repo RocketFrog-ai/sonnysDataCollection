@@ -1,27 +1,29 @@
-import pandas as pd
 import os
-from dotenv import load_dotenv
 import time
 import traceback
+import pandas as pd
+from app.utils import common as calib
 from utils.competitor_matcher import match_competitors
-from utils.placePhotos import get_photo_references_and_name, download_photo
 from utils.keyword_classification import keywordclassifier
 from utils.gpt_images_classification import visionModelResponse
 from utils.file_utils import sanitize_filename, get_place_image_count
-from utils.geo_utils import calculate_distance
+from utils.placePhotos import get_photo_references_and_name, download_photo
 from utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
 
-IMAGE_DIR = "competitors/place_images"
+
+RFW_HOME = calib.RFW_HOME
+API_KEY = calib.GOOGLE_MAPS_API_KEY
+
+IMAGE_DIR = os.path.join(RFW_HOME, "data", "competitors","place_images")
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
-SATELLITE_IMAGE_BASE_DIR = "competitors/satellite_images"
+SATELLITE_IMAGE_BASE_DIR = os.path.join(RFW_HOME,"competitors", "satellite_images")
 if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
     os.makedirs(SATELLITE_IMAGE_BASE_DIR)
 
 def count_competitors(original_latitude, original_longitude):
-    load_dotenv()
-    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+    API_KEY = calib.GOOGLE_MAPS_API_KEY
     if not API_KEY or API_KEY == "YOUR_API_KEY":
         return {"error": "Please replace 'YOUR_API_KEY' with your actual value in the script."}
 
@@ -50,7 +52,7 @@ def count_competitors(original_latitude, original_longitude):
             place_longitude = place.get("location", {}).get("longitude")
             place_id = place.get("id")
             is_competitor = False
-            distance = calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
+            distance = calib.calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
             rating = place.get("rating")
             user_rating_count = place.get("userRatingCount")
             

@@ -2,12 +2,11 @@ import pandas as pd
 import os
 import csv
 import sys
-from geo_utils import calculate_distance
+from nearbyBusinesses.nearby_businesses import get_nearby_business_count
 
-# Add the project root to the Python path
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from nearbyBusinesses.nearby_businesses import get_nearby_business_count
 
 def process_data(start_index, end_index):
     excel_file_path = 'trafficLights/1mile_raw_data.xlsx'

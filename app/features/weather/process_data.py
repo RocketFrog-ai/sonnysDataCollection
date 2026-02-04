@@ -1,13 +1,13 @@
-import pandas as pd
 import os
 import csv
 import sys
 import time
+import pandas as pd
+from app.features.weather.open_meteo import get_climate_data
 
 # Add the project root to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from climate.open_meteo import get_climate_data
 
 def process_data(start_index, end_index):
     excel_file_path = 'climate/unscaled_clean_dataset.xlsx'

@@ -1,10 +1,9 @@
-import requests
-import json
 import os
-from dotenv import load_dotenv
-from nearbyStores.geo_utils import calculate_distance
+import json
+import requests
+from app.utils import common as calib
 
-load_dotenv()
+API_KEY = calib.GOOGLE_MAPS_API_KEY
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=None, included_types=None, max_results=10):
     if keyword:
@@ -67,7 +66,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=Non
                 place_lat = place.get("location", {}).get("latitude")
                 place_lon = place.get("location", {}).get("longitude")
                 if place_lat and place_lon:
-                    distance = calculate_distance(latitude, longitude, place_lat, place_lon)
+                    distance = calib.calculate_distance(latitude, longitude, place_lat, place_lon)
                     if distance <= radius_miles:
                         filtered_places.append(place)
             data["places"] = filtered_places
@@ -83,7 +82,7 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=1, keyword=Non
     return None
 
 def get_walmart_info(latitude: float, longitude: float):
-    API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+    # API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
     if not API_KEY:
         print("ERROR: GOOGLE_MAPS_API_KEY environment variable not set.")
         return None
@@ -132,7 +131,7 @@ def get_walmart_info(latitude: float, longitude: float):
                 plat = place_loc.get('latitude')
                 plon = place_loc.get('longitude')
                 if plat and plon:
-                    distance = calculate_distance(
+                    distance = calib.calculate_distance(
                         center_latitude, center_longitude,
                         plat, plon
                     )

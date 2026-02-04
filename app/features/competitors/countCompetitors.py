@@ -1,29 +1,32 @@
-import pandas as pd
 import os
-from dotenv import load_dotenv
+import sys
 import time
 import traceback
+import pandas as pd
+from app.utils import common as calib
 from utils.competitor_matcher import match_competitors
-from utils.placePhotos import get_photo_references_and_name, download_photo
 from utils.keyword_classification import keywordclassifier
-# from utils.gemini_images_classification import visionModelResponse
 from utils.gpt_images_classification import visionModelResponse
 from utils.file_utils import sanitize_filename, get_place_image_count
-from utils.geo_utils import calculate_distance
+from utils.placePhotos import get_photo_references_and_name, download_photo
 from utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
 
+
+RFW_HOME = calib.RFW_HOME
+API_KEY = calib.GOOGLE_MAPS_API_KEY
+
+
 # Directory to save downloaded images (relative to competitors/)
-IMAGE_DIR = "place_images"
+IMAGE_DIR = os.path.join(RFW_HOME, "place_images")
 if not os.path.exists(IMAGE_DIR):
     os.makedirs(IMAGE_DIR)
 
 # Directory for satellite images (relative to competitors/)
-SATELLITE_IMAGE_BASE_DIR = "satellite_images"
+SATELLITE_IMAGE_BASE_DIR = os.path.join(RFW_HOME, "satellite_images")
 if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
     os.makedirs(SATELLITE_IMAGE_BASE_DIR)
 
 if __name__ == "__main__":
-    import sys
 
     if len(sys.argv) != 3:
         print("Usage: python countCompetitors.py <start_index> <end_index>")
@@ -36,9 +39,7 @@ if __name__ == "__main__":
         print("Invalid start or end index provided. Please provide integers.")
         sys.exit(1)
 
-    load_dotenv()
-    # --- Configuration ---
-    API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
+    # API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
     EXCEL_PATH = 'datasets/1mile_raw_data.xlsx'
     OUTPUT_DIR = 'output_csv'
     OUTPUT_FILENAME = 'competitor_analysis.csv'
@@ -128,7 +129,7 @@ if __name__ == "__main__":
                     place_longitude = place.get("location", {}).get("longitude")
                     place_id = place.get("id")
                     is_competitor = False
-                    distance = calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
+                    distance = calib.calculate_distance(original_latitude, original_longitude, place_latitude, place_longitude)
                     rating = place.get("rating")
                     user_rating_count = place.get("userRatingCount")
                     

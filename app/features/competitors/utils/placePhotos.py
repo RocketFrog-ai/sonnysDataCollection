@@ -1,14 +1,12 @@
-import requests
 import os
-import re # Added for sanitize_filename
-from dotenv import load_dotenv
+import re
 import os
 import time
-
-load_dotenv()
+import requests
+from app.utils import common as calib
 
 # --- Configuration ---
-API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY") # <--- REPLACE WITH YOUR ACTUAL API KEY
+API_KEY = calib.GOOGLE_MAPS_API_KEY
 # Ensure this API key has "Places API" enabled in your Google Cloud Console.
 
 # --- API Endpoints ---
