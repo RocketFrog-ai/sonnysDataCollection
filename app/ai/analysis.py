@@ -6,9 +6,9 @@ from datetime import datetime
 from pathlib import Path
 from app.utils.llm import local_llm as llm
 from .prompts import build_rationale_prompt, build_pros_cons_prompt
-from sonnysDataCollection.app.server.app import get_climate, get_competitors, get_traffic_lights
+from app.server.app import get_climate, get_competitors, get_traffic_lights
 from nearbyStores.nearby_stores import get_nearby_stores_data
-from agentic_pipeline.utils import commons as calib
+from app.utils import common as calib 
 
 FEATURE_VALUES_LOG = Path(__file__).resolve().parent.parent / "feature_values.log"
 

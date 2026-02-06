@@ -3,12 +3,12 @@ import time
 import traceback
 import pandas as pd
 from app.utils import common as calib
-from utils.competitor_matcher import match_competitors
-from utils.keyword_classification import keywordclassifier
-from utils.gpt_images_classification import visionModelResponse
-from utils.file_utils import sanitize_filename, get_place_image_count
-from utils.placePhotos import get_photo_references_and_name, download_photo
-from utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
+from app.features.competitors.utils.competitor_matcher import match_competitors
+from app.features.competitors.utils.keyword_classification import keywordclassifier
+from app.features.competitors.utils.gpt_images_classification import visionModelResponse
+from app.features.competitors.utils.file_utils import sanitize_filename, get_place_image_count
+from app.features.competitors.utils.placePhotos import get_photo_references_and_name, download_photo
+from app.features.competitors.utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
 
 
 RFW_HOME = calib.RFW_HOME

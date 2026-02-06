@@ -3,7 +3,6 @@ import logging
 from app.utils import common as calib
 from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
-from app.utils import common as calib
 from app.server.models import *
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
