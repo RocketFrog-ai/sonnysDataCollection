@@ -4,27 +4,36 @@ import traceback
 import pandas as pd
 from urllib.parse import quote
 from math import radians, sin, cos, sqrt, atan2
+from dotenv import load_dotenv
+load_dotenv()
 
+RFW_HOME = os.getenv("RFW_HOME","")
+REDIS_HOST = os.getenv("REDIS_HOST", "")
+REDIS_PORT = os.getenv("REDIS_PORT", "")
+REDIS_DB = os.getenv("REDIS_DB", "")
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "")
+FAST_API_HOST = os.getenv("FAST_API_HOST", "")
+FAST_API_PORT = os.getenv("FAST_API_PORT", "8002")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY","")
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT","")
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY","")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION","")
+AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_MODEL_DEPLOYMENT_NAME","")
+TOMTOM_GEOCODE_API_URL = os.getenv("TOMTOM_GEOCODE_API_URL","")
+TOMTOM_API_KEY = os.getenv("TOMTOM_API_KEY","")
+LOCAL_LLM_URL = os.getenv("LOCAL_LLM_URL", "")
+LOCAL_LLM_API_KEY = os.getenv("LOCAL_LLM_API_KEY", "")
 
-RFW_HOME = os.getenviron("RFW_HOME","")
-REDIS_HOST = os.getenviron("REDIS_HOST", "")
-REDIS_PORT = os.getenviron("REDIS_PORT", "")
-REDIS_DB = os.getenviron("REDIS_DB", "")
-REDIS_PASSWORD = os.getenviron("REDIS_PASSWORD", "")
-CELERY_BROKER_URL = os.getenviron("CELERY_BROKER_URL", "")
-CELERY_RESULT_BACKEND = os.getenviron("CELERY_RESULT_BACKEND", "")
-FAST_API_HOST = os.getenviron("FAST_API_HOST", "")
-FAST_API_PORT = os.getenviron("FAST_API_PORT", "")
-GEMINI_API_KEY = os.getenviron("GEMINI_API_KEY","")
-GOOGLE_MAPS_API_KEY = os.getenviron("GOOGLE_MAPS_API_KEY","")
-AZURE_OPENAI_ENDPOINT = os.getenviron("AZURE_OPENAI_ENDPOINT","")
-AZURE_OPENAI_API_KEY = os.getenviron("AZURE_OPENAI_API_KEY","")
-AZURE_OPENAI_API_VERSION = os.getenviron("AZURE_OPENAI_API_VERSION","")
-AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = os.getenviron("AZURE_OPENAI_MODEL_DEPLOYMENT_NAME","")
-TOMTOM_GEOCODE_API_URL = os.getenviron("TOMTOM_GEOCODE_API_URL","")
-TOMTOM_API_KEY = os.getenviron("TOMTOM_API_KEY","")
-LOCAL_LLM_URL = os.getenviron("LOCAL_LLM_URL", "")
-LOCAL_LLM_API_KEY = os.getenviron("LOCAL_LLM_API_KEY", "")
+# Celery task retry settings (delay in seconds)
+TASK_RETRY_DELAY = int(os.getenv("TASK_RETRY_DELAY", "60"))
+TASK_MAX_RETRIES = int(os.getenv("TASK_MAX_RETRIES", "3"))
+
+# External service (optional, for tasks)
+EXTERNAL_SERVICE_URL = os.getenv("EXTERNAL_SERVICE_URL", "")
+EXTERNAL_SERVICE_TIMEOUT = int(os.getenv("EXTERNAL_SERVICE_TIMEOUT", "30"))
 
 
 def get_lat_long(address):

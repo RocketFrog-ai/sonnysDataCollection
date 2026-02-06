@@ -15,6 +15,45 @@
 # from competitors.api import count_competitors
 
 
+
+from app.features.weather.open_meteo import get_climate_data as _get_climate_data
+from app.features.trafficLights.nearby_traffic_lights import get_nearby_traffic_lights, filter_duplicate_locations
+from app.features.competitors.competitors import count_competitors as _count_competitors
+
+
+def get_climate(lat: float, lon: float):
+    """Return climate data for (lat, lon). Used by analysis."""
+    climate_data = _get_climate_data(lat, lon, "2024", "2025")
+    if climate_data:
+        return climate_data
+    return {"error": "Could not retrieve climate data."}
+
+
+def get_traffic_lights(lat: float, lon: float):
+    """Return nearby traffic lights summary for (lat, lon). Used by analysis."""
+    sorted_traffic_lights = get_nearby_traffic_lights(lat, lon)
+    unique_traffic_lights = filter_duplicate_locations(sorted_traffic_lights)
+    output_row = {
+        "Latitude": lat,
+        "Longitude": lon,
+        "nearby_traffic_lights_count": len(unique_traffic_lights),
+    }
+    for i in range(10):
+        if i < len(unique_traffic_lights):
+            output_row[f"distance_nearest_traffic_light_{i+1}"] = unique_traffic_lights[i]["distance_miles"]
+        else:
+            output_row[f"distance_nearest_traffic_light_{i+1}"] = None
+    return output_row
+
+
+def get_competitors(lat: float, lon: float):
+    """Return competitors summary for (lat, lon). Used by analysis."""
+    competitors_summary = _count_competitors(lat, lon)
+    if competitors_summary and "error" not in competitors_summary:
+        return competitors_summary
+    return {"error": "Could not retrieve competitors data.", "competitors_count": 0, "competitor_1_google_user_rating_count": None}
+
+
 # app = FastAPI()
 
 # @app.get("/climate")
