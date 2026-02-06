@@ -34,11 +34,11 @@ def get_redis_client():
 def analyze_site(features: AnalyseRequest):
     # feature_dict = {k: v for k, v in features.dict().items() if v is not None}
     
-    if "address" not in features:
-        raise HTTPException(status_code=400, detail="No site adddress provided")
+    if not features.address:
+        raise HTTPException(status_code=400, detail="No site address provided")
     
     try:
-        result = analyse_site.delay(features["address"])
+        result = analyse_site.delay(features.address)
         return TaskResponse(
             task_id=result.id,
             status=TaskStatus.PENDING,
