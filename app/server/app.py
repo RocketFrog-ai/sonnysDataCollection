@@ -16,14 +16,20 @@
 
 
 
-from app.features.weather.open_meteo import get_climate_data as _get_climate_data
+from app.features.weather.open_meteo import (
+    get_climate_data as _get_climate_data,
+    get_climate_data_for_range as _get_climate_data_for_range,
+    get_default_weather_range as _get_default_weather_range,
+)
 from app.features.trafficLights.nearby_traffic_lights import get_nearby_traffic_lights, filter_duplicate_locations
 from app.features.competitors.competitors import count_competitors as _count_competitors
 
 
-def get_climate(lat: float, lon: float):
-    """Return climate data for (lat, lon). Used by analysis."""
-    climate_data = _get_climate_data(lat, lon, "2024", "2025")
+def get_climate(lat: float, lon: float, start_date: str = None, end_date: str = None):
+    if start_date is not None and end_date is not None:
+        climate_data = _get_climate_data_for_range(lat, lon, start_date, end_date)
+    else:
+        climate_data = _get_climate_data(lat, lon, "2024", "2025")
     if climate_data:
         return climate_data
     return {"error": "Could not retrieve climate data."}
@@ -52,6 +58,17 @@ def get_competitors(lat: float, lon: float):
     if competitors_summary and "error" not in competitors_summary:
         return competitors_summary
     return {"error": "Could not retrieve competitors data.", "competitors_count": 0, "competitor_1_google_user_rating_count": None}
+
+
+def get_nearby_stores(lat: float, lon: float):
+    try:
+        from nearbyStores.nearby_stores import get_nearby_stores_data as _get_nearby_stores_data
+        data = _get_nearby_stores_data(lat, lon)
+        if data:
+            return data
+    except Exception:
+        pass
+    return {"error": "Could not retrieve nearby stores data."}
 
 
 # app = FastAPI()

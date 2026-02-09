@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, date
 import time
 
 # --- Configuration ---
@@ -19,7 +19,8 @@ PLEASANT_TEMP_MAX_C = 25.0
 BASE_URL_HISTORICAL_WEATHER = "https://archive-api.open-meteo.com/v1/archive"
 
 def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, retries=5, backoff_factor=20):
-    """Fetches historical weather data from Open-Meteo with retry logic."""
+    start_date = str(start_date).strip()
+    end_date = str(end_date).strip()
     weather_params = {
         "latitude": latitude,
         "longitude": longitude,
@@ -63,10 +64,46 @@ def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, ret
     print(f"Failed to fetch weather data for {latitude},{longitude} after {retries} retries.")
     return pd.DataFrame()
 
+def get_default_weather_range():
+    today = date.today()
+    end_year = today.year if today.month == 12 else today.year - 1
+    end_date = date(end_year, 12, 31)
+    start_date = date(end_year - 1, 12, 31)
+    return start_date.isoformat(), end_date.isoformat()
+
+
+def get_climate_data_for_range(latitude, longitude, start_date_str, end_date_str):
+    start_date_str = str(start_date_str).strip()
+    end_date_str = str(end_date_str).strip()
+    weather_df = fetch_open_meteo_weather_data(latitude, longitude, start_date_str, end_date_str)
+    if weather_df.empty:
+        return None
+    total_precipitation = weather_df["precipitation_sum"].sum(skipna=True)
+    rainy_days = (weather_df["precipitation_sum"] > RAIN_DAY_THRESHOLD_MM).sum()
+    total_snowfall = weather_df["snowfall_sum"].sum(skipna=True)
+    days_below_freezing = (weather_df["temperature_2m_min"] < FREEZING_THRESHOLD_C).sum()
+    total_sunshine_hours = weather_df["sunshine_duration"].sum(skipna=True) / 3600.0
+    weather_df_copy = weather_df.copy()
+    weather_df_copy.loc[:, "temp_avg_approx"] = (
+        weather_df_copy["temperature_2m_min"] + weather_df_copy["temperature_2m_max"]
+    ) / 2
+    days_pleasant_temp = (
+        (weather_df_copy["temp_avg_approx"] >= PLEASANT_TEMP_MIN_C)
+        & (weather_df_copy["temp_avg_approx"] <= PLEASANT_TEMP_MAX_C)
+    ).sum()
+    avg_daily_max_windspeed_ms = weather_df["windspeed_10m_max"].mean(skipna=True)
+    return {
+        "total_precipitation_mm": float(total_precipitation),
+        "rainy_days": int(rainy_days),
+        "total_snowfall_cm": float(total_snowfall),
+        "days_below_freezing": int(days_below_freezing),
+        "total_sunshine_hours": float(total_sunshine_hours),
+        "days_pleasant_temp": int(days_pleasant_temp),
+        "avg_daily_max_windspeed_ms": float(avg_daily_max_windspeed_ms),
+    }
+
+
 def get_climate_data(latitude, longitude, start_year, end_year):
-    """
-    Calculates climatological averages for a given location.
-    """
     START_DATE_STR = f"{start_year}-01-01"
     END_DATE_STR = f"{end_year}-12-31"
     weather_df = fetch_open_meteo_weather_data(latitude, longitude, START_DATE_STR, END_DATE_STR)
