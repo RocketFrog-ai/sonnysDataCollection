@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 from app.server.models import *
+from app.server.app import get_climate, get_competitors, get_traffic_lights, get_nearby_stores
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
@@ -22,6 +23,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+def _geocode(address: str):
+    if not address or not address.strip():
+        raise HTTPException(status_code=400, detail="Address is required")
+    geo = calib.get_lat_long(address)
+    lat = geo.get("lat")
+    lon = geo.get("lon")
+    if lat is None or lon is None:
+        raise HTTPException(status_code=400, detail="Could not geocode address")
+    return lat, lon
+
+
 def get_redis_client():
     return redis.Redis(
         host=REDIS_HOST,
@@ -34,11 +46,8 @@ def get_redis_client():
 
 @router.post("/analyze-site")
 def analyze_site(features: AnalyseRequest):
-    # feature_dict = {k: v for k, v in features.dict().items() if v is not None}
-    
     if not features.address:
         raise HTTPException(status_code=400, detail="No site address provided")
-    
     try:
         result = analyse_site.delay(features.address)
         return TaskResponse(
@@ -48,6 +57,88 @@ def analyze_site(features: AnalyseRequest):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error analyzing site: {str(e)}")
+
+
+@router.post("/analyze-site/direct")
+def analyze_site_direct(features: AnalyseRequest):
+    if not features.address:
+        raise HTTPException(status_code=400, detail="No site address provided")
+    try:
+        result = analyze_site_from_dict(features.address)
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Direct analyze failed")
+        raise HTTPException(status_code=500, detail=f"Error analyzing site: {str(e)}")
+
+
+def _resolve_weather_dates(start_date: str = None, end_date: str = None):
+    from app.features.weather.open_meteo import get_default_weather_range
+    if start_date and end_date:
+        return str(start_date).strip(), str(end_date).strip()
+    default_start, default_end = get_default_weather_range()
+    return default_start, default_end
+
+
+@router.post("/weather")
+def get_weather(req: WeatherRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
+        data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "start_date": start_date,
+            "end_date": end_date,
+            "data": data,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/traffic-lights")
+def get_traffic_lights_endpoint(features: AnalyseRequest):
+    try:
+        lat, lon = _geocode(features.address)
+        data = get_traffic_lights(lat, lon)
+        return {"address": features.address, "lat": lat, "lon": lon, "data": data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Traffic lights fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/nearby-stores")
+def get_nearby_stores_endpoint(features: AnalyseRequest):
+    try:
+        lat, lon = _geocode(features.address)
+        data = get_nearby_stores(lat, lon)
+        return {"address": features.address, "lat": lat, "lon": lon, "data": data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Nearby stores fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/competitors")
+def get_competitors_endpoint(features: AnalyseRequest):
+    try:
+        lat, lon = _geocode(features.address)
+        data = get_competitors(lat, lon)
+        return {"address": features.address, "lat": lat, "lon": lon, "data": data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Competitors fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/task/{task_id}", response_model=TaskStatusResponse)

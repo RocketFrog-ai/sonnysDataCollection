@@ -7,6 +7,12 @@ from enum import Enum
 class AnalyseRequest(BaseModel):
     address: str = None
 
+
+class WeatherRequest(BaseModel):
+    address: str = None
+    start_date: Optional[str] = Field(None)
+    end_date: Optional[str] = Field(None)
+
 class TaskStatus(str, Enum):
     """Task status enumeration"""
     PENDING = "PENDING"
