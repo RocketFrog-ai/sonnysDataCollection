@@ -26,15 +26,16 @@ else
 fi
 
 
-cd $RFW_HOME/sonnysDataCollection/
+REPO_ROOT="$RFW_HOME/sonnysDataCollection"
+cd "$REPO_ROOT" || exit 3
 
 # So "from utils.xxx" in app/features/competitors and "from nearbyStores.xxx" in app/features/nearbyStores resolve
-export PYTHONPATH="${RFW_HOME}/sonnysDataCollection/app/features/competitors:${RFW_HOME}/sonnysDataCollection/app/features${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${REPO_ROOT}/app/features/competitors:${REPO_ROOT}/app/features${PYTHONPATH:+:$PYTHONPATH}"
 
+mkdir -p "$REPO_ROOT/logs"
 bs_log_fn="proforma-fastapi-"`date +"%d-%b-%Y-%H-%M-%S"`".log";echo $curr_ts
-bs_log_pfn="$RFW_HOME/logs/""$bs_log_fn"
+bs_log_pfn="$REPO_ROOT/logs/$bs_log_fn"
 echo "start_uvicorn_fast_api.sh - MESSAGE: Starting the server now logs available in: $bs_log_pfn"
 
-# nohup python -m ca.server.apis --env_name $ENV_NAME >$bs_log_pfn 2>&1 &
-PYTHONPATH="${RFW_HOME}/sonnysDataCollection/app/features/competitors:${RFW_HOME}/sonnysDataCollection/app/features${PYTHONPATH:+:$PYTHONPATH}" nohup python -m app.server.main >"$bs_log_pfn" 2>&1 &
-echo $! > "fastapi_$ENV_NAME.pid"
+PYTHONPATH="${REPO_ROOT}/app/features/competitors:${REPO_ROOT}/app/features${PYTHONPATH:+:$PYTHONPATH}" nohup python -m app.server.main >"$bs_log_pfn" 2>&1 &
+echo $! > "$REPO_ROOT/fastapi_$ENV_NAME.pid"
