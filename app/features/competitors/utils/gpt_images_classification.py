@@ -77,6 +77,7 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
 
     # 2. Load Place Photos (up to 9)
     print(f"Loading images from: {place_images_folder_path}")
+    os.makedirs(place_images_folder_path, exist_ok=True)
     if os.path.isdir(place_images_folder_path):
         image_files = [f for f in os.listdir(place_images_folder_path) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))]
         for filename in image_files[:9]:
@@ -89,7 +90,7 @@ def visionModelResponse(place_images_folder_path: str, satellite_image_path: str
                 })
                 print(f"  - Loaded: {filename}")
     else:
-        print(f"Place images folder not found or is not a directory at '{place_images_folder_path}'. Skipping place images.")
+        print(f"No place images available (folder not found - place may have no photos in Google Places). Proceeding with satellite image only.")
 
     if not all_image_content_parts:
         return {"error": "No valid images were found to analyze. Please ensure the paths are correct and images exist."}

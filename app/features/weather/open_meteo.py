@@ -26,14 +26,14 @@ def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, ret
         "longitude": longitude,
         "start_date": start_date,
         "end_date": end_date,
-        "daily": [
+        "daily": ",".join([
             "precipitation_sum",
             "snowfall_sum",
             "temperature_2m_max",
             "temperature_2m_min",
             "sunshine_duration",
             "windspeed_10m_max",
-        ],
+        ]),
         "timezone": "UTC"
     }
     for attempt in range(retries):
