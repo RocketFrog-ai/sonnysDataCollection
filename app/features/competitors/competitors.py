@@ -35,7 +35,7 @@ def count_competitors(original_latitude, original_longitude):
         API_KEY,
         latitude=original_latitude,
         longitude=original_longitude,
-        radius_miles=1,
+        radius_miles=2,
         included_types=place_types_to_search,
         max_results=max_num_results,
         rank_preference=ranking_method
