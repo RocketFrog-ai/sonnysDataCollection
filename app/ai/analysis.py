@@ -7,10 +7,16 @@ from pathlib import Path
 from app.utils.llm import local_llm as llm
 from .prompts import build_rationale_prompt, build_pros_cons_prompt
 from app.server.app import get_climate, get_competitors, get_traffic_lights
-from nearbyStores.nearby_stores import get_nearby_stores_data
+from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.utils import common as calib 
 
 FEATURE_VALUES_LOG = Path(__file__).resolve().parent.parent / "feature_values.log"
+
+# Single cutoff: normalized >= 0.5 vs < 0.5 (no middle band; every feature is pro or con).
+CUTOFF = 0.5
+
+# Floor so small correlation doesn't crush impact when SHAP (score) is high.
+CORR_FLOOR = 0.04
 
 POSITIVE_SIGNALS = {
     'total_sunshine_hours': {'score': 0.8523, 'corr': 0.1442, 'description': 'Total sunshine hours'},
@@ -52,34 +58,39 @@ def normalize_feature_value(feature_name: str, value: float, feature_type: str =
         normalized = max(0, min(1, value / 100.0))
     return normalized
 
+def _determine_strength(normalized_value: float, is_positive: bool, is_distance: bool) -> str:
+    """Determine strength based on normalized value and feature type."""
+    if is_positive or (not is_positive and is_distance):
+        if normalized_value > 0.7:
+            return "strong"
+        elif normalized_value > 0.4:
+            return "moderate"
+        return "weak"
+    else:
+        if normalized_value < 0.3:
+            return "strong"
+        elif normalized_value < 0.6:
+            return "moderate"
+        return "weak"
+
 def calculate_feature_impact(feature_name: str, value: float, signal_info: Dict) -> Tuple[float, str]:
     normalized_value = normalize_feature_value(feature_name, value, 'positive' if signal_info['corr'] > 0 else 'negative')
-    impact = normalized_value * abs(signal_info['corr']) * signal_info['score']
-    
-    if signal_info['corr'] > 0:
-        if normalized_value > 0.7:
-            strength = "strong"
-        elif normalized_value > 0.4:
-            strength = "moderate"
-        else:
-            strength = "weak"
-    else:
-        if 'distance' in feature_name.lower():
-            if normalized_value > 0.7:
-                strength = "strong"
-            elif normalized_value > 0.4:
-                strength = "moderate"
-            else:
-                strength = "weak"
-        else:
-            if normalized_value < 0.3:
-                strength = "strong"
-            elif normalized_value < 0.6:
-                strength = "moderate"
-            else:
-                strength = "weak"
-    
+    effective_corr = max(abs(signal_info['corr']), CORR_FLOOR)
+    impact = normalized_value * signal_info['score'] * effective_corr
+    is_positive = signal_info['corr'] > 0
+    is_distance = 'distance' in feature_name.lower()
+    strength = _determine_strength(normalized_value, is_positive, is_distance)
     return impact, strength
+
+def _handle_llm_error(error_type: str, e: Exception, default_response: str) -> str:
+    """Centralized error handling for LLM requests."""
+    if isinstance(e, requests.exceptions.Timeout):
+        print(f"[ERROR] LLM {error_type} request timed out: {e}")
+    elif isinstance(e, requests.exceptions.RequestException):
+        print(f"[ERROR] LLM {error_type} request failed: {e}")
+    else:
+        print(f"[ERROR] Unexpected error in {error_type}: {type(e).__name__}: {e}")
+    return default_response
 
 def generate_llm_rationale(feature_values: Dict[str, float], pros: List[Dict], cons: List[Dict]) -> str:
     pros_text = "\n".join([f"- {p['description']}: {p['value']:.2f} (correlation: {p['correlation']:.4f})" for p in pros[:5]])
@@ -92,15 +103,70 @@ def generate_llm_rationale(feature_values: Dict[str, float], pros: List[Dict], c
         text = response.get("generated_text", "")
         print(f"[DEBUG] Raw LLM response for rationale:\n{text}\n{'='*80}")
         return text if text else "Analysis completed based on feature correlations."
-    except requests.exceptions.Timeout as e:
-        print(f"[ERROR] LLM rationale request timed out: {e}")
-        return "Analysis completed based on feature correlations."
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] LLM rationale request failed: {e}")
-        return "Analysis completed based on feature correlations."
     except Exception as e:
-        print(f"[ERROR] Unexpected error in generate_llm_rationale: {type(e).__name__}: {e}")
-        return "Analysis completed based on feature correlations."
+        return _handle_llm_error("rationale", e, "Analysis completed based on feature correlations.")
+
+def _parse_json_response(text: str) -> Tuple[List[str], List[str]]:
+    """Parse JSON from LLM response text."""
+    text_clean = text.strip()
+    
+    # Try to find JSON object with pros/cons arrays
+    json_match = re.search(r'\{[^{}]*"pros"[^{}]*\[[^\]]*\][^{}]*"cons"[^{}]*\[[^\]]*\][^{}]*\}', text_clean, re.DOTALL)
+    if json_match:
+        try:
+            json_str = json_match.group(0)
+            parsed = json.loads(json_str)
+            llm_pros = parsed.get("pros", [])
+            llm_cons = parsed.get("cons", [])
+            print(f"[DEBUG] Successfully parsed JSON: {len(llm_pros)} pros, {len(llm_cons)} cons")
+            return llm_pros[:5], llm_cons[:5]
+        except json.JSONDecodeError:
+            pass
+    
+    # Try direct JSON parsing
+    try:
+        parsed = json.loads(text_clean)
+        llm_pros = parsed.get("pros", [])
+        llm_cons = parsed.get("cons", [])
+        print(f"[DEBUG] Successfully parsed JSON (direct): {len(llm_pros)} pros, {len(llm_cons)} cons")
+        return llm_pros[:5], llm_cons[:5]
+    except json.JSONDecodeError:
+        return None, None
+
+def _parse_text_response(text: str) -> Tuple[List[str], List[str]]:
+    """Parse pros/cons from text format."""
+    llm_pros = []
+    llm_cons = []
+    in_pros = False
+    in_cons = False
+    
+    for line in text.split('\n'):
+        line = line.strip()
+        if not line:
+            continue
+            
+        if 'PROS:' in line.upper() or 'PRO:' in line.upper():
+            in_pros = True
+            in_cons = False
+            continue
+        if 'CONS:' in line.upper() or 'CON:' in line.upper():
+            in_cons = True
+            in_pros = False
+            continue
+            
+        if line.startswith('-') or line.startswith('•') or line.startswith('*'):
+            content = line.lstrip('- •*').strip()
+            if in_pros and content:
+                llm_pros.append(content)
+            elif in_cons and content:
+                llm_cons.append(content)
+        elif in_pros and line and not line.startswith('{') and not line.startswith('['):
+            llm_pros.append(line)
+        elif in_cons and line and not line.startswith('{') and not line.startswith('['):
+            llm_cons.append(line)
+    
+    print(f"[DEBUG] Text parsing result: {len(llm_pros)} pros, {len(llm_cons)} cons")
+    return llm_pros[:5], llm_cons[:5]
 
 def generate_llm_pros_cons(feature_values: Dict[str, float], pros: List[Dict], cons: List[Dict]) -> Tuple[List[str], List[str]]:
     pros_data = "\n".join([f"- {p['description']}: {p['value']:.2f}" for p in pros])
@@ -118,171 +184,109 @@ def generate_llm_pros_cons(feature_values: Dict[str, float], pros: List[Dict], c
             print("[WARNING] Empty LLM response")
             return [], []
         
-        llm_pros = []
-        llm_cons = []
+        # Try JSON parsing first
+        llm_pros, llm_cons = _parse_json_response(text)
+        if llm_pros is not None:
+            return llm_pros, llm_cons
         
-        try:
-            text_clean = text.strip()
-            
-            json_match = re.search(r'\{[^{}]*"pros"[^{}]*\[[^\]]*\][^{}]*"cons"[^{}]*\[[^\]]*\][^{}]*\}', text_clean, re.DOTALL)
-            if json_match:
-                json_str = json_match.group(0)
-                parsed = json.loads(json_str)
-                llm_pros = parsed.get("pros", [])
-                llm_cons = parsed.get("cons", [])
-                print(f"[DEBUG] Successfully parsed JSON: {len(llm_pros)} pros, {len(llm_cons)} cons")
-                return llm_pros[:5], llm_cons[:5]
-            
-            try:
-                parsed = json.loads(text_clean)
-                llm_pros = parsed.get("pros", [])
-                llm_cons = parsed.get("cons", [])
-                print(f"[DEBUG] Successfully parsed JSON (direct): {len(llm_pros)} pros, {len(llm_cons)} cons")
-                return llm_pros[:5], llm_cons[:5]
-            except json.JSONDecodeError:
-                pass
-            
-        except json.JSONDecodeError as e:
-            print(f"[WARNING] JSON parsing failed: {e}, falling back to text parsing")
+        # Fall back to text parsing
+        print("[WARNING] JSON parsing failed, falling back to text parsing")
+        return _parse_text_response(text)
         
-        in_pros = False
-        in_cons = False
-        
-        for line in text.split('\n'):
-            line = line.strip()
-            if not line:
-                continue
-                
-            if 'PROS:' in line.upper() or 'PRO:' in line.upper():
-                in_pros = True
-                in_cons = False
-                continue
-            if 'CONS:' in line.upper() or 'CON:' in line.upper():
-                in_cons = True
-                in_pros = False
-                continue
-                
-            if line.startswith('-') or line.startswith('•') or line.startswith('*'):
-                content = line.lstrip('- •*').strip()
-                if in_pros and content:
-                    llm_pros.append(content)
-                elif in_cons and content:
-                    llm_cons.append(content)
-            elif in_pros and line and not line.startswith('{') and not line.startswith('['):
-                llm_pros.append(line)
-            elif in_cons and line and not line.startswith('{') and not line.startswith('['):
-                llm_cons.append(line)
-        
-        print(f"[DEBUG] Text parsing result: {len(llm_pros)} pros, {len(llm_cons)} cons")
-        return llm_pros[:5], llm_cons[:5]
-        
-    except requests.exceptions.Timeout as e:
-        print(f"[ERROR] LLM request timed out: {e}")
-        return [], []
-    except requests.exceptions.RequestException as e:
-        print(f"[ERROR] LLM request failed: {e}")
-        return [], []
     except json.JSONDecodeError as e:
         print(f"[ERROR] JSON decode error: {e}")
         return [], []
     except Exception as e:
-        print(f"[ERROR] Unexpected error in generate_llm_pros_cons: {type(e).__name__}: {e}")
-        import traceback
-        print(f"[ERROR] Traceback: {traceback.format_exc()}")
+        if isinstance(e, (requests.exceptions.Timeout, requests.exceptions.RequestException)):
+            _handle_llm_error("pros/cons", e, "")
+        else:
+            print(f"[ERROR] Unexpected error in generate_llm_pros_cons: {type(e).__name__}: {e}")
+            import traceback
+            print(f"[ERROR] Traceback: {traceback.format_exc()}")
         return [], []
 
+def _create_feature_dict(feature_name: str, value: float, signal_info: Dict, impact: float, strength: str) -> Dict:
+    """Create a standardized feature dictionary."""
+    return {
+        'feature': feature_name,
+        'value': value,
+        'description': signal_info['description'],
+        'correlation': signal_info['corr'],
+        'signal_score': signal_info['score'],
+        'impact': impact,
+        'strength': strength,
+    }
+
+def _process_positive_signal(feature_name: str, value: float, signal_info: Dict, pros: List[Dict], cons: List[Dict]) -> None:
+    """Process a positive signal feature. Impact stored as magnitude (pros/cons list implies direction)."""
+    impact, strength = calculate_feature_impact(feature_name, value, signal_info)
+    normalized = normalize_feature_value(feature_name, value, 'positive')
+    magnitude = abs(impact)
+    if normalized >= CUTOFF:
+        pros.append(_create_feature_dict(feature_name, value, signal_info, magnitude, strength))
+    else:
+        cons.append(_create_feature_dict(feature_name, value, signal_info, magnitude, strength))
+
+def _process_negative_signal(feature_name: str, value: float, signal_info: Dict, pros: List[Dict], cons: List[Dict]) -> None:
+    """Process a negative signal feature. Impact stored as magnitude (pros/cons list implies direction)."""
+    impact, strength = calculate_feature_impact(feature_name, value, signal_info)
+    normalized = normalize_feature_value(feature_name, value, 'negative')
+    magnitude = abs(impact)
+    is_distance = 'distance' in feature_name.lower()
+    if is_distance:
+        # High normalized = far = good
+        if normalized >= CUTOFF:
+            pros.append(_create_feature_dict(feature_name, value, signal_info, magnitude, strength))
+        else:
+            cons.append(_create_feature_dict(feature_name, value, signal_info, magnitude, strength))
+    else:
+        # Low normalized = good (e.g. low snowfall)
+        if normalized < CUTOFF:
+            pros.append(_create_feature_dict(feature_name, value, signal_info, magnitude, strength))
+        else:
+            cons.append(_create_feature_dict(feature_name, value, signal_info, magnitude, strength))
+
+def _calculate_impact_percentages(items: List[Dict]) -> float:
+    """Calculate and add impact percentages (0–100%, by magnitude). Returns total impact."""
+    total = sum(item['impact'] for item in items) or 1
+    for item in items:
+        item['impact_pct'] = round(100 * item['impact'] / total, 1)
+    return total
+
 def analyze_site_features(feature_values: Dict[str, float]) -> Dict:
+    """Portfolio-style analysis: pros/cons with impact magnitude and impact_pct (0–100% per list); net_score = total_pro_impact - total_con_impact for ranking. Single cutoff 0.5 (no middle band)."""
     pros = []
     cons = []
     
     for feature_name, signal_info in POSITIVE_SIGNALS.items():
         if feature_name in feature_values and feature_values[feature_name] is not None:
-            value = feature_values[feature_name]
-            impact, strength = calculate_feature_impact(feature_name, value, signal_info)
-            normalized = normalize_feature_value(feature_name, value, 'positive')
-            
-            if normalized > 0.5:
-                pros.append({
-                    'feature': feature_name,
-                    'value': value,
-                    'description': signal_info['description'],
-                    'correlation': signal_info['corr'],
-                    'signal_score': signal_info['score'],
-                    'impact': impact,
-                    'strength': strength,
-                })
-            elif normalized < 0.3:
-                cons.append({
-                    'feature': feature_name,
-                    'value': value,
-                    'description': signal_info['description'],
-                    'correlation': signal_info['corr'],
-                    'signal_score': signal_info['score'],
-                    'impact': -impact,
-                    'strength': strength,
-                })
-    
+            _process_positive_signal(feature_name, feature_values[feature_name], signal_info, pros, cons)
+
     for feature_name, signal_info in NEGATIVE_SIGNALS.items():
         if feature_name in feature_values and feature_values[feature_name] is not None:
-            value = feature_values[feature_name]
-            impact, strength = calculate_feature_impact(feature_name, value, signal_info)
-            normalized = normalize_feature_value(feature_name, value, 'negative')
-            
-            if 'distance' in feature_name.lower():
-                if normalized > 0.7:
-                    pros.append({
-                        'feature': feature_name,
-                        'value': value,
-                        'description': signal_info['description'],
-                        'correlation': signal_info['corr'],
-                        'signal_score': signal_info['score'],
-                        'impact': -impact,
-                        'strength': strength,
-                    })
-                elif normalized < 0.3:
-                    cons.append({
-                        'feature': feature_name,
-                        'value': value,
-                        'description': signal_info['description'],
-                        'correlation': signal_info['corr'],
-                        'signal_score': signal_info['score'],
-                        'impact': impact,
-                        'strength': strength,
-                    })
-            else:
-                if normalized < 0.3:
-                    pros.append({
-                        'feature': feature_name,
-                        'value': value,
-                        'description': signal_info['description'],
-                        'correlation': signal_info['corr'],
-                        'signal_score': signal_info['score'],
-                        'impact': -impact,
-                        'strength': strength,
-                    })
-                elif normalized > 0.7:
-                    cons.append({
-                        'feature': feature_name,
-                        'value': value,
-                        'description': signal_info['description'],
-                        'correlation': signal_info['corr'],
-                        'signal_score': signal_info['score'],
-                        'impact': impact,
-                        'strength': strength,
-                    })
+            _process_negative_signal(feature_name, feature_values[feature_name], signal_info, pros, cons)
     
     pros.sort(key=lambda x: x['impact'], reverse=True)
     cons.sort(key=lambda x: x['impact'], reverse=True)
-    
+
+    total_pro_impact = _calculate_impact_percentages(pros)
+    total_con_impact = _calculate_impact_percentages(cons)
+
     llm_rationale = generate_llm_rationale(feature_values, pros, cons)
     llm_pros, llm_cons = generate_llm_pros_cons(feature_values, pros, cons)
-    
+
+    # Net score for portfolio ranking: positive = more upside than downside
+    net_score = round(total_pro_impact - total_con_impact, 6)
+
     return {
         'rationale': llm_rationale,
         'pros': pros,
         'cons': cons,
         'llm_pros': llm_pros,
         'llm_cons': llm_cons,
+        'total_pro_impact': round(total_pro_impact, 6),
+        'total_con_impact': round(total_con_impact, 6),
+        'net_score': net_score,
         'features_analyzed': len([f for f in feature_values.keys() if f in POSITIVE_SIGNALS or f in NEGATIVE_SIGNALS])
     }
 
@@ -295,51 +299,39 @@ def analyze_site_from_dict(address:str) -> Dict:
     # print(geo_cord)
     # print("---------------------------")
     weather_details = get_climate(lat, lon)
-
-    total_sunshine_hours = weather_details["total_sunshine_hours"]
-    total_precipitation_mm = weather_details["total_precipitation_mm"]
-    days_pleasant_temp = weather_details["days_pleasant_temp"]
-    rainy_days = weather_details["rainy_days"]
-    avg_daily_max_windspeed_ms = weather_details["avg_daily_max_windspeed_ms"]
-    days_below_freezing = weather_details["days_below_freezing"]
-    total_snowfall_cm = weather_details["total_snowfall_cm"]
-
     nearby_stores_data = get_nearby_stores_data(lat, lon)
-    distance_from_nearest_costco = nearby_stores_data.get("distance_from_nearest_costco")
-    count_of_costco_5miles = nearby_stores_data.get("count_of_costco_5miles", 0) or 0
-    count_of_walmart_5miles = nearby_stores_data.get("count_of_walmart_5miles", 0) or 0
-    distance_from_nearest_walmart = nearby_stores_data.get("distance_from_nearest_walmart")
 
     competitors_data = get_competitors(lat, lon)
-    print("---------------------------")
-    print("Competitors Data")
-    print(competitors_data)
-    print("---------------------------")
+    # print("---------------------------")
+    # print("Competitors Data")
+    # print(competitors_data)
+    # print("---------------------------")
     competitor_1_google_user_rating_count = competitors_data["competitor_1_google_user_rating_count"]
     competitors_count = competitors_data["competitors_count"]
-    
     traffic_data = get_traffic_lights(lat, lon)
     nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
     distance_nearest_traffic_light_2 = traffic_data["distance_nearest_traffic_light_2"]
     distance_nearest_traffic_light_3 = traffic_data["distance_nearest_traffic_light_3"]
     distance_nearest_traffic_light_4 = traffic_data["distance_nearest_traffic_light_4"]
     distance_nearest_traffic_light_7 = traffic_data["distance_nearest_traffic_light_7"]
-    distance_nearest_traffic_light_9 = traffic_data["distance_nearest_traffic_light_9"]    
-    
-    feature_values = {}
-    feature_values["total_sunshine_hours"] = total_sunshine_hours
-    feature_values["total_precipitation_mm"] = total_precipitation_mm
-    feature_values["days_pleasant_temp"] = days_pleasant_temp
-    feature_values["rainy_days"] = rainy_days
-    feature_values["avg_daily_max_windspeed_ms"] = avg_daily_max_windspeed_ms
-    feature_values["days_below_freezing"] = days_below_freezing
-    feature_values["total_snowfall_cm"] = total_snowfall_cm
-    if distance_from_nearest_costco is not None:
-        feature_values["distance_from_nearest_costco"] = distance_from_nearest_costco
-    feature_values["count_of_costco_5miles"] = count_of_costco_5miles
-    feature_values["count_of_walmart_5miles"] = count_of_walmart_5miles
-    if distance_from_nearest_walmart is not None:
-        feature_values["distance_from_nearest_walmart"] = distance_from_nearest_walmart
+    distance_nearest_traffic_light_9 = traffic_data["distance_nearest_traffic_light_9"]
+
+    # Build feature values dictionary directly
+    feature_values = {
+        "total_sunshine_hours": weather_details["total_sunshine_hours"],
+        "total_precipitation_mm": weather_details["total_precipitation_mm"],
+        "days_pleasant_temp": weather_details["days_pleasant_temp"],
+        "rainy_days": weather_details["rainy_days"],
+        "avg_daily_max_windspeed_ms": weather_details["avg_daily_max_windspeed_ms"],
+        "days_below_freezing": weather_details["days_below_freezing"],
+        "total_snowfall_cm": weather_details["total_snowfall_cm"],
+        "count_of_costco_5miles": nearby_stores_data.get("count_of_costco_5miles", 0) or 0,
+        "count_of_walmart_5miles": nearby_stores_data.get("count_of_walmart_5miles", 0) or 0,
+    }
+    if nearby_stores_data.get("distance_from_nearest_costco") is not None:
+        feature_values["distance_from_nearest_costco"] = nearby_stores_data["distance_from_nearest_costco"]
+    if nearby_stores_data.get("distance_from_nearest_walmart") is not None:
+        feature_values["distance_from_nearest_walmart"] = nearby_stores_data["distance_from_nearest_walmart"]
     feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
     feature_values["distance_nearest_traffic_light_2"] = distance_nearest_traffic_light_2
     feature_values["distance_nearest_traffic_light_3"] = distance_nearest_traffic_light_3

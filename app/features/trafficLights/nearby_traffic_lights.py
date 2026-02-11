@@ -16,19 +16,17 @@ def get_nearby_traffic_lights(lat, lon, radius=3218.68):
     """
     OVERPASS_URL = "https://overpass-api.de/api/interpreter"
     query = f"""
-    [out:json][timeout:120];
+    [out:json][timeout:300];
     node["highway"="traffic_signals"](around:{radius},{lat},{lon});
     out body;
     """
-    response = requests.post(OVERPASS_URL, data={"data": query}, timeout=120)
-    if not response.text or not response.text.strip():
+    response = requests.post(OVERPASS_URL, data={"data": query}, timeout=300)
+    if not response.ok or not response.text or not response.text.strip():
         return []
     try:
         data = response.json()
-    except json.JSONDecodeError as e:
-        raise requests.exceptions.RequestException(
-            f"Overpass API returned non-JSON (status={response.status_code}): {e}"
-        ) from e
+    except json.JSONDecodeError:
+        return []
 
     traffic_lights = data.get('elements', [])
 
