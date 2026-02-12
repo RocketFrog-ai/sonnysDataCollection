@@ -35,3 +35,41 @@ BANDED_FEATURES = (
     ('rainy_days', 'days/year', '<20 (+20% to +40%), 20–60 (+5% to +25%), 60–120 (-10% to +5%), 120–200 (-30% to -10%), >200 (-60% to -30%)'),
     ('days_below_freezing', 'days/year', '0 (+20% to +40%), 1–30 (+5% to +20%), 30–90 (-10% to +10%), 90–150 (-30% to -10%), >150 (-60% to -30%)'),
 )
+
+FEATURE_CATEGORY = {
+    "weather": [
+        "sunny_days_per_year",
+        "total_precipitation_mm",
+        "days_pleasant_temp",
+        "rainy_days",
+        "days_below_freezing",
+        "total_snowfall_cm",
+        "avg_daily_max_windspeed_ms",
+    ],
+    "traffic": [
+        "nearby_traffic_lights_count",
+        "distance_nearest_traffic_light_2",
+        "distance_nearest_traffic_light_3",
+        "distance_nearest_traffic_light_4",
+        "distance_nearest_traffic_light_7",
+        "distance_nearest_traffic_light_9",
+    ],
+    "competition": [
+        "competitor_1_google_user_rating_count",
+        "competitors_count",
+    ],
+    "site_accessibility": [
+        "distance_from_nearest_costco",
+        "distance_from_nearest_walmart",
+        "distance_from_nearest_gas_station",
+        "count_of_costco_5miles",
+        "count_of_walmart_5miles",
+        "count_of_gas_stations_5miles",
+    ],
+}
+
+def get_feature_category(feature_name):
+    for category, features in FEATURE_CATEGORY.items():
+        if feature_name in features:
+            return category
+    return "site_operations"
