@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from app.utils.llm import local_llm as llm
 from .prompts import build_normalized_strength_prompt, build_rationale_prompt
-from .signals import CUTOFF, CORR_FLOOR, POSITIVE_SIGNALS, NEGATIVE_SIGNALS
+from .signals import CUTOFF, CORR_FLOOR, POSITIVE_SIGNALS, NEGATIVE_SIGNALS, get_feature_category
 from app.server.app import get_climate, get_competitors, get_traffic_lights
 from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.utils import common as calib
@@ -63,6 +63,7 @@ def _create_feature_dict(feature_name, value, signal_info, impact, strength):
         'signal_score': signal_info['score'],
         'impact': impact,
         'strength': strength,
+        'category': get_feature_category(feature_name),
     }
 
 def _process_positive_signal(feature_name, value, signal_info, pros, cons, ns):
