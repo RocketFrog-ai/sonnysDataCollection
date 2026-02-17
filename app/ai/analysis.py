@@ -3,7 +3,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from app.utils.llm import local_llm as llm
-from .prompts import build_normalized_strength_prompt, build_rationale_prompt
+from .prompts import build_normalized_strength_prompt
 from .signals import CUTOFF, CORR_FLOOR, POSITIVE_SIGNALS, NEGATIVE_SIGNALS, get_feature_category
 from app.server.app import get_climate, get_competitors, get_traffic_lights
 from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
@@ -35,24 +35,6 @@ def calculate_feature_impact(feature_name, value, signal_info, normalized_value,
     effective_corr = max(abs(signal_info['corr']), CORR_FLOOR)
     impact = normalized_value * signal_info['score'] * effective_corr
     return impact, strength, normalized_value
-
-def generate_llm_rationale(feature_values, pros, cons):
-    pros_text = "\n".join([f"- {p['description']}: {p['value']:.2f} (correlation: {p['correlation']:.4f})" for p in pros[:5]])
-    cons_text = "\n".join([f"- {c['description']}: {c['value']:.2f} (correlation: {c['correlation']:.4f})" for c in cons[:5]])
-    prompt = build_rationale_prompt(pros_text, cons_text, feature_values)
-    try:
-        response = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
-        text = (response or {}).get("generated_text", "")
-        return text if text else "Analysis completed based on feature correlations."
-    except Exception as e:
-        print(f"[ERROR] LLM rationale: {e}")
-        return "Analysis completed based on feature correlations."
-
-def generate_llm_pros_cons(feature_values, pros, cons):
-    return (
-        ["Strong climate and traffic visibility.", "Favorable nearby amenities and competition profile."],
-        ["Consider weather and distance factors where relevant."],
-    )
 
 def _create_feature_dict(feature_name, value, signal_info, impact, strength):
     return {
@@ -115,17 +97,12 @@ def analyze_site_features(feature_values):
     cons.sort(key=lambda x: x['impact'], reverse=True)
     total_pro_impact = _calculate_impact_percentages(pros)
     total_con_impact = _calculate_impact_percentages(cons)
-    llm_rationale = generate_llm_rationale(feature_values, pros, cons)
-    llm_pros, llm_cons = generate_llm_pros_cons(feature_values, pros, cons)
     net_score = round(total_pro_impact - total_con_impact, 6)
     all_signals = {**POSITIVE_SIGNALS, **NEGATIVE_SIGNALS}
     features_analyzed = len([f for f in feature_values if f in all_signals])
     return {
-        'rationale': llm_rationale,
         'pros': pros,
         'cons': cons,
-        'llm_pros': llm_pros,
-        'llm_cons': llm_cons,
         'total_pro_impact': round(total_pro_impact, 6),
         'total_con_impact': round(total_con_impact, 6),
         'net_score': net_score,

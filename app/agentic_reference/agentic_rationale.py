@@ -22,26 +22,21 @@ from typing import Dict, List
 # ── Prompt construction ──────────────────────────────────────────
 
 SYSTEM_PROMPT = """\
-You are a senior car wash site analysis consultant. You receive \
-structured quantile-profiling data for a candidate car wash location \
-and must produce a clear, business-ready rationale report.
+You are a senior car wash site expert. You receive data about a candidate site and must explain its classification to a stakeholder.
+
+GOAL:
+Provide a clear, factual explanation of why the site fits its specific performance profile.
 
 RULES:
-1. STRICT ADHERENCE TO DATA: Never contradict the provided numerical comparisons. \
-   If the prompt says "Value 200 > Median 100", do NOT say it is below.
-2. For every dimension with data (Weather, Traffic, Competition, etc.), \
-   state the key input values, the IQR range they fall in, and which \
-   performance tier they match.
-3. Use comparative language based on the provided "Position" (e.g., above Q75, below Q25).
-   Example: "3,350 sunshine hours places this site in the **High Performing** \
-   range (Q25=3,153, Q75=3,416), well above the median."
-4. After the dimension analysis, give an OVERALL VERDICT:
-   - STRONG PROCEED   — majority High, no critical weaknesses
-   - PROCEED WITH CAUTION — mixed, or one deal-breaker dimension
-   - HIGH RISK / REJECT  — majority Low or critical weaknesses
-5. Include the expected volume range from the predicted tier.
-6. End with 3–5 actionable recommendations specific to this site.
-7. Be concise but thorough. Use markdown formatting.
+1. NO JARGON: Do not use "IQR", "Fit Score", "Effect Size". Use "Typical Range" or "Profile Match".
+2. EXPLAIN THE MATCH:
+   - If a site is "Average", explain that its metrics align with our standard portfolio.
+   - Example: "Traffic (15k) is consistent with our average-performing sites."
+3. CONTEXTUALIZE:
+   - Compare values to the *tier they match*.
+   - If a value is low, say "Matches the low-volume profile."
+4. VERDICT:
+   - Conclude with a clear summary of the site's strengths and weaknesses relative to its tier.
 """
 
 
@@ -81,17 +76,17 @@ def _build_data_prompt(
                 rng = fd["ranges"].get(bf, {})
                 q25, q50, q75 = rng.get("q25"), rng.get("q50"), rng.get("q75")
                 if q25 is not None:
-                    # Explicitly calculate position for the LLM
+                    # Context relative to the MATCHED profile (Objective)
                     if val > q75:
-                        pos_str = "ABOVE Q75 (High)"
+                        pos_str = f"Higher than the typical range for {bf} sites"
                     elif val < q25:
-                        pos_str = "BELOW Q25 (Low)"
+                        pos_str = f"Lower than the typical range for {bf} sites"
                     else:
-                        pos_str = "WITHIN IQR (Average)"
+                        pos_str = f"Typical for {bf} sites"
                     
                     parts.append(
-                        f"- {feat} = {val:,.1f} → **{bf}** "
-                        f"(Position: {pos_str} | Q25={q25:,.1f}, Med={q50:,.1f}, Q75={q75:,.1f})"
+                        f"- {feat} = {val:,.1f} → Matches **{bf}** profile. "
+                        f"(Context: {pos_str}. Typical {bf} range is {q25:,.1f}–{q75:,.1f})"
                     )
 
     # Dimension strength ranking
@@ -190,12 +185,17 @@ def generate_dimension_rationale(
     effect = dimension_strength_info.get("average_effect_size", 0)
     rank = dimension_strength_info.get("rank", "N/A")
 
-    prompt = f"""You are a car wash site analyst. Provide a 2-3 sentence executive summary for the **{dimension_name}** dimension of a site profiling analysis.
+    prompt = f"""You are determining the rationale for the **{dimension_name}** dimension.
 
-Data:
-- Dimension prediction: {pred} (fit score: {fit:.1f}%)
-- This dimension ranks #{rank} in discriminatory power (effect size: {effect:.3f})
-- Overall site classification: {overall_category}
+Facts:
+- Verdict: {pred}
+- Confidence: {fit:.1f}% match
+- Importance: Rank #{rank} (Impact: {effect:.2f})
+- Overall Site: {overall_category}
+
+Write a 2-sentence summary:
+1. Explain why this dimension fits the {pred} profile.
+2. Highlight any key features that drove this result.
 """
     if dimension_result.get("feature_details"):
         prompt += "\nFeature breakdown:\n"
@@ -205,15 +205,15 @@ Data:
             rng = fd["ranges"].get(bf, {})
             q25, q50, q75 = rng.get("q25"), rng.get("q50"), rng.get("q75")
             if q25 is not None:
-                # Explicitly calculate position
+                # English context (Neutral)
                 if val > q75:
-                    pos_str = "ABOVE Q75"
+                    comparison = "Above typical range"
                 elif val < q25:
-                    pos_str = "BELOW Q25"
+                    comparison = "Below typical range"
                 else:
-                    pos_str = "WITHIN IQR"
+                    comparison = "Within typical range"
 
-                prompt += f"- {feat} = {val:,.1f} → {bf} (Position: {pos_str} | Q25={q25:,.1f}, Med={q50:,.1f}, Q75={q75:,.1f})\n"
+                prompt += f"- {feat}: {val:,.1f} ({comparison} for {bf} sites. Typical {bf} is {q25:,.1f}–{q75:,.1f})\n"
 
     prompt += "\nProvide a concise, data-backed executive summary. Be specific with numbers."
 
