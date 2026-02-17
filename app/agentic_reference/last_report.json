@@ -1,0 +1,2347 @@
+{
+  "overall_prediction": {
+    "predicted_category": "High Performing",
+    "fit_score": 34.3,
+    "category_scores": {
+      "Low Performing": 28.44,
+      "Average Performing": 28.43,
+      "High Performing": 29.66
+    },
+    "expected_volume": {
+      "conservative": 96763,
+      "likely": 111385,
+      "optimistic": 142368
+    },
+    "feature_details": {
+      "total_sunshine_hours": {
+        "value": 3350.0,
+        "best_fit": "High Performing",
+        "tier_scores": {
+          "Low Performing": 0.9294679432767621,
+          "Average Performing": 0.8839082382306565,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 3017.54914,
+            "q50": 3182.89399777777,
+            "q75": 3328.09645888888,
+            "min": 2589.20141527778,
+            "max": 3963.01759194444,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 3067.08578888889,
+            "q50": 3189.54350472222,
+            "q75": 3320.57230388888,
+            "min": 2588.06215638889,
+            "max": 3885.52476111111,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 3152.92086805556,
+            "q50": 3209.94427416667,
+            "q75": 3415.86892222222,
+            "min": 2749.91591583333,
+            "max": 3885.36573583333,
+            "count": 177
+          }
+        }
+      },
+      "days_pleasant_temp": {
+        "value": 160.0,
+        "best_fit": "High Performing",
+        "tier_scores": {
+          "Low Performing": 0.6902654867256637,
+          "Average Performing": 0.7700729927007295,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 130.4,
+            "q50": 141.6,
+            "q75": 153.0,
+            "min": 62.9,
+            "max": 188.3,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 126.3,
+            "q50": 140.8,
+            "q75": 153.7,
+            "min": 63.4,
+            "max": 189.4,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 133.4,
+            "q50": 144.7,
+            "q75": 160.9,
+            "min": 97.5,
+            "max": 179.8,
+            "count": 177
+          }
+        }
+      },
+      "total_precipitation_mm": {
+        "value": 1400.0,
+        "best_fit": "High Performing",
+        "tier_scores": {
+          "Low Performing": 0.8867837868871286,
+          "Average Performing": 0.8585038497258755,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1109.15,
+            "q50": 1229.4,
+            "q75": 1370.42,
+            "min": 80.4,
+            "max": 1942.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1018.98,
+            "q50": 1203.51,
+            "q75": 1352.77,
+            "min": 198.12,
+            "max": 1975.95,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1157.79,
+            "q50": 1301.27,
+            "q75": 1442.43,
+            "min": 234.58,
+            "max": 1920.97,
+            "count": 177
+          }
+        }
+      },
+      "rainy_days": {
+        "value": 120.0,
+        "best_fit": "Average Performing",
+        "tier_scores": {
+          "Low Performing": 0.984455958549223,
+          "Average Performing": 1.0,
+          "High Performing": 0.9484978540772531
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 120.3,
+            "q50": 131.5,
+            "q75": 139.6,
+            "min": 13.8,
+            "max": 170.4,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 115.9,
+            "q50": 124.2,
+            "q75": 137.7,
+            "min": 31.8,
+            "max": 166.6,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 121.2,
+            "q50": 133.0,
+            "q75": 144.5,
+            "min": 43.2,
+            "max": 168.3,
+            "count": 177
+          }
+        }
+      },
+      "total_snowfall_cm": {
+        "value": 5.0,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1.337,
+            "q50": 14.07,
+            "q75": 50.799,
+            "min": 0.0,
+            "max": 155.582,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1.778,
+            "q50": 12.201,
+            "q75": 40.859,
+            "min": 0.0,
+            "max": 129.276,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.679,
+            "q50": 7.511,
+            "q75": 37.107,
+            "min": 0.0,
+            "max": 140.735,
+            "count": 177
+          }
+        }
+      },
+      "snowy_days": {
+        "value": 3.0,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1.0,
+            "q50": 7.0,
+            "q75": 26.2,
+            "min": 0.0,
+            "max": 86.4,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1.1,
+            "q50": 6.7,
+            "q75": 22.3,
+            "min": 0.0,
+            "max": 71.8,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.5,
+            "q50": 3.9,
+            "q75": 20.8,
+            "min": 0.0,
+            "max": 82.8,
+            "count": 177
+          }
+        }
+      },
+      "days_below_freezing": {
+        "value": 15.0,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 10.3,
+            "q50": 41.0,
+            "q75": 84.1,
+            "min": 0.0,
+            "max": 208.3,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 14.2,
+            "q50": 39.9,
+            "q75": 79.5,
+            "min": 0.0,
+            "max": 205.4,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 6.9,
+            "q50": 29.5,
+            "q75": 73.7,
+            "min": 0.0,
+            "max": 199.7,
+            "count": 177
+          }
+        }
+      },
+      "avg_daily_max_windspeed_ms": {
+        "value": 16.0,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 15.1186938393592,
+            "q50": 16.352365820795,
+            "q75": 19.095240736582,
+            "min": 11.5803896249719,
+            "max": 24.5658020061382,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 14.9786161389326,
+            "q50": 16.3617572423086,
+            "q75": 18.9137748334456,
+            "min": 11.7111578710981,
+            "max": 28.0563139456546,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 15.2374142525638,
+            "q50": 16.1287640541957,
+            "q75": 18.494288344936,
+            "min": 12.9609879481997,
+            "max": 26.0164185193502,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-Ttl AADT": {
+        "value": 15000,
+        "best_fit": "High Performing",
+        "tier_scores": {
+          "Low Performing": 0.9331720592682189,
+          "Average Performing": 0.937909186906019,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 4416.0,
+            "q50": 9739.0,
+            "q75": 14337.0,
+            "min": 0.0,
+            "max": 42281.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 4942.0,
+            "q50": 10094.0,
+            "q75": 14412.0,
+            "min": 7.0,
+            "max": 38205.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 5919.0,
+            "q50": 10973.0,
+            "q75": 16876.0,
+            "min": 227.0,
+            "max": 39761.0,
+            "count": 177
+          }
+        }
+      },
+      "2nd Nearest StreetLight US Hourly-Ttl AADT": {
+        "value": 12000,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 3806.0,
+            "q50": 9399.0,
+            "q75": 14586.0,
+            "min": 0.0,
+            "max": 35632.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 5655.0,
+            "q50": 10206.0,
+            "q75": 16084.0,
+            "min": 0.0,
+            "max": 35375.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 6004.0,
+            "q50": 10714.0,
+            "q75": 16387.0,
+            "min": 0.0,
+            "max": 42356.0,
+            "count": 177
+          }
+        }
+      },
+      "3rd Nearest StreetLight US Hourly-Ttl AADT": {
+        "value": 9000,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 3600.0,
+            "q50": 8267.0,
+            "q75": 14113.0,
+            "min": 0.0,
+            "max": 34266.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 5226.0,
+            "q50": 9833.0,
+            "q75": 14796.0,
+            "min": 6.0,
+            "max": 37880.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 4315.0,
+            "q50": 9562.0,
+            "q75": 14379.0,
+            "min": 0.0,
+            "max": 40114.0,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-ttl_breakfast": {
+        "value": 2500,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1049.0,
+            "q50": 2176.0,
+            "q75": 3467.0,
+            "min": 0.0,
+            "max": 10706.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1034.0,
+            "q50": 2229.0,
+            "q75": 3529.0,
+            "min": 0.0,
+            "max": 10025.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1223.0,
+            "q50": 2529.0,
+            "q75": 4199.0,
+            "min": 45.0,
+            "max": 10904.0,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-ttl_lunch": {
+        "value": 3000,
+        "best_fit": "High Performing",
+        "tier_scores": {
+          "Low Performing": 0.9622733953944145,
+          "Average Performing": 0.9824649298597194,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 882.0,
+            "q50": 2002.0,
+            "q75": 2923.0,
+            "min": 0.0,
+            "max": 8555.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 969.0,
+            "q50": 2048.0,
+            "q75": 2965.0,
+            "min": 0.0,
+            "max": 8088.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1299.0,
+            "q50": 2310.0,
+            "q75": 3373.0,
+            "min": 52.0,
+            "max": 8218.0,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-ttl_afternoon": {
+        "value": 3200,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1105.0,
+            "q50": 2166.0,
+            "q75": 3224.0,
+            "min": 0.0,
+            "max": 9162.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1154.0,
+            "q50": 2280.0,
+            "q75": 3398.0,
+            "min": 0.0,
+            "max": 8395.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1427.0,
+            "q50": 2487.0,
+            "q75": 3616.0,
+            "min": 48.0,
+            "max": 8846.0,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-ttl_dinner": {
+        "value": 2800,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 973.0,
+            "q50": 2015.0,
+            "q75": 2850.0,
+            "min": 0.0,
+            "max": 8260.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 982.0,
+            "q50": 1965.0,
+            "q75": 2867.0,
+            "min": 0.0,
+            "max": 7401.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1153.0,
+            "q50": 2201.0,
+            "q75": 3251.0,
+            "min": 22.0,
+            "max": 7754.0,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-ttl_night": {
+        "value": 1200,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 432.0,
+            "q50": 970.0,
+            "q75": 1517.0,
+            "min": 0.0,
+            "max": 4081.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 410.0,
+            "q50": 975.0,
+            "q75": 1478.0,
+            "min": 0.0,
+            "max": 3828.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 565.0,
+            "q50": 1150.0,
+            "q75": 1668.0,
+            "min": 1.0,
+            "max": 5193.0,
+            "count": 177
+          }
+        }
+      },
+      "Nearest StreetLight US Hourly-ttl_overnight": {
+        "value": 300,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 116.0,
+            "q50": 291.0,
+            "q75": 499.0,
+            "min": 0.0,
+            "max": 1498.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 115.0,
+            "q50": 295.0,
+            "q75": 530.0,
+            "min": 0.0,
+            "max": 2423.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 134.0,
+            "q50": 311.0,
+            "q75": 619.0,
+            "min": 0.0,
+            "max": 3025.0,
+            "count": 177
+          }
+        }
+      },
+      "nearby_traffic_lights_count": {
+        "value": 14,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 6.0,
+            "q50": 11.0,
+            "q75": 22.0,
+            "min": 0.0,
+            "max": 52.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 7.0,
+            "q50": 14.0,
+            "q75": 24.0,
+            "min": 0.0,
+            "max": 53.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 9.0,
+            "q50": 15.0,
+            "q75": 25.0,
+            "min": 0.0,
+            "max": 68.0,
+            "count": 177
+          }
+        }
+      },
+      "distance_nearest_traffic_light_1": {
+        "value": 0.15,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.0625139387567705,
+            "q50": 0.106342952141082,
+            "q75": 0.207685951583579,
+            "min": 0.0243338962183027,
+            "max": 10.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.0705734629896751,
+            "q50": 0.129098475106428,
+            "q75": 0.242904676875597,
+            "min": 0.0236891530118223,
+            "max": 10.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.062676129086316,
+            "q50": 0.0970920207837967,
+            "q75": 0.163205301453245,
+            "min": 0.0264483703666738,
+            "max": 10.0,
+            "count": 177
+          }
+        }
+      },
+      "distance_nearest_traffic_light_2": {
+        "value": 0.2,
+        "best_fit": "Average Performing",
+        "tier_scores": {
+          "Low Performing": 0.976905603131033,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.207926451624165,
+            "q50": 0.302531819045997,
+            "q75": 0.551146136863754,
+            "min": 0.064475423779158,
+            "max": 10.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.192964094468632,
+            "q50": 0.321742626649051,
+            "q75": 0.57520983737687,
+            "min": 0.0524591804094997,
+            "max": 10.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.168895268369918,
+            "q50": 0.264321278632793,
+            "q75": 0.397927189054184,
+            "min": 0.0787942274325388,
+            "max": 10.0,
+            "count": 177
+          }
+        }
+      },
+      "distance_nearest_traffic_light_3": {
+        "value": 0.35,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.346838134949161,
+            "q50": 0.483863939469289,
+            "q75": 0.822616689488099,
+            "min": 0.120802517861082,
+            "max": 10.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.326049124861392,
+            "q50": 0.533358034006256,
+            "q75": 0.890340105892172,
+            "min": 0.149681109122443,
+            "max": 10.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.312188848804578,
+            "q50": 0.410585796021739,
+            "q75": 0.672723229071046,
+            "min": 0.119999780910026,
+            "max": 10.0,
+            "count": 177
+          }
+        }
+      },
+      "competitors_count": {
+        "value": 1,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.0,
+            "q50": 0.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 6.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 177
+          }
+        }
+      },
+      "competitor_1_distance_miles": {
+        "value": 3.5,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.335204050168071,
+            "q50": 0.872826655370929,
+            "q75": 10.0,
+            "min": 0.0016420389128519,
+            "max": 10.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.352442777803491,
+            "q50": 10.0,
+            "q75": 10.0,
+            "min": 0.0,
+            "max": 10.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.312799001589734,
+            "q50": 0.843034870978934,
+            "q75": 10.0,
+            "min": 0.0005011985913957,
+            "max": 10.0,
+            "count": 177
+          }
+        }
+      },
+      "competitor_1_google_user_rating_count": {
+        "value": 200,
+        "best_fit": "High Performing",
+        "tier_scores": {
+          "Low Performing": 0.07692307692307687,
+          "Average Performing": 0.0,
+          "High Performing": 0.7096774193548387
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.0,
+            "q50": 1.0,
+            "q75": 104.0,
+            "min": 0.0,
+            "max": 2036.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.0,
+            "q50": 0.0,
+            "q75": 70.0,
+            "min": 0.0,
+            "max": 1387.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.0,
+            "q50": 2.0,
+            "q75": 155.0,
+            "min": 0.0,
+            "max": 1803.0,
+            "count": 177
+          }
+        }
+      },
+      "tunnel_length (in ft.)": {
+        "value": 115.0,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.0,
+            "q50": 102.9274251,
+            "q75": 121.7555913,
+            "min": 0.0,
+            "max": 167.837933,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 93.34440235,
+            "q50": 116.3674433,
+            "q75": 128.6203177,
+            "min": 0.0,
+            "max": 179.5353779,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 102.1518289,
+            "q50": 120.43539559999999,
+            "q75": 131.834531975,
+            "min": 0.0,
+            "max": 11697.09018,
+            "count": 176
+          }
+        }
+      },
+      "total_weekly_operational_hours": {
+        "value": 80.0,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 75.0,
+            "q50": 83.0,
+            "q75": 84.0,
+            "min": 0.0,
+            "max": 168.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 76.0,
+            "q50": 83.0,
+            "q75": 85.0,
+            "min": 0.0,
+            "max": 168.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 77.0,
+            "q50": 83.0,
+            "q75": 84.0,
+            "min": 0.0,
+            "max": 168.0,
+            "count": 177
+          }
+        }
+      },
+      "Count of ChainXY VT - Grocery": {
+        "value": 2,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.0,
+            "q50": 1.0,
+            "q75": 2.0,
+            "min": 0.0,
+            "max": 5.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.0,
+            "q50": 1.0,
+            "q75": 2.0,
+            "min": 0.0,
+            "max": 7.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1.0,
+            "q50": 2.0,
+            "q75": 3.0,
+            "min": 0.0,
+            "max": 8.0,
+            "count": 177
+          }
+        }
+      },
+      "Count of ChainXY VT - Mass Merchant": {
+        "value": 1,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 177
+          }
+        }
+      },
+      "Sum ChainXY": {
+        "value": 5,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1.0,
+            "q50": 3.0,
+            "q75": 5.0,
+            "min": 0.0,
+            "max": 11.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1.0,
+            "q50": 3.0,
+            "q75": 5.0,
+            "min": 0.0,
+            "max": 14.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 2.0,
+            "q50": 4.0,
+            "q75": 5.0,
+            "min": 0.0,
+            "max": 14.0,
+            "count": 177
+          }
+        }
+      },
+      "distance_from_nearest_walmart": {
+        "value": 1.2,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 1.0,
+          "Average Performing": 1.0,
+          "High Performing": 1.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.40146502366995196,
+            "q50": 1.25123711859034,
+            "q75": 2.48956919363509,
+            "min": 0.103753060747033,
+            "max": 4.94662510537601,
+            "count": 142
+          },
+          "Average Performing": {
+            "q25": 0.404994001491276,
+            "q50": 1.2212546102707,
+            "q75": 2.2608950326748047,
+            "min": 0.0938060142796895,
+            "max": 4.98644809010616,
+            "count": 159
+          },
+          "High Performing": {
+            "q25": 0.40836653977335724,
+            "q50": 1.04999494279807,
+            "q75": 2.057253489144065,
+            "min": 0.113477475454113,
+            "max": 4.79645721482149,
+            "count": 158
+          }
+        }
+      },
+      "count_of_walmart_5miles": {
+        "value": 2,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 0.0,
+          "Average Performing": 0.0,
+          "High Performing": 0.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 1.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 1.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 3.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 1.0,
+            "q50": 1.0,
+            "q75": 1.0,
+            "min": 0.0,
+            "max": 4.0,
+            "count": 176
+          }
+        }
+      },
+      "count_of_costco_5miles": {
+        "value": 1,
+        "best_fit": "Low Performing",
+        "tier_scores": {
+          "Low Performing": 0.0,
+          "Average Performing": 0.0,
+          "High Performing": 0.0
+        },
+        "ranges": {
+          "Low Performing": {
+            "q25": 0.0,
+            "q50": 0.0,
+            "q75": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 177
+          },
+          "Average Performing": {
+            "q25": 0.0,
+            "q50": 0.0,
+            "q75": 0.0,
+            "min": 0.0,
+            "max": 1.0,
+            "count": 177
+          },
+          "High Performing": {
+            "q25": 0.0,
+            "q50": 0.0,
+            "q75": 0.0,
+            "min": 0.0,
+            "max": 2.0,
+            "count": 176
+          }
+        }
+      }
+    }
+  },
+  "dimension_results": {
+    "Weather": {
+      "scores": {
+        "Low Performing": 7.491,
+        "Average Performing": 7.512,
+        "High Performing": 7.948
+      },
+      "predicted": "High Performing",
+      "fit_score": 34.6,
+      "features_scored": 8,
+      "feature_details": {
+        "total_sunshine_hours": {
+          "value": 3350.0,
+          "best_fit": "High Performing",
+          "tier_scores": {
+            "Low Performing": 0.9294679432767621,
+            "Average Performing": 0.8839082382306565,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 3017.54914,
+              "q50": 3182.89399777777,
+              "q75": 3328.09645888888,
+              "min": 2589.20141527778,
+              "max": 3963.01759194444,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 3067.08578888889,
+              "q50": 3189.54350472222,
+              "q75": 3320.57230388888,
+              "min": 2588.06215638889,
+              "max": 3885.52476111111,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 3152.92086805556,
+              "q50": 3209.94427416667,
+              "q75": 3415.86892222222,
+              "min": 2749.91591583333,
+              "max": 3885.36573583333,
+              "count": 177
+            }
+          }
+        },
+        "days_pleasant_temp": {
+          "value": 160.0,
+          "best_fit": "High Performing",
+          "tier_scores": {
+            "Low Performing": 0.6902654867256637,
+            "Average Performing": 0.7700729927007295,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 130.4,
+              "q50": 141.6,
+              "q75": 153.0,
+              "min": 62.9,
+              "max": 188.3,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 126.3,
+              "q50": 140.8,
+              "q75": 153.7,
+              "min": 63.4,
+              "max": 189.4,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 133.4,
+              "q50": 144.7,
+              "q75": 160.9,
+              "min": 97.5,
+              "max": 179.8,
+              "count": 177
+            }
+          }
+        },
+        "total_precipitation_mm": {
+          "value": 1400.0,
+          "best_fit": "High Performing",
+          "tier_scores": {
+            "Low Performing": 0.8867837868871286,
+            "Average Performing": 0.8585038497258755,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1109.15,
+              "q50": 1229.4,
+              "q75": 1370.42,
+              "min": 80.4,
+              "max": 1942.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1018.98,
+              "q50": 1203.51,
+              "q75": 1352.77,
+              "min": 198.12,
+              "max": 1975.95,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1157.79,
+              "q50": 1301.27,
+              "q75": 1442.43,
+              "min": 234.58,
+              "max": 1920.97,
+              "count": 177
+            }
+          }
+        },
+        "rainy_days": {
+          "value": 120.0,
+          "best_fit": "Average Performing",
+          "tier_scores": {
+            "Low Performing": 0.984455958549223,
+            "Average Performing": 1.0,
+            "High Performing": 0.9484978540772531
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 120.3,
+              "q50": 131.5,
+              "q75": 139.6,
+              "min": 13.8,
+              "max": 170.4,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 115.9,
+              "q50": 124.2,
+              "q75": 137.7,
+              "min": 31.8,
+              "max": 166.6,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 121.2,
+              "q50": 133.0,
+              "q75": 144.5,
+              "min": 43.2,
+              "max": 168.3,
+              "count": 177
+            }
+          }
+        },
+        "total_snowfall_cm": {
+          "value": 5.0,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1.337,
+              "q50": 14.07,
+              "q75": 50.799,
+              "min": 0.0,
+              "max": 155.582,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1.778,
+              "q50": 12.201,
+              "q75": 40.859,
+              "min": 0.0,
+              "max": 129.276,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.679,
+              "q50": 7.511,
+              "q75": 37.107,
+              "min": 0.0,
+              "max": 140.735,
+              "count": 177
+            }
+          }
+        },
+        "snowy_days": {
+          "value": 3.0,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1.0,
+              "q50": 7.0,
+              "q75": 26.2,
+              "min": 0.0,
+              "max": 86.4,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1.1,
+              "q50": 6.7,
+              "q75": 22.3,
+              "min": 0.0,
+              "max": 71.8,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.5,
+              "q50": 3.9,
+              "q75": 20.8,
+              "min": 0.0,
+              "max": 82.8,
+              "count": 177
+            }
+          }
+        },
+        "days_below_freezing": {
+          "value": 15.0,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 10.3,
+              "q50": 41.0,
+              "q75": 84.1,
+              "min": 0.0,
+              "max": 208.3,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 14.2,
+              "q50": 39.9,
+              "q75": 79.5,
+              "min": 0.0,
+              "max": 205.4,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 6.9,
+              "q50": 29.5,
+              "q75": 73.7,
+              "min": 0.0,
+              "max": 199.7,
+              "count": 177
+            }
+          }
+        },
+        "avg_daily_max_windspeed_ms": {
+          "value": 16.0,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 15.1186938393592,
+              "q50": 16.352365820795,
+              "q75": 19.095240736582,
+              "min": 11.5803896249719,
+              "max": 24.5658020061382,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 14.9786161389326,
+              "q50": 16.3617572423086,
+              "q75": 18.9137748334456,
+              "min": 11.7111578710981,
+              "max": 28.0563139456546,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 15.2374142525638,
+              "q50": 16.1287640541957,
+              "q75": 18.494288344936,
+              "min": 12.9609879481997,
+              "max": 26.0164185193502,
+              "count": 177
+            }
+          }
+        }
+      }
+    },
+    "Traffic": {
+      "scores": {
+        "Low Performing": 12.872,
+        "Average Performing": 12.92,
+        "High Performing": 13.0
+      },
+      "predicted": "High Performing",
+      "fit_score": 33.5,
+      "features_scored": 13,
+      "feature_details": {
+        "Nearest StreetLight US Hourly-Ttl AADT": {
+          "value": 15000,
+          "best_fit": "High Performing",
+          "tier_scores": {
+            "Low Performing": 0.9331720592682189,
+            "Average Performing": 0.937909186906019,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 4416.0,
+              "q50": 9739.0,
+              "q75": 14337.0,
+              "min": 0.0,
+              "max": 42281.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 4942.0,
+              "q50": 10094.0,
+              "q75": 14412.0,
+              "min": 7.0,
+              "max": 38205.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 5919.0,
+              "q50": 10973.0,
+              "q75": 16876.0,
+              "min": 227.0,
+              "max": 39761.0,
+              "count": 177
+            }
+          }
+        },
+        "2nd Nearest StreetLight US Hourly-Ttl AADT": {
+          "value": 12000,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 3806.0,
+              "q50": 9399.0,
+              "q75": 14586.0,
+              "min": 0.0,
+              "max": 35632.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 5655.0,
+              "q50": 10206.0,
+              "q75": 16084.0,
+              "min": 0.0,
+              "max": 35375.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 6004.0,
+              "q50": 10714.0,
+              "q75": 16387.0,
+              "min": 0.0,
+              "max": 42356.0,
+              "count": 177
+            }
+          }
+        },
+        "3rd Nearest StreetLight US Hourly-Ttl AADT": {
+          "value": 9000,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 3600.0,
+              "q50": 8267.0,
+              "q75": 14113.0,
+              "min": 0.0,
+              "max": 34266.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 5226.0,
+              "q50": 9833.0,
+              "q75": 14796.0,
+              "min": 6.0,
+              "max": 37880.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 4315.0,
+              "q50": 9562.0,
+              "q75": 14379.0,
+              "min": 0.0,
+              "max": 40114.0,
+              "count": 177
+            }
+          }
+        },
+        "Nearest StreetLight US Hourly-ttl_breakfast": {
+          "value": 2500,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1049.0,
+              "q50": 2176.0,
+              "q75": 3467.0,
+              "min": 0.0,
+              "max": 10706.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1034.0,
+              "q50": 2229.0,
+              "q75": 3529.0,
+              "min": 0.0,
+              "max": 10025.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1223.0,
+              "q50": 2529.0,
+              "q75": 4199.0,
+              "min": 45.0,
+              "max": 10904.0,
+              "count": 177
+            }
+          }
+        },
+        "Nearest StreetLight US Hourly-ttl_lunch": {
+          "value": 3000,
+          "best_fit": "High Performing",
+          "tier_scores": {
+            "Low Performing": 0.9622733953944145,
+            "Average Performing": 0.9824649298597194,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 882.0,
+              "q50": 2002.0,
+              "q75": 2923.0,
+              "min": 0.0,
+              "max": 8555.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 969.0,
+              "q50": 2048.0,
+              "q75": 2965.0,
+              "min": 0.0,
+              "max": 8088.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1299.0,
+              "q50": 2310.0,
+              "q75": 3373.0,
+              "min": 52.0,
+              "max": 8218.0,
+              "count": 177
+            }
+          }
+        },
+        "Nearest StreetLight US Hourly-ttl_afternoon": {
+          "value": 3200,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1105.0,
+              "q50": 2166.0,
+              "q75": 3224.0,
+              "min": 0.0,
+              "max": 9162.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1154.0,
+              "q50": 2280.0,
+              "q75": 3398.0,
+              "min": 0.0,
+              "max": 8395.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1427.0,
+              "q50": 2487.0,
+              "q75": 3616.0,
+              "min": 48.0,
+              "max": 8846.0,
+              "count": 177
+            }
+          }
+        },
+        "Nearest StreetLight US Hourly-ttl_dinner": {
+          "value": 2800,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 973.0,
+              "q50": 2015.0,
+              "q75": 2850.0,
+              "min": 0.0,
+              "max": 8260.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 982.0,
+              "q50": 1965.0,
+              "q75": 2867.0,
+              "min": 0.0,
+              "max": 7401.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1153.0,
+              "q50": 2201.0,
+              "q75": 3251.0,
+              "min": 22.0,
+              "max": 7754.0,
+              "count": 177
+            }
+          }
+        },
+        "Nearest StreetLight US Hourly-ttl_night": {
+          "value": 1200,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 432.0,
+              "q50": 970.0,
+              "q75": 1517.0,
+              "min": 0.0,
+              "max": 4081.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 410.0,
+              "q50": 975.0,
+              "q75": 1478.0,
+              "min": 0.0,
+              "max": 3828.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 565.0,
+              "q50": 1150.0,
+              "q75": 1668.0,
+              "min": 1.0,
+              "max": 5193.0,
+              "count": 177
+            }
+          }
+        },
+        "Nearest StreetLight US Hourly-ttl_overnight": {
+          "value": 300,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 116.0,
+              "q50": 291.0,
+              "q75": 499.0,
+              "min": 0.0,
+              "max": 1498.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 115.0,
+              "q50": 295.0,
+              "q75": 530.0,
+              "min": 0.0,
+              "max": 2423.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 134.0,
+              "q50": 311.0,
+              "q75": 619.0,
+              "min": 0.0,
+              "max": 3025.0,
+              "count": 177
+            }
+          }
+        },
+        "nearby_traffic_lights_count": {
+          "value": 14,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 6.0,
+              "q50": 11.0,
+              "q75": 22.0,
+              "min": 0.0,
+              "max": 52.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 7.0,
+              "q50": 14.0,
+              "q75": 24.0,
+              "min": 0.0,
+              "max": 53.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 9.0,
+              "q50": 15.0,
+              "q75": 25.0,
+              "min": 0.0,
+              "max": 68.0,
+              "count": 177
+            }
+          }
+        },
+        "distance_nearest_traffic_light_1": {
+          "value": 0.15,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.0625139387567705,
+              "q50": 0.106342952141082,
+              "q75": 0.207685951583579,
+              "min": 0.0243338962183027,
+              "max": 10.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.0705734629896751,
+              "q50": 0.129098475106428,
+              "q75": 0.242904676875597,
+              "min": 0.0236891530118223,
+              "max": 10.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.062676129086316,
+              "q50": 0.0970920207837967,
+              "q75": 0.163205301453245,
+              "min": 0.0264483703666738,
+              "max": 10.0,
+              "count": 177
+            }
+          }
+        },
+        "distance_nearest_traffic_light_2": {
+          "value": 0.2,
+          "best_fit": "Average Performing",
+          "tier_scores": {
+            "Low Performing": 0.976905603131033,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.207926451624165,
+              "q50": 0.302531819045997,
+              "q75": 0.551146136863754,
+              "min": 0.064475423779158,
+              "max": 10.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.192964094468632,
+              "q50": 0.321742626649051,
+              "q75": 0.57520983737687,
+              "min": 0.0524591804094997,
+              "max": 10.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.168895268369918,
+              "q50": 0.264321278632793,
+              "q75": 0.397927189054184,
+              "min": 0.0787942274325388,
+              "max": 10.0,
+              "count": 177
+            }
+          }
+        },
+        "distance_nearest_traffic_light_3": {
+          "value": 0.35,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.346838134949161,
+              "q50": 0.483863939469289,
+              "q75": 0.822616689488099,
+              "min": 0.120802517861082,
+              "max": 10.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.326049124861392,
+              "q50": 0.533358034006256,
+              "q75": 0.890340105892172,
+              "min": 0.149681109122443,
+              "max": 10.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.312188848804578,
+              "q50": 0.410585796021739,
+              "q75": 0.672723229071046,
+              "min": 0.119999780910026,
+              "max": 10.0,
+              "count": 177
+            }
+          }
+        }
+      }
+    },
+    "Competition": {
+      "scores": {
+        "Low Performing": 2.077,
+        "Average Performing": 2.0,
+        "High Performing": 2.71
+      },
+      "predicted": "High Performing",
+      "fit_score": 39.9,
+      "features_scored": 3,
+      "feature_details": {
+        "competitors_count": {
+          "value": 1,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 4.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.0,
+              "q50": 0.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 6.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 5.0,
+              "count": 177
+            }
+          }
+        },
+        "competitor_1_distance_miles": {
+          "value": 3.5,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.335204050168071,
+              "q50": 0.872826655370929,
+              "q75": 10.0,
+              "min": 0.0016420389128519,
+              "max": 10.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.352442777803491,
+              "q50": 10.0,
+              "q75": 10.0,
+              "min": 0.0,
+              "max": 10.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.312799001589734,
+              "q50": 0.843034870978934,
+              "q75": 10.0,
+              "min": 0.0005011985913957,
+              "max": 10.0,
+              "count": 177
+            }
+          }
+        },
+        "competitor_1_google_user_rating_count": {
+          "value": 200,
+          "best_fit": "High Performing",
+          "tier_scores": {
+            "Low Performing": 0.07692307692307687,
+            "Average Performing": 0.0,
+            "High Performing": 0.7096774193548387
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.0,
+              "q50": 1.0,
+              "q75": 104.0,
+              "min": 0.0,
+              "max": 2036.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.0,
+              "q50": 0.0,
+              "q75": 70.0,
+              "min": 0.0,
+              "max": 1387.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.0,
+              "q50": 2.0,
+              "q75": 155.0,
+              "min": 0.0,
+              "max": 1803.0,
+              "count": 177
+            }
+          }
+        }
+      }
+    },
+    "Infrastructure": {
+      "scores": {
+        "Low Performing": 2.0,
+        "Average Performing": 2.0,
+        "High Performing": 2.0
+      },
+      "predicted": "Low Performing",
+      "fit_score": 33.3,
+      "features_scored": 2,
+      "feature_details": {
+        "tunnel_length (in ft.)": {
+          "value": 115.0,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.0,
+              "q50": 102.9274251,
+              "q75": 121.7555913,
+              "min": 0.0,
+              "max": 167.837933,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 93.34440235,
+              "q50": 116.3674433,
+              "q75": 128.6203177,
+              "min": 0.0,
+              "max": 179.5353779,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 102.1518289,
+              "q50": 120.43539559999999,
+              "q75": 131.834531975,
+              "min": 0.0,
+              "max": 11697.09018,
+              "count": 176
+            }
+          }
+        },
+        "total_weekly_operational_hours": {
+          "value": 80.0,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 75.0,
+              "q50": 83.0,
+              "q75": 84.0,
+              "min": 0.0,
+              "max": 168.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 76.0,
+              "q50": 83.0,
+              "q75": 85.0,
+              "min": 0.0,
+              "max": 168.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 77.0,
+              "q50": 83.0,
+              "q75": 84.0,
+              "min": 0.0,
+              "max": 168.0,
+              "count": 177
+            }
+          }
+        }
+      }
+    },
+    "Retail Proximity": {
+      "scores": {
+        "Low Performing": 4.0,
+        "Average Performing": 4.0,
+        "High Performing": 4.0
+      },
+      "predicted": "Low Performing",
+      "fit_score": 33.3,
+      "features_scored": 6,
+      "feature_details": {
+        "Count of ChainXY VT - Grocery": {
+          "value": 2,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.0,
+              "q50": 1.0,
+              "q75": 2.0,
+              "min": 0.0,
+              "max": 5.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.0,
+              "q50": 1.0,
+              "q75": 2.0,
+              "min": 0.0,
+              "max": 7.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1.0,
+              "q50": 2.0,
+              "q75": 3.0,
+              "min": 0.0,
+              "max": 8.0,
+              "count": 177
+            }
+          }
+        },
+        "Count of ChainXY VT - Mass Merchant": {
+          "value": 1,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 3.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 4.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 4.0,
+              "count": 177
+            }
+          }
+        },
+        "Sum ChainXY": {
+          "value": 5,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1.0,
+              "q50": 3.0,
+              "q75": 5.0,
+              "min": 0.0,
+              "max": 11.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1.0,
+              "q50": 3.0,
+              "q75": 5.0,
+              "min": 0.0,
+              "max": 14.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 2.0,
+              "q50": 4.0,
+              "q75": 5.0,
+              "min": 0.0,
+              "max": 14.0,
+              "count": 177
+            }
+          }
+        },
+        "count_of_costco_5miles": {
+          "value": 1,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 0.0,
+            "Average Performing": 0.0,
+            "High Performing": 0.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.0,
+              "q50": 0.0,
+              "q75": 0.0,
+              "min": 0.0,
+              "max": 1.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 0.0,
+              "q50": 0.0,
+              "q75": 0.0,
+              "min": 0.0,
+              "max": 1.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 0.0,
+              "q50": 0.0,
+              "q75": 0.0,
+              "min": 0.0,
+              "max": 2.0,
+              "count": 176
+            }
+          }
+        },
+        "distance_from_nearest_walmart": {
+          "value": 1.2,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 1.0,
+            "Average Performing": 1.0,
+            "High Performing": 1.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 0.40146502366995196,
+              "q50": 1.25123711859034,
+              "q75": 2.48956919363509,
+              "min": 0.103753060747033,
+              "max": 4.94662510537601,
+              "count": 142
+            },
+            "Average Performing": {
+              "q25": 0.404994001491276,
+              "q50": 1.2212546102707,
+              "q75": 2.2608950326748047,
+              "min": 0.0938060142796895,
+              "max": 4.98644809010616,
+              "count": 159
+            },
+            "High Performing": {
+              "q25": 0.40836653977335724,
+              "q50": 1.04999494279807,
+              "q75": 2.057253489144065,
+              "min": 0.113477475454113,
+              "max": 4.79645721482149,
+              "count": 158
+            }
+          }
+        },
+        "count_of_walmart_5miles": {
+          "value": 2,
+          "best_fit": "Low Performing",
+          "tier_scores": {
+            "Low Performing": 0.0,
+            "Average Performing": 0.0,
+            "High Performing": 0.0
+          },
+          "ranges": {
+            "Low Performing": {
+              "q25": 1.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 4.0,
+              "count": 177
+            },
+            "Average Performing": {
+              "q25": 1.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 3.0,
+              "count": 177
+            },
+            "High Performing": {
+              "q25": 1.0,
+              "q50": 1.0,
+              "q75": 1.0,
+              "min": 0.0,
+              "max": 4.0,
+              "count": 176
+            }
+          }
+        }
+      }
+    }
+  },
+  "vote": {
+    "category": "High Performing",
+    "agreement": 3,
+    "total_dimensions": 5,
+    "vote_breakdown": {
+      "Low Performing": 2,
+      "Average Performing": 0,
+      "High Performing": 3
+    },
+    "voting_dimensions": [
+      "Weather",
+      "Traffic",
+      "Competition",
+      "Infrastructure",
+      "Retail Proximity"
+    ]
+  },
+  "strengths": [
+    "Weather",
+    "Traffic",
+    "Competition"
+  ],
+  "weaknesses": [
+    "Infrastructure",
+    "Retail Proximity"
+  ],
+  "neutrals": []
+}

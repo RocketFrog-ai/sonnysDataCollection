@@ -6,9 +6,16 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 from app.server.models import *
 from app.server.app import get_climate, get_competitors, get_traffic_lights, get_nearby_stores
+from app.features.weather.weather_period import get_annual_weather_plot_data
+from app.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
+from app.features.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
+from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
+from app.agentic_reference.profiler_engine import QuantileProfiler, DIMENSION_GROUPS
+from app.agentic_reference.dimension_profiler import DimensionProfiler
+from app.agentic_reference.agentic_rationale import generate_dimension_rationale, generate_rationale
 
 
 REDIS_HOST = calib.REDIS_HOST
@@ -42,6 +49,25 @@ def get_redis_client():
         password=REDIS_PASSWORD,
         decode_responses=True
     )
+
+
+def _get_task_result_or_raise(task_id: str):
+    """Resolve Celery task by task_id. Returns result dict if SUCCESS; raises HTTPException otherwise."""
+    task_result = AsyncResult(task_id, app=celery_app)
+    if task_result.state != TaskStatus.SUCCESS.value:
+        if task_result.state == TaskStatus.FAILURE.value:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Task {task_id} failed: {str(task_result.result) if task_result.result else 'Task failed'}",
+            )
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task {task_id} not completed yet (status={task_result.state}). Poll GET /v1/task/{task_id} until status is SUCCESS.",
+        )
+    result = task_result.result
+    if result is None:
+        raise HTTPException(status_code=422, detail=f"Task {task_id} completed but result is empty.")
+    return result
 
 
 @router.post("/analyze-site")
@@ -81,25 +107,122 @@ def _resolve_weather_dates(start_date: str = None, end_date: str = None):
     return default_start, default_end
 
 
+def _get_weather_response(req: WeatherRequest):
+    """Shared logic for weather data: geocode, resolve dates, return climate data."""
+    lat, lon = _geocode(req.address)
+    start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
+    data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
+    return {
+        "address": req.address,
+        "lat": lat,
+        "lon": lon,
+        "start_date": start_date,
+        "end_date": end_date,
+        "data": data,
+    }
+
+
 @router.post("/weather")
 def get_weather(req: WeatherRequest):
+    """Legacy endpoint: same as /weather/data."""
     try:
-        lat, lon = _geocode(req.address)
-        start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
-        data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
-        return {
-            "address": req.address,
-            "lat": lat,
-            "lon": lon,
-            "start_date": start_date,
-            "end_date": end_date,
-            "data": data,
-        }
+        return _get_weather_response(req)
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Weather fetch failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/weather/data")
+def get_weather_data(req: WeatherRequest):
+    """Weather data for a location and optional date range (current v1/weather behavior)."""
+    try:
+        return _get_weather_response(req)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather data fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/weather/plot")
+def get_weather_plot(req: WeatherPlotRequest):
+    """
+    Annual weather data for the Monthly Weather Distribution chart and full monthly stats.
+    Returns sunny_days, pleasant_days, rainy_days, snow_days per month (Jan–Dec) plus all other metrics.
+    """
+    try:
+        lat, lon = _geocode(req.address)
+        result = get_annual_weather_plot_data(lat, lon, req.year)
+        if result is None:
+            raise HTTPException(status_code=502, detail="Could not fetch weather data for the given year.")
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            **result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather plot data fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/weather/summary/{task_id}")
+def get_weather_summary_by_task(task_id: str):
+    """
+    Executive summary for Weather dimension using quantile-based profiling.
+    Scores weather features against Low/Avg/High IQR ranges and generates LLM rationale.
+    """
+    return _dimension_summary(task_id, "Weather")
+
+
+@router.post("/gas_station")
+def get_gas_stations_endpoint(req: GasStationRequest):
+    """
+    Nearby gas stations within the given radius (default 2 miles).
+    All station fields are from Google Places API (Nearby Search and optionally Place Details).
+    No inferred or hardcoded data: name, rating, address, regular_opening_hours from search;
+    optional fuel_options and types from Place Details when fetch_place_details is true.
+    """
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        radius = req.radius_miles if req.radius_miles is not None else 2.0
+        max_results = req.max_results if req.max_results is not None else 10
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        stations = get_nearby_gas_stations(
+            api_key, lat, lon,
+            radius_miles=radius,
+            max_results=max_results,
+            fetch_place_details=fetch_details,
+        )
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "radius_miles": radius,
+            "stations": stations,
+            "count": len(stations),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Gas stations fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gas_station/summary/{task_id}")
+def get_gas_station_summary_by_task(task_id: str):
+    """
+    Executive summary for Retail Proximity dimension (gas station slice).
+    Gas stations fall under the Retail Proximity dimension in the quantile model.
+    """
+    return _dimension_summary(task_id, "Retail Proximity")
 
 
 @router.post("/traffic-lights")
@@ -115,6 +238,46 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/retailers")
+def get_retailers_endpoint(req: RetailersRequest):
+    """
+    Nearby retailers (complementary businesses) within radius by driving distance.
+    Real data from Google Places API and Distance Matrix: name, category, distance, rating, hours; optional website/link.
+    """
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        radius = req.radius_miles if req.radius_miles is not None else 0.5
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        data = get_nearby_retailers(
+            api_key, lat, lon,
+            radius_miles=radius,
+            fetch_place_details=fetch_details,
+        )
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "radius_miles": radius,
+            **data,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Retailers fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/retailers/summary/{task_id}")
+def get_retailers_summary_by_task(task_id: str):
+    """
+    Executive summary for Retail Proximity dimension (retailers slice).
+    """
+    return _dimension_summary(task_id, "Retail Proximity")
+
+
 @router.post("/nearby-stores")
 def get_nearby_stores_endpoint(features: AnalyseRequest):
     try:
@@ -126,6 +289,47 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
     except Exception as e:
         logger.exception("Nearby stores fetch failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/competitors/dynamics")
+def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
+    """
+    Nearby car wash competitors within radius by route (driving) distance.
+    Real data only: name, distance_miles, rating, user_rating_count, address; optional website, google_maps_uri, primary_type_display_name.
+    No market share or threat level (not from API).
+    """
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        radius = req.radius_miles if req.radius_miles is not None else 4.0
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        data = get_nearby_competitors(
+            api_key, lat, lon,
+            radius_miles=radius,
+            fetch_place_details=fetch_details,
+        )
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "radius_miles": radius,
+            **data,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Competitors dynamics fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/competitors/dynamics/summary/{task_id}")
+def get_competitors_dynamics_summary_by_task(task_id: str):
+    """
+    Executive summary for Competition dimension using quantile-based profiling.
+    """
+    return _dimension_summary(task_id, "Competition")
 
 
 @router.post("/competitors")
@@ -167,6 +371,121 @@ def get_task_status(task_id: str):
         response.error = str(task_result.result) if task_result.result else "Task failed"
 
     return response
+
+
+# ── Agentic Quantile Profiling Helpers ────────────────────────────
+
+# Singleton profiler (loaded once on first request)
+_profiler_singleton = None
+_dim_profiler_singleton = None
+
+
+def _get_profilers():
+    """Lazy-load the profilers (dataset loaded once, then reused)."""
+    global _profiler_singleton, _dim_profiler_singleton
+    if _profiler_singleton is None:
+        _profiler_singleton = QuantileProfiler()
+        _dim_profiler_singleton = DimensionProfiler(_profiler_singleton)
+    return _profiler_singleton, _dim_profiler_singleton
+
+
+def _dimension_summary(task_id: str, dimension: str) -> dict:
+    """
+    Shared logic for per-dimension summary endpoints.
+    Extracts feature_values from the completed task, runs quantile scoring
+    for the requested dimension, generates LLM rationale, and returns
+    a DimensionSummaryResponse.
+    """
+    result = _get_task_result_or_raise(task_id)
+    feature_values = result.get("feature_values") or {}
+
+    profiler, dim_profiler = _get_profilers()
+    dim_result = dim_profiler.score_dimension(dimension, feature_values)
+
+    # Overall classification (for context in rationale)
+    overall = profiler.predict(feature_values)
+
+    # Generate LLM rationale for this dimension
+    summary_text = generate_dimension_rationale(
+        dimension_name=dimension,
+        dimension_result=dim_result,
+        dimension_strength_info=dim_profiler.dimension_strength.get(dimension, {}),
+        overall_category=overall["predicted_category"],
+    )
+
+    # Feature values slice (only features relevant to this dimension)
+    dim_features = DIMENSION_GROUPS.get(dimension, [])
+    fv_slice = {k: v for k, v in feature_values.items() if k in dim_features}
+
+    # Extract performance labels for each feature
+    feat_perf = {}
+    if dim_result.get("feature_details"):
+        for feat, details in dim_result["feature_details"].items():
+            # details["best_fit"] contains "High Performing", "Low Performing", etc.
+            # We map this to a shorter label or keep as is.
+            # The prompt logic uses "High Performing", so let's keep it consistent or simplify to High/Avg/Low.
+            # User asked for "low performer, average performer, high performer".
+            # The profiler returns "High Performing". Let's standardize on that.
+            feat_perf[feat] = details.get("best_fit", "N/A")
+
+    return DimensionSummaryResponse(
+        task_id=task_id,
+        dimension=dimension,
+        predicted_tier=dim_result["predicted"],
+        fit_score=dim_result["fit_score"],
+        features_scored=dim_result["features_scored"],
+        feature_breakdown=dim_result.get("feature_details", {}),
+        discriminatory_power=dim_profiler.dimension_strength.get(dimension, {}),
+        summary=summary_text,
+        feature_values_slice=fv_slice,
+        feature_performance=feat_perf,
+    ).model_dump()
+
+
+@router.get("/profiling/summary/{task_id}")
+def get_full_profiling_summary(task_id: str):
+    """
+    Full quantile profiling summary across ALL dimensions.
+    Includes overall tier, dimension breakdown, vote, and LLM rationale.
+    """
+    result = _get_task_result_or_raise(task_id)
+    feature_values = result.get("feature_values") or {}
+
+    profiler, dim_profiler = _get_profilers()
+    overall = profiler.predict(feature_values, return_details=True)
+    dim_results = dim_profiler.score_all_dimensions(feature_values)
+    vote = dim_profiler.majority_vote(dim_results)
+    strengths, weaknesses, neutrals = dim_profiler.get_strengths_weaknesses(dim_results)
+
+    rationale = generate_rationale(
+        location_features=feature_values,
+        overall_prediction=overall,
+        dimension_results=dim_results,
+        dimension_strength=dim_profiler.dimension_strength,
+        vote_result=vote,
+        strengths=strengths,
+        weaknesses=weaknesses,
+        neutrals=neutrals,
+    )
+
+    return QuantileSummaryResponse(
+        task_id=task_id,
+        overall_tier=vote["category"],
+        overall_fit_score=overall["fit_score"],
+        expected_volume=overall["expected_volume"],
+        dimensions={
+            dim: {
+                "predicted": res["predicted"],
+                "fit_score": res["fit_score"],
+                "features_scored": res["features_scored"],
+            }
+            for dim, res in dim_results.items()
+        },
+        vote=vote,
+        strengths=strengths,
+        weaknesses=weaknesses,
+        rationale=rationale,
+    ).model_dump()
 
 
 @router.get("/health")
