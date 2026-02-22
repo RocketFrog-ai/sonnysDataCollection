@@ -15,6 +15,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+from tqdm import tqdm
 
 # Project root on path for app imports
 _project_root = Path(__file__).resolve().parent.parent
@@ -81,7 +82,7 @@ def run(start_index: int = 0, end_index: int | None = None, fetch_place_details:
         return
 
     new_rows = []
-    for i in range(start_index, end_index):
+    for i in tqdm(range(start_index, end_index), desc="Nearest gas", unit="row"):
         row = df.iloc[i]
         address = row[ADDRESS_COL]
         if pd.isna(address) or not str(address).strip():
