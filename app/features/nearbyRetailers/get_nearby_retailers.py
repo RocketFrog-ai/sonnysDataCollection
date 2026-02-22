@@ -8,7 +8,7 @@ from typing import Optional, Any
 from app.utils import common as calib
 from app.features.experimental_features.operationalHours.searchNearby import find_nearby_places
 
-DEFAULT_RADIUS_MILES = 0.5
+DEFAULT_RADIUS_MILES = 2
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json"
 METERS_PER_MILE = 1609.34
