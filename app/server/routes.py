@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException
 from app.server.models import *
 from app.server.app import get_climate, get_competitors, get_traffic_lights, get_nearby_stores
 from app.features.weather.weather_period import get_annual_weather_plot_data
-from app.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
+from app.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations, get_nearest_gas_station_only
 from app.features.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
 from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.ai.analysis import analyze_site_from_dict
@@ -223,6 +223,37 @@ def get_gas_station_summary_by_task(task_id: str):
     Gas stations fall under the Retail Proximity dimension in the quantile model.
     """
     return _dimension_summary(task_id, "Retail Proximity")
+
+
+@router.post("/datafetch/nearbygasstations")
+def datafetch_nearby_gas_stations(req: DataFetchNearestGasRequest):
+    """
+    Returns only the single nearest gas station by driving distance (no radius or count limit).
+    Uses the same logic and fields as /gas_station: Google Nearby Search (gas_station type),
+    Distance Matrix for driving distance, and optionally Place Details. Only returns a place
+    confirmed as a gas station. Intended for batch data collection over many addresses.
+    """
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        nearest = get_nearest_gas_station_only(
+            api_key, lat, lon,
+            fetch_place_details=fetch_details,
+        )
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "nearest_gas_station": nearest,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Datafetch nearest gas station failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/traffic-lights")

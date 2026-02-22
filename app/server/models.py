@@ -28,6 +28,12 @@ class GasStationRequest(BaseModel):
     fetch_place_details: Optional[bool] = Field(True, description="Whether to fetch Place Details (fuelOptions, types) per station")
 
 
+class DataFetchNearestGasRequest(BaseModel):
+    """Request for data-fetch endpoint: single nearest gas station only (no radius/limit)."""
+    address: str
+    fetch_place_details: Optional[bool] = Field(True, description="Whether to fetch Place Details (fuelOptions, types)")
+
+
 class RetailersRequest(BaseModel):
     """Request for nearby retailers (complementary businesses within radius)."""
     address: str

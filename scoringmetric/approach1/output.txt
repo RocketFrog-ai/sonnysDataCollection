@@ -1,0 +1,132 @@
+================================================================================
+APPROACH 1 - Config-Driven Percentile + Range Engine
+================================================================================
+
+WHAT THIS APPROACH DOES:
+  - Uses a config file (FEATURE_DIRECTION) for 50 features
+  - Scores via RAW PERCENTILE RANK (same formula as Approach 2)
+  - Range engine derives boundaries: ≤6 unique → discrete; large gaps → split points
+  - Ranges are for INTERPRETATION only; they do NOT affect the score
+
+HOW IT DIFFERS FROM APPROACH 2: Same 50 features; has explicit ranges; no plots
+HOW IT DIFFERS FROM APPROACH 3: No shape-based binning; uses raw percentile, not binned
+
+================================================================================
+
+Overall Score: 49.87
+
+================================================================================
+RANGES DEFINED PER FEATURE (from derive_ranges)
+================================================================================
+Rules: ≤6 unique → discrete buckets; large gaps → split points; else None
+
+Feature                                                 Value      Score Ranges                                                         Rule      
+--------------------------------------------------------------------------------------------------------------------------------------------------
+total_sunshine_hours                                  3223.89      60.64 [2589.2, 2749.92, 2779.73, 2795.16, 2890.27, 3499.19, 3540.7... gap-based 
+days_pleasant_temp                                     143.33      53.30 [63.4, 92.1, 97.5, 100.1, 101.8, 106.2, 107.5, 111.8, 117.0,... gap-based 
+Nearest StreetLight US Hourly-Ttl AADT               11040.61      54.61 [20933, 23129, 23795, 25631, 26311, 27314, 28731, 29543, 305... gap-based 
+2nd Nearest StreetLight US Hourly-Ttl AADT           11117.50      54.99 [20437, 21151, 21994, 23130, 23743, 25982, 26729, 28135, 289... gap-based 
+3rd Nearest StreetLight US Hourly-Ttl AADT           10249.85      54.05 [16823, 18217, 18980, 19998, 21383, 23404, 24187, 24657, 261... gap-based 
+4th Nearest StreetLight US Hourly-Ttl AADT           10653.98      56.87 [18151, 19694, 20864, 23501, 26980, 27725, 28247, 28905, 293... gap-based 
+5th Nearest StreetLight US Hourly-Ttl AADT           10269.25      55.93 [16625, 18566, 22789, 24363, 26747, 27415, 28564, 29101, 296... gap-based 
+6th Nearest StreetLight US Hourly-Ttl AADT            9946.98      58.00 [19622, 21094, 22876, 24171, 25276, 26329, 26875, 27727, 284... gap-based 
+Nearest StreetLight US Hourly-ttl_breakfast           2619.82      55.56 [5033, 5402, 5971, 6632, 6825, 6944, 7062, 7400, 7644, 7945,... gap-based 
+Nearest StreetLight US Hourly-ttl_lunch               2254.70      53.48 [4159, 4584, 4860, 5130, 5277, 5486, 5650, 5829, 6108, 6440,... gap-based 
+Nearest StreetLight US Hourly-ttl_afternoon           2482.81      52.92 [4652, 4811, 5035, 5367, 5532, 5963, 6091, 6307, 6604, 7053,... gap-based 
+Nearest StreetLight US Hourly-ttl_dinner              2165.36      52.73 [4048, 4222, 4608, 5127, 5291, 5485, 5715, 5886, 5986, 6117,... gap-based 
+Nearest StreetLight US Hourly-ttl_night               1103.00      53.67 [2020, 2098, 2318, 2643, 2814, 3065, 3260, 3322, 3387, 3438,... gap-based 
+Nearest StreetLight US Hourly-ttl_overnight            388.67      61.58 [1051, 1118, 1221, 1279, 1315, 1343, 1392, 1422, 1498, 1529,... gap-based 
+nearby_traffic_lights_count                             16.31      59.51 [42, 44, 49, 53, 59, 63]                                       gap-based 
+tunnel_length (in ft.)                                 116.60      53.77 [0.0, 32.21, 65.89, 68.91, 71.66, 83.27, 155.34, 161.21, 164... gap-based 
+total_weekly_operational_hours                          79.58      37.10 [0.0, 37.0, 45.0, 55.0, 59.0, 62.0, 91.0, 94.5, 96.0, 98.0, ... gap-based 
+Count of ChainXY VT - Building Supplies                  0.76      41.43 [0, 1, 2, 3]                                                   discrete  
+Count of ChainXY VT - Department Store                   0.15      88.32 [0, 1, 2, 3]                                                   discrete  
+Count of ChainXY VT - Grocery                            1.65      55.37 [0, 1, 2, 3, 4, 5, 6, 7]                                       gap-based 
+Count of ChainXY VT - Mass Merchant                      1.10      78.15 [0, 1, 2, 3, 4]                                                discrete  
+Count of ChainXY VT - Real Estate Model                  0.10      90.02 [0, 1, 2]                                                      discrete  
+Sum ChainXY                                              3.76      54.61 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]                 gap-based 
+count_of_target_5miles                                   0.44      65.66 [0.0, 1.0, 2.0, 3.0]                                           discrete  
+count_of_costco_5miles                                   0.13      87.55 [0.0, 1.0, 2.0]                                                discrete  
+count_of_walmart_5miles                                  1.07      82.64 [0.0, 1.0, 2.0, 3.0, 4.0]                                      discrete  
+count_of_bestbuy_5miles                                  0.18      82.64 [0.0, 1.0, 2.0]                                                discrete  
+competitor_1_google_user_rating_count                  120.51      74.95 [539, 579, 713, 800, 851, 951, 996, 1099, 1143, 1348, 1400, ... gap-based 
+total_precipitation_mm                                1189.12      61.96 [80.4, 291.34, 330.05, 402.42, 508.21, 538.86, 581.74, 633.2... gap-based 
+rainy_days                                             125.09      59.51 [13.8, 33.3, 35.1, 38.6, 48.4, 50.7, 57.3, 65.6, 68.7, 73.1,... gap-based 
+total_snowfall_cm                                       27.56      35.03 [47.49, 76.2, 90.31, 95.29, 97.87, 103.3, 105.86, 114.72, 12... gap-based 
+snowy_days                                              14.67      36.16 [29.9, 45.0, 49.4, 50.6, 52.9, 54.0, 56.7, 58.5, 59.5, 62.1,... gap-based 
+days_below_freezing                                     48.57      41.43 [18.9, 79.8, 90.3, 112.6, 118.6, 128.8, 134.3, 137.3, 142.0,... gap-based 
+avg_daily_max_windspeed_ms                              17.24      38.98 [11.71, 12.07, 12.28, 12.65, 12.96, 13.12, 22.11, 23.19, 23.... gap-based 
+competitors_count                                        0.86      54.43 [0, 1, 2, 3, 4, 5]                                             gap-based 
+competitor_1_distance_miles                              4.78      45.57 [0.04, 0.27, 0.4, 0.47, 0.49, 0.55, 0.58, 0.6, 0.68, 0.72, 0... gap-based 
+distance_from_nearest_target                             2.36      47.80 [0.85, 0.96, 1.74, 2.03, 4.76, 4.88]                           gap-based 
+distance_from_nearest_costco                             2.57      48.48 [1.98, 2.83]                                                   gap-based 
+distance_from_nearest_walmart                            1.49      42.70 [2.36, 2.76, 2.93, 3.23, 3.58, 3.8, 4.02, 4.1, 4.24, 4.37, 4... gap-based 
+distance_from_nearest_bestbuy                            2.60      48.91 [0.22, 0.73, 1.3]                                              gap-based 
+distance_nearest_traffic_light_1                         0.30      13.94 [0.52, 0.57, 0.64, 0.68, 0.75, 0.91, 0.96, 1.1, 1.16, 1.2, 1... gap-based 
+distance_nearest_traffic_light_2                         0.66      17.70 [0.83, 0.9, 1.01, 1.04, 1.08, 1.13, 1.21, 1.27, 1.35, 1.44, ... gap-based 
+distance_nearest_traffic_light_3                         1.10      14.88 [0.12, 0.92, 1.09, 1.19, 1.27, 1.31, 1.35, 1.42, 1.48, 1.56,... gap-based 
+distance_nearest_traffic_light_4                         1.51      14.12 [0.13, 0.16, 0.89, 1.18, 1.29, 1.31, 1.34, 1.39, 1.47, 1.56,... gap-based 
+distance_nearest_traffic_light_5                         2.04      13.18 [0.15, 0.23, 1.36, 1.43, 1.5, 1.55, 1.63, 1.66, 1.68, 1.72, ... gap-based 
+distance_nearest_traffic_light_6                         2.52      17.33 [0.2, 0.26, 0.29, 0.32, 1.2, 1.38, 1.54, 1.57, 1.6, 1.64, 1.... gap-based 
+distance_nearest_traffic_light_7                         2.98      21.85 [0.21, 0.3, 0.39, 1.23, 1.28, 1.46, 1.54, 1.57, 1.66, 1.77, ... gap-based 
+distance_nearest_traffic_light_8                         3.40      25.99 [0.24, 0.3, 0.34, 0.39, 0.46, 0.49, 1.45, 1.49, 1.56, 1.6, 1... gap-based 
+distance_nearest_traffic_light_9                         3.78      29.76 [0.25, 0.35, 0.38, 0.43, 0.45, 0.48, 0.52, 0.58, 1.17, 1.49,... gap-based 
+distance_nearest_traffic_light_10                        4.16      33.52 [0.26, 0.36, 0.39, 0.46, 0.51, 0.58, 0.62, 0.7, 0.83, 1.1, 1... gap-based 
+
+================================================================================
+TOP 5 STRENGTHS
+================================================================================
+  Count of ChainXY VT - Real Estate Model: 90.02 (value=0.1016949152542373)
+  Count of ChainXY VT - Department Store: 88.32 (value=0.15065913370998116)
+  count_of_costco_5miles: 87.55 (value=0.12830188679245283)
+  count_of_walmart_5miles: 82.64 (value=1.0716981132075472)
+  count_of_bestbuy_5miles: 82.64 (value=0.1811320754716981)
+
+================================================================================
+TOP 5 WEAKNESSES
+================================================================================
+  distance_nearest_traffic_light_5: 13.18 (value=2.0429824746327157)
+  distance_nearest_traffic_light_1: 13.94 (value=0.2983408418457449)
+  distance_nearest_traffic_light_4: 14.12 (value=1.5136441276288477)
+  distance_nearest_traffic_light_3: 14.88 (value=1.102825802308417)
+  distance_nearest_traffic_light_6: 17.33 (value=2.516618811266819)
+
+================================================================================
+METHODOLOGY EXAMPLE: distance_from_nearest_costco
+================================================================================
+
+Your Value: 2.57
+
+All 531 sites distribution:
+  Min:    0.21
+  Median: 2.50
+  Max:    4.85
+
+Step 1: Calculate Percentile Rank
+  Your value (2.57) ranks at: 51.52%ile
+  (You are better than 51.52% of sites on RAW value)
+
+Step 2: Apply Business Logic - lower_is_better
+  Closer to Costco is better
+
+  Since LOWER is better:
+  - Being at 51.52%ile means you have HIGHER value than 51.52%
+  - Which is BAD (because lower is better)
+  - So we INVERT: Score = 100 - 51.52 = 48.48
+
+Step 3: Score
+  48.48/100
+================================================================================
+================================================================================
+Say we have 20 sorted distances: 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 4.0, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 4.8, 4.9.
+Consecutive gaps:
+0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
+3.0 (between 1.1 and 4.0)
+0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1
+Most gaps are 0.1; one is 3.0.
+97th percentile of these gaps: about 2.9 (because 3.0 is one of the very largest gaps).
+Threshold ≈ 2.9. The only gap above that is 3.0 (between 1.1 and 4.0).
+So the engine adds a split at 1.1 (left side of that gap).
+Resulting bands:
+[0.2, 1.1]: low values
+[4.0, 4.9]: high values

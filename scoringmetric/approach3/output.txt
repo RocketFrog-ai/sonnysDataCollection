@@ -1,0 +1,362 @@
+✓ Shape-based profiler initialized: 531 sites, 50 features
+
+================================================================================
+APPROACH 3 - Shape-Based Auto Binning
+================================================================================
+
+WHAT THIS APPROACH DOES:
+  - AUTO-DECIDES bins from min, max, shape, sample size
+  - Binary (2 values) → 2 bins; Discrete (3-6) → value buckets
+  - Skewed → 5 quintiles; Symmetric → 10 deciles
+  - Score = WHICH BIN you fall into (e.g. quintile 3 → 50), not raw percentile
+
+HOW IT DIFFERS FROM APPROACH 1: Shape-driven binning (affects score); no config
+HOW IT DIFFERS FROM APPROACH 2: Binned scores, not raw percentile; no plots
+
+================================================================================
+n = 31 → 1 + log₂(31) ≈ 6 → 6 bins
+n = 66 → 1 + log₂(66) ≈ 7 → 7 bins
+====================================================================================================
+AUTO-DECIDED BIN DEFINITIONS (min, max, shape → bins)
+====================================================================================================
+
+  Nearest StreetLight US Hourly-Ttl AADT
+    min=0.00  max=42281.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  2nd Nearest StreetLight US Hourly-Ttl AADT
+    min=0.00  max=42356.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  3rd Nearest StreetLight US Hourly-Ttl AADT
+    min=0.00  max=40114.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  4th Nearest StreetLight US Hourly-Ttl AADT
+    min=0.00  max=39521.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  5th Nearest StreetLight US Hourly-Ttl AADT
+    min=0.00  max=44896.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  6th Nearest StreetLight US Hourly-Ttl AADT
+    min=0.00  max=43186.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Nearest StreetLight US Hourly-ttl_breakfast
+    min=0.00  max=10904.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Nearest StreetLight US Hourly-ttl_lunch
+    min=0.00  max=8555.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Nearest StreetLight US Hourly-ttl_afternoon
+    min=0.00  max=9162.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Nearest StreetLight US Hourly-ttl_dinner
+    min=0.00  max=8260.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Nearest StreetLight US Hourly-ttl_night
+    min=0.00  max=5193.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Nearest StreetLight US Hourly-ttl_overnight
+    min=0.00  max=3025.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  Count of ChainXY VT - Building Supplies
+    min=0.00  max=3.00  shape=discrete  direction=higher✓
+    value → score: [('0', 0.0), ('1', 33.333333333333336), ('2', 66.66666666666667), ('3', 100.0)]
+
+  Count of ChainXY VT - Department Store
+    min=0.00  max=3.00  shape=discrete  direction=higher✓
+    value → score: [('0', 0.0), ('1', 33.333333333333336), ('2', 66.66666666666667), ('3', 100.0)]
+
+  Count of ChainXY VT - Grocery
+    min=0.00  max=8.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p14', 5.0), ('p14-p42', 27.5), ('p42-p66', 50.0), ('p66-p82', 72.5), ('p82-p100', 95.0)]
+
+  Count of ChainXY VT - Mass Merchant
+    min=0.00  max=4.00  shape=discrete  direction=higher✓
+    value → score: [('0', 0.0), ('1', 25.0), ('2', 50.0), ('3', 75.0), ('4', 100.0)]
+
+  Count of ChainXY VT - Real Estate Model
+    min=0.00  max=2.00  shape=discrete  direction=higher✓
+    value → score: [('0', 0.0), ('1', 50.0), ('2', 100.0)]
+
+  Sum ChainXY
+    min=0.00  max=14.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p15', 5.0), ('p15-p47', 27.5), ('p47-p62', 50.0), ('p62-p82', 72.5), ('p82-p100', 95.0)]
+
+  total_weekly_operational_hours
+    min=0.00  max=168.00  shape=left-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p65', 50.0), ('p65-p79', 72.5), ('p79-p99', 95.0)]
+
+  nearby_traffic_lights_count
+    min=0.00  max=68.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p42', 27.5), ('p42-p61', 50.0), ('p61-p79', 72.5), ('p79-p100', 95.0)]
+
+  distance_nearest_traffic_light_1
+    min=0.02  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  distance_nearest_traffic_light_2
+    min=0.05  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p99', 5.0)]
+
+  distance_nearest_traffic_light_3
+    min=0.12  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p97', 5.0)]
+
+  distance_nearest_traffic_light_4
+    min=0.13  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p96', 5.0)]
+
+  distance_nearest_traffic_light_5
+    min=0.15  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p94', 5.0)]
+
+  distance_nearest_traffic_light_6
+    min=0.20  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p91', 5.0)]
+
+  distance_nearest_traffic_light_7
+    min=0.21  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 65.0), ('p40-p60', 35.0), ('p60-p89', 5.0)]
+
+  distance_nearest_traffic_light_8
+    min=0.24  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 65.0), ('p40-p60', 35.0), ('p60-p87', 5.0)]
+
+  distance_nearest_traffic_light_9
+    min=0.25  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 65.0), ('p40-p60', 35.0), ('p60-p85', 5.0)]
+
+  distance_nearest_traffic_light_10
+    min=0.26  max=10.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 65.0), ('p40-p60', 35.0), ('p60-p83', 5.0)]
+
+  total_precipitation_mm
+    min=80.40  max=1975.95  shape=left-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  rainy_days
+    min=13.80  max=170.40  shape=left-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  total_snowfall_cm
+    min=0.00  max=155.58  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  snowy_days
+    min=0.00  max=86.40  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p19', 95.0), ('p19-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  days_below_freezing
+    min=0.00  max=208.30  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  total_sunshine_hours
+    min=2588.06  max=3963.02  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 5.0), ('p20-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  days_pleasant_temp
+    min=62.90  max=189.40  shape=symmetric  direction=higher✓
+    strategy: 10 equal percentile bins (symmetric)
+    bin ranges → score: [('p0-p10', 5.0), ('p10-p20', 15.0), ('p20-p30', 25.0), ('p30-p40', 35.0), ('p40-p50', 45.0), ('p50-p60', 55.0), ('p60-p70', 65.0), ('p70-p80', 75.0), ('p80-p90', 85.0), ('p90-p100', 95.0)]
+
+  avg_daily_max_windspeed_ms
+    min=11.58  max=28.06  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  competitors_count
+    min=0.00  max=6.00  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p23', 95.0), ('p23-p62', 65.0), ('p62-p86', 35.0), ('p86-p100', 5.0)]
+
+  competitor_1_distance_miles
+    min=0.00  max=10.00  shape=symmetric  direction=lower✓
+    strategy: 10 equal percentile bins (symmetric)
+    bin ranges → score: [('p0-p10', 95.0), ('p10-p20', 77.0), ('p20-p30', 59.0), ('p30-p40', 41.0), ('p40-p50', 23.0), ('p50-p77', 5.0)]
+
+  competitor_1_google_user_rating_count
+    min=0.00  max=2036.00  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p25', 5.0), ('p25-p60', 35.0), ('p60-p80', 65.0), ('p80-p100', 95.0)]
+
+  tunnel_length (in ft.)
+    min=0.00  max=11697.09  shape=right-skewed  direction=higher✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p10', 5.0), ('p10-p40', 27.5), ('p40-p60', 50.0), ('p60-p80', 72.5), ('p80-p100', 95.0)]
+
+  distance_from_nearest_target
+    min=0.09  max=4.99  shape=symmetric  direction=lower✓
+    strategy: 8 equal percentile bins (symmetric)
+    bin ranges → score: [('p0-p13', 95.0), ('p13-p25', 82.14285714285714), ('p25-p37', 69.28571428571428), ('p37-p50', 56.42857142857143), ('p50-p63', 43.57142857142857), ('p63-p75', 30.714285714285708), ('p75-p87', 17.85714285714286), ('p87-p100', 5.0)]
+
+  count_of_target_5miles
+    min=0.00  max=3.00  shape=discrete  direction=higher✓
+    value → score: [('0.0', 0.0), ('1.0', 33.333333333333336), ('2.0', 66.66666666666667), ('3.0', 100.0)]
+
+  distance_from_nearest_costco
+    min=0.21  max=4.85  shape=symmetric  direction=lower✓
+    strategy: 7 equal percentile bins (symmetric)
+    bin ranges → score: [('p0-p15', 95.0), ('p15-p29', 80.0), ('p29-p42', 65.0), ('p42-p58', 50.0), ('p58-p71', 35.0), ('p71-p85', 20.0), ('p85-p100', 5.0)]
+
+  count_of_costco_5miles
+    min=0.00  max=2.00  shape=discrete  direction=higher✓
+    value → score: [('0.0', 0.0), ('1.0', 50.0), ('2.0', 100.0)]
+
+  distance_from_nearest_walmart
+    min=0.09  max=4.99  shape=right-skewed  direction=lower✓
+    strategy: 5 quintile bins (skewed, tail sparse)
+    bin ranges → score: [('p0-p20', 95.0), ('p20-p40', 72.5), ('p40-p60', 50.0), ('p60-p80', 27.5), ('p80-p100', 5.0)]
+
+  count_of_walmart_5miles
+    min=0.00  max=4.00  shape=discrete  direction=higher✓
+    value → score: [('0.0', 0.0), ('1.0', 25.0), ('2.0', 50.0), ('3.0', 75.0), ('4.0', 100.0)]
+
+  distance_from_nearest_bestbuy
+    min=0.10  max=4.96  shape=symmetric  direction=lower✓
+    strategy: 7 equal percentile bins (symmetric)
+    bin ranges → score: [('p0-p15', 95.0), ('p15-p29', 80.0), ('p29-p43', 65.0), ('p43-p58', 50.0), ('p58-p72', 35.0), ('p72-p86', 20.0), ('p86-p100', 5.0)]
+
+  count_of_bestbuy_5miles
+    min=0.00  max=2.00  shape=discrete  direction=higher✓
+    value → score: [('0.0', 0.0), ('1.0', 50.0), ('2.0', 100.0)]
+
+====================================================================================================
+
+================================================================================
+SCORING REPORT (Shape-Based Bins)
+================================================================================
+Overall Score: 39.22/100
+
+Feature                                         Value        Shape                       Bin    Score
+----------------------------------------------------------------------------------------------------
+Nearest StreetLight US Hourly-Ttl AADT        11040.6 right-skewed                   p40-p60    50.0
+2nd Nearest StreetLight US Hourly-Ttl AA      11117.5 right-skewed                   p40-p60    50.0
+3rd Nearest StreetLight US Hourly-Ttl AA      10249.8 right-skewed                   p40-p60    50.0
+4th Nearest StreetLight US Hourly-Ttl AA      10654.0 right-skewed                   p40-p60    50.0
+5th Nearest StreetLight US Hourly-Ttl AA      10269.3 right-skewed                   p40-p60    50.0
+6th Nearest StreetLight US Hourly-Ttl AA       9947.0 right-skewed                   p40-p60    50.0
+Nearest StreetLight US Hourly-ttl_breakf       2619.8 right-skewed                   p40-p60    50.0
+Nearest StreetLight US Hourly-ttl_lunch        2254.7 right-skewed                   p40-p60    50.0
+Nearest StreetLight US Hourly-ttl_aftern       2482.8 right-skewed                   p40-p60    50.0
+Nearest StreetLight US Hourly-ttl_dinner       2165.4 right-skewed                   p40-p60    50.0
+Nearest StreetLight US Hourly-ttl_night        1103.0 right-skewed                   p40-p60    50.0
+Nearest StreetLight US Hourly-ttl_overni        388.7 right-skewed                   p60-p80    72.5
+Count of ChainXY VT - Building Supplies           0.8     discrete                         1    33.3
+Count of ChainXY VT - Department Store            0.2     discrete                         1    33.3
+Count of ChainXY VT - Grocery                     1.6 right-skewed                   p42-p66    50.0
+Count of ChainXY VT - Mass Merchant               1.1     discrete                         2    50.0
+Count of ChainXY VT - Real Estate Model           0.1     discrete                         1    50.0
+Sum ChainXY                                       3.8 right-skewed                   p47-p62    50.0
+total_weekly_operational_hours                   79.6  left-skewed                   p20-p40    27.5
+nearby_traffic_lights_count                      16.3 right-skewed                   p42-p61    50.0
+distance_nearest_traffic_light_1                  0.3 right-skewed                  p80-p100     5.0
+distance_nearest_traffic_light_2                  0.7 right-skewed                   p80-p99     5.0
+distance_nearest_traffic_light_3                  1.1 right-skewed                   p80-p97     5.0
+distance_nearest_traffic_light_4                  1.5 right-skewed                   p80-p96     5.0
+distance_nearest_traffic_light_5                  2.0 right-skewed                   p80-p94     5.0
+distance_nearest_traffic_light_6                  2.5 right-skewed                   p80-p91     5.0
+distance_nearest_traffic_light_7                  3.0 right-skewed                   p60-p89     5.0
+distance_nearest_traffic_light_8                  3.4 right-skewed                   p60-p87     5.0
+distance_nearest_traffic_light_9                  3.8 right-skewed                   p60-p85     5.0
+distance_nearest_traffic_light_10                 4.2 right-skewed                   p60-p83     5.0
+total_precipitation_mm                         1189.1  left-skewed                   p20-p40    72.5
+rainy_days                                      125.1  left-skewed                   p40-p60    50.0
+total_snowfall_cm                                27.6 right-skewed                   p60-p80    27.5
+snowy_days                                       14.7 right-skewed                   p60-p80    27.5
+days_below_freezing                              48.6 right-skewed                   p40-p60    50.0
+total_sunshine_hours                           3223.9 right-skewed                   p60-p80    72.5
+days_pleasant_temp                              143.3    symmetric                   p50-p60    55.0
+avg_daily_max_windspeed_ms                       17.2 right-skewed                   p60-p80    27.5
+competitors_count                                 0.9 right-skewed                   p23-p62    65.0
+competitor_1_distance_miles                       4.8    symmetric                   p50-p77     5.0
+competitor_1_google_user_rating_count           120.5 right-skewed                   p60-p80    65.0
+tunnel_length (in ft.)                          116.6 right-skewed                   p40-p60    50.0
+distance_from_nearest_target                      2.4    symmetric                   p50-p63    43.6
+count_of_target_5miles                            0.4     discrete                       1.0    33.3
+distance_from_nearest_costco                      2.6    symmetric                   p42-p58    50.0
+count_of_costco_5miles                            0.1     discrete                       1.0    50.0
+distance_from_nearest_walmart                     1.5 right-skewed                   p40-p60    50.0
+count_of_walmart_5miles                           1.1     discrete                       2.0    50.0
+distance_from_nearest_bestbuy                     2.6    symmetric                   p43-p58    50.0
+count_of_bestbuy_5miles                           0.2     discrete                       1.0    50.0
+----------------------------------------------------------------------------------------------------
+
+Top Strengths:
+  Nearest StreetLight US Hourly-ttl_overnight: 72.5 (p60-p80)
+  total_precipitation_mm: 72.5 (p20-p40)
+  total_sunshine_hours: 72.5 (p60-p80)
+  competitors_count: 65.0 (p23-p62)
+  competitor_1_google_user_rating_count: 65.0 (p60-p80)
+
+Top Weaknesses:
+  competitor_1_distance_miles: 5.0 (p50-p77)
+  distance_nearest_traffic_light_10: 5.0 (p60-p83)
+  distance_nearest_traffic_light_9: 5.0 (p60-p85)
+  distance_nearest_traffic_light_8: 5.0 (p60-p87)
+  distance_nearest_traffic_light_7: 5.0 (p60-p89)
+
+================================================================================
+METHODOLOGY EXAMPLE: distance_from_nearest_costco
+================================================================================
+
+Your Value: 2.57
+
+All 531 sites distribution:
+  Min:    0.21
+  Max:    4.85
+  Shape:  symmetric  (direction: lower_is_better)
+
+Step 1: Raw Percentile (for context)
+  Your value ranks at: 51.52%ile
+
+Step 2: Shape-Based Binning
+  7 equal percentile bins (symmetric)
+  Bin definitions: [('p0-p15', 95.0), ('p15-p29', 80.0), ('p29-p42', 65.0), ('p42-p58', 50.0), ('p58-p71', 35.0), ('p71-p85', 20.0), ('p85-p100', 5.0)]
+
+Step 3: Your value falls in bin: p42-p58
+  Score = 50.00/100 (from bin, not raw percentile)
+================================================================================
+================================================================================
+

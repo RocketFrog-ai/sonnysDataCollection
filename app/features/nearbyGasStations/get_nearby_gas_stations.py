@@ -15,6 +15,8 @@ from app.features.experimental_features.operationalHours.searchNearby import fin
 
 DEFAULT_MAX_GAS_STATIONS = 10
 DEFAULT_RADIUS_MILES = 2.0
+# Max radius for Places API searchNearby (50000 m ≈ 31 miles)
+MAX_SEARCH_RADIUS_MILES = 31.0
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json"
 METERS_PER_MILE = 1609.34
@@ -201,6 +203,38 @@ def get_nearby_gas_stations(
 
     out.sort(key=lambda s: (s.get("distance_miles") is None, s.get("distance_miles") or float("inf")))
     return out[: max_results]
+
+
+def get_nearest_gas_station_only(
+    api_key: str,
+    latitude: float,
+    longitude: float,
+    fetch_place_details: bool = True,
+) -> Optional[dict]:
+    """
+    Returns the single nearest gas station by driving distance (no radius/limit).
+    Uses same data sources as get_nearby_gas_stations: Nearby Search with
+    included_types=["gas_station"], Distance Matrix for driving distance, and
+    optionally Place Details for fuelOptions and types. Only returns a place
+    that is confirmed as type gas_station (from Place Details when fetched).
+    """
+    if not api_key:
+        return None
+    stations = get_nearby_gas_stations(
+        api_key,
+        latitude,
+        longitude,
+        radius_miles=MAX_SEARCH_RADIUS_MILES,
+        max_results=20,
+        fetch_place_details=fetch_place_details,
+    )
+    if not stations:
+        return None
+    nearest = stations[0]
+    types_list = nearest.get("types")
+    if types_list is not None and "gas_station" not in types_list:
+        return None
+    return nearest
 
 
 def get_gas_station_info(latitude: float, longitude: float):
