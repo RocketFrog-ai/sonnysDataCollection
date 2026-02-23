@@ -85,17 +85,17 @@ class HealthResponse(BaseModel):
 # ── Quantile Profiling Summary Models ────────────────────────────
 
 class DimensionSummaryResponse(BaseModel):
-    """Response model for a single-dimension quantile summary (e.g. weather, competition)."""
+    """Response model for a single-dimension summary (Approach 2 categories or quantile)."""
     task_id: str = Field(..., description="Task identifier from /v1/analyze-site")
     dimension: str = Field(..., description="Dimension name (Weather, Traffic, etc.)")
-    predicted_tier: str = Field(..., description="Predicted performance tier for this dimension")
-    fit_score: float = Field(..., description="Fit score (%) — how well the site matches this tier")
+    predicted_tier: str = Field(..., description="Predicted tier: Approach 2 (Excellent/Very Good/Good/Fair/Poor/Very Poor) or quantile (High/Avg/Low)")
+    fit_score: float = Field(0, description="Fit score (%) — average of Approach 2 final scores when using Approach 2")
     features_scored: int = Field(..., description="Number of features scored in this dimension")
-    feature_breakdown: Dict = Field(default_factory=dict, description="Per-feature scoring details with IQR ranges")
-    discriminatory_power: Dict = Field(default_factory=dict, description="How well this dimension separates Low from High tiers historically")
-    summary: str = Field(..., description="LLM-generated executive summary for this dimension")
+    feature_breakdown: Dict = Field(default_factory=dict, description="Per-feature details: Approach 2 (value, percentile, category) or IQR ranges")
+    discriminatory_power: Dict = Field(default_factory=dict, description="Historical discriminatory power (quantile) or empty for Approach 2")
+    summary: str = Field(..., description="Executive summary — Approach 2 rationale (percentile, category) or LLM-generated")
     feature_values_slice: Dict = Field(default_factory=dict, description="Input feature values for this dimension")
-    feature_performance: Dict[str, str] = Field(default_factory=dict, description="Per-feature performance label (High/Avg/Low)")
+    feature_performance: Dict[str, str] = Field(default_factory=dict, description="Per-feature category (Excellent, Very Good, Good, Fair, Poor, Very Poor)")
 
 
 class QuantileSummaryResponse(BaseModel):
