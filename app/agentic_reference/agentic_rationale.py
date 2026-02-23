@@ -19,6 +19,44 @@ import json
 from typing import Dict, List
 
 
+# ── Human-readable labels for profiler features (no variable names in summaries) ──
+
+PROFILER_FEATURE_LABELS: Dict[str, str] = {
+    "count_of_target_5miles": "Target stores within 5 miles",
+    "count_of_costco_5miles": "Costco stores within 5 miles",
+    "count_of_walmart_5miles": "Walmart stores within 5 miles",
+    "count_of_bestbuy_5miles": "Best Buy stores within 5 miles",
+    "distance_from_nearest_target": "Distance to nearest Target",
+    "distance_from_nearest_costco": "Distance to nearest Costco",
+    "distance_from_nearest_walmart": "Distance to nearest Walmart",
+    "distance_from_nearest_bestbuy": "Distance to nearest Best Buy",
+    "Count of ChainXY VT - Building Supplies": "Building supplies stores (ChainXY)",
+    "Count of ChainXY VT - Department Store": "Department stores (ChainXY)",
+    "Count of ChainXY VT - Grocery": "Grocery stores (ChainXY)",
+    "Count of ChainXY VT - Mass Merchant": "Mass merchant stores (ChainXY)",
+    "Count of ChainXY VT - Real Estate Model": "Real estate model stores (ChainXY)",
+    "Sum ChainXY": "Total ChainXY retail count",
+    "competitors_count": "Car wash competitors nearby",
+    "competitor_1_distance_miles": "Distance to nearest competitor",
+    "competitor_1_google_user_rating_count": "Nearest competitor review count",
+    "total_sunshine_hours": "Total sunshine hours",
+    "days_pleasant_temp": "Pleasant temperature days",
+    "total_precipitation_mm": "Total precipitation",
+    "rainy_days": "Rainy days",
+    "total_snowfall_cm": "Total snowfall",
+    "snowy_days": "Snowy days",
+    "days_below_freezing": "Days below freezing",
+    "avg_daily_max_windspeed_ms": "Average daily max windspeed",
+    "tunnel_length (in ft.)": "Tunnel length (ft)",
+    "total_weekly_operational_hours": "Weekly operational hours",
+}
+
+
+def _profiler_feature_label(feat: str) -> str:
+    """Human-readable label for profiler feature; avoid variable names in summaries."""
+    return PROFILER_FEATURE_LABELS.get(feat, feat.replace("_", " ").title())
+
+
 # ── Prompt construction ──────────────────────────────────────────
 
 SYSTEM_PROMPT = """\
@@ -196,16 +234,18 @@ Facts:
 Write a 2-sentence summary:
 1. Explain why this dimension fits the {pred} profile.
 2. Highlight any key features that drove this result.
+
+Use only human-readable language. Do not use variable names, field names, or feature keys (e.g. do not write count_of_target_5miles or count_of_costco_5miles). Refer to metrics in plain English (e.g. "Target stores within 5 miles", "Costco stores within 5 miles").
 """
     if dimension_result.get("feature_details"):
-        prompt += "\nFeature breakdown:\n"
+        prompt += "\nFeature breakdown (use the labels below in your summary, not variable names):\n"
         for feat, fd in dimension_result["feature_details"].items():
             val = fd["value"]
             bf = fd["best_fit"]
             rng = fd["ranges"].get(bf, {})
             q25, q50, q75 = rng.get("q25"), rng.get("q50"), rng.get("q75")
+            label = _profiler_feature_label(feat)
             if q25 is not None:
-                # English context (Neutral)
                 if val > q75:
                     comparison = "Above typical range"
                 elif val < q25:
@@ -213,9 +253,9 @@ Write a 2-sentence summary:
                 else:
                     comparison = "Within typical range"
 
-                prompt += f"- {feat}: {val:,.1f} ({comparison} for {bf} sites. Typical {bf} is {q25:,.1f}–{q75:,.1f})\n"
+                prompt += f"- {label}: {val:,.1f} ({comparison} for {bf} sites. Typical {bf} is {q25:,.1f}–{q75:,.1f})\n"
 
-    prompt += "\nProvide a concise, data-backed executive summary. Be specific with numbers."
+    prompt += "\nProvide a concise, data-backed executive summary in plain English. Be specific with numbers. Do not mention any variable or field names."
 
     try:
         from app.utils.llm import local_llm as llm
