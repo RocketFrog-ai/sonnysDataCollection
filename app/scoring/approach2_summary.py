@@ -21,6 +21,7 @@ from app.scoring.approach2_scorer import (
     GAS_API_TO_PROFILER,
     COMPETITORS_API_TO_PROFILER,
     score_feature_with_config,
+    compute_dimension_score,
 )
 
 
@@ -70,6 +71,9 @@ FEATURE_LABELS: Dict[str, str] = {
 
 # Portfolio size for summary copy (mention once per dimension)
 PORTFOLIO_N_SITES = 1267
+
+# Set False to revert: summary will not include LLM-generated driving/negative factors and score summary tail
+INCLUDE_LLM_SUMMARY_TAIL = True
 
 # Direction explanations for rationale
 DIRECTION_EXPLAIN: Dict[str, str] = {
@@ -137,6 +141,52 @@ def _score_features_full(flat: Dict[str, Any]) -> List[Dict[str, Any]]:
     return results
 
 
+def _llm_summary_tail(
+    dimension: str,
+    scored: List[Dict[str, Any]],
+    overall_category: str,
+) -> str:
+    """
+    Use local LLM to generate a short tail: driving factors, negative factors, and one-line score summary.
+    Returns empty string on failure so caller can keep summary unchanged.
+    """
+    if not scored:
+        return ""
+    profiler_scores = {s["feature"]: float(s.get("final_score", 0)) for s in scored}
+    dim_score = compute_dimension_score(profiler_scores, dimension)
+    score_str = f"{dim_score:.1f}" if dim_score is not None else "N/A"
+
+    lines = [
+        f"Dimension: {dimension}. Overall category: {overall_category}. Dimension score (0–100): {score_str}.",
+        "Per-feature (label, value, score 0–100, category):",
+    ]
+    for s in scored:
+        label = FEATURE_LABELS.get(s["feature"], s["feature"].replace("_", " ").title())
+        val = s.get("value", "")
+        if isinstance(val, float):
+            val = f"{val:,.1f}" if abs(val) >= 1 else f"{val:.2f}"
+        fs = s.get("final_score")
+        fs_str = f"{fs:.0f}" if fs is not None else "N/A"
+        cat = s.get("category", "N/A")
+        lines.append(f"  - {label}: value {val}, score {fs_str}, category {cat}")
+
+    prompt = "\n".join(lines) + """
+
+Using only the feature labels above (no variable names), write 2–3 short sentences total:
+1) Which factors are driving the score or are strengths?
+2) Which are negative or weaknesses?
+3) One-line concise summary of what this score means for this dimension.
+Be concise and use plain English only."""
+
+    try:
+        from app.utils.llm import local_llm as llm
+        response = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.2)
+        text = (response or {}).get("generated_text", "").strip()
+        return text if text else ""
+    except Exception:
+        return ""
+
+
 def get_dimension_summary_approach2(
     dimension: str,
     feature_values: Dict[str, Any],
@@ -177,6 +227,14 @@ def get_dimension_summary_approach2(
     overall_category = cat_order[min(int(round(avg_idx)), len(cat_order) - 1)]
 
     summary = _build_rationale(dimension, scored)
+
+    if INCLUDE_LLM_SUMMARY_TAIL and scored:
+        try:
+            tail = _llm_summary_tail(dimension, scored, overall_category)
+            if tail:
+                summary = summary + "\n\n" + tail
+        except Exception:
+            pass
 
     return {
         "features_scored": len(scored),
