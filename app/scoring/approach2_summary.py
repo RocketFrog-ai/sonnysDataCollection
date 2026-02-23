@@ -68,6 +68,9 @@ FEATURE_LABELS: Dict[str, str] = {
     "count_food_joints_0_5miles (0.5 mile)": "Food joints within 0.5 mile",
 }
 
+# Portfolio size for summary copy (mention once per dimension)
+PORTFOLIO_N_SITES = 1267
+
 # Direction explanations for rationale
 DIRECTION_EXPLAIN: Dict[str, str] = {
     "higher_is_better": "Higher values are better",
@@ -183,21 +186,25 @@ def get_dimension_summary_approach2(
     }
 
 
-def _pct_context(pct: float, direction: str, n_sites: int = 1235) -> str:
-    """
-    Express percentile in plain English with portfolio size reference.
-    e.g. "better than 82% of the 1,235 car wash sites analysed"
-    """
+def _favorable_pct(pct: float, direction: str) -> float:
+    """Convert raw percentile to 'favorable' share (higher = better for the site)."""
     if direction in ("lower_is_better",):
-        favorable_pct = 100 - pct
-    elif direction == "moderate_is_best":
+        return 100 - pct
+    if direction == "moderate_is_best":
         dist = abs(pct - 50)
-        favorable_pct = 100 - 2 * dist
-        favorable_pct = max(0, min(100, favorable_pct))
-    else:
-        favorable_pct = pct
+        return max(0, min(100, 100 - 2 * dist))
+    return pct
 
-    return f"better than {favorable_pct:.0f}% of the {n_sites:,} car wash sites analysed"
+
+def _pct_context(pct: float, direction: str, n_sites: int | None = None) -> str:
+    """
+    Plain-English comparison. If n_sites given, include portfolio size (use once per block).
+    Otherwise short form for use after an intro that already stated the portfolio.
+    """
+    favorable = _favorable_pct(pct, direction)
+    if n_sites is not None:
+        return f"better than {favorable:.0f}% of the {n_sites:,} car wash sites analysed"
+    return f"better than {favorable:.0f}% of sites"
 
 
 def _fmt_val(value: Any) -> str:
@@ -218,13 +225,13 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
         return next((s for s in scored if s["feature"] == feat_key), None)
 
     if dimension == "Weather":
-        lines = ["🌤️ Weather summary based on historical data for this location, compared to 1,235 car wash sites:"]
+        lines = [f"🌤️ Weather summary based on historical data for this location, compared to {PORTFOLIO_N_SITES:,} car wash sites:"]
         for s in scored:
             pct = s.get("raw_percentile")
             direction = s.get("direction", "")
             lbl = FEATURE_LABELS.get(s["feature"], s["feature"].replace("_", " ").title())
             val = _fmt_val(s["value"])
-            ctx = _pct_context(pct, direction) if pct is not None else None
+            ctx = _pct_context(pct, direction, n_sites=None) if pct is not None else None
             line = f"• {lbl} is {val}"
             if ctx:
                 line += f", {ctx}"
@@ -238,14 +245,14 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
         parts = []
         if dist_s:
             pct = dist_s.get("raw_percentile")
-            ctx = _pct_context(pct, dist_s.get("direction", "")) if pct is not None else None
+            ctx = _pct_context(pct, dist_s.get("direction", ""), PORTFOLIO_N_SITES) if pct is not None else None
             txt = f"The nearest gas station is {_fmt_val(dist_s['value'])} miles away"
             if ctx:
-                txt += f" — {ctx} (closer is better)"
+                txt += f" — {ctx}"
             parts.append(txt)
         if rating_s and rating_s.get("value") is not None:
             pct = rating_s.get("raw_percentile")
-            ctx = _pct_context(pct, rating_s.get("direction", "")) if pct is not None else None
+            ctx = _pct_context(pct, rating_s.get("direction", ""), n_sites=None) if pct is not None else None
             txt = f"It has a rating of {_fmt_val(rating_s['value'])}/5"
             if ctx:
                 txt += f" ({ctx})"
@@ -255,7 +262,7 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
         return "⛽ " + ". ".join(parts) + "." if parts else "⛽ No gas station data available."
 
     if dimension == "Retail Proximity":
-        lines = ["🛒 Retail anchors near this site, compared to 1,235 car wash sites:"]
+        lines = [f"🛒 Retail anchors near this site, compared to {PORTFOLIO_N_SITES:,} car wash sites:"]
         anchor_map = {
             "distance_nearest_costco(5 mile)": "Nearest Costco",
             "distance_nearest_walmart(5 mile)": "Nearest Walmart",
@@ -269,7 +276,7 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
                 continue
             pct = s.get("raw_percentile")
             direction = s.get("direction", "")
-            ctx = _pct_context(pct, direction) if pct is not None else None
+            ctx = _pct_context(pct, direction, n_sites=None) if pct is not None else None
             is_dist = "distance" in feat
             val = _fmt_val(s["value"])
             if is_dist:
@@ -289,14 +296,14 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
         parts = []
         if count_s:
             pct = count_s.get("raw_percentile")
-            ctx = _pct_context(pct, count_s.get("direction", "")) if pct is not None else None
+            ctx = _pct_context(pct, count_s.get("direction", ""), PORTFOLIO_N_SITES) if pct is not None else None
             txt = f"There are {int(count_s['value'])} car wash competitors within 4 miles"
             if ctx:
                 txt += f" — {ctx}"
             parts.append(txt)
         if dist_s and dist_s.get("value") is not None:
             pct = dist_s.get("raw_percentile")
-            ctx = _pct_context(pct, dist_s.get("direction", "")) if pct is not None else None
+            ctx = _pct_context(pct, dist_s.get("direction", ""), n_sites=None) if pct is not None else None
             txt = f"The nearest competitor is {_fmt_val(dist_s['value'])} miles away"
             if ctx:
                 txt += f" ({ctx})"
