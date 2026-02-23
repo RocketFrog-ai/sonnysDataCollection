@@ -15,6 +15,7 @@ import pandas as pd
 from app.scoring.feature_weights_config import (
     FEATURE_WEIGHTS,
     DIMENSION_FEATURES,
+    DIMENSION_FEATURE_WEIGHTS,
     DIMENSION_WEIGHTS_FOR_OVERALL,
     FEATURE_DIRECTION,
 )
@@ -238,10 +239,11 @@ def compute_dimension_score(
     dimension_name: str,
 ) -> Optional[float]:
     """
-    Weighted average of feature scores for the given dimension.
-    Uses FEATURE_WEIGHTS and DIMENSION_FEATURES from config.
+    Weighted average of feature scores (each 0-100) for the given dimension.
+    Weights sum to 1 within the dimension (DIMENSION_FEATURE_WEIGHTS). Result 0-100.
     Returns None if no scored features in this dimension.
     """
+    dim_weights = DIMENSION_FEATURE_WEIGHTS.get(dimension_name, {})
     features = DIMENSION_FEATURES.get(dimension_name, [])
     if not features:
         return None
@@ -250,7 +252,7 @@ def compute_dimension_score(
     for f in features:
         if f not in profiler_scores:
             continue
-        w = FEATURE_WEIGHTS.get(f, 1.0)
+        w = dim_weights.get(f) or FEATURE_WEIGHTS.get(f, 1.0)
         total_w += w
         weighted_sum += w * profiler_scores[f]
     if total_w <= 0:
@@ -293,9 +295,9 @@ def get_all_profiler_scores_from_task_feature_values(
 
 def compute_overall_score(profiler_scores: Dict[str, float]) -> Optional[float]:
     """
-    Feature-weight-based overall score (0-100).
-    If DIMENSION_WEIGHTS_FOR_OVERALL is set, overall = weighted avg of dimension scores.
-    Else overall = weighted avg of all feature scores using FEATURE_WEIGHTS.
+    Overall site score on a 0-100 scale.
+    If DIMENSION_WEIGHTS_FOR_OVERALL is set: weighted avg of dimension scores (each 0-100).
+    Else: weighted avg of all feature scores (each 0-100) using FEATURE_WEIGHTS.
     """
     if not profiler_scores:
         return None

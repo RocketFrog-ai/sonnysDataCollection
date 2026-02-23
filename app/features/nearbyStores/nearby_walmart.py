@@ -119,6 +119,7 @@ def get_walmart_info(latitude: float, longitude: float):
 
     distance_from_nearest_walmart = float('inf')
     count_of_walmart_5miles = 0
+    nearest_place = None
 
     if walmart_data and "places" in walmart_data:
         walmart_places = [
@@ -137,12 +138,27 @@ def get_walmart_info(latitude: float, longitude: float):
                     )
                     if distance < distance_from_nearest_walmart:
                         distance_from_nearest_walmart = distance
+                        nearest_place = place
             count_of_walmart_5miles = len(walmart_places)
 
     if distance_from_nearest_walmart == float('inf'):
         distance_from_nearest_walmart = None
 
+    nearest_details = None
+    if nearest_place is not None:
+        dn = nearest_place.get('displayName') or {}
+        nearest_details = {
+            'name': dn.get('text') if isinstance(dn, dict) else None,
+            'distance_miles': distance_from_nearest_walmart,
+            'rating': nearest_place.get('rating'),
+            'rating_count': nearest_place.get('userRatingCount'),
+            'address': nearest_place.get('formattedAddress') or nearest_place.get('shortFormattedAddress'),
+            'website': nearest_place.get('websiteUri'),
+            'google_maps_uri': nearest_place.get('googleMapsUri'),
+        }
+
     return {
         'distance_from_nearest_walmart': distance_from_nearest_walmart,
-        'count_of_walmart_5miles': count_of_walmart_5miles
+        'count_of_walmart_5miles': count_of_walmart_5miles,
+        'nearest_walmart': nearest_details,
     }

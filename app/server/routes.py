@@ -132,14 +132,19 @@ def _get_weather_response(req: WeatherRequest):
     start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
     data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
 
+    feature_scores = {}
     dimension_score = None
     if data and "error" not in data:
         data = enrich_features_with_categories(data)
-        scores = get_feature_final_scores(
-            {k: v.get("value") if isinstance(v, dict) else v for k, v in data.items()},
-            WEATHER_API_TO_PROFILER,
-        )
+        raw_vals = {k: v.get("value") if isinstance(v, dict) else v for k, v in data.items()}
+        scores = get_feature_final_scores(raw_vals, WEATHER_API_TO_PROFILER)
         dimension_score = compute_dimension_score(scores, "Weather")
+        # Build feature_scores keyed by profiler key (matches summary feature_breakdown keys)
+        for api_key, profiler_key in WEATHER_API_TO_PROFILER.items():
+            val = raw_vals.get(api_key)
+            if val is not None:
+                cat = (data.get(api_key) or {}).get("category", "N/A")
+                feature_scores[profiler_key] = {"value": val, "category": cat}
 
     return {
         "address": req.address,
@@ -148,6 +153,7 @@ def _get_weather_response(req: WeatherRequest):
         "start_date": start_date,
         "end_date": end_date,
         "data": data,
+        "feature_scores": feature_scores,
         "dimension_score": {"Weather": dimension_score} if dimension_score is not None else {},
     }
 
@@ -223,7 +229,8 @@ def get_gas_stations_endpoint(req: GasStationRequest):
         if not api_key:
             raise HTTPException(status_code=503, detail="Google Maps API key not configured")
         radius = req.radius_miles if req.radius_miles is not None else 2.0
-        max_results = req.max_results if req.max_results is not None else 10
+        # Cap at 6 closest stations
+        max_results = min(req.max_results if req.max_results is not None else 6, 6)
         fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
         stations = get_nearby_gas_stations(
             api_key, lat, lon,
@@ -231,20 +238,22 @@ def get_gas_stations_endpoint(req: GasStationRequest):
             max_results=max_results,
             fetch_place_details=fetch_details,
         )
+
+        # Feature scores and dimension score from the nearest station only
         feature_scores = {}
         dimension_score = None
         if stations:
             s0 = stations[0]
             feature_scores = enrich_gas_features_with_categories(s0)
-            flat = {
+            flat = {k: v for k, v in {
                 "distance_miles": s0.get("distance_miles"),
                 "rating": s0.get("rating"),
                 "rating_count": s0.get("rating_count"),
-            }
-            flat = {k: v for k, v in flat.items() if v is not None}
+            }.items() if v is not None}
             if flat:
                 scores = get_feature_final_scores(flat, GAS_API_TO_PROFILER)
                 dimension_score = compute_dimension_score(scores, "Gas")
+
         return {
             "address": req.address,
             "lat": lat,
@@ -252,7 +261,7 @@ def get_gas_stations_endpoint(req: GasStationRequest):
             "radius_miles": radius,
             "stations": stations,
             "count": len(stations),
-            "feature_scores": feature_scores,
+            "nearest_station_feature_scores": feature_scores,
             "dimension_score": {"Gas": dimension_score} if dimension_score is not None else {},
         }
     except HTTPException:
@@ -326,8 +335,8 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
 @router.post("/retailers")
 def get_retailers_endpoint(req: RetailersRequest):
     """
-    Nearby retailers (complementary businesses) within radius by driving distance.
-    Real data from Google Places API and Distance Matrix: name, category, distance, rating, hours; optional website/link.
+    Returns only 5 categories: Costco, Walmart, Target (with details), other_grocery (count + avg),
+    food_joints (count + avg). No list of individual places.
     """
     try:
         lat, lon = _geocode(req.address)
@@ -335,36 +344,62 @@ def get_retailers_endpoint(req: RetailersRequest):
         if not api_key:
             raise HTTPException(status_code=503, detail="Google Maps API key not configured")
         radius = req.radius_miles if req.radius_miles is not None else 0.5
-        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        # Cost-friendly: no Place Details; we only need count and rating/distance for averages
         data = get_nearby_retailers(
             api_key, lat, lon,
             radius_miles=radius,
-            fetch_place_details=fetch_details,
+            fetch_place_details=False,
         )
-        # Build retailer feature_scores for UI (costco, walmart, target, other grocery, food joint)
         stores = get_nearby_stores_data(lat, lon)
-        retailers_list = data.get("retailers") or []
-        flat_retailer = {
+
+        # Use list only for counts and averages — do not expose in response
+        raw_list = data.get("retailers") or []
+        grocery_within_1mi = [r for r in raw_list if r.get("category") == "Grocery" and (r.get("distance_miles") or 0) <= 1.0]
+        food_within_0_5mi = [r for r in raw_list if r.get("category") == "Food Joint" and (r.get("distance_miles") or 0) <= 0.5]
+        other_grocery_count = len(grocery_within_1mi)
+        food_joint_count = len(food_within_0_5mi)
+
+        def _avg(items, key):
+            vals = [x[key] for x in items if x.get(key) is not None]
+            return round(sum(vals) / len(vals), 2) if vals else None
+
+        flat_retailer = {k: v for k, v in {
             "distance_from_nearest_costco": stores.get("distance_from_nearest_costco"),
             "distance_from_nearest_walmart": stores.get("distance_from_nearest_walmart"),
             "distance_from_nearest_target": stores.get("distance_from_nearest_target"),
-        }
-        other_grocery = sum(1 for r in retailers_list if (r.get("category") == "Grocery" and (r.get("distance_miles") or 0) <= 1.0))
-        food_joints = sum(1 for r in retailers_list if (r.get("distance_miles") or 0) <= 0.5)
-        flat_retailer["other_grocery_count_1mile"] = other_grocery
-        flat_retailer["count_food_joints_0_5miles"] = food_joints
-        flat_retailer = {k: v for k, v in flat_retailer.items() if v is not None}
+            "other_grocery_count_1mile": other_grocery_count,
+            "count_food_joints_0_5miles": food_joint_count,
+        }.items() if v is not None}
+
         feature_scores = enrich_retailers_features_with_categories(flat_retailer) if flat_retailer else {}
         dimension_score = None
         if flat_retailer:
             scores = get_feature_final_scores(flat_retailer, RETAILER_API_TO_PROFILER)
             dimension_score = compute_dimension_score(scores, "Retail Proximity")
+
+        def _anchor(details):
+            if details is None:
+                return {"found": False, "message": "No store within 5 mile radius"}
+            return {"found": True, **details}
+
+        # Explicit response: only these 5 categories, no "retailers" array
         return {
             "address": req.address,
             "lat": lat,
             "lon": lon,
-            "radius_miles": radius,
-            **data,
+            "costco": _anchor(stores.get("nearest_costco")),
+            "walmart": _anchor(stores.get("nearest_walmart")),
+            "target": _anchor(stores.get("nearest_target")),
+            "other_grocery": {
+                "count_within_1_mile": other_grocery_count,
+                "avg_rating": _avg(grocery_within_1mi, "rating"),
+                "avg_distance_miles": _avg(grocery_within_1mi, "distance_miles"),
+            },
+            "food_joints": {
+                "count_within_0_5_miles": food_joint_count,
+                "avg_rating": _avg(food_within_0_5mi, "rating"),
+                "avg_distance_miles": _avg(food_within_0_5mi, "distance_miles"),
+            },
             "feature_scores": feature_scores,
             "dimension_score": {"Retail Proximity": dimension_score} if dimension_score is not None else {},
         }

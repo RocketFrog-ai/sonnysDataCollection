@@ -128,6 +128,7 @@ def get_costco_info(latitude: float, longitude: float):
 
     distance_from_nearest_costco = float('inf')
     count_of_costco_5miles = 0
+    nearest_place = None
 
     if costco_data and "places" in costco_data:
         costco_places = [
@@ -146,12 +147,27 @@ def get_costco_info(latitude: float, longitude: float):
                     )
                     if distance < distance_from_nearest_costco:
                         distance_from_nearest_costco = distance
+                        nearest_place = place
             count_of_costco_5miles = len(costco_places)
 
     if distance_from_nearest_costco == float('inf'):
         distance_from_nearest_costco = None
 
+    nearest_details = None
+    if nearest_place is not None:
+        dn = nearest_place.get('displayName') or {}
+        nearest_details = {
+            'name': dn.get('text') if isinstance(dn, dict) else None,
+            'distance_miles': distance_from_nearest_costco,
+            'rating': nearest_place.get('rating'),
+            'rating_count': nearest_place.get('userRatingCount'),
+            'address': nearest_place.get('formattedAddress') or nearest_place.get('shortFormattedAddress'),
+            'website': nearest_place.get('websiteUri'),
+            'google_maps_uri': nearest_place.get('googleMapsUri'),
+        }
+
     return {
         'distance_from_nearest_costco': distance_from_nearest_costco,
-        'count_of_costco_5miles': count_of_costco_5miles
+        'count_of_costco_5miles': count_of_costco_5miles,
+        'nearest_costco': nearest_details,
     }
