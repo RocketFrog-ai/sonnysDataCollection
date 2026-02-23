@@ -377,29 +377,37 @@ def get_retailers_endpoint(req: RetailersRequest):
             scores = get_feature_final_scores(flat_retailer, RETAILER_API_TO_PROFILER)
             dimension_score = compute_dimension_score(scores, "Retail Proximity")
 
-        def _anchor(details):
+        def _anchor_item(display_name: str, details):
             if details is None:
-                return {"found": False, "message": "No store within 5 mile radius"}
-            return {"found": True, **details}
+                return {"name": display_name, "found": False, "message": "No store within 5 mile radius"}
+            # Keep category name (Costco/Walmart/Target); add store details without overwriting name
+            rest = {k: v for k, v in details.items() if k != "name"}
+            return {"name": display_name, "found": True, "store_name": details.get("name"), **rest}
 
-        # Explicit response: only these 5 categories, no "retailers" array
-        return {
-            "address": req.address,
-            "lat": lat,
-            "lon": lon,
-            "costco": _anchor(stores.get("nearest_costco")),
-            "walmart": _anchor(stores.get("nearest_walmart")),
-            "target": _anchor(stores.get("nearest_target")),
-            "other_grocery": {
+        # retailers: exactly 5 items for UI — Costco, Walmart, Target, Other groceries, Food joints (per P-2.0 Sheet4)
+        retailers = [
+            _anchor_item("Costco", stores.get("nearest_costco")),
+            _anchor_item("Walmart", stores.get("nearest_walmart")),
+            _anchor_item("Target", stores.get("nearest_target")),
+            {
+                "name": "Other groceries",
                 "count_within_1_mile": other_grocery_count,
                 "avg_rating": _avg(grocery_within_1mi, "rating"),
                 "avg_distance_miles": _avg(grocery_within_1mi, "distance_miles"),
             },
-            "food_joints": {
+            {
+                "name": "Food joints",
                 "count_within_0_5_miles": food_joint_count,
                 "avg_rating": _avg(food_within_0_5mi, "rating"),
                 "avg_distance_miles": _avg(food_within_0_5mi, "distance_miles"),
             },
+        ]
+
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "retailers": retailers,
             "feature_scores": feature_scores,
             "dimension_score": {"Retail Proximity": dimension_score} if dimension_score is not None else {},
         }
