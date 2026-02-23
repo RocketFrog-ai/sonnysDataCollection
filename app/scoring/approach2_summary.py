@@ -183,78 +183,88 @@ def get_dimension_summary_approach2(
     }
 
 
-def _percentile_interpretation(pct: float, direction: str, category: str) -> str:
-    """Short portfolio-referenced line for summaries."""
-    if direction == "moderate_is_best":
-        dist = abs(pct - 50)
-        if dist <= 10:
-            return "Near portfolio middle—favorable for this metric."
-        if dist <= 25:
-            return "Close to middle; solid for site selection."
-        if dist <= 40:
-            return "Moderate position; weigh with other drivers."
-        return "Toward portfolio extreme; factor into planning."
-
-    higher_better = "higher" in direction.lower()
-    if higher_better:
-        if pct >= 75:
-            return f"Top quarter of portfolio—strength for demand."
-        if pct >= 50:
-            return "Above median; favorable."
-        if pct >= 25:
-            return "Below median; room to lean on other strengths."
-        return "Bottom quarter; weigh against trade-area strengths."
-    else:
-        if pct <= 25:
-            return f"Bottom quarter (low is good)—plus for this site."
-        if pct <= 50:
-            return "Better than median; solid position."
-        if pct <= 75:
-            return "Above median; consider with other factors."
-        return f"Top quarter (high values)—factor into demand and ops."
+def _score_to_signal(final_score: float) -> str:
+    """Map final_score to a short human signal word."""
+    if final_score >= 80:
+        return "strong"
+    if final_score >= 60:
+        return "above average"
+    if final_score >= 40:
+        return "average"
+    if final_score >= 20:
+        return "below average"
+    return "weak"
 
 
 def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
     """
-    Build human-readable rationale: value, percentile, category, and business
-    implications for car wash site selection and demand.
+    Single short paragraph summary. No per-feature breakdown — just a human-readable
+    interpretation of the overall picture for this dimension.
     """
-    lines: List[str] = []
+    if not scored:
+        return f"No data available for {dimension}."
 
-    dim_intro = {
-        "Weather": "🌤️ **Weather**\n\nDemand and seasonality vs 1,200+ portfolio sites. Direction per metric: moderate / higher / lower (see config).",
-        "Gas": "⛽ **Gas**\n\nGas proximity vs portfolio. Closer is better for impulse traffic.",
-        "Retail Proximity": "🛒 **Retail Proximity**\n\nCostco, Walmart, Target, grocery, food vs portfolio. Distances and counts for site selection.",
-        "Competition": "🏪 **Competition**\n\nCompetitor count, distance, and strength vs portfolio for capture and differentiation.",
-    }
-    intro = dim_intro.get(dimension, f"**{dimension}**\n\n")
-    lines.append(intro)
-    lines.append("")
+    cat_order = ["Excellent", "Very Good", "Good", "Fair", "Poor", "Very Poor"]
 
-    lines.append("📋 **Feature breakdown**\n")
-    for s in scored:
-        feat = s["feature"]
-        label = FEATURE_LABELS.get(feat, feat.replace("_", " ").title())
-        value = s["value"]
-        pct = s.get("raw_percentile")
-        cat = s.get("category", "N/A")
-        direction = s.get("direction", "")
+    strengths = [s for s in scored if s.get("final_score", 50) >= 60]
+    weaknesses = [s for s in scored if s.get("final_score", 50) < 40]
+    avg_score = sum(s.get("final_score", 50) for s in scored) / len(scored)
 
-        if isinstance(value, float):
-            val_str = f"{value:,.2f}" if abs(value) >= 1 else f"{value:.2f}"
-        else:
-            val_str = str(value)
+    def label(s):
+        return FEATURE_LABELS.get(s["feature"], s["feature"].replace("_", " ").title())
 
-        rank_str = f"portfolio rank: {pct:.1f}th percentile" if pct is not None else "no rank"
-        line = f"• **{label}** — {val_str} ({rank_str}). Category: **{cat}**. "
-        if pct is not None:
-            line += _percentile_interpretation(pct, direction, cat) + " "
-        context = FEATURE_CAR_WASH_CONTEXT.get(feat)
-        if context:
-            line += context
-        lines.append(line)
+    if dimension == "Weather":
+        strength_names = [label(s) for s in strengths]
+        weak_names = [label(s) for s in weaknesses]
+        parts = []
+        if strength_names:
+            parts.append(f"Favorable on {', '.join(strength_names[:2])}")
+        if weak_names:
+            parts.append(f"challenging on {', '.join(weak_names[:2])}")
+        note = ". ".join(parts) if parts else "Mixed weather profile"
+        signal = _score_to_signal(avg_score)
+        return f"🌤️ Weather is {signal} vs portfolio. {note}. Seasonality and demand planning are key for this location."
 
-    return "\n\n".join(lines)
+    if dimension == "Gas":
+        s0 = scored[0]
+        pct = s0.get("raw_percentile")
+        dist_val = s0.get("value")
+        signal = _score_to_signal(s0.get("final_score", 50))
+        pct_note = f"{pct:.0f}th percentile" if pct is not None else ""
+        dist_note = f"{dist_val:.2f} mi away" if isinstance(dist_val, float) else ""
+        detail = f" ({dist_note}, {pct_note})" if dist_note or pct_note else ""
+        return f"⛽ Nearest gas station{detail} is a {signal} traffic co-location opportunity vs portfolio."
+
+    if dimension == "Retail Proximity":
+        strength_names = [label(s) for s in strengths]
+        weak_names = [label(s) for s in weaknesses]
+        signal = _score_to_signal(avg_score)
+        parts = []
+        if strength_names:
+            parts.append(f"strong anchor proximity ({', '.join(strength_names[:2])})")
+        if weak_names:
+            parts.append(f"limited on {', '.join(weak_names[:2])}")
+        note = "; ".join(parts) if parts else "mixed anchor mix"
+        return f"🛒 Retail proximity is {signal} vs portfolio — {note}. Anchor traffic supports co-visit and convenience demand."
+
+    if dimension == "Competition":
+        count_s = next((s for s in scored if "count" in s["feature"]), None)
+        dist_s = next((s for s in scored if "distance" in s["feature"]), None)
+        signal = _score_to_signal(avg_score)
+        parts = []
+        if count_s:
+            pct = count_s.get("raw_percentile")
+            parts.append(f"{int(count_s['value'])} competitors within 4 mi ({pct:.0f}th pct)" if pct is not None else f"{int(count_s['value'])} competitors within 4 mi")
+        if dist_s:
+            parts.append(f"nearest is {dist_s['value']:.2f} mi away")
+        note = ", ".join(parts) if parts else "competition data available"
+        return f"🏪 Competitive landscape is {signal} vs portfolio — {note}. Differentiation on convenience and service is key."
+
+    # Generic fallback
+    signal = _score_to_signal(avg_score)
+    top = sorted(scored, key=lambda s: s.get("final_score", 50), reverse=True)
+    top_label = label(top[0]) if top else ""
+    return f"📊 {dimension} scores {signal} vs portfolio. Strongest metric: {top_label}."
 
 
 def get_feature_performance_map(scored: List[Dict[str, Any]]) -> Dict[str, str]:
