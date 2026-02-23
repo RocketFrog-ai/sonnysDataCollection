@@ -116,8 +116,10 @@ def analyze_site_from_dict(address):
     weather_details = get_climate(lat, lon)
     nearby_stores_data = get_nearby_stores_data(lat, lon)
     competitors_data = get_competitors(lat, lon)
-    competitor_1_google_user_rating_count = competitors_data["competitor_1_google_user_rating_count"]
-    competitors_count = competitors_data["competitors_count"]
+    competitor_1_google_user_rating_count = competitors_data.get("competitor_1_google_user_rating_count")
+    competitor_1_google_rating = competitors_data.get("competitor_1_google_rating")
+    competitor_1_distance_miles = competitors_data.get("competitor_1_distance_miles")
+    competitors_count = competitors_data.get("competitors_count", 0)
     traffic_data = get_traffic_lights(lat, lon)
     nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
     distance_nearest_traffic_light_2 = traffic_data["distance_nearest_traffic_light_2"]
@@ -128,6 +130,7 @@ def analyze_site_from_dict(address):
     sunny_days_per_year = (weather_details["total_sunshine_hours"] / 12.0) if weather_details.get("total_sunshine_hours") is not None else None
     feature_values = {
         "sunny_days_per_year": sunny_days_per_year,
+        "total_sunshine_hours": weather_details.get("total_sunshine_hours"),
         "total_precipitation_mm": weather_details["total_precipitation_mm"],
         "days_pleasant_temp": weather_details["days_pleasant_temp"],
         "rainy_days": weather_details["rainy_days"],
@@ -141,6 +144,9 @@ def analyze_site_from_dict(address):
         feature_values["distance_from_nearest_costco"] = nearby_stores_data["distance_from_nearest_costco"]
     if nearby_stores_data.get("distance_from_nearest_walmart") is not None:
         feature_values["distance_from_nearest_walmart"] = nearby_stores_data["distance_from_nearest_walmart"]
+    if nearby_stores_data.get("distance_from_nearest_target") is not None:
+        feature_values["distance_from_nearest_target"] = nearby_stores_data["distance_from_nearest_target"]
+    feature_values["count_of_target_5miles"] = nearby_stores_data.get("count_of_target_5miles", 0) or 0
     feature_values["count_of_gas_stations_5miles"] = nearby_stores_data.get("count_of_gas_stations_5miles", 0) or 0
     if nearby_stores_data.get("distance_from_nearest_gas_station") is not None:
         feature_values["distance_from_nearest_gas_station"] = nearby_stores_data["distance_from_nearest_gas_station"]
@@ -151,6 +157,8 @@ def analyze_site_from_dict(address):
     feature_values["distance_nearest_traffic_light_7"] = distance_nearest_traffic_light_7
     feature_values["distance_nearest_traffic_light_9"] = distance_nearest_traffic_light_9
     feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
+    feature_values["competitor_1_google_rating"] = competitor_1_google_rating
+    feature_values["competitor_1_distance_miles"] = competitor_1_distance_miles
     feature_values["competitors_count"] = competitors_count
     try:
         with open(FEATURE_VALUES_LOG, "a") as f:

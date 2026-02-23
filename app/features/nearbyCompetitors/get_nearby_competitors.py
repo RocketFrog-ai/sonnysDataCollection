@@ -82,6 +82,7 @@ def get_nearby_competitors(
     longitude: float,
     radius_miles: float = DEFAULT_RADIUS_MILES,
     fetch_place_details: bool = True,
+    max_results: int = 20,
 ) -> dict:
     """
     Nearby car washes (competitors) within radius_miles by driving distance.
@@ -92,14 +93,13 @@ def get_nearby_competitors(
     if not api_key:
         return {"competitors": [], "count": 0}
 
-    search_radius_miles = max(radius_miles * 1.5, 5.0)
     results = find_nearby_places(
         api_key,
         latitude,
         longitude,
-        radius_miles=search_radius_miles,
+        radius_miles=radius_miles,
         included_types=["car_wash"],
-        max_results=20,
+        max_results=min(max_results, 20),
         rank_preference="DISTANCE",
     )
 

@@ -61,7 +61,7 @@ class CTOExactProfiler:
         self.df = df.copy()
         
         # Identify features
-        exclude = ['cars_washed(Actual)', 'full_site_address']
+        exclude = ['cars_washed(Actual)', 'full_site_address', 'Address']
         self.feature_cols = [col for col in df.columns 
                             if col not in exclude and df[col].dtype in ['int64', 'float64']]
         
@@ -122,7 +122,17 @@ class CTOExactProfiler:
             'count_of_bestbuy_5miles': 'More Best Buys nearby is better',
             
             # Competition rating
-            'competitor_1_google_user_rating_count': 'More reviews = more established area'
+            'competitor_1_google_user_rating_count': 'More reviews = more established area',
+            # Proforma-v2 columns
+            'weather_total_sunshine_hours': 'More sunshine is better',
+            'weather_days_pleasant_temp': 'More pleasant days is better',
+            'nearest_gas_station_rating': 'Higher rating is better',
+            'nearest_gas_station_rating_count': 'More reviews is better',
+            'competitor_1_google_rating': 'Higher competitor rating',
+            'competitor_1_rating_count': 'More reviews = more established',
+            # Proforma retailer counts (higher is better)
+            'other_grocery_count_1mile': 'More grocery options nearby is better',
+            'count_food_joints_0_5miles (0.5 mile)': 'More food options nearby is better',
         }
         
         # LOWER IS BETTER (CTO example: "distance from Costco: Lower the better")
@@ -155,7 +165,20 @@ class CTOExactProfiler:
             'distance_nearest_traffic_light_7': 'Closer to signals is better',
             'distance_nearest_traffic_light_8': 'Closer to signals is better',
             'distance_nearest_traffic_light_9': 'Closer to signals is better',
-            'distance_nearest_traffic_light_10': 'Closer to signals is better'
+            'distance_nearest_traffic_light_10': 'Closer to signals is better',
+            # Proforma-v2 columns
+            'weather_total_precipitation_mm': 'Less rain is better',
+            'weather_rainy_days': 'Fewer rainy days is better',
+            'weather_total_snowfall_cm': 'Less snow is better',
+            'weather_days_below_freezing': 'Fewer freezing days is better',
+            'weather_avg_daily_max_windspeed_ms': 'Less wind is better',
+            'nearest_gas_station_distance_miles': 'Closer to gas station is better',
+            'competitors_count_4miles': 'Fewer competitors is better',
+            'competitor_1_distance_miles': 'Farther from competitor is better',
+            # Proforma retailer distances (closer is better)
+            'distance_nearest_costco(5 mile)': 'Closer to Costco is better',
+            'distance_nearest_walmart(5 mile)': 'Closer to Walmart is better',
+            'distance_nearest_target (5 mile)': 'Closer to Target is better',
         }
     
     def _analyze_distributions(self):
@@ -435,6 +458,9 @@ class CTOExactProfiler:
         out.mkdir(parents=True, exist_ok=True)
 
         n = len(self.feature_cols)
+        if n == 0:
+            print("\n[Skip] No features to plot.")
+            return
         cols = 5
         rows = (n + cols - 1) // cols
 
@@ -474,9 +500,11 @@ class CTOExactProfiler:
 if __name__ == "__main__":
     from pathlib import Path
 
-    # Load data - try scoringmetric dir first, then cwd
+    # Load data - Proforma-v2-data-final first, then fallbacks
     base = Path(__file__).resolve().parent.parent
     data_paths = [
+        Path(__file__).parent / "Proforma-v2-data-final (1).xlsx",
+        Path(__file__).parent / "Proforma-v2-data-final.xlsx",
         base / "dataSET (1).xlsx",
         Path("dataSET (1).xlsx"),
         Path(__file__).parent / "dataSET (1).xlsx",
@@ -484,7 +512,11 @@ if __name__ == "__main__":
     df = None
     for p in data_paths:
         if p.exists():
-            df = pd.read_excel(p, engine="openpyxl")
+            # Proforma-v2-data-final.xlsx has headers in row 1
+            kwargs = {"engine": "openpyxl"}
+            if "Proforma-v2-data" in str(p):
+                kwargs["header"] = 1
+            df = pd.read_excel(p, **kwargs)
             break
     if df is None:
         raise FileNotFoundError("Could not find dataSET (1).xlsx")
@@ -517,9 +549,14 @@ HOW IT DIFFERS FROM APPROACH 3: Uses raw percentile (continuous 0-100), not binn
     # Weaknesses (bad): p10 for higher-is-better, p90 for lower-is-better
     # Rest: mean
     strength_features = ['total_sunshine_hours', 'Nearest StreetLight US Hourly-Ttl AADT',
-                        'distance_from_nearest_costco', 'count_of_costco_5miles', 'rainy_days']
+                        'distance_from_nearest_costco', 'count_of_costco_5miles', 'rainy_days',
+                        'weather_total_sunshine_hours', 'weather_days_pleasant_temp',
+                        'nearest_gas_station_rating', 'nearest_gas_station_distance_miles',
+                        'weather_rainy_days']
     weakness_features = ['competitors_count', 'total_precipitation_mm', 'avg_daily_max_windspeed_ms',
-                         'distance_nearest_traffic_light_1', 'snowy_days']
+                         'distance_nearest_traffic_light_1', 'snowy_days',
+                         'weather_total_precipitation_mm', 'weather_avg_daily_max_windspeed_ms',
+                         'competitors_count_4miles', 'weather_total_snowfall_cm']
     location = {}
     for c in profiler.feature_cols:
         if c not in df.columns or df[c].isna().all():
@@ -545,6 +582,12 @@ HOW IT DIFFERS FROM APPROACH 3: Uses raw percentile (continuous 0-100), not binn
     result = profiler.score_location(location)
     profiler.print_detailed_report(result)
 
-    # Methodology example
-    if "distance_from_nearest_costco" in profiler.feature_cols:
-        profiler.explain_cto_logic_with_example("distance_from_nearest_costco", 1.0)
+    # Methodology example (use first distance-type lower-is-better feature found)
+    example_feature = None
+    for f in ("distance_from_nearest_costco", "nearest_gas_station_distance_miles", "competitor_1_distance_miles"):
+        if f in profiler.feature_cols:
+            example_feature = f
+            break
+    if example_feature:
+        example_val = float(df[example_feature].median())
+        profiler.explain_cto_logic_with_example(example_feature, example_val)
