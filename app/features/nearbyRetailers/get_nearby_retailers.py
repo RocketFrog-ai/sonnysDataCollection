@@ -13,42 +13,17 @@ PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json"
 METERS_PER_MILE = 1609.34
 
-# Retail-relevant place types (Table A). One request can include multiple; we use one type per request and merge to get variety.
+# Only types used for /v1/retailers: other grocery + food joint (Costco/Walmart/Target come from nearby_stores).
 RETAIL_TYPES = [
     "grocery_store",
-    "pharmacy",
-    "gym",
-    "bank",
     "supermarket",
-    "department_store",
-    "convenience_store",
-    "clothing_store",
-    "home_goods_store",
-    "florist",
-    "jewelry_store",
-    "shoe_store",
-    "hardware_store",
-    "furniture_store",
-    "beauty_salon",
+    "restaurant",
 ]
 
-# Map API type to short display category
 TYPE_TO_CATEGORY = {
     "grocery_store": "Grocery",
     "supermarket": "Grocery",
-    "convenience_store": "Convenience",
-    "pharmacy": "Pharmacy",
-    "gym": "Fitness",
-    "bank": "Financial",
-    "department_store": "Department Store",
-    "clothing_store": "Clothing",
-    "home_goods_store": "Home Goods",
-    "florist": "Florist",
-    "jewelry_store": "Jewelry",
-    "shoe_store": "Shoes",
-    "hardware_store": "Hardware",
-    "furniture_store": "Furniture",
-    "beauty_salon": "Beauty",
+    "restaurant": "Food Joint",
 }
 
 
@@ -174,13 +149,13 @@ def get_nearby_retailers(
     if search_radius_meters > 50000:
         search_radius_meters = 50000.0
 
-    # Single request with multiple types; API returns mixed results, max 20
+    # Single request: grocery + food only (no pharmacy, bank, gym, etc.)
     results = find_nearby_places(
         api_key,
         latitude,
         longitude,
         radius_miles=search_radius_miles,
-        included_types=RETAIL_TYPES[:8],
+        included_types=RETAIL_TYPES,
         max_results=20,
         rank_preference="DISTANCE",
     )

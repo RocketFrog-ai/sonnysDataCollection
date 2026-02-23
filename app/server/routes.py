@@ -265,10 +265,9 @@ def get_gas_stations_endpoint(req: GasStationRequest):
 @router.get("/gas_station/summary/{task_id}")
 def get_gas_station_summary_by_task(task_id: str):
     """
-    Executive summary for Retail Proximity dimension (gas station slice).
-    Gas stations fall under the Retail Proximity dimension in the quantile model.
+    Executive summary for Gas dimension (nearest gas station distance/rating).
     """
-    return _dimension_summary(task_id, "Retail Proximity")
+    return _dimension_summary(task_id, "Gas")
 
 
 @router.post("/datafetch/nearbygasstations")
@@ -379,7 +378,7 @@ def get_retailers_endpoint(req: RetailersRequest):
 @router.get("/retailers/summary/{task_id}")
 def get_retailers_summary_by_task(task_id: str):
     """
-    Executive summary for Retail Proximity dimension (retailers slice).
+    Executive summary for Retail Proximity (Costco, Walmart, Target, other grocery, food joints).
     """
     return _dimension_summary(task_id, "Retail Proximity")
 

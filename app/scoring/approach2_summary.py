@@ -17,18 +17,20 @@ from __future__ import annotations
 from typing import Dict, Any, List, Optional, Tuple
 
 from app.scoring.approach2_scorer import (
-    _get_profiler,
     WEATHER_API_TO_PROFILER,
     GAS_API_TO_PROFILER,
     COMPETITORS_API_TO_PROFILER,
+    score_feature_with_config,
 )
 
 
 # Dimension -> (task feature key -> profiler feature key) for features the task collects
 DIMENSION_FEATURE_MAP: Dict[str, Dict[str, str]] = {
     "Weather": WEATHER_API_TO_PROFILER,
-    "Retail Proximity": {
+    "Gas": {
         "distance_from_nearest_gas_station": "nearest_gas_station_distance_miles",
+    },
+    "Retail Proximity": {
         "distance_from_nearest_costco": "distance_nearest_costco(5 mile)",
         "distance_from_nearest_walmart": "distance_nearest_walmart(5 mile)",
         "distance_from_nearest_target": "distance_nearest_target (5 mile)",
@@ -72,6 +74,29 @@ DIRECTION_EXPLAIN: Dict[str, str] = {
     "lower_is_better": "Lower values are better",
 }
 
+# Short business context per feature (car wash / site selection)
+FEATURE_CAR_WASH_CONTEXT: Dict[str, str] = {
+    "weather_total_precipitation_mm": "Moderate rain supports need without compressing demand into few dry days.",
+    "weather_rainy_days": "More rainy days can mean more wash need; portfolio comparison sets seasonality expectations.",
+    "weather_total_snowfall_cm": "Snow drives winter need but can suppress visits; factor in labor and seasonality.",
+    "weather_days_below_freezing": "Moderate freeze days balance equipment and demand; extremes need stronger convenience.",
+    "weather_total_sunshine_hours": "More sunshine supports impulse volume; less sunshine favors necessity-driven capture.",
+    "weather_days_pleasant_temp": "Pleasant days drive discretionary volume; below median suggests loyalty and convenience focus.",
+    "weather_avg_daily_max_windspeed_ms": "Lower wind helps drying and drive-through experience.",
+    "nearest_gas_station_distance_miles": "Closer gas supports impulse traffic and capture potential.",
+    "nearest_gas_station_rating": "Higher-rated nearby gas often indicates stronger trade area.",
+    "nearest_gas_station_rating_count": "More reviews suggest busier station and more nearby demand.",
+    "distance_nearest_costco(5 mile)": "Closer Costco supports co-visits and trade-area quality.",
+    "distance_nearest_walmart(5 mile)": "Distance to Walmart helps size the addressable demand pool.",
+    "distance_nearest_target (5 mile)": "Closer Target supports trip consolidation and volume.",
+    "other_grocery_count_1mile": "More grocery nearby supports convenience trips and demand base.",
+    "count_food_joints_0_5miles (0.5 mile)": "More food options extend dwell time and capture.",
+    "competitors_count_4miles": "Moderate count balances visibility and pricing; extremes need differentiation.",
+    "competitor_1_distance_miles": "Farther competitor can mean less overlap; closer needs convenience edge.",
+    "competitor_1_google_rating": "Weaker nearest competitor can ease differentiation pressure.",
+    "competitor_1_rating_count": "Fewer reviews can mean less established competitor.",
+}
+
 
 def _extract_flat_for_dimension(dimension: str, feature_values: Dict[str, Any]) -> Dict[str, Any]:
     """Extract and map task feature_values to profiler keys for the dimension."""
@@ -87,18 +112,12 @@ def _extract_flat_for_dimension(dimension: str, feature_values: Dict[str, Any]) 
     return flat
 
 
-def _score_features_full(
-    flat: Dict[str, Any],
-    profiler,
-) -> List[Dict[str, Any]]:
-    """Score each feature and return full details (value, percentile, score, category)."""
+def _score_features_full(flat: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Score each feature using config direction; return value, percentile, score, category."""
     results = []
     for profiler_key, value in flat.items():
-        try:
-            info = profiler.score_feature_cto_method(profiler_key, float(value))
-        except (KeyError, TypeError, ValueError):
-            continue
-        if "error" in info:
+        info = score_feature_with_config(profiler_key, float(value))
+        if info is None:
             continue
 
         interp = info.get("interpretation", "")
@@ -139,8 +158,7 @@ def get_dimension_summary_approach2(
             "summary": f"No Approach 2 features available for {dimension}. Ensure the analysis task collected the required data.",
         }
 
-    profiler = _get_profiler()
-    scored = _score_features_full(flat, profiler)
+    scored = _score_features_full(flat)
     if not scored:
         return {
             "features_scored": 0,
@@ -165,23 +183,55 @@ def get_dimension_summary_approach2(
     }
 
 
+def _percentile_interpretation(pct: float, direction: str, category: str) -> str:
+    """Short portfolio-referenced line for summaries."""
+    if direction == "moderate_is_best":
+        dist = abs(pct - 50)
+        if dist <= 10:
+            return "Near portfolio middle—favorable for this metric."
+        if dist <= 25:
+            return "Close to middle; solid for site selection."
+        if dist <= 40:
+            return "Moderate position; weigh with other drivers."
+        return "Toward portfolio extreme; factor into planning."
+
+    higher_better = "higher" in direction.lower()
+    if higher_better:
+        if pct >= 75:
+            return f"Top quarter of portfolio—strength for demand."
+        if pct >= 50:
+            return "Above median; favorable."
+        if pct >= 25:
+            return "Below median; room to lean on other strengths."
+        return "Bottom quarter; weigh against trade-area strengths."
+    else:
+        if pct <= 25:
+            return f"Bottom quarter (low is good)—plus for this site."
+        if pct <= 50:
+            return "Better than median; solid position."
+        if pct <= 75:
+            return "Above median; consider with other factors."
+        return f"Top quarter (high values)—factor into demand and ops."
+
+
 def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
     """
-    Build human-readable rationale from Approach 2 methodology.
-
-    Explains: your value, percentile rank, direction, category, and what it means.
+    Build human-readable rationale: value, percentile, category, and business
+    implications for car wash site selection and demand.
     """
     lines: List[str] = []
 
     dim_intro = {
-        "Weather": "**Weather** conditions affect car wash demand. Each metric is compared against 1,200+ sites in our portfolio. Lower precipitation and wind are better; more sunshine and pleasant days are better.",
-        "Retail Proximity": "**Retail Proximity** covers gas stations, Costco, Walmart, Target, other grocery, and food joints. For distances (gas, Costco, Walmart, Target), closer is better. For counts (other grocery within 1 mi, food joints within 0.5 mi), higher is better. All are compared to our portfolio.",
-        "Competition": "**Competition** reflects the local car wash landscape. Fewer competitors and greater distance to the nearest one are generally better; competitor rating and review count provide context.",
+        "Weather": "🌤️ **Weather**\n\nDemand and seasonality vs 1,200+ portfolio sites. Direction per metric: moderate / higher / lower (see config).",
+        "Gas": "⛽ **Gas**\n\nGas proximity vs portfolio. Closer is better for impulse traffic.",
+        "Retail Proximity": "🛒 **Retail Proximity**\n\nCostco, Walmart, Target, grocery, food vs portfolio. Distances and counts for site selection.",
+        "Competition": "🏪 **Competition**\n\nCompetitor count, distance, and strength vs portfolio for capture and differentiation.",
     }
-    intro = dim_intro.get(dimension, f"**{dimension}**")
+    intro = dim_intro.get(dimension, f"**{dimension}**\n\n")
     lines.append(intro)
     lines.append("")
 
+    lines.append("📋 **Feature breakdown**\n")
     for s in scored:
         feat = s["feature"]
         label = FEATURE_LABELS.get(feat, feat.replace("_", " ").title())
@@ -190,38 +240,18 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
         cat = s.get("category", "N/A")
         direction = s.get("direction", "")
 
-        # Format value
         if isinstance(value, float):
             val_str = f"{value:,.2f}" if abs(value) >= 1 else f"{value:.2f}"
         else:
             val_str = str(value)
 
-        line = f"**{label}** — Your value: {val_str}. "
+        rank_str = f"portfolio rank: {pct:.1f}th percentile" if pct is not None else "no rank"
+        line = f"• **{label}** — {val_str} ({rank_str}). Category: **{cat}**. "
         if pct is not None:
-            line += f"This ranks at the {pct:.1f}th percentile of all sites. "
-        line += f"Category: **{cat}**. "
-
-        if "higher" in direction:
-            if pct is not None:
-                if pct >= 75:
-                    line += f"You outperform {pct:.0f}% of sites—this is a strength."
-                elif pct >= 50:
-                    line += f"You are above the median, which is favorable."
-                elif pct >= 25:
-                    line += f"You are below the median; room for improvement."
-                else:
-                    line += f"You rank in the bottom {100-pct:.0f}%—consider this a weakness."
-        else:
-            if pct is not None:
-                if pct <= 25:
-                    line += f"You rank in the best {pct:.0f}% (low values)—this is a strength."
-                elif pct <= 50:
-                    line += f"You are better than the median; favorable."
-                elif pct <= 75:
-                    line += f"You are above the median; room for improvement."
-                else:
-                    line += f"You rank in the top {100-pct:.0f}% highest values—this is a weakness."
-
+            line += _percentile_interpretation(pct, direction, cat) + " "
+        context = FEATURE_CAR_WASH_CONTEXT.get(feat)
+        if context:
+            line += context
         lines.append(line)
 
     return "\n\n".join(lines)
