@@ -1,0 +1,24 @@
+#,Category,Category Weightage,Feature,Lower the better/Higher the better,Feature Weightage when category is 1,Overall Feature Weightage
+1,Weather,0.25,weather_total_precipitation_mm,Moderate is best,0.15,0.0375
+2,,,weather_rainy_days,Higher the better,0.2,0.05
+3,,,weather_total_snowfall_cm,Higher the better,0.2,0.05
+4,,,weather_days_below_freezing,Moderate is best,0.1,0.025
+5,,,weather_total_sunshine_hours,Higher the better,0.1,0.025
+6,,,weather_days_pleasant_temp,Higher the better,0.15,0.0375
+7,,,weather_avg_daily_max_windspeed_ms,Lower the better,0.1,0.025
+,,,,,1,
+8,Nearby Gas Station,0.1,nearest_gas_station_distance_miles,Lower the better,0.5,0.05
+9,,,nearest_gas_station_rating,Higher the better,0.2,0.02
+10,,,nearest_gas_station_rating_count,Higher the better,0.3,0.03
+,,,,,1,
+11,Competitor ,0.35,competitors_count_4miles,Moderate is best,0.35,0.1225
+12,,,competitor_1_google_rating,Lower the better,0.15,0.0525
+13,,,competitor_1_distance_miles,Higher the better,0.3,0.105
+14,,,competitor_1_rating_count,Lower the better,0.2,0.07
+,,,,,1,
+15,Retailers,0.3,distance_nearest_costco(5 mile),Lower the better,0.3,0.09
+16,,,distance_nearest_walmart(5 mile),Lower the better,0.2,0.06
+17,,,distance_nearest_target (5 mile),Lower the better,0.15,0.045
+18,,,other_grocery_count_1mile,Higher the better,0.2,0.06
+19,,,count_food_joints_0_5miles (0.5 mile),Higher the better,0.15,0.045
+,,,,,1,1

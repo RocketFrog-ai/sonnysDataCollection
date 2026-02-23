@@ -16,6 +16,7 @@ from app.scoring.feature_weights_config import (
     FEATURE_WEIGHTS,
     DIMENSION_FEATURES,
     DIMENSION_WEIGHTS_FOR_OVERALL,
+    FEATURE_DIRECTION,
 )
 
 # Load CTOExactProfiler from scoringmetric/approach2
@@ -85,13 +86,95 @@ def _get_profiler() -> CTOExactProfiler:
 
 
 def _interpretation_to_category(interpretation: str) -> str:
-    """Extract short category from interpretation string.
-    e.g. 'Excellent (top 10%)' -> 'Excellent'
-         'Very Good (top 25% - low values)' -> 'Very Good'
-    """
+    """Extract short category from interpretation string."""
     if not interpretation:
         return "N/A"
     return interpretation.split(" (")[0].strip()
+
+
+def _interpret_from_final_score(final_score: float) -> str:
+    """Map final_score (0-100) to interpretation string for category extraction."""
+    if final_score >= 90:
+        return "Excellent (top 10%)"
+    if final_score >= 75:
+        return "Very Good (top 25%)"
+    if final_score >= 50:
+        return "Good (above median)"
+    if final_score >= 25:
+        return "Fair (below median)"
+    if final_score >= 10:
+        return "Poor (bottom 25%)"
+    return "Very Poor (bottom 10%)"
+
+
+def _apply_direction_override(profiler_key: str, score_info: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Override direction and final_score from FEATURE_DIRECTION config.
+    Supports: higher_is_better, lower_is_better, moderate_is_best.
+    """
+    direction_override = FEATURE_DIRECTION.get(profiler_key)
+    if not direction_override:
+        return score_info
+    raw = score_info.get("raw_percentile")
+    if raw is None:
+        return score_info
+
+    if direction_override == "moderate_is_best":
+        dist = abs(raw - 50)
+        final_score = max(0.0, 100.0 - 2.0 * dist)
+        if dist <= 10:
+            interpretation = "Excellent (near portfolio middle)"
+        elif dist <= 25:
+            interpretation = "Very Good (close to middle)"
+        elif dist <= 40:
+            interpretation = "Good (moderate)"
+        elif dist <= 50:
+            interpretation = "Fair (away from middle)"
+        else:
+            interpretation = "Poor (extreme)"
+        return {
+            **score_info,
+            "final_score": round(final_score, 2),
+            "direction": "moderate_is_best",
+            "interpretation": interpretation,
+        }
+
+    if direction_override == "lower_is_better":
+        final_score = 100.0 - raw
+        interpretation = _interpret_from_final_score(final_score)
+        return {
+            **score_info,
+            "final_score": round(final_score, 2),
+            "direction": "lower_is_better",
+            "interpretation": interpretation,
+        }
+
+    if direction_override == "higher_is_better":
+        final_score = raw
+        interpretation = _interpret_from_final_score(final_score)
+        return {
+            **score_info,
+            "final_score": round(final_score, 2),
+            "direction": "higher_is_better",
+            "interpretation": interpretation,
+        }
+
+    return score_info
+
+
+def score_feature_with_config(profiler_key: str, value: float) -> Optional[Dict[str, Any]]:
+    """
+    Score one feature using profiler then apply FEATURE_DIRECTION override.
+    Returns same shape as profiler.score_feature_cto_method, or None on error.
+    """
+    profiler = _get_profiler()
+    try:
+        info = profiler.score_feature_cto_method(profiler_key, float(value))
+    except (KeyError, TypeError, ValueError):
+        return None
+    if "error" in info:
+        return None
+    return _apply_direction_override(profiler_key, info)
 
 
 def enrich_features_with_categories(
@@ -111,7 +194,6 @@ def enrich_features_with_categories(
     if api_to_profiler_map is None:
         api_to_profiler_map = WEATHER_API_TO_PROFILER
 
-    profiler = _get_profiler()
     result = {}
 
     for api_key, value in flat_data.items():
@@ -120,13 +202,8 @@ def enrich_features_with_categories(
             continue
 
         profiler_key = api_to_profiler_map.get(api_key, api_key)
-        try:
-            score_info = profiler.score_feature_cto_method(profiler_key, float(value))
-        except (KeyError, TypeError, ValueError):
-            result[api_key] = {"value": value, "category": "N/A"}
-            continue
-
-        if "error" in score_info:
+        score_info = score_feature_with_config(profiler_key, float(value))
+        if score_info is None:
             result[api_key] = {"value": value, "category": "N/A"}
             continue
 
@@ -142,19 +219,15 @@ def get_feature_final_scores(
 ) -> Dict[str, float]:
     """
     Get Approach 2 final_score (0-100) per profiler feature for weighting.
-    Returns { profiler_feature_name: final_score }.
+    Uses FEATURE_DIRECTION config. Returns { profiler_feature_name: final_score }.
     """
-    profiler = _get_profiler()
     result = {}
     for api_key, value in flat_data.items():
         if value is None or (isinstance(value, float) and str(value) == "nan"):
             continue
         profiler_key = api_to_profiler_map.get(api_key, api_key)
-        try:
-            score_info = profiler.score_feature_cto_method(profiler_key, float(value))
-        except (KeyError, TypeError, ValueError):
-            continue
-        if "error" in score_info or "final_score" not in score_info:
+        score_info = score_feature_with_config(profiler_key, float(value))
+        if score_info is None or "final_score" not in score_info:
             continue
         result[profiler_key] = float(score_info["final_score"])
     return result
