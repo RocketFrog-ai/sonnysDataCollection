@@ -5,8 +5,10 @@ from pathlib import Path
 from app.utils.llm import local_llm as llm
 from .prompts import build_normalized_strength_prompt
 from .signals import CUTOFF, CORR_FLOOR, POSITIVE_SIGNALS, NEGATIVE_SIGNALS, get_feature_category
-from app.server.app import get_climate, get_competitors, get_traffic_lights
+from app.server.app import get_climate, get_traffic_lights
 from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
+from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
+from app.utils import common as _calib
 from app.utils import common as calib
 
 FEATURE_VALUES_LOG = Path(__file__).resolve().parent.parent / "feature_values.log"
@@ -115,11 +117,16 @@ def analyze_site_from_dict(address):
     lon = geo_cord["lon"]
     weather_details = get_climate(lat, lon)
     nearby_stores_data = get_nearby_stores_data(lat, lon)
-    competitors_data = get_competitors(lat, lon)
-    competitor_1_google_user_rating_count = competitors_data.get("competitor_1_google_user_rating_count")
-    competitor_1_google_rating = competitors_data.get("competitor_1_google_rating")
-    competitor_1_distance_miles = competitors_data.get("competitor_1_distance_miles")
-    competitors_count = competitors_data.get("competitors_count", 0)
+
+    # Use new competitor fetch (4-mile radius, same as /v1/competitors/dynamics)
+    api_key = _calib.GOOGLE_MAPS_API_KEY
+    _comp_result = get_nearby_competitors(api_key, lat, lon, radius_miles=4.0, fetch_place_details=False) if api_key else {}
+    _comp_list = _comp_result.get("competitors") or []
+    competitors_count = _comp_result.get("count", 0)
+    c1 = _comp_list[0] if _comp_list else {}
+    competitor_1_distance_miles = c1.get("distance_miles")
+    competitor_1_google_rating = c1.get("rating")
+    competitor_1_google_user_rating_count = c1.get("user_rating_count")
     traffic_data = get_traffic_lights(lat, lon)
     nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
     distance_nearest_traffic_light_2 = traffic_data["distance_nearest_traffic_light_2"]
@@ -159,7 +166,9 @@ def analyze_site_from_dict(address):
     feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
     feature_values["competitor_1_google_rating"] = competitor_1_google_rating
     feature_values["competitor_1_distance_miles"] = competitor_1_distance_miles
+    # Store as both keys so summaries (competitors_count) and profiler (competitors_count_4miles) both work
     feature_values["competitors_count"] = competitors_count
+    feature_values["competitors_count_4miles"] = competitors_count
     try:
         with open(FEATURE_VALUES_LOG, "a") as f:
             f.write(f"\n{'='*60}\n")

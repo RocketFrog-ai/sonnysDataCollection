@@ -183,88 +183,142 @@ def get_dimension_summary_approach2(
     }
 
 
-def _score_to_signal(final_score: float) -> str:
-    """Map final_score to a short human signal word."""
-    if final_score >= 80:
-        return "strong"
-    if final_score >= 60:
-        return "above average"
-    if final_score >= 40:
-        return "average"
-    if final_score >= 20:
-        return "below average"
-    return "weak"
+def _pct_context(pct: float, direction: str, n_sites: int = 1235) -> str:
+    """
+    Express percentile in plain English with portfolio size reference.
+    e.g. "better than 82% of the 1,235 car wash sites analysed"
+    """
+    if direction in ("lower_is_better",):
+        favorable_pct = 100 - pct
+    elif direction == "moderate_is_best":
+        dist = abs(pct - 50)
+        favorable_pct = 100 - 2 * dist
+        favorable_pct = max(0, min(100, favorable_pct))
+    else:
+        favorable_pct = pct
+
+    return f"better than {favorable_pct:.0f}% of the {n_sites:,} car wash sites analysed"
+
+
+def _fmt_val(value: Any) -> str:
+    if isinstance(value, float):
+        return f"{value:,.1f}" if abs(value) >= 1 else f"{value:.2f}"
+    return str(value)
 
 
 def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
     """
-    Single short paragraph summary. No per-feature breakdown — just a human-readable
-    interpretation of the overall picture for this dimension.
+    Short, human-readable paragraph using actual values and plain English.
+    No jargon — explains what the numbers mean for this location.
     """
     if not scored:
         return f"No data available for {dimension}."
 
-    cat_order = ["Excellent", "Very Good", "Good", "Fair", "Poor", "Very Poor"]
-
-    strengths = [s for s in scored if s.get("final_score", 50) >= 60]
-    weaknesses = [s for s in scored if s.get("final_score", 50) < 40]
-    avg_score = sum(s.get("final_score", 50) for s in scored) / len(scored)
-
-    def label(s):
-        return FEATURE_LABELS.get(s["feature"], s["feature"].replace("_", " ").title())
+    def fv(feat_key: str):
+        return next((s for s in scored if s["feature"] == feat_key), None)
 
     if dimension == "Weather":
-        strength_names = [label(s) for s in strengths]
-        weak_names = [label(s) for s in weaknesses]
-        parts = []
-        if strength_names:
-            parts.append(f"Favorable on {', '.join(strength_names[:2])}")
-        if weak_names:
-            parts.append(f"challenging on {', '.join(weak_names[:2])}")
-        note = ". ".join(parts) if parts else "Mixed weather profile"
-        signal = _score_to_signal(avg_score)
-        return f"🌤️ Weather is {signal} vs portfolio. {note}. Seasonality and demand planning are key for this location."
+        lines = ["🌤️ Weather summary based on historical data for this location, compared to 1,235 car wash sites:"]
+        for s in scored:
+            pct = s.get("raw_percentile")
+            direction = s.get("direction", "")
+            lbl = FEATURE_LABELS.get(s["feature"], s["feature"].replace("_", " ").title())
+            val = _fmt_val(s["value"])
+            ctx = _pct_context(pct, direction) if pct is not None else None
+            line = f"• {lbl} is {val}"
+            if ctx:
+                line += f", {ctx}"
+            lines.append(line)
+        return "\n".join(lines)
 
     if dimension == "Gas":
-        s0 = scored[0]
-        pct = s0.get("raw_percentile")
-        dist_val = s0.get("value")
-        signal = _score_to_signal(s0.get("final_score", 50))
-        pct_note = f"{pct:.0f}th percentile" if pct is not None else ""
-        dist_note = f"{dist_val:.2f} mi away" if isinstance(dist_val, float) else ""
-        detail = f" ({dist_note}, {pct_note})" if dist_note or pct_note else ""
-        return f"⛽ Nearest gas station{detail} is a {signal} traffic co-location opportunity vs portfolio."
+        dist_s = fv("nearest_gas_station_distance_miles")
+        rating_s = fv("nearest_gas_station_rating")
+        count_s = fv("nearest_gas_station_rating_count")
+        parts = []
+        if dist_s:
+            pct = dist_s.get("raw_percentile")
+            ctx = _pct_context(pct, dist_s.get("direction", "")) if pct is not None else None
+            txt = f"The nearest gas station is {_fmt_val(dist_s['value'])} miles away"
+            if ctx:
+                txt += f" — {ctx} (closer is better)"
+            parts.append(txt)
+        if rating_s and rating_s.get("value") is not None:
+            pct = rating_s.get("raw_percentile")
+            ctx = _pct_context(pct, rating_s.get("direction", "")) if pct is not None else None
+            txt = f"It has a rating of {_fmt_val(rating_s['value'])}/5"
+            if ctx:
+                txt += f" ({ctx})"
+            parts.append(txt)
+        if count_s and count_s.get("value") is not None:
+            parts.append(f"with {int(count_s['value'])} reviews on Google")
+        return "⛽ " + ". ".join(parts) + "." if parts else "⛽ No gas station data available."
 
     if dimension == "Retail Proximity":
-        strength_names = [label(s) for s in strengths]
-        weak_names = [label(s) for s in weaknesses]
-        signal = _score_to_signal(avg_score)
-        parts = []
-        if strength_names:
-            parts.append(f"strong anchor proximity ({', '.join(strength_names[:2])})")
-        if weak_names:
-            parts.append(f"limited on {', '.join(weak_names[:2])}")
-        note = "; ".join(parts) if parts else "mixed anchor mix"
-        return f"🛒 Retail proximity is {signal} vs portfolio — {note}. Anchor traffic supports co-visit and convenience demand."
+        lines = ["🛒 Retail anchors near this site, compared to 1,235 car wash sites:"]
+        anchor_map = {
+            "distance_nearest_costco(5 mile)": "Nearest Costco",
+            "distance_nearest_walmart(5 mile)": "Nearest Walmart",
+            "distance_nearest_target (5 mile)": "Nearest Target",
+            "other_grocery_count_1mile": "Other grocery stores within 1 mile",
+            "count_food_joints_0_5miles (0.5 mile)": "Food joints within 0.5 miles",
+        }
+        for feat, lbl in anchor_map.items():
+            s = fv(feat)
+            if s is None:
+                continue
+            pct = s.get("raw_percentile")
+            direction = s.get("direction", "")
+            ctx = _pct_context(pct, direction) if pct is not None else None
+            is_dist = "distance" in feat
+            val = _fmt_val(s["value"])
+            if is_dist:
+                line = f"• {lbl}: {val} miles away"
+            else:
+                line = f"• {lbl}: {val}"
+            if ctx:
+                line += f" ({ctx})"
+            lines.append(line)
+        return "\n".join(lines)
 
     if dimension == "Competition":
-        count_s = next((s for s in scored if "count" in s["feature"]), None)
-        dist_s = next((s for s in scored if "distance" in s["feature"]), None)
-        signal = _score_to_signal(avg_score)
+        count_s = fv("competitors_count_4miles")
+        dist_s = fv("competitor_1_distance_miles")
+        rating_s = fv("competitor_1_google_rating")
+        review_s = fv("competitor_1_rating_count")
         parts = []
         if count_s:
             pct = count_s.get("raw_percentile")
-            parts.append(f"{int(count_s['value'])} competitors within 4 mi ({pct:.0f}th pct)" if pct is not None else f"{int(count_s['value'])} competitors within 4 mi")
-        if dist_s:
-            parts.append(f"nearest is {dist_s['value']:.2f} mi away")
-        note = ", ".join(parts) if parts else "competition data available"
-        return f"🏪 Competitive landscape is {signal} vs portfolio — {note}. Differentiation on convenience and service is key."
+            ctx = _pct_context(pct, count_s.get("direction", "")) if pct is not None else None
+            txt = f"There are {int(count_s['value'])} car wash competitors within 4 miles"
+            if ctx:
+                txt += f" — {ctx}"
+            parts.append(txt)
+        if dist_s and dist_s.get("value") is not None:
+            pct = dist_s.get("raw_percentile")
+            ctx = _pct_context(pct, dist_s.get("direction", "")) if pct is not None else None
+            txt = f"The nearest competitor is {_fmt_val(dist_s['value'])} miles away"
+            if ctx:
+                txt += f" ({ctx})"
+            parts.append(txt)
+        if rating_s and rating_s.get("value") is not None:
+            txt = f"It has a Google rating of {_fmt_val(rating_s['value'])}/5"
+            if review_s and review_s.get("value") is not None:
+                txt += f" with {int(review_s['value'])} reviews"
+            parts.append(txt)
+        return "🏪 " + ". ".join(parts) + "." if parts else "🏪 No competition data available."
 
     # Generic fallback
-    signal = _score_to_signal(avg_score)
-    top = sorted(scored, key=lambda s: s.get("final_score", 50), reverse=True)
-    top_label = label(top[0]) if top else ""
-    return f"📊 {dimension} scores {signal} vs portfolio. Strongest metric: {top_label}."
+    lines = [f"📊 {dimension} summary:"]
+    for s in scored:
+        pct = s.get("raw_percentile")
+        lbl = FEATURE_LABELS.get(s["feature"], s["feature"].replace("_", " ").title())
+        ctx = _pct_context(pct, s.get("direction", "")) if pct is not None else None
+        line = f"• {lbl}: {_fmt_val(s['value'])}"
+        if ctx:
+            line += f" ({ctx})"
+        lines.append(line)
+    return "\n".join(lines)
 
 
 def get_feature_performance_map(scored: List[Dict[str, Any]]) -> Dict[str, str]:
