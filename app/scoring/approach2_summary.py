@@ -30,6 +30,8 @@ DIMENSION_FEATURE_MAP: Dict[str, Dict[str, str]] = {
     "Weather": WEATHER_API_TO_PROFILER,
     "Gas": {
         "distance_from_nearest_gas_station": "nearest_gas_station_distance_miles",
+        "nearest_gas_station_rating": "nearest_gas_station_rating",
+        "nearest_gas_station_rating_count": "nearest_gas_station_rating_count",
     },
     "Retail Proximity": {
         "distance_from_nearest_costco": "distance_nearest_costco(5 mile)",
@@ -316,7 +318,12 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
                 txt += f" ({ctx})"
             parts.append(txt)
         if count_s and count_s.get("value") is not None:
-            parts.append(f"with {int(count_s['value'])} reviews on Google")
+            pct = count_s.get("raw_percentile")
+            ctx = _pct_context(pct, count_s.get("direction", ""), n_sites=None) if pct is not None else None
+            txt = f"It has {int(count_s['value'])} reviews on Google"
+            if ctx:
+                txt += f" ({ctx})"
+            parts.append(txt)
         return "⛽ " + ". ".join(parts) + "." if parts else "⛽ No gas station data available."
 
     if dimension == "Retail Proximity":

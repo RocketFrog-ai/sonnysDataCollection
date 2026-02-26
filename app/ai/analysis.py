@@ -157,6 +157,10 @@ def analyze_site_from_dict(address):
     feature_values["count_of_gas_stations_5miles"] = nearby_stores_data.get("count_of_gas_stations_5miles", 0) or 0
     if nearby_stores_data.get("distance_from_nearest_gas_station") is not None:
         feature_values["distance_from_nearest_gas_station"] = nearby_stores_data["distance_from_nearest_gas_station"]
+    if nearby_stores_data.get("nearest_gas_station_rating") is not None:
+        feature_values["nearest_gas_station_rating"] = nearby_stores_data["nearest_gas_station_rating"]
+    if nearby_stores_data.get("nearest_gas_station_rating_count") is not None:
+        feature_values["nearest_gas_station_rating_count"] = nearby_stores_data["nearest_gas_station_rating_count"]
     feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
     feature_values["distance_nearest_traffic_light_2"] = distance_nearest_traffic_light_2
     feature_values["distance_nearest_traffic_light_3"] = distance_nearest_traffic_light_3

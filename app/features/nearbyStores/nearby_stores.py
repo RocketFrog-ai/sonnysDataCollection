@@ -23,4 +23,6 @@ def get_nearby_stores_data(latitude: float, longitude: float):
     if gas is not None:
         out["distance_from_nearest_gas_station"] = gas.get("distance_from_nearest_gas_station")
         out["count_of_gas_stations_5miles"] = gas.get("count_of_gas_stations_5miles", 0) or 0
+        out["nearest_gas_station_rating"] = gas.get("nearest_gas_station_rating")
+        out["nearest_gas_station_rating_count"] = gas.get("nearest_gas_station_rating_count")
     return out

@@ -260,9 +260,11 @@ def compute_dimension_score(
     return round(weighted_sum / total_w, 2)
 
 
-# Task feature_values key -> profiler key (for gas; task only has distance_from_nearest_gas_station)
+# Task feature_values key -> profiler key (for gas)
 TASK_GAS_TO_PROFILER: Dict[str, str] = {
     "distance_from_nearest_gas_station": "nearest_gas_station_distance_miles",
+    "nearest_gas_station_rating": "nearest_gas_station_rating",
+    "nearest_gas_station_rating_count": "nearest_gas_station_rating_count",
 }
 
 
@@ -278,7 +280,7 @@ def get_all_profiler_scores_from_task_feature_values(
     flat_w = {k: feature_values[k] for k in WEATHER_API_TO_PROFILER if feature_values.get(k) is not None}
     if flat_w:
         all_scores.update(get_feature_final_scores(flat_w, WEATHER_API_TO_PROFILER))
-    # Gas (task only has distance_from_nearest_gas_station)
+    # Gas (distance, rating, rating count)
     flat_g = {k: feature_values[k] for k in TASK_GAS_TO_PROFILER if feature_values.get(k) is not None}
     if flat_g:
         all_scores.update(get_feature_final_scores(flat_g, TASK_GAS_TO_PROFILER))
