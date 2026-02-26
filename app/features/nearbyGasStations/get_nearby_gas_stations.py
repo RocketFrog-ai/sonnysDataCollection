@@ -238,21 +238,31 @@ def get_nearest_gas_station_only(
 
 
 def get_gas_station_info(latitude: float, longitude: float):
-    """Legacy summary for analysis pipeline: distance to nearest and count within radius."""
+    """Summary for analysis pipeline: distance to nearest, count within radius, and nearest station rating/review count."""
     api_key = calib.GOOGLE_MAPS_API_KEY
     if not api_key:
         return None
     stations = get_nearby_gas_stations(
         api_key, latitude, longitude,
         radius_miles=2.5, max_results=5,
-        fetch_place_details=False,
+        fetch_place_details=True,
     )
     count = len(stations)
     distances = [s["distance_miles"] for s in stations if s.get("distance_miles") is not None]
     distance_from_nearest = round(min(distances), 2) if distances else None
+    nearest = stations[0] if stations else None
+    rating = None
+    rating_count = None
+    if nearest is not None:
+        r = nearest.get("rating")
+        rating = float(r) if r is not None else None
+        rc = nearest.get("rating_count")
+        rating_count = int(rc) if rc is not None else None
     return {
         "distance_from_nearest_gas_station": distance_from_nearest,
         "count_of_gas_stations_5miles": count,
+        "nearest_gas_station_rating": rating,
+        "nearest_gas_station_rating_count": rating_count,
     }
 
 

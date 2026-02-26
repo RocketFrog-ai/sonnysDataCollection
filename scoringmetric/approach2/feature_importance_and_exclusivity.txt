@@ -1,0 +1,82 @@
+================================================================================
+FEATURE IMPORTANCE & MUTUAL EXCLUSIVITY (Approach 2)
+================================================================================
+Reference: output.txt (19 features, percentile-based 0–100 scores)
+Config: app/scoring/feature_weights_config.py
+
+--------------------------------------------------------------------------------
+1. FEATURE IMPORTANCE
+--------------------------------------------------------------------------------
+
+• What “importance” means here
+  - Each feature gets a 0–100 score from its percentile rank (and direction).
+  - Importance = how much that feature’s score affects (a) the dimension score
+    and (b) the overall site score.
+
+• Dimension level (DIMENSION_FEATURE_WEIGHTS)
+  - Weights sum to 1 within each dimension.
+  - Dimension score = weighted average of that dimension’s feature scores.
+  - Example (Gas): distance 50%, rating 20%, rating_count 30% → distance
+    has the largest impact on the Gas dimension.
+
+• Overall level (FEATURE_WEIGHTS)
+  - One weight per feature across all 19 features (derived from category
+    weight × feature weight within category in the mapping sheet).
+  - Overall site score = weighted average of all 19 feature scores.
+  - Highest overall weights (e.g. competition count, competitor distance,
+    Costco distance) have the most impact on the single overall number.
+
+• In output.txt
+  - “Overall Score: 53.26/100” is (by default) the average of all 19
+    feature scores. If FEATURE_WEIGHTS is used, it’s the weighted
+    average instead.
+  - “Top 10 strengths” / “Top 10 weaknesses” are by each feature’s
+    score; importance is reflected when aggregating to dimension or
+    overall, not in that ranking itself.
+
+--------------------------------------------------------------------------------
+2. MUTUAL EXCLUSIVITY OF FEATURES
+--------------------------------------------------------------------------------
+
+• Features are NOT mutually exclusive (statistically)
+  - Different features often measure related things, so they can be
+    correlated. Examples:
+    - Weather: precipitation vs rainy_days; sunshine vs pleasant_days.
+    - Retail: distance to Costco vs Walmart vs Target (all “retail
+      proximity” but different anchors).
+    - Competition: competitors_count_4miles vs competitor_1_distance_miles
+      (more competitors often means a nearer first competitor).
+  - So one underlying factor (e.g. “lots of retail”) can push several
+    feature scores up or down together. The model does not assume
+    independence.
+
+• Mutual exclusivity in a different sense (no double-counting of inputs)
+  - Each feature is a distinct measurement: one value per feature per
+    site (e.g. one distance to nearest gas, one competitor count, one
+    precipitation value).
+  - The same raw input is not fed twice under two feature names. So at
+    the input level we don’t double-count; at the statistical level we
+    do have overlap in what drives multiple features.
+
+• Why it matters
+  - Weighted sums (dimension / overall) can over-emphasize a single
+    underlying driver if many correlated features get high weight (e.g.
+    several retail-distance features). That’s a design choice, not an
+    assumption of independence.
+  - For interpretation: strong “Retail” may mean several retail features
+    are good together; they’re not independent evidence.
+
+--------------------------------------------------------------------------------
+3. BRIEF SUMMARY
+--------------------------------------------------------------------------------
+
+• Importance: Controlled by DIMENSION_FEATURE_WEIGHTS (within dimension)
+  and FEATURE_WEIGHTS (overall). Higher weight ⇒ larger effect on
+  dimension or overall score.
+
+• Mutual exclusivity: Features are not mutually exclusive—they can be
+  correlated. Each feature is a separate measurement (no double-counting
+  of the same input), but the same underlying factor can affect multiple
+  features at once.
+
+================================================================================
