@@ -3,10 +3,13 @@ Nearby car wash competitors within a radius using Google Places API and Distance
 Route (driving) distance only. Real data: name, distance, rating, user_rating_count, website when from API.
 No market share or threat level — API does not provide those.
 """
+import logging
 import requests
 from typing import Optional, Any
 
 from app.features.experimental_features.operationalHours.searchNearby import find_nearby_places
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_RADIUS_MILES = 4.0
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
@@ -103,10 +106,24 @@ def get_nearby_competitors(
         rank_preference="DISTANCE",
     )
 
-    if not results or "places" not in results or not results["places"]:
+    if not results:
+        logger.warning(
+            "get_nearby_competitors: find_nearby_places returned None (API error or no response) for (%s, %s)",
+            latitude, longitude,
+        )
+        return {"competitors": [], "count": 0}
+    if "places" not in results or not results["places"]:
+        logger.info(
+            "get_nearby_competitors: no car_wash places in radius %.1f mi for (%s, %s); raw keys=%s",
+            radius_miles, latitude, longitude, list(results.keys()) if results else [],
+        )
         return {"competitors": [], "count": 0}
 
     places = results["places"]
+    logger.info(
+        "get_nearby_competitors: Places API returned %d place(s) for (%s, %s); filtering by driving distance and type",
+        len(places), latitude, longitude,
+    )
     dests = []
     for place in places:
         loc = place.get("location") or {}
@@ -134,11 +151,17 @@ def get_nearby_competitors(
         dest_idx += 1
         distance_miles = route.get("distance_miles")
         if distance_miles is None or distance_miles > radius_miles:
+            if distance_miles is not None and distance_miles > radius_miles:
+                logger.debug(
+                    "get_nearby_competitors: skipping place (driving distance %.2f > %.1f mi)",
+                    distance_miles, radius_miles,
+                )
             continue
 
         # Keep car washes only; exclude gas stations (Places can return gas stations when they have a car wash)
         place_types = place.get("types") or []
         if "gas_station" in place_types:
+            logger.debug("get_nearby_competitors: skipping place (gas_station type)")
             continue
 
         display_name = place.get("displayName")
@@ -187,6 +210,12 @@ def get_nearby_competitors(
         competitors.append(comp)
 
     competitors.sort(key=lambda c: (c.get("distance_miles") is None, c.get("distance_miles") or float("inf")))
+
+    if not competitors and places:
+        logger.warning(
+            "get_nearby_competitors: all %d place(s) filtered out (driving distance > %.1f mi or gas_station) for (%s, %s)",
+            len(places), radius_miles, latitude, longitude,
+        )
 
     return {
         "competitors": competitors,
