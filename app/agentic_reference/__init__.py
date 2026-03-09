@@ -1,3 +1,0 @@
-"""
-agentic_reference package
-"""
