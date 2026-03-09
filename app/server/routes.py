@@ -18,9 +18,6 @@ from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_com
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
-from app.agentic_reference.profiler_engine import QuantileProfiler, DIMENSION_GROUPS
-from app.agentic_reference.dimension_profiler import DimensionProfiler
-from app.agentic_reference.agentic_rationale import generate_dimension_rationale, generate_rationale
 from app.scoring.approach2_scorer import (
     enrich_features_with_categories,
     enrich_gas_features_with_categories,
@@ -37,6 +34,8 @@ from app.scoring.approach2_scorer import (
 )
 from app.scoring.approach2_summary import (
     get_dimension_summary_approach2,
+    build_full_profiling_rationale,
+    _overall_score_to_category,
     DIMENSION_FEATURE_MAP,
 )
 
@@ -561,88 +560,73 @@ def get_overall_score(task_id: str):
     }
 
 
-_profiler_singleton = None
-_dim_profiler_singleton = None
-
-
-def _get_profilers():
-    global _profiler_singleton, _dim_profiler_singleton
-    if _profiler_singleton is None:
-        _profiler_singleton = QuantileProfiler()
-        _dim_profiler_singleton = DimensionProfiler(_profiler_singleton)
-    return _profiler_singleton, _dim_profiler_singleton
-
-
 def _dimension_summary(task_id: str, dimension: str) -> dict:
     result = _get_task_result_or_raise(task_id)
     feature_values = result.get("feature_values") or {}
 
-    if dimension in DIMENSION_FEATURE_MAP:
-        try:
-            a2 = get_dimension_summary_approach2(dimension, feature_values)
-        except Exception as e:
-            logger.warning(f"Approach 2 summary failed for {dimension}: {e}")
-            a2 = None
-        if a2 and a2.get("features_scored", 0) > 0:
-            scored = a2.get("feature_scores", [])
-            fit_avg = (
-                sum(s.get("final_score", 0) for s in scored) / len(scored)
-                if scored else 0
-            )
-            feat_breakdown = {
-                s["feature"]: {
-                    "value": s["value"],
-                    "raw_percentile": s.get("raw_percentile"),
-                    "final_score": s.get("final_score"),
-                    "category": s.get("category"),
-                }
-                for s in scored
-            }
-            feat_perf = {s["feature"]: s.get("category", "N/A") for s in scored}
-            mapping = DIMENSION_FEATURE_MAP[dimension]
-            fv_slice = {
-                tk: feature_values.get(tk)
-                for tk in mapping
-                if feature_values.get(tk) is not None
-            }
-            return DimensionSummaryResponse(
-                task_id=task_id,
-                dimension=dimension,
-                predicted_tier=a2.get("overall_category", "Insufficient Data"),
-                fit_score=round(fit_avg, 1),
-                features_scored=a2.get("features_scored", 0),
-                feature_breakdown=feat_breakdown,
-                discriminatory_power={},
-                summary=a2.get("summary", ""),
-                feature_values_slice=fv_slice,
-                feature_performance=feat_perf,
-            ).model_dump()
+    if dimension not in DIMENSION_FEATURE_MAP:
+        return DimensionSummaryResponse(
+            task_id=task_id,
+            dimension=dimension,
+            predicted_tier="Insufficient Data",
+            fit_score=0.0,
+            features_scored=0,
+            feature_breakdown={},
+            discriminatory_power={},
+            summary=f"No Approach 2 data for dimension {dimension}.",
+            feature_values_slice={},
+            feature_performance={},
+        ).model_dump()
 
-    profiler, dim_profiler = _get_profilers()
-    dim_result = dim_profiler.score_dimension(dimension, feature_values)
-    overall = profiler.predict(feature_values)
-    summary_text = generate_dimension_rationale(
-        dimension_name=dimension,
-        dimension_result=dim_result,
-        dimension_strength_info=dim_profiler.dimension_strength.get(dimension, {}),
-        overall_category=overall["predicted_category"],
+    try:
+        a2 = get_dimension_summary_approach2(dimension, feature_values)
+    except Exception as e:
+        logger.warning(f"Approach 2 summary failed for {dimension}: {e}")
+        a2 = None
+    if not a2 or a2.get("features_scored", 0) == 0:
+        return DimensionSummaryResponse(
+            task_id=task_id,
+            dimension=dimension,
+            predicted_tier="Insufficient Data",
+            fit_score=0.0,
+            features_scored=0,
+            feature_breakdown={},
+            discriminatory_power={},
+            summary=a2.get("summary", f"No scorable features for {dimension}.") if a2 else f"No data for {dimension}.",
+            feature_values_slice={},
+            feature_performance={},
+        ).model_dump()
+
+    scored = a2.get("feature_scores", [])
+    fit_avg = (
+        sum(s.get("final_score", 0) for s in scored) / len(scored)
+        if scored else 0
     )
-    dim_features = DIMENSION_GROUPS.get(dimension, [])
-    fv_slice = {k: v for k, v in feature_values.items() if k in dim_features}
-    feat_perf = {}
-    if dim_result.get("feature_details"):
-        for feat, details in dim_result["feature_details"].items():
-            feat_perf[feat] = details.get("best_fit", "N/A")
-
+    feat_breakdown = {
+        s["feature"]: {
+            "value": s["value"],
+            "raw_percentile": s.get("raw_percentile"),
+            "final_score": s.get("final_score"),
+            "category": s.get("category"),
+        }
+        for s in scored
+    }
+    feat_perf = {s["feature"]: s.get("category", "N/A") for s in scored}
+    mapping = DIMENSION_FEATURE_MAP[dimension]
+    fv_slice = {
+        tk: feature_values.get(tk)
+        for tk in mapping
+        if feature_values.get(tk) is not None
+    }
     return DimensionSummaryResponse(
         task_id=task_id,
         dimension=dimension,
-        predicted_tier=dim_result["predicted"],
-        fit_score=dim_result["fit_score"],
-        features_scored=dim_result["features_scored"],
-        feature_breakdown=dim_result.get("feature_details", {}),
-        discriminatory_power=dim_profiler.dimension_strength.get(dimension, {}),
-        summary=summary_text,
+        predicted_tier=a2.get("overall_category", "Insufficient Data"),
+        fit_score=round(fit_avg, 1),
+        features_scored=a2.get("features_scored", 0),
+        feature_breakdown=feat_breakdown,
+        discriminatory_power={},
+        summary=a2.get("summary", ""),
         feature_values_slice=fv_slice,
         feature_performance=feat_perf,
     ).model_dump()
@@ -652,40 +636,37 @@ def _dimension_summary(task_id: str, dimension: str) -> dict:
 def get_full_profiling_summary(task_id: str):
     result = _get_task_result_or_raise(task_id)
     feature_values = result.get("feature_values") or {}
-
-    profiler, dim_profiler = _get_profilers()
-    overall = profiler.predict(feature_values, return_details=True)
-    dim_results = dim_profiler.score_all_dimensions(feature_values)
-    vote = dim_profiler.majority_vote(dim_results)
-    strengths, weaknesses, neutrals = dim_profiler.get_strengths_weaknesses(dim_results)
-
-    rationale = generate_rationale(
-        location_features=feature_values,
-        overall_prediction=overall,
-        dimension_results=dim_results,
-        dimension_strength=dim_profiler.dimension_strength,
-        vote_result=vote,
-        strengths=strengths,
-        weaknesses=weaknesses,
-        neutrals=neutrals,
-    )
-
+    profiler_scores = get_all_profiler_scores_from_task_feature_values(feature_values)
+    if not profiler_scores:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Task {task_id}: no scorable features.",
+        )
+    overall_score = compute_overall_score(profiler_scores)
+    dimension_results = {}
+    for dim in ("Weather", "Gas", "Retail Proximity", "Competition"):
+        dimension_results[dim] = get_dimension_summary_approach2(dim, feature_values)
+    rationale = build_full_profiling_rationale(overall_score, dimension_results)
+    dim_scores = {}
+    for dim in ("Weather", "Gas", "Retail Proximity", "Competition"):
+        s = compute_dimension_score(profiler_scores, dim)
+        res = dimension_results.get(dim, {})
+        fs_list = res.get("feature_scores") or []
+        fit_avg = sum(f.get("final_score", 0) for f in fs_list) / len(fs_list) if fs_list else 0
+        dim_scores[dim] = {
+            "predicted": res.get("overall_category", "Insufficient Data"),
+            "fit_score": round(fit_avg, 1),
+            "features_scored": res.get("features_scored", 0),
+        }
     return QuantileSummaryResponse(
         task_id=task_id,
-        overall_tier=vote["category"],
-        overall_fit_score=overall["fit_score"],
-        expected_volume=overall["expected_volume"],
-        dimensions={
-            dim: {
-                "predicted": res["predicted"],
-                "fit_score": res["fit_score"],
-                "features_scored": res["features_scored"],
-            }
-            for dim, res in dim_results.items()
-        },
-        vote=vote,
-        strengths=strengths,
-        weaknesses=weaknesses,
+        overall_tier=_overall_score_to_category(overall_score),
+        overall_fit_score=round(overall_score, 1),
+        expected_volume={},
+        dimensions=dim_scores,
+        vote={},
+        strengths=[],
+        weaknesses=[],
         rationale=rationale,
     ).model_dump()
 
