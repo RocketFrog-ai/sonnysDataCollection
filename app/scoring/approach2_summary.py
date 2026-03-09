@@ -246,6 +246,33 @@ def get_dimension_summary_approach2(
     }
 
 
+def _overall_score_to_category(score: float) -> str:
+    if score >= 90:
+        return "Excellent"
+    if score >= 75:
+        return "Very Good"
+    if score >= 50:
+        return "Good"
+    if score >= 25:
+        return "Fair"
+    if score >= 10:
+        return "Poor"
+    return "Very Poor"
+
+
+def build_full_profiling_rationale(
+    overall_score: float,
+    dimension_results: Dict[str, Dict[str, Any]],
+) -> str:
+    category = _overall_score_to_category(overall_score)
+    lines = [f"Overall score: {overall_score:.0f} ({category})."]
+    for dim in ("Weather", "Gas", "Retail Proximity", "Competition"):
+        res = dimension_results.get(dim)
+        if res and res.get("summary"):
+            lines.append(f"\n{dim}\n{res['summary']}")
+    return "\n".join(lines).strip()
+
+
 def _favorable_pct(pct: float, direction: str) -> float:
     """Convert raw percentile to 'favorable' share (higher = better for the site)."""
     if direction in ("lower_is_better",):
