@@ -1,9 +1,11 @@
+import logging
 import requests
 import json
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 def find_nearby_places(api_key, latitude, longitude, radius_miles=2, included_types=None, max_results=10, rank_preference="POPULARITY"):
     """
@@ -66,13 +68,18 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=2, included_ty
         response_data = response.json()
         return response_data
     except requests.exceptions.HTTPError as http_err:
-        print(f"HTTP error occurred: {http_err}")
-        print(f"Response content: {response.text}")
+        logger.warning(
+            "find_nearby_places HTTP error: %s; response: %s",
+            http_err,
+            response.text[:500] if response.text else "",
+        )
     except requests.exceptions.RequestException as req_err:
-        print(f"Request error occurred: {req_err}")
+        logger.warning("find_nearby_places request error: %s", req_err)
     except json.JSONDecodeError:
-        print("Error decoding JSON response.")
-        print(f"Response content: {response.text}")
+        logger.warning(
+            "find_nearby_places JSON decode error; response: %s",
+            response.text[:500] if response.text else "",
+        )
     return None
 
 if __name__ == "__main__":

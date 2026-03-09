@@ -1,18 +1,3 @@
-"""
-Quantile-Based Site Profiling Engine
-=====================================
-
-Core engine that implements the non-parametric discriminant analysis:
-  1. Loads historical data (531 sites, 50 features)
-  2. Splits sites into 3 equal performance tiers by cars_washed(Actual)
-  3. Computes IQR (Q25/Q50/Q75) for every feature within each tier
-  4. Scores new locations by measuring how well feature values fit each tier's IQR
-  5. Predicts the most likely performance tier with a fit score
-
-Statistical basis: quantile reference ranges — robust to outliers,
-no distributional assumptions, no unstable regression coefficients.
-"""
-
 from __future__ import annotations
 
 import os
@@ -24,19 +9,13 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-# ── Constants ────────────────────────────────────────────────────────
-
 CATEGORY_LABELS = ["Low Performing", "Average Performing", "High Performing"]
 
 TARGET_COL = "cars_washed(Actual)"
 
 EXCLUDE_COLS = {"full_site_address", TARGET_COL, "performance_category"}
 
-# Default dataset path (sibling file)
 _DEFAULT_DATASET = Path(__file__).resolve().parent / "dataSET (1).xlsx"
-
-# ── Dimension groups: 50 features → 5 business dimensions ───────────
-# These match the reference guides exactly.
 
 DIMENSION_GROUPS: Dict[str, List[str]] = {
     "Weather": [
@@ -50,21 +29,18 @@ DIMENSION_GROUPS: Dict[str, List[str]] = {
         "avg_daily_max_windspeed_ms",
     ],
     "Traffic": [
-        # AADT volumes (6 nearest roads)
         "Nearest StreetLight US Hourly-Ttl AADT",
         "2nd Nearest StreetLight US Hourly-Ttl AADT",
         "3rd Nearest StreetLight US Hourly-Ttl AADT",
         "4th Nearest StreetLight US Hourly-Ttl AADT",
         "5th Nearest StreetLight US Hourly-Ttl AADT",
         "6th Nearest StreetLight US Hourly-Ttl AADT",
-        # Time-of-day traffic breakdown
         "Nearest StreetLight US Hourly-ttl_breakfast",
         "Nearest StreetLight US Hourly-ttl_lunch",
         "Nearest StreetLight US Hourly-ttl_afternoon",
         "Nearest StreetLight US Hourly-ttl_dinner",
         "Nearest StreetLight US Hourly-ttl_night",
         "Nearest StreetLight US Hourly-ttl_overnight",
-        # Traffic light accessibility
         "nearby_traffic_lights_count",
         "distance_nearest_traffic_light_1",
         "distance_nearest_traffic_light_2",
@@ -87,14 +63,12 @@ DIMENSION_GROUPS: Dict[str, List[str]] = {
         "total_weekly_operational_hours",
     ],
     "Retail Proximity": [
-        # Retail chain counts (ChainXY)
         "Count of ChainXY VT - Building Supplies",
         "Count of ChainXY VT - Department Store",
         "Count of ChainXY VT - Grocery",
         "Count of ChainXY VT - Mass Merchant",
         "Count of ChainXY VT - Real Estate Model",
         "Sum ChainXY",
-        # Named retailer distances and counts
         "distance_from_nearest_target",
         "count_of_target_5miles",
         "distance_from_nearest_costco",
@@ -108,13 +82,6 @@ DIMENSION_GROUPS: Dict[str, List[str]] = {
 
 
 class QuantileProfiler:
-    """
-    Non-parametric profiling engine.
-
-    For each of the 50 features and each performance tier, stores
-    the IQR (Q25, Q50, Q75).  A new location is scored by checking
-    how well its feature values sit within each tier's IQR.
-    """
 
     def __init__(
         self,
@@ -122,7 +89,6 @@ class QuantileProfiler:
         historical_data: Optional[pd.DataFrame] = None,
         target_col: str = TARGET_COL,
     ):
-        # Load data
         if historical_data is not None:
             self.df = historical_data.copy()
         else:
@@ -132,14 +98,12 @@ class QuantileProfiler:
         self.target_col = target_col
         self.category_labels = CATEGORY_LABELS
 
-        # Identify numeric feature columns
         self.feature_cols: List[str] = [
             c
             for c in self.df.columns
             if c not in EXCLUDE_COLS and pd.api.types.is_numeric_dtype(self.df[c])
         ]
 
-        # Create performance tiers (equal-frequency tertiles)
         self.df["performance_category"] = pd.qcut(
             self.df[self.target_col],
             q=3,
@@ -147,22 +111,15 @@ class QuantileProfiler:
             duplicates="drop",
         )
 
-        # Compute IQR ranges for every feature × tier
         self.feature_ranges: Dict[str, Dict[str, Dict[str, float]]] = (
             self._compute_feature_ranges()
         )
 
-        # Compute per-tier volume statistics
         self.category_stats: Dict[str, Dict[str, float]] = (
             self._compute_category_stats()
         )
 
-    # ── Internal: compute ranges ─────────────────────────────────
-
     def _compute_feature_ranges(self) -> Dict:
-        """
-        For each feature and each tier, compute Q25, Q50 (median), Q75.
-        """
         ranges: Dict[str, Dict[str, Dict[str, float]]] = {}
         for feature in self.feature_cols:
             ranges[feature] = {}
@@ -183,7 +140,6 @@ class QuantileProfiler:
         return ranges
 
     def _compute_category_stats(self) -> Dict:
-        """Volume stats per tier (for expected range output)."""
         stats: Dict[str, Dict[str, float]] = {}
         for cat in self.category_labels:
             volumes = self.df.loc[
@@ -200,21 +156,9 @@ class QuantileProfiler:
             }
         return stats
 
-    # ── Scoring ──────────────────────────────────────────────────
-
     def score_feature(
         self, feature: str, value: float
     ) -> Dict[str, float]:
-        """
-        Score a single feature value against each tier's IQR.
-
-        Scoring logic (from the Quantile Profiling Guide):
-          - Inside IQR [Q25, Q75]  →  1.0  (perfect fit)
-          - Outside IQR            →  max(0, 1 − distance / IQR_width)
-            where distance = min(|value − Q25|, |value − Q75|)
-
-        Returns dict:  { "Low Performing": 0.85, "Average Performing": 1.0, ... }
-        """
         if feature not in self.feature_ranges:
             return {}
 
@@ -232,7 +176,6 @@ class QuantileProfiler:
                 dist = min(abs(value - q25), abs(value - q75))
                 scores[cat] = max(0.0, 1.0 - dist / iqr_width)
             else:
-                # Zero-width IQR (constant feature in this tier)
                 scores[cat] = 1.0 if value == q25 else 0.0
 
         return scores
@@ -242,10 +185,6 @@ class QuantileProfiler:
         location_features: Dict[str, float],
         feature_subset: Optional[List[str]] = None,
     ) -> Dict[str, float]:
-        """
-        Score a location across all (or a subset of) features.
-        Returns total scores per tier.
-        """
         totals: Dict[str, float] = {cat: 0.0 for cat in self.category_labels}
         features_to_score = feature_subset or list(location_features.keys())
 
@@ -263,18 +202,6 @@ class QuantileProfiler:
         location_features: Dict[str, float],
         return_details: bool = False,
     ) -> Dict:
-        """
-        Predict performance tier for a new location.
-
-        Returns:
-          {
-            "predicted_category": "High Performing",
-            "fit_score": 36.2,         # proportion fit (%)
-            "category_scores": {...},
-            "expected_volume": { "conservative", "likely", "optimistic" },
-            "feature_details": {...}    # if return_details=True
-          }
-        """
         scores = self.score_location(location_features)
         total = sum(scores.values())
         predicted = max(scores, key=scores.get)
@@ -314,8 +241,6 @@ class QuantileProfiler:
 
         return result
 
-    # ── Persistence ──────────────────────────────────────────────
-
     def save_model(self, path: str = "profiler_model.pkl") -> None:
         data = {
             "feature_ranges": self.feature_ranges,
@@ -335,6 +260,6 @@ class QuantileProfiler:
         obj.category_stats = data["category_stats"]
         obj.category_labels = data["category_labels"]
         obj.feature_cols = data["feature_cols"]
-        obj.df = None  # no DataFrame needed after loading
+        obj.df = None
         obj.target_col = TARGET_COL
         return obj

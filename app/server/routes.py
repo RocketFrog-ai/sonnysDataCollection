@@ -8,6 +8,10 @@ from app.server.models import *
 from app.server.app import get_climate, get_competitors, get_traffic_lights, get_nearby_stores
 from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.features.weather.weather_period import get_annual_weather_plot_data
+from app.features.weather.open_meteo import (
+    get_usa_national_and_state_climate,
+    get_weather_for_point_and_california_region,
+)
 from app.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations, get_nearest_gas_station_only
 from app.features.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
 from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
@@ -71,7 +75,6 @@ def get_redis_client():
 
 
 def _get_task_result_or_raise(task_id: str):
-    """Resolve Celery task by task_id. Returns result dict if SUCCESS; raises HTTPException otherwise."""
     task_result = AsyncResult(task_id, app=celery_app)
     if task_result.state != TaskStatus.SUCCESS.value:
         if task_result.state == TaskStatus.FAILURE.value:
@@ -127,7 +130,6 @@ def _resolve_weather_dates(start_date: str = None, end_date: str = None):
 
 
 def _get_weather_response(req: WeatherRequest):
-    """Shared logic for weather data: geocode, resolve dates, return climate data with Approach 2 categories and dimension score."""
     lat, lon = _geocode(req.address)
     start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
     data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
@@ -139,12 +141,17 @@ def _get_weather_response(req: WeatherRequest):
         raw_vals = {k: v.get("value") if isinstance(v, dict) else v for k, v in data.items()}
         scores = get_feature_final_scores(raw_vals, WEATHER_API_TO_PROFILER)
         dimension_score = compute_dimension_score(scores, "Weather")
-        # Build feature_scores keyed by profiler key (matches summary feature_breakdown keys)
         for api_key, profiler_key in WEATHER_API_TO_PROFILER.items():
             val = raw_vals.get(api_key)
             if val is not None:
                 cat = (data.get(api_key) or {}).get("category", "N/A")
                 feature_scores[profiler_key] = {"value": val, "category": cat}
+
+    usa_reference = None
+    try:
+        usa_reference = get_usa_national_and_state_climate(start_date, end_date, use_cache=True)
+    except Exception as e:
+        logger.warning("USA weather reference unavailable: %s", e)
 
     return {
         "address": req.address,
@@ -155,12 +162,12 @@ def _get_weather_response(req: WeatherRequest):
         "data": data,
         "feature_scores": feature_scores,
         "dimension_score": {"Weather": dimension_score} if dimension_score is not None else {},
+        "usa_reference": usa_reference,
     }
 
 
 @router.post("/weather")
 def get_weather(req: WeatherRequest):
-    """Legacy endpoint: same as /weather/data."""
     try:
         return _get_weather_response(req)
     except HTTPException:
@@ -172,7 +179,6 @@ def get_weather(req: WeatherRequest):
 
 @router.post("/weather/data")
 def get_weather_data(req: WeatherRequest):
-    """Weather data for a location and optional date range (current v1/weather behavior)."""
     try:
         return _get_weather_response(req)
     except HTTPException:
@@ -182,12 +188,32 @@ def get_weather_data(req: WeatherRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/weather/data-with-region")
+def get_weather_data_with_region(req: WeatherRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
+        result = get_weather_for_point_and_california_region(lat, lon, start_date, end_date, ca_bbox_n=5)
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "start_date": start_date,
+            "end_date": end_date,
+            "point": result["point"],
+            "california_bbox": result["california_bbox"],
+            "california_state": result["california_state"],
+            "national_average": result["national_average"],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather data-with-region fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/weather/plot")
 def get_weather_plot(req: WeatherPlotRequest):
-    """
-    Annual weather data for the Monthly Weather Distribution chart and full monthly stats.
-    Returns sunny_days, pleasant_days, rainy_days, snow_days per month (Jan–Dec) plus all other metrics.
-    """
     try:
         lat, lon = _geocode(req.address)
         result = get_annual_weather_plot_data(lat, lon, req.year)
@@ -206,30 +232,31 @@ def get_weather_plot(req: WeatherPlotRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/weather/usa-reference")
+def get_weather_usa_reference(start_date: str = None, end_date: str = None):
+    from app.features.weather.open_meteo import get_default_weather_range
+    if not start_date or not end_date:
+        start_date, end_date = get_default_weather_range()
+    try:
+        return get_usa_national_and_state_climate(start_date, end_date, use_cache=True)
+    except Exception as e:
+        logger.exception("USA weather reference failed")
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 @router.get("/weather/summary/{task_id}")
 def get_weather_summary_by_task(task_id: str):
-    """
-    Executive summary for Weather dimension using quantile-based profiling.
-    Scores weather features against Low/Avg/High IQR ranges and generates LLM rationale.
-    """
     return _dimension_summary(task_id, "Weather")
 
 
 @router.post("/gas_station")
 def get_gas_stations_endpoint(req: GasStationRequest):
-    """
-    Nearby gas stations within the given radius (default 2 miles).
-    All station fields are from Google Places API (Nearby Search and optionally Place Details).
-    No inferred or hardcoded data: name, rating, address, regular_opening_hours from search;
-    optional fuel_options and types from Place Details when fetch_place_details is true.
-    """
     try:
         lat, lon = _geocode(req.address)
         api_key = calib.GOOGLE_MAPS_API_KEY
         if not api_key:
             raise HTTPException(status_code=503, detail="Google Maps API key not configured")
         radius = req.radius_miles if req.radius_miles is not None else 2.0
-        # Cap at 6 closest stations
         max_results = min(req.max_results if req.max_results is not None else 6, 6)
         fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
         stations = get_nearby_gas_stations(
@@ -239,7 +266,6 @@ def get_gas_stations_endpoint(req: GasStationRequest):
             fetch_place_details=fetch_details,
         )
 
-        # Feature scores and dimension score from the nearest station only
         feature_scores = {}
         dimension_score = None
         if stations:
@@ -273,20 +299,11 @@ def get_gas_stations_endpoint(req: GasStationRequest):
 
 @router.get("/gas_station/summary/{task_id}")
 def get_gas_station_summary_by_task(task_id: str):
-    """
-    Executive summary for Gas dimension (nearest gas station distance/rating).
-    """
     return _dimension_summary(task_id, "Gas")
 
 
 @router.post("/datafetch/nearbygasstations")
 def datafetch_nearby_gas_stations(req: DataFetchNearestGasRequest):
-    """
-    Returns only the single nearest gas station by driving distance (no radius or count limit).
-    Uses the same logic and fields as /gas_station: Google Nearby Search (gas_station type),
-    Distance Matrix for driving distance, and optionally Place Details. Only returns a place
-    confirmed as a gas station. Intended for batch data collection over many addresses.
-    """
     try:
         lat, lon = _geocode(req.address)
         api_key = calib.GOOGLE_MAPS_API_KEY
@@ -334,17 +351,12 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
 
 @router.post("/retailers")
 def get_retailers_endpoint(req: RetailersRequest):
-    """
-    Returns only 5 categories: Costco, Walmart, Target (with details), other_grocery (count + avg),
-    food_joints (count + avg). No list of individual places.
-    """
     try:
         lat, lon = _geocode(req.address)
         api_key = calib.GOOGLE_MAPS_API_KEY
         if not api_key:
             raise HTTPException(status_code=503, detail="Google Maps API key not configured")
         radius = req.radius_miles if req.radius_miles is not None else 0.5
-        # Cost-friendly: no Place Details; we only need count and rating/distance for averages
         data = get_nearby_retailers(
             api_key, lat, lon,
             radius_miles=radius,
@@ -352,7 +364,6 @@ def get_retailers_endpoint(req: RetailersRequest):
         )
         stores = get_nearby_stores_data(lat, lon)
 
-        # Use list only for counts and averages — do not expose in response
         raw_list = data.get("retailers") or []
         grocery_within_1mi = [r for r in raw_list if r.get("category") == "Grocery" and (r.get("distance_miles") or 0) <= 1.0]
         food_within_0_5mi = [r for r in raw_list if r.get("category") == "Food Joint" and (r.get("distance_miles") or 0) <= 0.5]
@@ -380,11 +391,9 @@ def get_retailers_endpoint(req: RetailersRequest):
         def _anchor_item(display_name: str, details):
             if details is None:
                 return {"name": display_name, "found": False, "message": "No store within 5 mile radius"}
-            # Keep category name (Costco/Walmart/Target); add store details without overwriting name
             rest = {k: v for k, v in details.items() if k != "name"}
             return {"name": display_name, "found": True, "store_name": details.get("name"), **rest}
 
-        # retailers: exactly 5 items for UI — Costco, Walmart, Target, Other groceries, Food joints (per P-2.0 Sheet4)
         retailers = [
             _anchor_item("Costco", stores.get("nearest_costco")),
             _anchor_item("Walmart", stores.get("nearest_walmart")),
@@ -420,9 +429,6 @@ def get_retailers_endpoint(req: RetailersRequest):
 
 @router.get("/retailers/summary/{task_id}")
 def get_retailers_summary_by_task(task_id: str):
-    """
-    Executive summary for Retail Proximity (Costco, Walmart, Target, other grocery, food joints).
-    """
     return _dimension_summary(task_id, "Retail Proximity")
 
 
@@ -441,11 +447,6 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
 
 @router.post("/competitors/dynamics")
 def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
-    """
-    Nearby car wash competitors within radius by route (driving) distance.
-    Real data only: name, distance_miles, rating, user_rating_count, address; optional website, google_maps_uri, primary_type_display_name.
-    No market share or threat level (not from API).
-    """
     try:
         lat, lon = _geocode(req.address)
         api_key = calib.GOOGLE_MAPS_API_KEY
@@ -490,9 +491,6 @@ def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
 
 @router.get("/competitors/dynamics/summary/{task_id}")
 def get_competitors_dynamics_summary_by_task(task_id: str):
-    """
-    Executive summary for Competition dimension using quantile-based profiling.
-    """
     return _dimension_summary(task_id, "Competition")
 
 
@@ -511,10 +509,8 @@ def get_competitors_endpoint(features: AnalyseRequest):
 
 @router.get("/task/{task_id}", response_model=TaskStatusResponse)
 def get_task_status(task_id: str):
-    """Get the status and result of an analyze-site task by its task_id."""
     task_result = AsyncResult(task_id, app=celery_app)
     status_str = task_result.state
-    # Map Celery state to our TaskStatus enum (Celery uses same names)
     try:
         status = TaskStatus(status_str)
     except ValueError:
@@ -539,10 +535,6 @@ def get_task_status(task_id: str):
 
 @router.get("/overall-score/{task_id}")
 def get_overall_score(task_id: str):
-    """
-    Feature-weight-based overall score (0-100) and dimension scores for a completed analyze-site task.
-    Uses Approach 2 scoring and weights from feature_weights_config.
-    """
     result = _get_task_result_or_raise(task_id)
     feature_values = result.get("feature_values") or {}
     if not feature_values:
@@ -569,15 +561,11 @@ def get_overall_score(task_id: str):
     }
 
 
-# ── Agentic Quantile Profiling Helpers ────────────────────────────
-
-# Singleton profiler (loaded once on first request)
 _profiler_singleton = None
 _dim_profiler_singleton = None
 
 
 def _get_profilers():
-    """Lazy-load the profilers (dataset loaded once, then reused)."""
     global _profiler_singleton, _dim_profiler_singleton
     if _profiler_singleton is None:
         _profiler_singleton = QuantileProfiler()
@@ -586,15 +574,9 @@ def _get_profilers():
 
 
 def _dimension_summary(task_id: str, dimension: str) -> dict:
-    """
-    Shared logic for per-dimension summary endpoints.
-    Uses Approach 2 (percentile + category) for Weather, Retail Proximity, Competition;
-    falls back to quantile profiling for other dimensions.
-    """
     result = _get_task_result_or_raise(task_id)
     feature_values = result.get("feature_values") or {}
 
-    # Approach 2: Weather, Retail Proximity (gas), Competition
     if dimension in DIMENSION_FEATURE_MAP:
         try:
             a2 = get_dimension_summary_approach2(dimension, feature_values)
@@ -636,7 +618,6 @@ def _dimension_summary(task_id: str, dimension: str) -> dict:
                 feature_performance=feat_perf,
             ).model_dump()
 
-    # Fallback: Quantile profiling
     profiler, dim_profiler = _get_profilers()
     dim_result = dim_profiler.score_dimension(dimension, feature_values)
     overall = profiler.predict(feature_values)
@@ -669,10 +650,6 @@ def _dimension_summary(task_id: str, dimension: str) -> dict:
 
 @router.get("/profiling/summary/{task_id}")
 def get_full_profiling_summary(task_id: str):
-    """
-    Full quantile profiling summary across ALL dimensions.
-    Includes overall tier, dimension breakdown, vote, and LLM rationale.
-    """
     result = _get_task_result_or_raise(task_id)
     feature_values = result.get("feature_values") or {}
 
