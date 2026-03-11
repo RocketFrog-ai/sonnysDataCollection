@@ -14,10 +14,23 @@ class WeatherRequest(BaseModel):
     end_date: Optional[str] = Field(None)
 
 
-class WeatherPlotRequest(BaseModel):
-    """Request for annual weather plot data (monthly distribution chart)."""
-    address: str
-    year: int = Field(..., ge=1900, le=2100, description="Calendar year (e.g. 2025)")
+class WeatherDataMetricRequest(BaseModel):
+    """Request for a single weather metric at api/v1/weather/data/{metric_key}."""
+    address: str = Field(..., description="Site address to geocode and fetch weather for")
+    start_date: Optional[str] = Field(None, description="Start date (ISO) for climate range")
+    end_date: Optional[str] = Field(None, description="End date (ISO) for climate range")
+
+
+class WeatherDataMetricResponse(BaseModel):
+    """Response for api/v1/weather/data/{metric_key}: value + unit, and scale/quantile block (summary filled later)."""
+    value: float = Field(..., description="Metric value (e.g. 120 days)")
+    unit: str = Field(..., description="Unit label (e.g. 'days/year')")
+    quantile_score: Optional[float] = Field(None, description="Score 0–100 vs portfolio (to be wired)")
+    quantile: Optional[str] = Field(None, description="Quantile band (to be wired)")
+    category: Optional[str] = Field(None, description="Category e.g. Poor / Fair / Good / Strong (to be wired)")
+    min: Optional[float] = Field(None, description="Scale min for UI (to be wired)")
+    max: Optional[float] = Field(None, description="Scale max for UI (to be wired)")
+    summary: Optional[str] = Field(None, description="Short narrative (to be wired)")
 
 
 class GasStationRequest(BaseModel):
