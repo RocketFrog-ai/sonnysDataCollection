@@ -16,13 +16,13 @@
 
 
 
-from app.features.weather.open_meteo import (
+from app.features.active.weather.open_meteo import (
     get_climate_data as _get_climate_data,
     get_climate_data_for_range as _get_climate_data_for_range,
     get_default_weather_range as _get_default_weather_range,
 )
-from app.features.trafficLights.nearby_traffic_lights import get_nearby_traffic_lights, filter_duplicate_locations
-from app.features.competitors.competitors import count_competitors as _count_competitors
+from app.features.active.trafficLights.nearby_traffic_lights import get_nearby_traffic_lights, filter_duplicate_locations
+from app.features.active.competitors.competitors import count_competitors as _count_competitors
 
 
 def get_climate(lat: float, lon: float, start_date: str = None, end_date: str = None):
@@ -62,7 +62,7 @@ def get_competitors(lat: float, lon: float):
 
 def get_nearby_stores(lat: float, lon: float):
     try:
-        from nearbyStores.nearby_stores import get_nearby_stores_data as _get_nearby_stores_data
+        from app.features.active.nearbyStores.nearby_stores import get_nearby_stores_data as _get_nearby_stores_data
         data = _get_nearby_stores_data(lat, lon)
         if data:
             return data

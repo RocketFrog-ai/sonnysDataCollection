@@ -6,7 +6,7 @@ import requests
 from typing import Optional, Any
 
 from app.utils import common as calib
-from app.features.experimental_features.operationalHours.searchNearby import find_nearby_places
+from app.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places
 
 DEFAULT_RADIUS_MILES = 2
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"

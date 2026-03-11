@@ -11,7 +11,7 @@ _project_root = os.path.abspath(os.path.join(_script_dir, '..', '..', '..'))
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 from app.utils import common as calib
-from app.features.experimental_features.operationalHours.searchNearby import find_nearby_places
+from app.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places
 
 DEFAULT_MAX_GAS_STATIONS = 10
 DEFAULT_RADIUS_MILES = 2.0

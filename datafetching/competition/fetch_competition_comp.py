@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
 from app.utils import common as calib
-from app.features.nearbyCompetitors.get_nearby_competitors import (
+from app.features.active.nearbyCompetitors.get_nearby_competitors import (
     get_nearby_competitors,
 )
 

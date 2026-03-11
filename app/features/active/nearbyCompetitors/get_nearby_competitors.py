@@ -7,7 +7,7 @@ import logging
 import requests
 from typing import Optional, Any
 
-from app.features.experimental_features.operationalHours.searchNearby import find_nearby_places
+from app.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places
 
 logger = logging.getLogger(__name__)
 
