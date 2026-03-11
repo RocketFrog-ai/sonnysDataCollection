@@ -459,6 +459,13 @@ def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
             fetch_place_details=fetch_details,
         )
         competitors = data.get("competitors") or []
+        
+        # Apply type classification inline to each competitor array item
+        if competitors:
+            from app.features.nearbyCompetitors.classify_competitor_types import classify_competitors
+            competitors = classify_competitors(competitors)
+            data["competitors"] = competitors
+
         count = data.get("count", 0)
         feature_scores = enrich_competitors_features_with_categories(competitors, count)
         flat_comp = {"count": count}
@@ -504,7 +511,6 @@ def get_competitors_endpoint(features: AnalyseRequest):
     except Exception as e:
         logger.exception("Competitors fetch failed")
         raise HTTPException(status_code=500, detail=str(e))
-
 
 @router.get("/task/{task_id}", response_model=TaskStatusResponse)
 def get_task_status(task_id: str):

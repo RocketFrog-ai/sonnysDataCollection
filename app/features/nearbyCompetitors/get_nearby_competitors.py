@@ -35,7 +35,7 @@ def _route_distances(
         "key": api_key,
     }
     try:
-        resp = requests.get(DISTANCE_MATRIX_URL, params=params, timeout=15)
+        resp = requests.get(DISTANCE_MATRIX_URL, params=params, timeout=20)
         resp.raise_for_status()
         data = resp.json()
     except Exception:
