@@ -48,6 +48,18 @@ class CompetitorsDynamicsRequest(BaseModel):
     fetch_place_details: Optional[bool] = Field(True, description="Whether to fetch Place Details (website, googleMapsUri, primaryTypeDisplayName)")
 
 
+class CompetitorItem(BaseModel):
+    name: Optional[str] = None
+    distance_miles: Optional[float] = None
+    rating: Optional[float] = None
+    user_rating_count: Optional[int] = None
+    address: Optional[str] = None
+    place_id: Optional[str] = None
+    website: Optional[str] = None
+    google_maps_uri: Optional[str] = None
+    primary_type_display_name: Optional[str] = None
+
+
 class TaskStatus(str, Enum):
     """Task status enumeration"""
     PENDING = "PENDING"
