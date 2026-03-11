@@ -115,3 +115,19 @@
             Across all years: Calculate the average of these yearly averages of daily maximum wind gusts over all the years in your period.
 
 In summary: Each of these values represents a long-term (e.g., 10-year) average of an annual weather characteristic. The script first processes daily data to get yearly totals or counts, and then averages those yearly figures to produce these climatological means. These features provide a snapshot of the typical weather conditions at the location, which can then be used in your car wash prediction model.
+
+--- Three spatial approaches (point vs state capital vs state bbox) ---
+
+  • Point weather: Climate at a single (lat, lon). One API call for that location.
+  • State capital average: Climate at the state capital only (one point per state). Used for state_averages in the reference.
+  • State bounding-box average: A grid of points over the state's bbox is fetched and averaged. Used for state_bbox_averages in the reference.
+
+How many points for state bbox?
+  We lay a square grid over the state's bounding box. "n_per_axis" = points along each side → total = n×n.
+  • build_reference.py uses BBOX_GRID_N = 3 → 3×3 = 9 points per state (fewer API calls, faster build).
+  • get_climate_data_for_state_bbox() default is n_per_axis=5 → 5×5 = 25 points when called on the fly.
+  So the saved reference (weather_reference_usa.json) has state_bbox from 9 points; if you call the function directly you get 25 by default. More points = slightly better area average but more API calls.
+
+To see the difference for a given location, run:
+  python -m app.features.weather.open_meteo --compare-point-state <lat> <lon>
+This prints a table comparing the same metrics: point (your lat,lon) vs state capital vs state bbox for the state containing that point.
