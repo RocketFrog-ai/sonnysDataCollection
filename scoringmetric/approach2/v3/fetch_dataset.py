@@ -3,9 +3,10 @@ Batch fetch nearest gas station for each address in dataSET (1).xlsx and append
 results to main_dataset.xlsx. Same file will be used for other features later.
 
 Usage (from project root):
-  python scoringmetric/fetch_nearest_gas_dataset.py [start_index] [end_index]
+  python scoringmetric/approach2/v3/fetch_dataset.py [start_index] [end_index]
 
 Run in order (e.g. 0 100, then 100 200, ...) to build the full file.
+Input:  scoringmetric/dataSET (1).xlsx
 Output: scoringmetric/main_dataset.xlsx (append-only).
 """
 
@@ -43,11 +44,16 @@ NEAREST_GAS_COLUMNS = [
 
 
 def _find_dataset_path() -> Path:
-    base = Path(__file__).resolve().parent
-    for p in [base / "dataSET (1).xlsx", Path("dataSET (1).xlsx"), base.parent / "dataSET (1).xlsx"]:
+    # File lives in scoringmetric/ root (two levels up from this script's location).
+    scoringmetric_root = Path(__file__).resolve().parents[2]
+    for p in [
+        scoringmetric_root / "dataSET (1).xlsx",
+        Path("dataSET (1).xlsx"),
+        Path("scoringmetric") / "dataSET (1).xlsx",
+    ]:
         if p.exists():
             return p
-    raise FileNotFoundError("Could not find dataSET (1).xlsx in scoringmetric, cwd, or project root.")
+    raise FileNotFoundError("Could not find dataSET (1).xlsx. Expected at scoringmetric/dataSET (1).xlsx.")
 
 
 def _station_to_row(station: dict) -> dict:
@@ -90,7 +96,8 @@ def run(start_index: int = 0, end_index: int | None = None, fetch_place_details:
     # Optional: use existing Latitude/Longitude if present
     has_latlon = "Latitude" in df.columns and "Longitude" in df.columns
 
-    out_path = Path(__file__).resolve().parent / "main_dataset.xlsx"
+    # Output written to scoringmetric/ root so it's alongside the source dataset.
+    out_path = Path(__file__).resolve().parents[2] / "main_dataset.xlsx"
     # Build new rows for the slice [start_index:end_index]
     new_rows = []
     for i in range(start_index, end_index):

@@ -18,7 +18,7 @@ from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nea
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
-from app.scoring.approach2_scorer import (
+from app.modelling.ds.scorer import (
     enrich_features_with_categories,
     enrich_gas_features_with_categories,
     enrich_competitors_features_with_categories,
@@ -32,7 +32,7 @@ from app.scoring.approach2_scorer import (
     COMPETITORS_API_TO_PROFILER,
     RETAILER_API_TO_PROFILER,
 )
-from app.scoring.approach2_summary import (
+from app.modelling.ds.dimension_summary import (
     get_dimension_summary_approach2,
     build_full_profiling_rationale,
     _overall_score_to_category,
