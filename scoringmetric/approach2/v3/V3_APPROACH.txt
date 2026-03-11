@@ -1,0 +1,274 @@
+================================================================================
+  CAR WASH QUANTILE PREDICTION — V3 APPROACH
+  Simple explanation and methodological example
+================================================================================
+
+
+WHAT THE SYSTEM DOES
+--------------------
+
+For any new car wash location, the system does four things:
+
+  1. Predicts which performance tier the site will likely fall into:
+     Q1 (bottom 25%), Q2, Q3, or Q4 (top 25%) by annual car wash volume.
+
+  2. Shows the expected volume range (e.g. Q4: 174,000–479,000 cars per year).
+
+  3. Compares each feature (weather, distance to stores, competition, site age,
+     tunnel count, etc.) to what high-performing (Q4) sites typically have,
+     and labels them as strengths or weaknesses.
+
+  4. Summarises in plain language: a short narrative and an investment-style
+     strengths and weaknesses section.
+
+All tiers and benchmarks come from real data: 482 sites with both features
+and car wash counts. No guesswork or made-up numbers.
+
+
+HOW WE DEFINE “TOP” AND “BOTTOM” (QUARTILES)
+--------------------------------------------
+
+  • We sort all 482 sites by car wash count, from lowest to highest.
+
+  • We split them into four equal-sized groups (about 121 sites each):
+      Q1 = bottom 25% (lowest volume)
+      Q2 = next 25%
+      Q3 = next 25%
+      Q4 = top 25% (highest volume)
+
+  • So “Q4” always means “in the top 25% of sites by volume.” The exact
+    count ranges come from the data. In our dataset they are roughly:
+      Q1: 47 – 57,846 cars/year
+      Q2: 57,846 – 107,252 cars/year
+      Q3: 107,252 – 174,047 cars/year
+      Q4: 174,047 – 478,789 cars/year
+
+
+HOW WE FOUND OUT THE IMPORTANCE OF EACH FEATURE
+-----------------------------------------------
+
+  • We train a Random Forest model: 27 features in, quartile (Q1–Q4) out.
+    The model learns which features help most to separate low vs high
+    performers.
+
+  • “Importance” of a feature = how much that feature is used in the
+    tree splits and how much it reduces prediction error. The model
+    reports a share for each feature (e.g. tunnel count 31.9%, site age
+    4.2%). These add up to 100%. So we know which features the model
+    relies on most when predicting your quartile.
+
+  • We do not assign importance by hand. It comes directly from the
+    trained model on the 482 sites.
+
+
+THE PERCENTILE WAY: YOUR VALUE VS ALL SITES AND VS Q4
+-----------------------------------------------------
+
+  For each feature we do three things:
+
+  (1) YOUR RAW PERCENTILE
+      We take your value and ask: what share of all 482 sites have a value
+      lower than yours? That is your raw percentile (0–100%).
+      Example: Your tunnel count is 3. So we count how many sites have
+      tunnel count less than 3. If 93% of sites have less than 3, your
+      raw percentile is 93% — you are above 93% of sites on this feature.
+
+  (2) DIRECTION: HIGHER IS BETTER OR LOWER IS BETTER
+      For some features (e.g. tunnel count, pleasant days), higher is
+      better for car wash performance. For others (e.g. distance to
+      Walmart, snowfall), lower is better.
+      So we fix “good” to mean “toward better performance”:
+        • Higher is better: raw percentile 93% means you are better than
+          93% of sites → strong.
+        • Lower is better: raw percentile 90% means 90% of sites have a
+          lower value than you, so you have a high (bad) value → we show
+          “adjusted percentile” = 100 − 90 = 10%, meaning you are only
+          better than 10% of sites on the “good” scale.
+
+  (3) Q4 MEDIAN: WHAT TOP PERFORMERS TYPICALLY HAVE
+      For each feature we compute the median value among Q4 (top 25%)
+      sites. So we know “what does a high-performing site typically
+      have for this feature?”
+      In the report we show: Your value, your percentile (or adjusted
+      percentile), and the Q4 median. So you can read:
+        • “My value is X; Q4 sites typically have Y. So I am above/below
+          the Q4 benchmark.”
+      Example: Your competitor review count is 145. Q4 median is 220.5.
+      So you are below what top performers typically have — that is a
+      weakness. Another example: Your nearest competitor is 0.2 miles.
+      Q4 median is 0.5 miles. For distance, lower is better, so 0.2
+      is better than 0.5 — you exceed the Q4 benchmark.
+
+
+METHODOLOGY EXAMPLE: PERCENTILE AND Q4 COMPARISON
+-------------------------------------------------
+
+  Feature: Distance to nearest competitor (miles). Lower is better.
+
+  Your value: 0.2 miles
+
+  Step 1 — Raw percentile
+    Among all 482 sites, we rank 0.2. Say 82% of sites have a distance
+    greater than 0.2 (i.e. they are farther from a competitor). So your
+    raw percentile is 82%: you are closer than 82% of sites.
+
+  Step 2 — Direction (lower is better)
+    For “distance,” lower is better. So being at 82nd percentile (you have
+    a lower value than 82% of sites) is good. We do not invert. Your
+    “adjusted” percentile for reporting = 82% — you are better than 82%
+    of sites on this feature.
+
+  Step 3 — Q4 median
+    Among Q4 (top 25% by car wash volume) sites, the median distance to
+    nearest competitor is 0.5 miles. Your 0.2 is lower than 0.5, so you
+    exceed what Q4 sites typically have. So we label this a strength:
+    “matches Q4” or “exceeds Q4.”
+
+  Summary line in the report:
+    Your value 0.2, your percentile 82%, Q4 median 0.5 → you are better
+    than the Q4 benchmark (strength).
+
+  Another example: Gas station rating. Higher is better.
+    Your value: 3.4. Say your raw percentile is 22% (only 22% of sites
+    have a lower rating). So you are below most sites. Q4 median is 4.0.
+    Your 3.4 is below 4.0, so you are below what Q4 sites typically have
+    → weakness.
+
+
+HOW WE COMPARE FEATURES (WASHQ)
+-------------------------------
+
+  • For each feature we look at the median value of that feature in each
+    quartile (Q1, Q2, Q3, Q4) of car wash performance.
+
+  • For a new location we compare its value to those medians. If it is
+    closer to what Q4 sites have, we say it “matches Q4” or “exceeds Q4.”
+    If it is closer to Q1, we say it “matches Q1.”
+
+  • We only assign this “WashQ” label for features that have a meaningful
+    correlation with car wash count (above a signal threshold). Others are
+    marked as low signal so we do not over-interpret noise.
+
+
+TUNNEL COUNT (CAPACITY PROXY)
+-----------------------------
+
+  • Tunnel count is a simple site-capacity estimate from 1 to 4:
+
+      Under 1.2 lakh (120,000) cars/year   →  1 tunnel
+      1.2–2.4 lakh                         →  2 tunnels
+      2.4–3.6 lakh                         →  3 tunnels
+      3.6 lakh and above                   →  4 tunnels
+
+  • More tunnels mean higher throughput and higher volume. It is the single
+    most important feature in the model.
+
+  • For existing sites in the dataset it is computed from their car wash
+    count. For a new site you can supply the actual tunnel count (1–4);
+    if you do not know it, the model fills it from similar sites.
+
+
+SITE AGE
+--------
+
+  • Site age (years in operation) is the second most important feature.
+    Lower age tends to go with better performance: newer sites have
+    ramp-up momentum and more modern operations.
+
+  • Age is joined from the site master so all 482 sites have it.
+
+
+MODEL AND ACCURACY
+------------------
+
+  • The model is a Random Forest classifier: 300 trees, 27 features, with
+    calibration so the reported probabilities are reliable. Missing values
+    are filled using the 5 nearest similar sites (KNN imputation).
+
+  • Accuracy (5-fold cross-validation):
+      Without tunnel count:  37% exact quartile, 73% within one quartile.
+      With tunnel count:     62% exact quartile, 97.7% within one quartile.
+
+  • “Within one quartile” means the prediction is either exactly right or
+    off by just one tier (e.g. we say Q4 and the true tier is Q3). So with
+    tunnel count, almost every site is predicted in the right tier or the
+    tier next to it.
+
+
+WHAT IS IN THE REPORT
+---------------------
+
+  1. Predicted quartile (Q1–Q4) and expected volume range.
+  2. Prediction confidence: probability bars for each quartile.
+  3. Feature table: all 27 features with value, WashQ, percentile, Q4 median,
+     signal strength, and importance. Values filled from similar sites are
+     marked as imputed.
+  4. Strengths and weaknesses: investment-style summary (LLM-generated).
+  5. Shift opportunities: which features, if improved, could move the site
+     to a better quartile (when not already top tier).
+  6. Profile comparison: your value vs the median in each quartile for
+     key features.
+  7. Narrative summary: short prose (LLM-generated).
+  8. Footer: exact and within-one-quartile accuracy.
+
+There are no error messages or fallback placeholders in the report text.
+
+
+================================================================================
+  METHODOLOGICAL EXAMPLE (END-TO-END)
+================================================================================
+
+Suppose we have a new car wash location and we want to know how it will
+perform compared to all existing sites.
+
+STEP 1 — INPUT
+  We have (or we derive) 27 numbers for this site, for example:
+    • Weather: rainy days 119, pleasant temp days 150, snowfall 47.7 cm, etc.
+    • Distance to Walmart 2.3 miles, to Target 2.1 miles, to nearest
+      competitor 0.2 miles.
+    • Site age 2 years, tunnel count 3, region and state encoded.
+    • Gas station rating 3.4, competitor review count 145, and so on.
+  If some values are missing (e.g. we do not know distance to Target), the
+  model fills them from the 5 most similar sites in the dataset.
+
+STEP 2 — QUARTILE PREDICTION
+  The model takes these 27 features and predicts which quartile this site
+  belongs to. Suppose it predicts Q4 (top 25%) with 87% confidence. So we
+  say: “This site is projected to be a Q4 high performer, with expected
+  annual volume between 174,047 and 478,789 cars.”
+
+STEP 3 — PERCENTILE AND Q4 COMPARISON FOR EACH FEATURE
+  For each feature we report:
+    • Your value.
+    • Your percentile (or adjusted percentile if “lower is better”): what
+      share of all sites you are better than on this feature.
+    • Q4 median: the typical value among top 25% car wash sites.
+  So you can see at a glance: “My value is X; I am better than Y% of sites;
+  Q4 sites typically have Z. So I am above/below the Q4 benchmark.” WashQ
+  (matches Q1/Q2/Q3/Q4) is our summary of that comparison.
+
+STEP 4 — STRENGTHS AND WEAKNESSES
+  From the WashQ and values we build a list of strengths (features at or
+  above Q4 level) and weaknesses (features at Q1/Q2 level). An LLM then
+  turns this into two short paragraphs: one on strengths, one on
+  weaknesses, in investment-report style.
+
+STEP 5 — NARRATIVE
+  The same LLM writes a 2–3 sentence summary: predicted quartile, expected
+  volume range, and 1–2 standout features (e.g. tunnel count and age exceed
+  Q4; competitor review count falls short).
+
+STEP 6 — SHIFT OPPORTUNITIES (IF NOT ALREADY Q4)
+  If the site is predicted Q1, Q2, or Q3, we ask: “If we improved one
+  feature at a time to the next quartile’s typical level, which feature
+  would most likely move the prediction up?” We report the top such
+  opportunities. If the site is already Q4, we say there are no shift
+  opportunities.
+
+OUTPUT
+  The user gets a single report: predicted tier, confidence, full feature
+  table (your value, your percentile, Q4 median, WashQ, importance),
+  strengths and weaknesses text, profile comparison, narrative, and (when
+  relevant) shift opportunities — in simple terms.
+
+================================================================================
