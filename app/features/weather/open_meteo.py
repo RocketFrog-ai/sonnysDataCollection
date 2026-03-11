@@ -9,6 +9,7 @@ from app.features.weather.usa_states import (
     get_usa_state_coordinates,
     get_state_abbr_to_name,
     get_state_bbox,
+    get_state_for_point,
 )
 
 # --- Configuration ---
@@ -405,6 +406,108 @@ def get_weather_for_point_and_california_region(lat, lon, start_date_str, end_da
     }
 
 
+def get_weather_point_vs_state_reference(lat, lon, start_date_str=None, end_date_str=None):
+    """
+    Get weather for a single (lat, lon) and compare with the two state-level references:
+    state capital (one point per state) and state bounding-box average (grid over state).
+
+    Resolves state from (lat, lon) via bounding box containment. Uses precomputed reference
+    from build_reference (weather_reference_usa.json) when available.
+
+    Returns dict with:
+      - point: climate at (lat, lon) from get_climate_data_for_range
+      - state_capital: climate at that state's capital (state_averages[state_abbr])
+      - state_bbox: area-averaged climate over that state's bbox (state_bbox_averages[state_abbr])
+      - state_abbr, state_name: resolved state
+      - national_average: USA-wide average (mean of state capitals)
+    Any of point / state_capital / state_bbox may be None if unavailable.
+    """
+    if start_date_str is None or end_date_str is None:
+        start_date_str, end_date_str = START_DATE_STR, END_DATE_STR
+    start_date_str = str(start_date_str).strip()
+    end_date_str = str(end_date_str).strip()
+
+    point = get_climate_data_for_range(lat, lon, start_date_str, end_date_str)
+    state_abbr = get_state_for_point(lat, lon)
+    state_name = None
+    state_capital = None
+    state_bbox = None
+    national_average = None
+
+    usa_ref = get_usa_national_and_state_climate(
+        start_date_str, end_date_str, use_cache=True, prefer_file=True
+    )
+    national_average = usa_ref.get("national_average")
+    state_averages = usa_ref.get("state_averages") or {}
+    state_bbox_averages = usa_ref.get("state_bbox_averages") or {}
+    state_names = usa_ref.get("state_names") or {}
+
+    if state_abbr:
+        state_name = state_names.get(state_abbr) or state_abbr
+        cap_data = state_averages.get(state_abbr)
+        if cap_data and isinstance(cap_data, dict):
+            state_capital = {k: v for k, v in cap_data.items() if k != "state_name"}
+        state_bbox = state_bbox_averages.get(state_abbr)
+
+    return {
+        "point": point,
+        "state_capital": state_capital,
+        "state_bbox": state_bbox,
+        "state_abbr": state_abbr,
+        "state_name": state_name,
+        "national_average": national_average,
+        "start_date": start_date_str,
+        "end_date": end_date_str,
+    }
+
+
+# Metrics to show in point vs state reference comparison (same keys in point, state_capital, state_bbox)
+_POINT_VS_REFERENCE_METRICS = [
+    "total_precipitation_mm",
+    "rainy_days",
+    "total_snowfall_cm",
+    "days_below_freezing",
+    "total_sunshine_hours",
+    "days_pleasant_temp",
+    "avg_daily_max_windspeed_ms",
+]
+
+
+def print_weather_point_vs_state_reference(lat, lon, start_date_str=None, end_date_str=None):
+    """
+    Print a side-by-side comparison: point (lat, lon) vs state capital vs state bbox.
+    Shows how the same metrics differ between the three approaches for one location.
+    """
+    result = get_weather_point_vs_state_reference(lat, lon, start_date_str, end_date_str)
+    state_label = f"{result.get('state_name') or 'Unknown'} ({result.get('state_abbr') or '?'})"
+    print("=" * 72)
+    print("WEATHER: POINT vs STATE CAPITAL vs STATE BBOX (same lat/lon reference)")
+    print("=" * 72)
+    print(f"  Point: ({lat}, {lon})  |  State: {state_label}")
+    print(f"  Date range: {result.get('start_date')} to {result.get('end_date')}")
+    print()
+    print(f"  {'Metric':<36} | {'Point (lat,lon)':>16} | {'State capital':>16} | {'State bbox':>16}")
+    print("-" * 72)
+    for key in _POINT_VS_REFERENCE_METRICS:
+        p = result.get("point") or {}
+        sc = result.get("state_capital") or {}
+        sb = result.get("state_bbox") or {}
+        pv = p.get(key)
+        scv = sc.get(key)
+        sbv = sb.get(key)
+        def _fmt(v):
+            if v is None:
+                return "—"
+            if isinstance(v, float):
+                return f"{v:.2f}"
+            return str(v)
+        print(f"  {key:<36} | {_fmt(pv):>16} | {_fmt(scv):>16} | {_fmt(sbv):>16}")
+    print("=" * 72)
+    print("  Point = weather at this (lat, lon). State capital = weather at state capital only.")
+    print("  State bbox = average over a grid of points covering the state's bounding box.")
+    return result
+
+
 def get_climate_data(latitude, longitude, start_year, end_year):
     START_DATE_STR = f"{start_year}-01-01"
     END_DATE_STR = f"{end_year}-12-31"
@@ -561,6 +664,19 @@ if __name__ == "__main__":
         idx = sys.argv.index("--state-example-one")
         state = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else "IN"
         example_how_we_find_weather_for_one_state(state_abbr=state)
+    elif "--compare-point-state" in sys.argv:
+        # Show point vs state capital vs state bbox for a given (lat, lon)
+        idx = sys.argv.index("--compare-point-state")
+        if idx + 2 < len(sys.argv):
+            try:
+                lat = float(sys.argv[idx + 1])
+                lon = float(sys.argv[idx + 2])
+            except ValueError:
+                lat, lon = 34.1808, -118.3090  # Burbank default
+        else:
+            lat, lon = 34.1808, -118.3090  # Burbank default
+        start_date, end_date = get_default_weather_range()
+        print_weather_point_vs_state_reference(lat, lon, start_date, end_date)
     elif "--address" in sys.argv:
         # Example: point + California bbox + CA state + national (e.g. Burbank address)
         idx = sys.argv.index("--address")

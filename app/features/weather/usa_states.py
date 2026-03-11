@@ -131,3 +131,14 @@ STATE_BOUNDING_BOXES = {
 def get_state_bbox(state_abbr):
     """Return (min_lat, max_lat, min_lon, max_lon) for state, or None if not defined."""
     return STATE_BOUNDING_BOXES.get(state_abbr.upper())
+
+
+def get_state_for_point(lat, lon):
+    """
+    Return the state abbreviation whose bounding box contains (lat, lon), or None.
+    Uses STATE_BOUNDING_BOXES; first matching state is returned (no overlap resolution).
+    """
+    for abbr, (min_lat, max_lat, min_lon, max_lon) in STATE_BOUNDING_BOXES.items():
+        if min_lat <= lat <= max_lat and min_lon <= lon <= max_lon:
+            return abbr
+    return None
