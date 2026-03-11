@@ -6,15 +6,15 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 from app.server.models import *
 from app.server.app import get_climate, get_competitors, get_traffic_lights, get_nearby_stores
-from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
-from app.features.weather.weather_period import get_annual_weather_plot_data
-from app.features.weather.open_meteo import (
+from app.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
+from app.features.active.weather.weather_period import get_annual_weather_plot_data
+from app.features.active.weather.open_meteo import (
     get_usa_national_and_state_climate,
     get_weather_for_point_and_california_region,
 )
-from app.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations, get_nearest_gas_station_only
-from app.features.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
-from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
+from app.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations, get_nearest_gas_station_only
+from app.features.active.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
+from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
@@ -121,7 +121,7 @@ def analyze_site_direct(features: AnalyseRequest):
 
 
 def _resolve_weather_dates(start_date: str = None, end_date: str = None):
-    from app.features.weather.open_meteo import get_default_weather_range
+    from app.features.active.weather.open_meteo import get_default_weather_range
     if start_date and end_date:
         return str(start_date).strip(), str(end_date).strip()
     default_start, default_end = get_default_weather_range()
@@ -233,7 +233,7 @@ def get_weather_plot(req: WeatherPlotRequest):
 
 @router.get("/weather/usa-reference")
 def get_weather_usa_reference(start_date: str = None, end_date: str = None):
-    from app.features.weather.open_meteo import get_default_weather_range
+    from app.features.active.weather.open_meteo import get_default_weather_range
     if not start_date or not end_date:
         start_date, end_date = get_default_weather_range()
     try:
@@ -462,7 +462,7 @@ def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
         
         # Apply type classification inline to each competitor array item
         if competitors:
-            from app.features.nearbyCompetitors.classify_competitor_types import classify_competitors
+            from app.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
             competitors = classify_competitors(competitors)
             data["competitors"] = competitors
 

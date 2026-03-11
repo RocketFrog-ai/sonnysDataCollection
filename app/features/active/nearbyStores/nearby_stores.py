@@ -1,7 +1,7 @@
-from app.features.nearbyStores.nearby_costcos import get_costco_info
-from app.features.nearbyStores.nearby_walmart import get_walmart_info
-from app.features.nearbyStores.nearby_target import get_target_info
-from app.features.nearbyGasStations.get_nearby_gas_stations import get_gas_station_info
+from app.features.active.nearbyStores.nearby_costcos import get_costco_info
+from app.features.active.nearbyStores.nearby_walmart import get_walmart_info
+from app.features.active.nearbyStores.nearby_target import get_target_info
+from app.features.active.nearbyGasStations.get_nearby_gas_stations import get_gas_station_info
 
 
 def get_nearby_stores_data(latitude: float, longitude: float):

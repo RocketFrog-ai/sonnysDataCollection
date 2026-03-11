@@ -5,12 +5,12 @@ import sys
 if __name__ == "__main__":
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..")))
 
-from app.features.weather.open_meteo import (
+from app.features.active.weather.open_meteo import (
     get_default_weather_range,
     get_usa_national_and_state_climate,
     get_climate_data_for_state_bbox,
 )
-from app.features.weather.usa_states import STATE_BOUNDING_BOXES
+from app.features.active.weather.usa_states import STATE_BOUNDING_BOXES
 
 BBOX_GRID_N = 3
 

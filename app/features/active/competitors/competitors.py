@@ -1,8 +1,8 @@
 import time
 from app.utils import common as calib
-from app.features.competitors.utils.competitor_matcher import match_competitors
-from app.features.competitors.utils.keyword_classification import keywordclassifier
-from app.features.competitors.utils.google_maps_utils import find_nearby_places
+from app.features.active.competitors.utils.competitor_matcher import match_competitors
+from app.features.active.competitors.utils.keyword_classification import keywordclassifier
+from app.features.active.competitors.utils.google_maps_utils import find_nearby_places
 
 API_KEY = calib.GOOGLE_MAPS_API_KEY
 

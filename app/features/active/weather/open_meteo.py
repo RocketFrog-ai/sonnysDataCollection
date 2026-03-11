@@ -5,7 +5,7 @@ import pandas as pd
 from datetime import datetime, date
 import time
 
-from app.features.weather.usa_states import (
+from app.features.active.weather.usa_states import (
     get_usa_state_coordinates,
     get_state_abbr_to_name,
     get_state_bbox,
@@ -117,7 +117,7 @@ _usa_reference_cache_time = None
 def load_usa_reference_from_file(path=None, start_date_str=None, end_date_str=None):
     """
     Load precomputed national + state_averages + state_bbox_averages from JSON.
-    Build the file once with: python -m app.features.weather.build_reference
+    Build the file once with: python -m app.features.active.weather.build_reference
 
     If start_date_str and end_date_str are given, only return data if the file's
     date range matches (so API uses correct reference for requested range).
@@ -151,9 +151,9 @@ def example_how_we_find_weather_for_one_state(state_abbr="IN", start_date="2024-
     Step 2: Call Open-Meteo with that (lat, lon) and the date range.
     Step 3: Aggregate daily data over the range → one set of metrics per state.
 
-    Run: python -m app.features.weather.open_meteo --state-example-one IN
+    Run: python -m app.features.active.weather.open_meteo --state-example-one IN
     """
-    from app.features.weather.usa_states import get_usa_state_coordinates
+    from app.features.active.weather.usa_states import get_usa_state_coordinates
 
     coords = get_usa_state_coordinates()
     match = [c for c in coords if c[0] == state_abbr.upper()]
@@ -187,7 +187,7 @@ def get_usa_national_and_state_climate(start_date_str, end_date_str, use_cache=T
     USA reference: national_average + state_averages (+ state_bbox_averages if from file).
 
     If prefer_file=True (default), load from precomputed JSON first (no API calls).
-    Build the file once with: python -m app.features.weather.build_reference
+    Build the file once with: python -m app.features.active.weather.build_reference
 
     Otherwise fetch climate for each state capital and compute national average (51 API calls).
     Returns national_average, state_averages, state_names, and state_bbox_averages (from file or {}).
@@ -586,7 +586,7 @@ def run_state_weather_methodology_example(start_date="2024-01-01", end_date="202
     - Prints a small numeric example so you can see the flow.
 
     Usage:
-        python -c "from app.features.weather.open_meteo import run_state_weather_methodology_example; run_state_weather_methodology_example()"
+        python -c "from app.features.active.weather.open_meteo import run_state_weather_methodology_example; run_state_weather_methodology_example()"
     Or with a subset (faster):
         run_state_weather_methodology_example(states_subset=["AL", "CA", "TX"])
     """

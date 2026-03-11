@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
 from app.utils import common as calib
-from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
+from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 
 _DATA_DIR = Path(__file__).resolve().parent.parent
 INPUT_PATH = _DATA_DIR / "input_data" / "comp2.xlsx"
