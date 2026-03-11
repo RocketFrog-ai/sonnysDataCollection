@@ -70,3 +70,6 @@ htmlcov/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# One-off / temp scoringmetric artifacts (not used by app) — leave on disk, don't stage
+scoringmetric/approach2/v2/

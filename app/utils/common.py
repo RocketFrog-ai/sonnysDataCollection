@@ -2,10 +2,15 @@ import os
 import requests
 import traceback
 import pandas as pd
+from pathlib import Path
 from urllib.parse import quote
 from math import radians, sin, cos, sqrt, atan2
 from dotenv import load_dotenv
-load_dotenv()
+
+# Load .env from project root so LLM URL/API key work regardless of cwd (e.g. running from v3/)
+_project_root = Path(__file__).resolve().parents[2]
+load_dotenv(_project_root / ".env")
+load_dotenv()  # still allow override from current cwd
 
 RFW_HOME = os.getenv("RFW_HOME","")
 REDIS_HOST = os.getenv("REDIS_HOST", "")

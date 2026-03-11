@@ -3,10 +3,12 @@ import re
 from datetime import datetime
 from pathlib import Path
 from app.utils.llm import local_llm as llm
-from .prompts import build_normalized_strength_prompt, build_rationale_prompt
+from .prompts import build_normalized_strength_prompt
 from .signals import CUTOFF, CORR_FLOOR, POSITIVE_SIGNALS, NEGATIVE_SIGNALS, get_feature_category
-from app.server.app import get_climate, get_competitors, get_traffic_lights
+from app.server.app import get_climate, get_traffic_lights
 from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
+from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
+from app.utils import common as _calib
 from app.utils import common as calib
 
 FEATURE_VALUES_LOG = Path(__file__).resolve().parent.parent / "feature_values.log"
@@ -35,24 +37,6 @@ def calculate_feature_impact(feature_name, value, signal_info, normalized_value,
     effective_corr = max(abs(signal_info['corr']), CORR_FLOOR)
     impact = normalized_value * signal_info['score'] * effective_corr
     return impact, strength, normalized_value
-
-def generate_llm_rationale(feature_values, pros, cons):
-    pros_text = "\n".join([f"- {p['description']}: {p['value']:.2f} (correlation: {p['correlation']:.4f})" for p in pros[:5]])
-    cons_text = "\n".join([f"- {c['description']}: {c['value']:.2f} (correlation: {c['correlation']:.4f})" for c in cons[:5]])
-    prompt = build_rationale_prompt(pros_text, cons_text, feature_values)
-    try:
-        response = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
-        text = (response or {}).get("generated_text", "")
-        return text if text else "Analysis completed based on feature correlations."
-    except Exception as e:
-        print(f"[ERROR] LLM rationale: {e}")
-        return "Analysis completed based on feature correlations."
-
-def generate_llm_pros_cons(feature_values, pros, cons):
-    return (
-        ["Strong climate and traffic visibility.", "Favorable nearby amenities and competition profile."],
-        ["Consider weather and distance factors where relevant."],
-    )
 
 def _create_feature_dict(feature_name, value, signal_info, impact, strength):
     return {
@@ -115,17 +99,12 @@ def analyze_site_features(feature_values):
     cons.sort(key=lambda x: x['impact'], reverse=True)
     total_pro_impact = _calculate_impact_percentages(pros)
     total_con_impact = _calculate_impact_percentages(cons)
-    llm_rationale = generate_llm_rationale(feature_values, pros, cons)
-    llm_pros, llm_cons = generate_llm_pros_cons(feature_values, pros, cons)
     net_score = round(total_pro_impact - total_con_impact, 6)
     all_signals = {**POSITIVE_SIGNALS, **NEGATIVE_SIGNALS}
     features_analyzed = len([f for f in feature_values if f in all_signals])
     return {
-        'rationale': llm_rationale,
         'pros': pros,
         'cons': cons,
-        'llm_pros': llm_pros,
-        'llm_cons': llm_cons,
         'total_pro_impact': round(total_pro_impact, 6),
         'total_con_impact': round(total_con_impact, 6),
         'net_score': net_score,
@@ -138,9 +117,16 @@ def analyze_site_from_dict(address):
     lon = geo_cord["lon"]
     weather_details = get_climate(lat, lon)
     nearby_stores_data = get_nearby_stores_data(lat, lon)
-    competitors_data = get_competitors(lat, lon)
-    competitor_1_google_user_rating_count = competitors_data["competitor_1_google_user_rating_count"]
-    competitors_count = competitors_data["competitors_count"]
+
+    # Use new competitor fetch (4-mile radius, same as /v1/competitors/dynamics)
+    api_key = _calib.GOOGLE_MAPS_API_KEY
+    _comp_result = get_nearby_competitors(api_key, lat, lon, radius_miles=4.0, fetch_place_details=False) if api_key else {}
+    _comp_list = _comp_result.get("competitors") or []
+    competitors_count = _comp_result.get("count", 0)
+    c1 = _comp_list[0] if _comp_list else {}
+    competitor_1_distance_miles = c1.get("distance_miles")
+    competitor_1_google_rating = c1.get("rating")
+    competitor_1_google_user_rating_count = c1.get("user_rating_count")
     traffic_data = get_traffic_lights(lat, lon)
     nearby_traffic_lights_count = traffic_data["nearby_traffic_lights_count"]
     distance_nearest_traffic_light_2 = traffic_data["distance_nearest_traffic_light_2"]
@@ -151,6 +137,7 @@ def analyze_site_from_dict(address):
     sunny_days_per_year = (weather_details["total_sunshine_hours"] / 12.0) if weather_details.get("total_sunshine_hours") is not None else None
     feature_values = {
         "sunny_days_per_year": sunny_days_per_year,
+        "total_sunshine_hours": weather_details.get("total_sunshine_hours"),
         "total_precipitation_mm": weather_details["total_precipitation_mm"],
         "days_pleasant_temp": weather_details["days_pleasant_temp"],
         "rainy_days": weather_details["rainy_days"],
@@ -164,9 +151,16 @@ def analyze_site_from_dict(address):
         feature_values["distance_from_nearest_costco"] = nearby_stores_data["distance_from_nearest_costco"]
     if nearby_stores_data.get("distance_from_nearest_walmart") is not None:
         feature_values["distance_from_nearest_walmart"] = nearby_stores_data["distance_from_nearest_walmart"]
+    if nearby_stores_data.get("distance_from_nearest_target") is not None:
+        feature_values["distance_from_nearest_target"] = nearby_stores_data["distance_from_nearest_target"]
+    feature_values["count_of_target_5miles"] = nearby_stores_data.get("count_of_target_5miles", 0) or 0
     feature_values["count_of_gas_stations_5miles"] = nearby_stores_data.get("count_of_gas_stations_5miles", 0) or 0
     if nearby_stores_data.get("distance_from_nearest_gas_station") is not None:
         feature_values["distance_from_nearest_gas_station"] = nearby_stores_data["distance_from_nearest_gas_station"]
+    if nearby_stores_data.get("nearest_gas_station_rating") is not None:
+        feature_values["nearest_gas_station_rating"] = nearby_stores_data["nearest_gas_station_rating"]
+    if nearby_stores_data.get("nearest_gas_station_rating_count") is not None:
+        feature_values["nearest_gas_station_rating_count"] = nearby_stores_data["nearest_gas_station_rating_count"]
     feature_values["nearby_traffic_lights_count"] = nearby_traffic_lights_count
     feature_values["distance_nearest_traffic_light_2"] = distance_nearest_traffic_light_2
     feature_values["distance_nearest_traffic_light_3"] = distance_nearest_traffic_light_3
@@ -174,7 +168,11 @@ def analyze_site_from_dict(address):
     feature_values["distance_nearest_traffic_light_7"] = distance_nearest_traffic_light_7
     feature_values["distance_nearest_traffic_light_9"] = distance_nearest_traffic_light_9
     feature_values["competitor_1_google_user_rating_count"] = competitor_1_google_user_rating_count
+    feature_values["competitor_1_google_rating"] = competitor_1_google_rating
+    feature_values["competitor_1_distance_miles"] = competitor_1_distance_miles
+    # Store as both keys so summaries (competitors_count) and profiler (competitors_count_4miles) both work
     feature_values["competitors_count"] = competitors_count
+    feature_values["competitors_count_4miles"] = competitors_count
     try:
         with open(FEATURE_VALUES_LOG, "a") as f:
             f.write(f"\n{'='*60}\n")
