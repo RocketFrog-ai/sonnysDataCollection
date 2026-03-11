@@ -1,26 +1,10 @@
-import os
 import time
-import traceback
-import pandas as pd
 from app.utils import common as calib
 from app.features.competitors.utils.competitor_matcher import match_competitors
 from app.features.competitors.utils.keyword_classification import keywordclassifier
-from app.features.competitors.utils.gpt_images_classification import visionModelResponse
-from app.features.competitors.utils.file_utils import sanitize_filename, get_place_image_count
-from app.features.competitors.utils.placePhotos import get_photo_references_and_name, download_photo
-from app.features.competitors.utils.google_maps_utils import get_satellite_image_name, download_satellite_image, find_nearby_places
+from app.features.competitors.utils.google_maps_utils import find_nearby_places
 
-
-RFW_HOME = calib.RFW_HOME
 API_KEY = calib.GOOGLE_MAPS_API_KEY
-
-IMAGE_DIR = os.path.join(RFW_HOME, "data", "competitors","place_images")
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR)
-
-SATELLITE_IMAGE_BASE_DIR = os.path.join(RFW_HOME,"competitors", "satellite_images")
-if not os.path.exists(SATELLITE_IMAGE_BASE_DIR):
-    os.makedirs(SATELLITE_IMAGE_BASE_DIR)
 
 def count_competitors(original_latitude, original_longitude):
     API_KEY = calib.GOOGLE_MAPS_API_KEY
@@ -35,13 +19,15 @@ def count_competitors(original_latitude, original_longitude):
         API_KEY,
         latitude=original_latitude,
         longitude=original_longitude,
-        radius_miles=2,
+        radius_miles=1,
         included_types=place_types_to_search,
         max_results=max_num_results,
         rank_preference=ranking_method
     )
 
-    competitors_data = []
+    # Known (in competitor list) first, then keyword-only; within each group sort by distance.
+    known_competitors = []
+    keyword_competitors = []
     if results and "places" in results:
         for i, place in enumerate(results["places"]):
             if i == 0:
@@ -68,49 +54,23 @@ def count_competitors(original_latitude, original_longitude):
 
                 if keyword_classification == "Competitor":
                     is_competitor = True
-                elif keyword_classification == "Can't say":
-                    satellite_image_name = get_satellite_image_name(place_id, SATELLITE_IMAGE_BASE_DIR)
-                    if satellite_image_name is None and place_id and place_latitude and place_longitude:
-                        if download_satellite_image(API_KEY, place_latitude, place_longitude, place_id, SATELLITE_IMAGE_BASE_DIR):
-                            satellite_image_name = f"{place_id}.jpg"
-                    
-                    num_place_images = 0
-                    if place_id:
-                        photo_references, _ = get_photo_references_and_name(place_id)
-                        if photo_references:
-                            for photo_idx, ref in enumerate(photo_references):
-                                download_photo(ref, "api_call", display_name, photo_idx, IMAGE_DIR)
-                            num_place_images = get_place_image_count("api_call", display_name, IMAGE_DIR)
+                # "Can't say": Google way only (no photos/vision). Treat as not a competitor.
 
-                    current_place_images_folder_path = os.path.join(IMAGE_DIR, sanitize_filename("api_call"), sanitize_filename(display_name))
-                    current_satellite_image_full_path = os.path.join(SATELLITE_IMAGE_BASE_DIR, satellite_image_name) if satellite_image_name else ""
-
-                    if (num_place_images is not None and num_place_images > 0) or (current_satellite_image_full_path and os.path.exists(current_satellite_image_full_path)):
-                        try:
-                            image_classification_result = visionModelResponse(
-                                place_images_folder_path=current_place_images_folder_path,
-                                satellite_image_path=current_satellite_image_full_path
-                            )
-                            image_classification = image_classification_result.get("classification")
-                            if image_classification == "Competitor":
-                                is_competitor = True
-                            time.sleep(1)
-                        except Exception as e:
-                            print(f"ERROR calling visionModelResponse for {display_name}: {e}")
-            
             if is_competitor:
-                competitors_data.append({
-                    "distance": distance,
-                    "rating": rating,
-                    "userRatingCount": user_rating_count
-                })
+                entry = {"distance": distance, "rating": rating, "userRatingCount": user_rating_count}
+                if found_in_competitor_list:
+                    known_competitors.append(entry)
+                else:
+                    keyword_competitors.append(entry)
+
+    known_competitors.sort(key=lambda x: x["distance"])
+    keyword_competitors.sort(key=lambda x: x["distance"])
+    competitors_data = known_competitors + keyword_competitors
 
     summary_data = {
         "original_address": f"{original_latitude}, {original_longitude}",
         "competitors_count": len(competitors_data)
     }
-    
-    competitors_data.sort(key=lambda x: x['distance'])
 
     for i in range(6):
         if i < len(competitors_data):

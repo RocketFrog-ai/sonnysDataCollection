@@ -6,9 +6,38 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 from app.server.models import *
 from app.server.app import get_climate, get_competitors, get_traffic_lights, get_nearby_stores
+from app.features.nearbyStores.nearby_stores import get_nearby_stores_data
+from app.features.weather.weather_period import get_annual_weather_plot_data
+from app.features.weather.open_meteo import (
+    get_usa_national_and_state_climate,
+    get_weather_for_point_and_california_region,
+)
+from app.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations, get_nearest_gas_station_only
+from app.features.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
+from app.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.ai.analysis import analyze_site_from_dict
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
+from app.scoring.approach2_scorer import (
+    enrich_features_with_categories,
+    enrich_gas_features_with_categories,
+    enrich_competitors_features_with_categories,
+    enrich_retailers_features_with_categories,
+    get_feature_final_scores,
+    get_all_profiler_scores_from_task_feature_values,
+    compute_dimension_score,
+    compute_overall_score,
+    WEATHER_API_TO_PROFILER,
+    GAS_API_TO_PROFILER,
+    COMPETITORS_API_TO_PROFILER,
+    RETAILER_API_TO_PROFILER,
+)
+from app.scoring.approach2_summary import (
+    get_dimension_summary_approach2,
+    build_full_profiling_rationale,
+    _overall_score_to_category,
+    DIMENSION_FEATURE_MAP,
+)
 
 
 REDIS_HOST = calib.REDIS_HOST
@@ -42,6 +71,24 @@ def get_redis_client():
         password=REDIS_PASSWORD,
         decode_responses=True
     )
+
+
+def _get_task_result_or_raise(task_id: str):
+    task_result = AsyncResult(task_id, app=celery_app)
+    if task_result.state != TaskStatus.SUCCESS.value:
+        if task_result.state == TaskStatus.FAILURE.value:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Task {task_id} failed: {str(task_result.result) if task_result.result else 'Task failed'}",
+            )
+        raise HTTPException(
+            status_code=404,
+            detail=f"Task {task_id} not completed yet (status={task_result.state}). Poll GET /v1/task/{task_id} until status is SUCCESS.",
+        )
+    result = task_result.result
+    if result is None:
+        raise HTTPException(status_code=422, detail=f"Task {task_id} completed but result is empty.")
+    return result
 
 
 @router.post("/analyze-site")
@@ -81,24 +128,210 @@ def _resolve_weather_dates(start_date: str = None, end_date: str = None):
     return default_start, default_end
 
 
+def _get_weather_response(req: WeatherRequest):
+    lat, lon = _geocode(req.address)
+    start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
+    data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
+
+    feature_scores = {}
+    dimension_score = None
+    if data and "error" not in data:
+        data = enrich_features_with_categories(data)
+        raw_vals = {k: v.get("value") if isinstance(v, dict) else v for k, v in data.items()}
+        scores = get_feature_final_scores(raw_vals, WEATHER_API_TO_PROFILER)
+        dimension_score = compute_dimension_score(scores, "Weather")
+        for api_key, profiler_key in WEATHER_API_TO_PROFILER.items():
+            val = raw_vals.get(api_key)
+            if val is not None:
+                cat = (data.get(api_key) or {}).get("category", "N/A")
+                feature_scores[profiler_key] = {"value": val, "category": cat}
+
+    usa_reference = None
+    try:
+        usa_reference = get_usa_national_and_state_climate(start_date, end_date, use_cache=True)
+    except Exception as e:
+        logger.warning("USA weather reference unavailable: %s", e)
+
+    return {
+        "address": req.address,
+        "lat": lat,
+        "lon": lon,
+        "start_date": start_date,
+        "end_date": end_date,
+        "data": data,
+        "feature_scores": feature_scores,
+        "dimension_score": {"Weather": dimension_score} if dimension_score is not None else {},
+        "usa_reference": usa_reference,
+    }
+
+
 @router.post("/weather")
 def get_weather(req: WeatherRequest):
     try:
+        return _get_weather_response(req)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/weather/data")
+def get_weather_data(req: WeatherRequest):
+    try:
+        return _get_weather_response(req)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather data fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/weather/data-with-region")
+def get_weather_data_with_region(req: WeatherRequest):
+    try:
         lat, lon = _geocode(req.address)
         start_date, end_date = _resolve_weather_dates(req.start_date, req.end_date)
-        data = get_climate(lat, lon, start_date=start_date, end_date=end_date)
+        result = get_weather_for_point_and_california_region(lat, lon, start_date, end_date, ca_bbox_n=5)
         return {
             "address": req.address,
             "lat": lat,
             "lon": lon,
             "start_date": start_date,
             "end_date": end_date,
-            "data": data,
+            "point": result["point"],
+            "california_bbox": result["california_bbox"],
+            "california_state": result["california_state"],
+            "national_average": result["national_average"],
         }
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("Weather fetch failed")
+        logger.exception("Weather data-with-region fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/weather/plot")
+def get_weather_plot(req: WeatherPlotRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        result = get_annual_weather_plot_data(lat, lon, req.year)
+        if result is None:
+            raise HTTPException(status_code=502, detail="Could not fetch weather data for the given year.")
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            **result,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Weather plot data fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/weather/usa-reference")
+def get_weather_usa_reference(start_date: str = None, end_date: str = None):
+    from app.features.weather.open_meteo import get_default_weather_range
+    if not start_date or not end_date:
+        start_date, end_date = get_default_weather_range()
+    try:
+        return get_usa_national_and_state_climate(start_date, end_date, use_cache=True)
+    except Exception as e:
+        logger.exception("USA weather reference failed")
+        raise HTTPException(status_code=502, detail=str(e))
+
+
+@router.get("/weather/summary/{task_id}")
+def get_weather_summary_by_task(task_id: str):
+    return _dimension_summary(task_id, "Weather")
+
+
+@router.post("/gas_station")
+def get_gas_stations_endpoint(req: GasStationRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        radius = req.radius_miles if req.radius_miles is not None else 2.0
+        max_results = min(req.max_results if req.max_results is not None else 6, 6)
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        stations = get_nearby_gas_stations(
+            api_key, lat, lon,
+            radius_miles=radius,
+            max_results=max_results,
+            fetch_place_details=fetch_details,
+        )
+
+        feature_scores = {}
+        dimension_score = None
+        if stations:
+            s0 = stations[0]
+            feature_scores = enrich_gas_features_with_categories(s0)
+            flat = {k: v for k, v in {
+                "distance_miles": s0.get("distance_miles"),
+                "rating": s0.get("rating"),
+                "rating_count": s0.get("rating_count"),
+            }.items() if v is not None}
+            if flat:
+                scores = get_feature_final_scores(flat, GAS_API_TO_PROFILER)
+                dimension_score = compute_dimension_score(scores, "Gas")
+
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "radius_miles": radius,
+            "stations": stations,
+            "count": len(stations),
+            "nearest_station_feature_scores": feature_scores,
+            "dimension_score": {"Gas": dimension_score} if dimension_score is not None else {},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Gas stations fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/gas_station/summary/{task_id}")
+def get_gas_station_summary_by_task(task_id: str):
+    return _dimension_summary(task_id, "Gas")
+
+
+@router.post("/datafetch/nearbygasstations")
+def datafetch_nearby_gas_stations(req: DataFetchNearestGasRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        nearest = get_nearest_gas_station_only(
+            api_key, lat, lon,
+            fetch_place_details=fetch_details,
+        )
+        feature_scores = enrich_gas_features_with_categories(nearest)
+        dimension_score = None
+        if nearest:
+            flat = {k: nearest.get(k) for k in ("distance_miles", "rating", "rating_count") if nearest.get(k) is not None}
+            if flat:
+                scores = get_feature_final_scores(flat, GAS_API_TO_PROFILER)
+                dimension_score = compute_dimension_score(scores, "Gas")
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "nearest_gas_station": nearest,
+            "feature_scores": feature_scores,
+            "dimension_score": {"Gas": dimension_score} if dimension_score is not None else {},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Datafetch nearest gas station failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -115,6 +348,89 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/retailers")
+def get_retailers_endpoint(req: RetailersRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        radius = req.radius_miles if req.radius_miles is not None else 0.5
+        data = get_nearby_retailers(
+            api_key, lat, lon,
+            radius_miles=radius,
+            fetch_place_details=False,
+        )
+        stores = get_nearby_stores_data(lat, lon)
+
+        raw_list = data.get("retailers") or []
+        grocery_within_1mi = [r for r in raw_list if r.get("category") == "Grocery" and (r.get("distance_miles") or 0) <= 1.0]
+        food_within_0_5mi = [r for r in raw_list if r.get("category") == "Food Joint" and (r.get("distance_miles") or 0) <= 0.5]
+        other_grocery_count = len(grocery_within_1mi)
+        food_joint_count = len(food_within_0_5mi)
+
+        def _avg(items, key):
+            vals = [x[key] for x in items if x.get(key) is not None]
+            return round(sum(vals) / len(vals), 2) if vals else None
+
+        flat_retailer = {k: v for k, v in {
+            "distance_from_nearest_costco": stores.get("distance_from_nearest_costco"),
+            "distance_from_nearest_walmart": stores.get("distance_from_nearest_walmart"),
+            "distance_from_nearest_target": stores.get("distance_from_nearest_target"),
+            "other_grocery_count_1mile": other_grocery_count,
+            "count_food_joints_0_5miles": food_joint_count,
+        }.items() if v is not None}
+
+        feature_scores = enrich_retailers_features_with_categories(flat_retailer) if flat_retailer else {}
+        dimension_score = None
+        if flat_retailer:
+            scores = get_feature_final_scores(flat_retailer, RETAILER_API_TO_PROFILER)
+            dimension_score = compute_dimension_score(scores, "Retail Proximity")
+
+        def _anchor_item(display_name: str, details):
+            if details is None:
+                return {"name": display_name, "found": False, "message": "No store within 5 mile radius"}
+            rest = {k: v for k, v in details.items() if k != "name"}
+            return {"name": display_name, "found": True, "store_name": details.get("name"), **rest}
+
+        retailers = [
+            _anchor_item("Costco", stores.get("nearest_costco")),
+            _anchor_item("Walmart", stores.get("nearest_walmart")),
+            _anchor_item("Target", stores.get("nearest_target")),
+            {
+                "name": "Other groceries",
+                "count_within_1_mile": other_grocery_count,
+                "avg_rating": _avg(grocery_within_1mi, "rating"),
+                "avg_distance_miles": _avg(grocery_within_1mi, "distance_miles"),
+            },
+            {
+                "name": "Food joints",
+                "count_within_0_5_miles": food_joint_count,
+                "avg_rating": _avg(food_within_0_5mi, "rating"),
+                "avg_distance_miles": _avg(food_within_0_5mi, "distance_miles"),
+            },
+        ]
+
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "retailers": retailers,
+            "feature_scores": feature_scores,
+            "dimension_score": {"Retail Proximity": dimension_score} if dimension_score is not None else {},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Retailers fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/retailers/summary/{task_id}")
+def get_retailers_summary_by_task(task_id: str):
+    return _dimension_summary(task_id, "Retail Proximity")
+
+
 @router.post("/nearby-stores")
 def get_nearby_stores_endpoint(features: AnalyseRequest):
     try:
@@ -126,6 +442,62 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
     except Exception as e:
         logger.exception("Nearby stores fetch failed")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/competitors/dynamics")
+def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
+    try:
+        lat, lon = _geocode(req.address)
+        api_key = calib.GOOGLE_MAPS_API_KEY
+        if not api_key:
+            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
+        radius = req.radius_miles if req.radius_miles is not None else 4.0
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        data = get_nearby_competitors(
+            api_key, lat, lon,
+            radius_miles=radius,
+            fetch_place_details=fetch_details,
+        )
+        competitors = data.get("competitors") or []
+        
+        # Apply type classification inline to each competitor array item
+        if competitors:
+            from app.features.nearbyCompetitors.classify_competitor_types import classify_competitors
+            competitors = classify_competitors(competitors)
+            data["competitors"] = competitors
+
+        count = data.get("count", 0)
+        feature_scores = enrich_competitors_features_with_categories(competitors, count)
+        flat_comp = {"count": count}
+        if competitors:
+            c1 = competitors[0]
+            flat_comp["competitor_1_distance_miles"] = c1.get("distance_miles")
+            flat_comp["competitor_1_google_rating"] = c1.get("rating")
+            flat_comp["competitor_1_rating_count"] = c1.get("user_rating_count")
+        flat_comp = {k: v for k, v in flat_comp.items() if v is not None}
+        dimension_score = None
+        if flat_comp:
+            scores = get_feature_final_scores(flat_comp, COMPETITORS_API_TO_PROFILER)
+            dimension_score = compute_dimension_score(scores, "Competition")
+        return {
+            "address": req.address,
+            "lat": lat,
+            "lon": lon,
+            "radius_miles": radius,
+            **data,
+            "feature_scores": feature_scores,
+            "dimension_score": {"Competition": dimension_score} if dimension_score is not None else {},
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Competitors dynamics fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/competitors/dynamics/summary/{task_id}")
+def get_competitors_dynamics_summary_by_task(task_id: str):
+    return _dimension_summary(task_id, "Competition")
 
 
 @router.post("/competitors")
@@ -140,13 +512,10 @@ def get_competitors_endpoint(features: AnalyseRequest):
         logger.exception("Competitors fetch failed")
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @router.get("/task/{task_id}", response_model=TaskStatusResponse)
 def get_task_status(task_id: str):
-    """Get the status and result of an analyze-site task by its task_id."""
     task_result = AsyncResult(task_id, app=celery_app)
     status_str = task_result.state
-    # Map Celery state to our TaskStatus enum (Celery uses same names)
     try:
         status = TaskStatus(status_str)
     except ValueError:
@@ -167,6 +536,145 @@ def get_task_status(task_id: str):
         response.error = str(task_result.result) if task_result.result else "Task failed"
 
     return response
+
+
+@router.get("/overall-score/{task_id}")
+def get_overall_score(task_id: str):
+    result = _get_task_result_or_raise(task_id)
+    feature_values = result.get("feature_values") or {}
+    if not feature_values:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Task {task_id} has no feature_values.",
+        )
+    profiler_scores = get_all_profiler_scores_from_task_feature_values(feature_values)
+    if not profiler_scores:
+        raise HTTPException(
+            status_code=422,
+            detail="Could not score any features for this task.",
+        )
+    overall = compute_overall_score(profiler_scores)
+    dimension_scores = {}
+    for dim in ("Weather", "Gas", "Retail Proximity", "Competition"):
+        s = compute_dimension_score(profiler_scores, dim)
+        if s is not None:
+            dimension_scores[dim] = s
+    return {
+        "task_id": task_id,
+        "overall_score": overall,
+        "dimension_scores": dimension_scores,
+    }
+
+
+def _dimension_summary(task_id: str, dimension: str) -> dict:
+    result = _get_task_result_or_raise(task_id)
+    feature_values = result.get("feature_values") or {}
+
+    if dimension not in DIMENSION_FEATURE_MAP:
+        return DimensionSummaryResponse(
+            task_id=task_id,
+            dimension=dimension,
+            predicted_tier="Insufficient Data",
+            fit_score=0.0,
+            features_scored=0,
+            feature_breakdown={},
+            discriminatory_power={},
+            summary=f"No Approach 2 data for dimension {dimension}.",
+            feature_values_slice={},
+            feature_performance={},
+        ).model_dump()
+
+    try:
+        a2 = get_dimension_summary_approach2(dimension, feature_values)
+    except Exception as e:
+        logger.warning(f"Approach 2 summary failed for {dimension}: {e}")
+        a2 = None
+    if not a2 or a2.get("features_scored", 0) == 0:
+        return DimensionSummaryResponse(
+            task_id=task_id,
+            dimension=dimension,
+            predicted_tier="Insufficient Data",
+            fit_score=0.0,
+            features_scored=0,
+            feature_breakdown={},
+            discriminatory_power={},
+            summary=a2.get("summary", f"No scorable features for {dimension}.") if a2 else f"No data for {dimension}.",
+            feature_values_slice={},
+            feature_performance={},
+        ).model_dump()
+
+    scored = a2.get("feature_scores", [])
+    fit_avg = (
+        sum(s.get("final_score", 0) for s in scored) / len(scored)
+        if scored else 0
+    )
+    feat_breakdown = {
+        s["feature"]: {
+            "value": s["value"],
+            "raw_percentile": s.get("raw_percentile"),
+            "final_score": s.get("final_score"),
+            "category": s.get("category"),
+        }
+        for s in scored
+    }
+    feat_perf = {s["feature"]: s.get("category", "N/A") for s in scored}
+    mapping = DIMENSION_FEATURE_MAP[dimension]
+    fv_slice = {
+        tk: feature_values.get(tk)
+        for tk in mapping
+        if feature_values.get(tk) is not None
+    }
+    return DimensionSummaryResponse(
+        task_id=task_id,
+        dimension=dimension,
+        predicted_tier=a2.get("overall_category", "Insufficient Data"),
+        fit_score=round(fit_avg, 1),
+        features_scored=a2.get("features_scored", 0),
+        feature_breakdown=feat_breakdown,
+        discriminatory_power={},
+        summary=a2.get("summary", ""),
+        feature_values_slice=fv_slice,
+        feature_performance=feat_perf,
+    ).model_dump()
+
+
+@router.get("/profiling/summary/{task_id}")
+def get_full_profiling_summary(task_id: str):
+    result = _get_task_result_or_raise(task_id)
+    feature_values = result.get("feature_values") or {}
+    profiler_scores = get_all_profiler_scores_from_task_feature_values(feature_values)
+    if not profiler_scores:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Task {task_id}: no scorable features.",
+        )
+    overall_score = compute_overall_score(profiler_scores)
+    dimension_results = {}
+    for dim in ("Weather", "Gas", "Retail Proximity", "Competition"):
+        dimension_results[dim] = get_dimension_summary_approach2(dim, feature_values)
+    rationale = build_full_profiling_rationale(overall_score, dimension_results)
+    dim_scores = {}
+    for dim in ("Weather", "Gas", "Retail Proximity", "Competition"):
+        s = compute_dimension_score(profiler_scores, dim)
+        res = dimension_results.get(dim, {})
+        fs_list = res.get("feature_scores") or []
+        fit_avg = sum(f.get("final_score", 0) for f in fs_list) / len(fs_list) if fs_list else 0
+        dim_scores[dim] = {
+            "predicted": res.get("overall_category", "Insufficient Data"),
+            "fit_score": round(fit_avg, 1),
+            "features_scored": res.get("features_scored", 0),
+        }
+    return QuantileSummaryResponse(
+        task_id=task_id,
+        overall_tier=_overall_score_to_category(overall_score),
+        overall_fit_score=round(overall_score, 1),
+        expected_volume={},
+        dimensions=dim_scores,
+        vote={},
+        strengths=[],
+        weaknesses=[],
+        rationale=rationale,
+    ).model_dump()
 
 
 @router.get("/health")

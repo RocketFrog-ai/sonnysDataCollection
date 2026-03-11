@@ -1,0 +1,116 @@
+✓ Percentile Profiler initialized
+  - 1235 sites
+  - 19 features
+
+================================================================================
+APPROACH 2 - Raw Percentile + Full Analytics
+================================================================================
+
+WHAT THIS APPROACH DOES:
+  - Raw percentile rank, invert if lower is better
+  - Uses RAW PERCENTILE score (e.g. 53.3, 82.3) - no binning
+  - Auto-discovers ALL 50 numeric features
+  - Outputs: distribution stats (min/max/mean/median/std/shape), histograms, step-by-step example
+
+HOW IT DIFFERS FROM APPROACH 1: No config; 50 features; adds stats table + plots; no range engine
+HOW IT DIFFERS FROM APPROACH 3: Uses raw percentile (continuous 0-100), not binned scores
+
+================================================================================
+
+============================================================================================================================================
+DISTRIBUTION STATISTICS - ALL FEATURES
+============================================================================================================================================
+Feature                                           Min        Max       Mean     Median        Std  Count      Dir          Shape
+--------------------------------------------------------------------------------------------------------------------------------------------
+weather_total_precipitation_mm                 122.90    1753.80    1026.60    1077.90     301.94   1228   lower✓    left-skewed
+weather_rainy_days                              21.00     197.00     113.11     118.50      31.18   1228   lower✓    left-skewed
+weather_total_snowfall_cm                        0.00     379.61      25.04      10.54      32.50   1228   lower✓   right-skewed
+weather_days_below_freezing                      0.00     193.00      48.70      44.00      40.37   1228   lower✓   right-skewed
+weather_total_sunshine_hours                  2659.75    3941.27    3336.44    3333.22     246.18   1228  higher✓      symmetric
+weather_days_pleasant_temp                      36.00     270.00     151.46     150.00      28.05   1228  higher✓   right-skewed
+weather_avg_daily_max_windspeed_ms              10.28      34.77      17.10      16.87       2.54   1228   lower✓   right-skewed
+nearest_gas_station_distance_miles               0.01      21.23       0.35       0.26       0.68   1235   lower✓   right-skewed
+nearest_gas_station_rating                       1.00       5.00       3.81       3.90       0.68   1235  higher✓    left-skewed
+nearest_gas_station_rating_count                 1.00    2998.00      90.43      54.00     144.83   1235  higher✓   right-skewed
+competitors_count_4miles                         0.00      15.00       8.63       9.00       3.83   1228   lower✓      symmetric
+competitor_1_google_rating                       1.00       5.00       4.16       4.30       0.73   1096  higher✓    left-skewed
+competitor_1_distance_miles                      0.08       3.86       0.73       0.56       0.66   1212   lower✓   right-skewed
+competitor_1_rating_count                        1.00    6982.00     357.16     145.00     617.76   1096  higher✓   right-skewed
+distance_nearest_costco(5 mile)                  0.05       4.99       2.60       2.60       1.39    431   lower✓      symmetric
+distance_nearest_walmart(5 mile)                 0.03       4.98       1.52       1.27       1.18   1156   lower✓   right-skewed
+distance_nearest_target (5 mile)                 0.03       4.99       2.16       2.06       1.29    882   lower✓      symmetric
+other_grocery_count_1mile                        1.00      12.00       2.41       2.00       1.52    990  higher✓   right-skewed
+count_food_joints_0_5miles (0.5 mile)            0.00      20.00       7.63       7.00       5.14   1228  higher✓   right-skewed
+--------------------------------------------------------------------------------------------------------------------------------------------
+Shape: discrete (≤6 unique) | right-skewed (skew>0.5) | left-skewed (skew<-0.5) | symmetric
+Direction: lower✓ = lower is better, higher✓ = higher is better
+============================================================================================================================================
+
+✓ Saved distribution grid: /Users/dhruvsood/sonnysDataCollection/scoringmetric/approach2/distribution_plots/all_features_distributions.png
+================================================================================
+================================================================================
+SCORING REPORT
+================================================================================
+
+OVERALL SCORE: 53.26/100
+(Average of all 19 feature scores)
+
+================================================================================
+TOP 10 STRENGTHS
+================================================================================
+Feature                                       Value   Percentile    Score Status
+--------------------------------------------------------------------------------
+weather_total_sunshine_hours                3,673.1       89.98%    90.0 Very Good (top 25%)
+weather_rainy_days                             57.0       10.14%    89.9 Very Good (top 25% - low values)
+nearest_gas_station_rating                      4.5       89.80%    89.8 Very Good (top 25%)
+weather_days_pleasant_temp                    175.0       89.74%    89.7 Very Good (top 25%)
+nearest_gas_station_distance_miles              0.1       10.45%    89.5 Very Good (top 25% - low values)
+competitor_1_rating_count                     357.2       71.81%    71.8 Good (above median)
+nearest_gas_station_rating_count               90.4       68.83%    68.8 Good (above median)
+other_grocery_count_1mile                       2.4       62.22%    62.2 Good (above median)
+count_food_joints_0_5miles (0.5 mile)           7.6       54.48%    54.5 Good (above median)
+distance_nearest_costco(5 mile)                 2.6       50.35%    49.6 Fair (above median)
+
+================================================================================
+TOP 10 WEAKNESSES
+================================================================================
+Feature                                       Value   Percentile    Score Status
+--------------------------------------------------------------------------------
+weather_total_snowfall_cm                      71.7       90.02%    10.0 Very Poor (top 10% - highest values)
+weather_avg_daily_max_windspeed_ms             20.1       89.98%    10.0 Poor (top 25% - high values)
+weather_total_precipitation_mm              1,368.4       89.98%    10.0 Poor (top 25% - high values)
+competitors_count_4miles                       13.0       87.05%    12.9 Poor (top 25% - high values)
+competitor_1_distance_miles                     0.7       61.88%    38.1 Fair (above median)
+competitor_1_google_rating                      4.2       39.96%    40.0 Fair (below median)
+weather_days_below_freezing                    48.7       56.11%    43.9 Fair (above median)
+distance_nearest_walmart(5 mile)                1.5       56.06%    43.9 Fair (above median)
+distance_nearest_target (5 mile)                2.2       52.83%    47.2 Fair (above median)
+distance_nearest_costco(5 mile)                 2.6       50.35%    49.6 Fair (above median)
+
+================================================================================
+METHODOLOGY EXAMPLE: nearest_gas_station_distance_miles
+================================================================================
+
+Your Value: 0.26
+
+All 1235 sites distribution:
+  Min:    0.01
+  Median: 0.26
+  Max:    21.23
+
+Step 1: Calculate Percentile Rank
+  Your value (0.26) ranks at: 50.57%ile
+  (You are better than 50.57% of sites on RAW value)
+
+Step 2: Apply Business Logic - lower_is_better
+  Closer to gas station is better
+
+  Since LOWER is better:
+  - Being at 50.57%ile means you have HIGHER value than 50.57%
+  - Which is BAD (because lower is better)
+  - So we INVERT: Score = 100 - 50.57 = 49.43
+
+Step 3: Final Score
+  49.43/100 - Fair (above median)
+
+================================================================================
