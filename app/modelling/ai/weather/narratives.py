@@ -1,6 +1,7 @@
 """
-Weather narratives: per-metric summary (LLM), fixed business impact & impact classification,
-insight and overall (observation, conclusion) agents.
+Weather narratives: per-metric summary (LLM; value, percentile, quartile, category),
+impact classification, insight and overall (observation, conclusion) agents.
+Business impact is not returned; frontend handles it.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from typing import Any, Dict, List, Optional
 from app.modelling.ai.common import extract_llm_text
 from app.modelling.ai.weather.config import (
     WEATHER_IMPACT_CLASSIFICATION_SUFFIX,
-    WEATHER_METRIC_BUSINESS_IMPACT,
+    WEATHER_METRIC_DIRECTION,
     WEATHER_METRIC_KEYS_ORDER,
     WEATHER_METRIC_UNITS,
     WEATHER_NARRATIVE_METRICS,
@@ -33,29 +34,34 @@ def _feature_summary_agent(
     dist_min: Optional[float],
     dist_max: Optional[float],
     quantile_label: Optional[str],
+    direction: str = "higher",
 ) -> Dict[str, Optional[str]]:
     """
-    Call local LLM only for the dynamic summary. Business impact and impact classification
-    are fixed per metric (from config). Returns dict with summary, business_impact, impact_classification.
+    Call local LLM for a dynamic summary. No fixed template: use actual value, percentile,
+    quartile, category, and direction (higher/lower better) to write a short rationale
+    for car wash sites. Returns dict with summary, impact_classification.
     """
     val_str = f"{value:.0f}" if value is not None and value == int(value) else (f"{value}" if value is not None else "N/A")
-    pct_str = f"{percentile:.0f}%" if percentile is not None else "N/A"
+    pct_str = f"{percentile:.1f}%" if percentile is not None else "N/A"
     cat_str = category or "N/A"
     min_str = f"{dist_min:.0f}" if dist_min is not None else "N/A"
     max_str = f"{dist_max:.0f}" if dist_max is not None else "N/A"
+    direction_note = "higher values are better for wash demand" if direction == "higher" else "lower values are better for wash demand"
 
-    prompt = f"""You are a car wash site analyst. For the following weather metric, write one short summary sentence.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences that explain this metric's result for a car wash site. Use the numbers given — do not use a fixed template.
 
-Metric: {display_name}
-Subtitle: {subtitle}
+Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
-Category (Poor/Fair/Good/Strong): {cat_str}
-Percentile (vs. other sites): {pct_str}
-Scale range (min–max for context): {min_str} – {max_str}
-Quantile band: {quantile_label or 'N/A'}
+Percentile (vs. other car wash sites in the dataset): {pct_str}
+Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
+Reference: For this metric, {direction_note}.
+Scale range in dataset: {min_str} – {max_str}
 
-Write a single sentence summary, e.g. "X% of sites generating Y–Z washes per year have a {display_name} of A–B {unit}. This site falls within that range."
-Reply with only that sentence, no prefix or label."""
+Write a dynamic rationale that:
+- States the site's value and what the percentile means (e.g. "better than X% of car wash sites" or "worse than X% of sites" depending on the percentile and direction).
+- Mentions quartile and category (Q1–Q4, Poor/Fair/Good/Strong).
+- Notes whether higher or lower is better for this metric so the reader understands the interpretation.
+Do not repeat a generic phrase; use the actual percentile and direction to explain. Reply with only the rationale, no prefix or label."""
 
     summary: Optional[str] = None
     try:
@@ -67,7 +73,6 @@ Reply with only that sentence, no prefix or label."""
     except Exception as e:
         logger.warning("Feature summary LLM call failed for %s: %s", metric_key, e)
 
-    business_impact = WEATHER_METRIC_BUSINESS_IMPACT.get(metric_key)
     suffix = WEATHER_IMPACT_CLASSIFICATION_SUFFIX.get(metric_key, "days")
     if category is not None and dist_min is not None and dist_max is not None:
         impact_classification = f"{category} · {dist_min:.0f}–{dist_max:.0f} {suffix}"
@@ -78,7 +83,6 @@ Reply with only that sentence, no prefix or label."""
 
     return {
         "summary": summary,
-        "business_impact": business_impact,
         "impact_classification": impact_classification,
     }
 
@@ -126,10 +130,10 @@ def _overall_agent(
     feature_narratives: List[Dict[str, Any]],
 ) -> Dict[str, Optional[str]]:
     """
-    From quantile results and per-feature business impacts, generate Observation and Conclusion.
+    From quantile results and per-feature summaries, generate Observation and Conclusion.
     """
-    business_impacts = [
-        f"- {n.get('label', n.get('feature_key', ''))}: {n.get('business_impact') or 'N/A'}"
+    feature_lines = [
+        f"- {n.get('label', n.get('feature_key', ''))}: {n.get('summary') or 'N/A'}"
         for n in feature_narratives
     ]
     pred_label = quantile_result.get("predicted_wash_quantile_label") or "N/A"
@@ -139,8 +143,8 @@ def _overall_agent(
 
 Predicted wash band: {pred_label} ({wash_range})
 
-Per-feature business impacts:
-{chr(10).join(business_impacts)}
+Per-feature summaries (value, percentile, quartile, category):
+{chr(10).join(feature_lines)}
 
 Respond with exactly these two lines:
 Observation: [2-3 sentences: how the site benefits from its weather profile, e.g. "Site benefits from a well-rounded weather profile. Dirt triggers are frequent enough to sustain recurring demand, comfortable days provide a long window for discretionary washes, and shutdown risk is minimal."]
@@ -170,8 +174,8 @@ def get_feature_narratives(
 ) -> List[Dict[str, Any]]:
     """
     Build per-feature narrative entries for weather metrics.
-    Returns list of dicts with feature_key (v3 key), label, value, unit, category, percentile,
-    summary, business_impact, impact_classification.
+    Returns list of dicts with feature_key, label, value, unit, category, percentile,
+    wash_q (quartile), summary, impact_classification. No business_impact (frontend handles it).
     """
     feature_analysis = quantile_result.get("feature_analysis") or {}
     out: List[Dict[str, Any]] = []
@@ -193,7 +197,6 @@ def get_feature_narratives(
                 "percentile": None,
                 "wash_q": None,
                 "summary": None,
-                "business_impact": None,
                 "impact_classification": None,
             })
             continue
@@ -209,6 +212,7 @@ def get_feature_narratives(
         dist_max = fa.get("dist_max")
         unit = WEATHER_METRIC_UNITS.get(metric_key, "days/year")
 
+        direction = WEATHER_METRIC_DIRECTION.get(metric_key, "higher")
         llm_out = _feature_summary_agent(
             metric_key=metric_key,
             display_name=display_name,
@@ -220,6 +224,7 @@ def get_feature_narratives(
             dist_min=dist_min,
             dist_max=dist_max,
             quantile_label=quantile_label,
+            direction=direction,
         )
 
         out.append({
@@ -233,7 +238,6 @@ def get_feature_narratives(
             "percentile": percentile,
             "wash_q": wash_q,
             "summary": llm_out.get("summary"),
-            "business_impact": llm_out.get("business_impact"),
             "impact_classification": llm_out.get("impact_classification"),
         })
 

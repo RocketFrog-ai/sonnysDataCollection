@@ -79,14 +79,16 @@ Full analysis: `address`, `lat`, `lon`, `feature_values`, `fetched` (climate, ga
 **Request**
 
 ```bash
-curl -s "http://localhost:8001/v1/weather/data-by-task/<task_id>"
+curl -s "http://localhost:8001/v1/weather/data-by-task/72756c37-7ebd-44d9-99c5-8e317748a091"
 ```
 
 This single endpoint returns all 4 weather metrics (value, scale, quartile, summary) **and** the overall narrative (insight, observation, conclusion).
 
 **Response shape**
 
-- **metrics** — array of 4 objects, each with: `metric_key`, `display_name`, `subtitle`, `value`, `unit`, `min`, `max`, `quantile_score`, `quantile`, `category`, `summary`, `business_impact`, `impact_classification`
+- **complete** — `true` when full data is ready (quantile result + overall narrative); `false` while partial or still building.
+- **success** — `true` when `complete` is true (all data available).
+- **metrics** — array of 4 objects, each with: `metric_key`, `display_name`, `subtitle`, `value`, `unit`, `min`, `max`, `quantile_score`, `quantile`, `category`, `summary`, `impact_classification` (no business_impact; frontend handles it). Summaries are dynamic (value, percentile vs car wash sites, quartile, category, and whether higher/lower is better).
 - **overall** — `insight` (quantile narrative), `observation`, `conclusion` (overall feature takeaway)
 
 **Weather metrics and labels**
@@ -136,6 +138,23 @@ This single endpoint returns all 4 weather metrics (value, scale, quartile, summ
 ```
 
 - insight — Overall narrative of **quantile predictions** (e.g. weather’s contribution to site potential, predicted wash band).
+
+---
+
+## Caching and TTL
+
+**Yes, there is caching.** Summary:
+
+| What | Where | TTL |
+|------|--------|-----|
+| **Partial/full analyse-site result** | Redis key `site_analysis:{task_id}` | **1 day** (86,400 s) |
+| **Celery task result** | Celery result backend (Redis) | Default (typically 1 day) |
+| **Competitor classification** | DB `car_wash_classifications` (by place_id) | Persistent |
+| **USA reference climate** | In-memory (weather reference only) | 24 hours |
+
+**Why answers can be quick:** (1) Same **task_id** — result is read from Redis/Celery, no recompute. (2) **Progressive results** — worker writes to Redis after fetch, then quantile, then narratives; polling returns partial data as soon as each stage completes. (3) Same address again = **new task** (no per-address cache).
+
+**Partial result TTL:** `app/celery/tasks.py` sets `RESULT_CACHE_TTL = 86400`; key `site_analysis:{task_id}` is written with `setex(..., TTL, payload)`.
 
 ---
 

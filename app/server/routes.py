@@ -322,7 +322,6 @@ def get_weather_data_by_task(task_id: str):
         category = get_category_for_quantile(wash_q) or get_category_for_quantile(feature_q)
         narrative = narrative_by_v3_key.get(v3_key, {}) if v3_key else {}
         summary = narrative.get("summary")
-        business_impact = narrative.get("business_impact")
         impact_classification = narrative.get("impact_classification")
         min_val = float(dist_min) if dist_min is not None else (float(boundaries[0]) if len(boundaries) > 0 else None)
         max_val = float(dist_max) if dist_max is not None else (float(boundaries[-1]) if len(boundaries) > 0 else None)
@@ -339,13 +338,16 @@ def get_weather_data_by_task(task_id: str):
             "quantile": quantile_str,
             "category": category,
             "summary": summary,
-            "business_impact": business_impact,
             "impact_classification": impact_classification,
         })
     narratives_overall = (result.get("narratives") or {}).get("overall") or {}
+    has_overall = any(narratives_overall.get(k) for k in ("insight", "observation", "conclusion"))
+    complete = bool(quantile_result and has_overall)
     return {
         "task_id": task_id,
         "address": result.get("address"),
+        "complete": complete,
+        "success": complete,
         "metrics": metrics,
         "overall": {
             "insight": narratives_overall.get("insight"),
