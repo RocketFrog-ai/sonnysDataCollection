@@ -29,8 +29,16 @@ AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION","")
 AZURE_OPENAI_MODEL_DEPLOYMENT_NAME = os.getenv("AZURE_OPENAI_MODEL_DEPLOYMENT_NAME","")
 TOMTOM_GEOCODE_API_URL = os.getenv("TOMTOM_GEOCODE_API_URL","")
 TOMTOM_API_KEY = os.getenv("TOMTOM_API_KEY","")
-LOCAL_LLM_URL = os.getenv("LOCAL_LLM_URL", "")
 LOCAL_LLM_API_KEY = os.getenv("LOCAL_LLM_API_KEY", "")
+
+# LLM Server — base URL resolves both endpoints.
+# Set LLM_BASE_URL (e.g. http://10.110.98.5:8080) and the realtime/batch paths are derived automatically.
+# Override individual endpoints with LLM_REALTIME_URL / LLM_BATCH_URL if needed.
+_LLM_BASE = os.getenv("LLM_BASE_URL", os.getenv("LOCAL_LLM_URL", "")).rstrip("/")
+LLM_REALTIME_URL = os.getenv("LLM_REALTIME_URL", f"{_LLM_BASE}/realtime/completions" if _LLM_BASE else "")
+LLM_BATCH_URL    = os.getenv("LLM_BATCH_URL",    f"{_LLM_BASE}/batch/completions"    if _LLM_BASE else "")
+# Legacy alias kept for any code still referencing LOCAL_LLM_URL directly
+LOCAL_LLM_URL = LLM_REALTIME_URL
 
 # Celery task retry settings (delay in seconds)
 TASK_RETRY_DELAY = int(os.getenv("TASK_RETRY_DELAY", "60"))

@@ -3,8 +3,9 @@ Tape Cracker API routes.
 
 Analysis flow (single fetch, async): POST /analyze-site enqueues a task that runs
 geocode → fetch all features once (features/active) → quantile (v3) → optional narratives.
-No second fetch: weather and all data come from that run only. Use GET with task_id to
-get result (e.g. GET /result/{task_id}, GET /weather/data-by-task/{task_id}).
+Google API (geocode, Places, Distance Matrix, Place Details) and climate are called only
+inside that task, once per analysis. GET /weather/data-by-task/{task_id} and
+GET /competition/data-by-task, GET /retail/data-by-task, GET /gas/data-by-task never re-fetch; they read from stored task result.
 
 Progressive result: the task writes partial result to Redis after fetch (data available
 quickly), then after quantile, then after narratives. Poll GET /result/{task_id} or
@@ -35,6 +36,19 @@ from app.server.config import (
     WEATHER_METRIC_DISPLAY,
     WEATHER_METRIC_TO_V3_FEATURE,
     get_weather_metric_value_from_climate,
+    COMPETITION_METRIC_DISPLAY,
+    COMPETITION_METRIC_TO_V3_FEATURE,
+    COMPETITION_RADIUS_MILES,
+    nearest_brand_strength_from_quantile,
+    RETAIL_METRIC_TO_V3_FEATURE,
+    RETAIL_RADIUS_NEAR_MILES,
+    RETAIL_RADIUS_FAR_MILES,
+    RETAIL_SCORE_V3_KEYS,
+    GAS_METRIC_TO_V3_FEATURE,
+    GAS_RADIUS_NEAR_MILES,
+    GAS_RADIUS_FAR_MILES,
+    GAS_SCORE_V3_KEYS,
+    is_high_traffic_gas_brand,
 )
 from app.server.models import (
     AnalyseRequest,
@@ -285,7 +299,7 @@ def get_weather_data_by_task(task_id: str):
     Return all 4 weather metrics from the task result: value, unit, quantile_score
     (percentile e.g. 50.1), quantile (Q1–Q4), category (Poor/Fair/Good/Strong), min, max,
     and narrative summary. Category from v3: Q1→Poor, Q2→Fair, Q3→Good, Q4→Strong.
-    Uses fetched data + quantile_result from the same analyse-site run (no extra fetch).
+    No Google or climate API calls — reads only from stored task result (Redis or Celery).
     """
     result = _get_result_or_partial(task_id)
     climate = (result.get("fetched") or {}).get("climate") or {}
@@ -363,6 +377,248 @@ def get_weather_data_by_task(task_id: str):
             "insight": narratives_overall.get("insight"),
             "observation": narratives_overall.get("observation"),
             "conclusion": narratives_overall.get("conclusion"),
+        },
+    }
+
+
+# -----------------------------------------------------------------------------
+# Competition (nearby same-format car washes, 4-mile radius)
+# -----------------------------------------------------------------------------
+
+@router.get("/competition/data-by-task/{task_id}")
+def get_competition_data_by_task(task_id: str):
+    """
+    Return competition: nearby car washes (count + list with details), nearest (distance, brand, rating, count),
+    insight (quantiles / predictions), observation (overall feature). No Google API calls — reads from task result.
+    """
+    result = _get_result_or_partial(task_id)
+    fetched = result.get("fetched") or {}
+    competitors_data = fetched.get("competitors_data") or {}
+    feature_values = result.get("feature_values") or {}
+    if not result.get("fetched") and not result.get("feature_values"):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Task {task_id} has no analysis data yet.",
+        )
+    quantile_result = result.get("quantile_result") or {}
+    feature_analysis = quantile_result.get("feature_analysis") or {}
+    narratives_comp = (result.get("narratives") or {}).get("competition") or {}
+
+    competitors_list = competitors_data.get("competitors") or []
+    count = competitors_data.get("count") or len(competitors_list) or feature_values.get("count", 0)
+    nearest = competitors_list[0] if competitors_list else {}
+    distance_to_nearest = nearest.get("distance_miles") if nearest else feature_values.get("competitor_1_distance_miles")
+    nearest_rating = nearest.get("rating") if nearest else feature_values.get("competitor_1_google_rating")
+    nearest_review_count = nearest.get("user_rating_count") or nearest.get("rating_count") if nearest else feature_values.get("competitor_1_rating_count")
+    fa_quality = feature_analysis.get("competition_quality") or {}
+    nearest_brand_strength = nearest_brand_strength_from_quantile(
+        category=fa_quality.get("category"),
+        wash_q=fa_quality.get("wash_correlated_q") or fa_quality.get("feature_quantile_adj"),
+    )
+
+    percentiles_for_score = []
+    for v3_key in COMPETITION_METRIC_TO_V3_FEATURE.values():
+        fa = feature_analysis.get(v3_key, {})
+        pct = fa.get("adjusted_percentile")
+        if pct is not None:
+            percentiles_for_score.append(float(pct))
+    competition_score = None
+    if percentiles_for_score:
+        competition_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1)
+
+    nearby_list = []
+    for c in competitors_list:
+        nearby_list.append({
+            "name": c.get("name"),
+            "rating": float(c["rating"]) if c.get("rating") is not None else None,
+            "user_rating_count": c.get("user_rating_count") or c.get("rating_count"),
+            "address": c.get("address"),
+            "distance_miles": float(c["distance_miles"]) if c.get("distance_miles") is not None else None,
+            "website": c.get("website"),
+            "primary_type": c.get("primary_type") or c.get("primary_type_display_name") or "Car wash",
+        })
+
+    has_comp_narrative = any(narratives_comp.get(k) for k in ("insight", "observation"))
+    complete = bool(quantile_result and has_comp_narrative)
+
+    return {
+        "task_id": task_id,
+        "address": result.get("address"),
+        "complete": complete,
+        "success": complete,
+        "competition_score": competition_score,
+        "nearby_car_washes": {
+            "count": count,
+            "list": nearby_list,
+        },
+        "nearest": {
+            "distance_miles": float(distance_to_nearest) if distance_to_nearest is not None else None,
+            "brand_strength": nearest_brand_strength,
+            "rating": float(nearest_rating) if nearest_rating is not None else None,
+            "user_rating_count": nearest_review_count,
+        },
+        "overall": {
+            "insight": narratives_comp.get("insight"),
+            "observation": narratives_comp.get("observation"),
+        },
+    }
+
+
+# -----------------------------------------------------------------------------
+# Retail — data-by-task
+# -----------------------------------------------------------------------------
+
+@router.get("/retail/data-by-task/{task_id}")
+def get_retail_data_by_task(task_id: str):
+    """
+    Return retail anchor ecosystem: anchor retailers within 1 and 3 miles (name, type, distance),
+    nearest anchor, retail_score (mean of key percentiles), and LLM narratives.
+    No external API calls — reads from stored task result (single fetch by analyse-site task).
+    """
+    result = _get_result_or_partial(task_id)
+    if not result.get("fetched") and not result.get("feature_values"):
+        raise HTTPException(status_code=422, detail=f"Task {task_id} has no analysis data yet.")
+
+    fetched = result.get("fetched") or {}
+    retail_anchors_data = fetched.get("retail_anchors") or {}
+    quantile_result = result.get("quantile_result") or {}
+    feature_analysis = quantile_result.get("feature_analysis") or {}
+    narratives_retail = (result.get("narratives") or {}).get("retail") or {}
+
+    # Anchors list comes pre-sorted by distance from the fetch
+    anchors = retail_anchors_data.get("anchors") or []
+    within_1 = [a for a in anchors if a.get("distance_miles") is not None and a["distance_miles"] <= RETAIL_RADIUS_NEAR_MILES]
+    within_3 = [a for a in anchors if a.get("distance_miles") is not None and a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES]
+    nearest = anchors[0] if anchors else {}
+
+    # retail_score: mean of key v3 percentiles
+    percentiles_for_score = []
+    for v3_key in RETAIL_SCORE_V3_KEYS:
+        fa = feature_analysis.get(v3_key, {})
+        pct = fa.get("adjusted_percentile")
+        if pct is not None:
+            percentiles_for_score.append(float(pct))
+    retail_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1) if percentiles_for_score else None
+
+    has_narrative = any(narratives_retail.get(k) for k in ("insight", "observation", "conclusion"))
+    complete = bool(quantile_result and has_narrative)
+
+    return {
+        "task_id": task_id,
+        "address": result.get("address"),
+        "complete": complete,
+        "success": complete,
+        "retail_score": retail_score,
+        "nearest": {
+            "name": nearest.get("name"),
+            "distance_miles": nearest.get("distance_miles"),
+            "retail_type": nearest.get("type"),
+        },
+        "retail_anchors": {
+            "within_1_mile": {
+                "count": len(within_1),
+                "list": within_1,
+            },
+            "within_3_miles": {
+                "count": len(within_3),
+                "list": within_3,
+            },
+        },
+        "overall": {
+            "insight": narratives_retail.get("insight"),
+            "observation": narratives_retail.get("observation"),
+            "conclusion": narratives_retail.get("conclusion"),
+        },
+    }
+
+
+# -----------------------------------------------------------------------------
+# Gas — data-by-task
+# -----------------------------------------------------------------------------
+
+@router.get("/gas/data-by-task/{task_id}")
+def get_gas_data_by_task(task_id: str):
+    """
+    Return gas station ecosystem: stations within 1 and 3 miles, nearest gas station
+    (brand, distance, high_traffic_brand), gas_score, and LLM narratives.
+    No external API calls — reads from stored task result.
+    """
+    result = _get_result_or_partial(task_id)
+    if not result.get("fetched") and not result.get("feature_values"):
+        raise HTTPException(status_code=422, detail=f"Task {task_id} has no analysis data yet.")
+
+    fetched = result.get("fetched") or {}
+    quantile_result = result.get("quantile_result") or {}
+    feature_analysis = quantile_result.get("feature_analysis") or {}
+    narratives_gas = (result.get("narratives") or {}).get("gas") or {}
+
+    gas_list_raw = fetched.get("gas_stations") or []
+
+    # Normalise each station (distance_miles, rating, user_rating_count/rating_count, name)
+    stations: list = []
+    for s in gas_list_raw:
+        d = s.get("distance_miles")
+        stations.append({
+            "name": s.get("name"),
+            "distance_miles": float(d) if d is not None else None,
+            "rating": float(s["rating"]) if s.get("rating") is not None else None,
+            "user_rating_count": s.get("user_rating_count") or s.get("rating_count"),
+            "high_traffic_brand": is_high_traffic_gas_brand(s.get("name")),
+        })
+    stations.sort(key=lambda s: (s.get("distance_miles") is None, s.get("distance_miles") or float("inf")))
+
+    within_1 = [s for s in stations if s.get("distance_miles") is not None and s["distance_miles"] <= GAS_RADIUS_NEAR_MILES]
+    within_3 = [s for s in stations if s.get("distance_miles") is not None and s["distance_miles"] <= GAS_RADIUS_FAR_MILES]
+    nearest = stations[0] if stations else {}
+
+    # Fallback nearest details from feature_values if no stations in fetched
+    if not nearest:
+        fv = result.get("feature_values") or {}
+        nearest = {
+            "name": None,
+            "distance_miles": fv.get("distance_from_nearest_gas_station"),
+            "rating": fv.get("nearest_gas_station_rating"),
+            "user_rating_count": fv.get("nearest_gas_station_rating_count"),
+            "high_traffic_brand": False,
+        }
+
+    # ---- gas_score: mean of key v3 percentiles ----
+    percentiles_for_score = []
+    for v3_key in GAS_SCORE_V3_KEYS:
+        fa = feature_analysis.get(v3_key, {})
+        pct = fa.get("adjusted_percentile")
+        if pct is not None:
+            percentiles_for_score.append(float(pct))
+    gas_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1) if percentiles_for_score else None
+
+    has_narrative = any(narratives_gas.get(k) for k in ("insight", "observation", "conclusion"))
+    complete = bool(quantile_result and has_narrative)
+
+    return {
+        "task_id": task_id,
+        "address": result.get("address"),
+        "complete": complete,
+        "success": complete,
+        "gas_score": gas_score,
+        "nearest": {
+            "name": nearest.get("name"),
+            "distance_miles": nearest.get("distance_miles"),
+            "high_traffic_brand": nearest.get("high_traffic_brand", False),
+        },
+        "gas_stations": {
+            "within_1_mile": {
+                "count": len(within_1),
+                "list": within_1,
+            },
+            "within_3_miles": {
+                "count": len(within_3),
+                "list": within_3,
+            },
+        },
+        "overall": {
+            "insight": narratives_gas.get("insight"),
+            "observation": narratives_gas.get("observation"),
+            "conclusion": narratives_gas.get("conclusion"),
         },
     }
 
@@ -592,26 +848,23 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
 
 @router.post("/competitors/dynamics")
 def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
+    """
+    Standalone endpoint: geocodes and fetches competitors from Google (Places + Distance Matrix).
+    For the single-fetch flow use POST /analyze-site then GET /competition/data-by-task/{task_id}.
+    """
     try:
         lat, lon = _geocode(req.address)
         api_key = calib.GOOGLE_MAPS_API_KEY
         if not api_key:
             raise HTTPException(status_code=503, detail="Google Maps API key not configured")
         radius = req.radius_miles if req.radius_miles is not None else 4.0
-        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
+        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else False
         data = get_nearby_competitors(
             api_key, lat, lon,
             radius_miles=radius,
             fetch_place_details=fetch_details,
         )
-        competitors = data.get("competitors") or []
-        if competitors:
-            try:
-                from app.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
-                competitors = classify_competitors(competitors)
-            except Exception as e:
-                logger.warning("Competitor classification skipped: %s", e)
-            data["competitors"] = competitors
+        # Classification disabled to save cost; type uses primary_type_display_name or default.
 
         count = data.get("count", 0)
         feature_scores = enrich_competitors_features_with_categories(competitors, count)
