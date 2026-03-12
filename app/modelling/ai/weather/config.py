@@ -59,3 +59,11 @@ WEATHER_IMPACT_CLASSIFICATION_SUFFIX = {
     "comfortable-washing-days": "days",
     "shutdown-risk-days": "days",
 }
+
+# For summary rationale: "higher" = higher value is better for wash demand; "lower" = lower is better
+WEATHER_METRIC_DIRECTION = {
+    "dirt-trigger-days": "higher",       # more rainy days → more dirt triggers → more washes
+    "dirt-deposit-severity": "lower",    # less snowfall → less shutdown risk
+    "comfortable-washing-days": "higher",
+    "shutdown-risk-days": "lower",       # fewer freezing days → better
+}
