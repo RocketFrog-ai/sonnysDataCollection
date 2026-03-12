@@ -88,6 +88,7 @@ This single endpoint returns all 4 weather metrics (value, scale, quartile, summ
 
 - **complete** — `true` when full data is ready (quantile result + overall narrative); `false` while partial or still building.
 - **success** — `true` when `complete` is true (all data available).
+- **weather_score** — 0–100. Mean of the 4 metrics’ percentiles (each metric weighted 25%): `25% of percentile_1 + 25% of percentile_2 + 25% of percentile_3 + 25% of percentile_4` = mean(pct1, pct2, pct3, pct4). `null` if percentiles are missing.
 - **metrics** — array of 4 objects, each with: `metric_key`, `display_name`, `subtitle`, `value`, `unit`, `min`, `max`, `quantile_score`, `quantile`, `category`, `summary`, `impact_classification` (no business_impact; frontend handles it). Summaries are dynamic (value, percentile vs car wash sites, quartile, category, and whether higher/lower is better).
 - **overall** — `insight` (quantile narrative), `observation`, `conclusion` (overall feature takeaway)
 

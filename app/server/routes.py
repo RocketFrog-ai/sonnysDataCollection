@@ -306,6 +306,7 @@ def get_weather_data_by_task(task_id: str):
     narrative_by_v3_key = {n["feature_key"]: n for n in narratives_feature if isinstance(n, dict) and "feature_key" in n}
 
     metrics = []
+    percentiles_for_score = []  # 0–100 per metric for weather_score (25% weight each)
     for metric_key in WEATHER_METRIC_CONFIG:
         value, unit = get_weather_metric_value_from_climate(climate, metric_key)
         if value is None:
@@ -313,6 +314,8 @@ def get_weather_data_by_task(task_id: str):
         v3_key = WEATHER_METRIC_TO_V3_FEATURE.get(metric_key)
         fa = feature_analysis.get(v3_key, {}) if v3_key else {}
         pct = fa.get("adjusted_percentile")
+        if pct is not None:
+            percentiles_for_score.append(float(pct))
         boundaries = fa.get("quantile_boundaries") or []
         dist_min = fa.get("dist_min")
         dist_max = fa.get("dist_max")
@@ -340,6 +343,10 @@ def get_weather_data_by_task(task_id: str):
             "summary": summary,
             "impact_classification": impact_classification,
         })
+    # weather_score: 25% of each metric's percentile (0–100) → mean of 4 percentiles, range 0–100
+    weather_score = None
+    if percentiles_for_score:
+        weather_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1)
     narratives_overall = (result.get("narratives") or {}).get("overall") or {}
     has_overall = any(narratives_overall.get(k) for k in ("insight", "observation", "conclusion"))
     complete = bool(quantile_result and has_overall)
@@ -348,6 +355,7 @@ def get_weather_data_by_task(task_id: str):
         "address": result.get("address"),
         "complete": complete,
         "success": complete,
+        "weather_score": weather_score,
         "metrics": metrics,
         "overall": {
             "insight": narratives_overall.get("insight"),
