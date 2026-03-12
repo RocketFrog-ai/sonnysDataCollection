@@ -6,3 +6,4 @@
 #   scorer              — API-facing enrichment & scoring helpers
 #   dimension_summary   — per-dimension rationale generation
 #   quantile_predictor  — QuantilePredictorV3 (calibrated RF, v3)
+#   quantile_display    — QUANTILE_TO_CATEGORY (Q1→Poor, Q2→Fair, Q3→Good, Q4→Strong), get_category_for_quantile

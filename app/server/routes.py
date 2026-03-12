@@ -32,6 +32,7 @@ from app.server.config import (
     CELERY_RESULT_BACKEND,
     DIMENSIONS,
     WEATHER_METRIC_CONFIG,
+    WEATHER_METRIC_DISPLAY,
     WEATHER_METRIC_TO_V3_FEATURE,
     get_weather_metric_value_from_climate,
 )
@@ -81,6 +82,7 @@ from app.modelling.ds.dimension_summary import (
     _overall_score_to_category,
     DIMENSION_FEATURE_MAP,
 )
+from app.modelling.ds.quantile_display import get_category_for_quantile
 
 
 # -----------------------------------------------------------------------------
@@ -278,9 +280,10 @@ def get_weather_summary_by_task(task_id: str):
 @router.get("/weather/data-by-task/{task_id}")
 def get_weather_data_by_task(task_id: str):
     """
-    Return all 4 weather metrics from the task result: value, unit, category, min, max,
-    and narrative summary per feature. Uses fetched data + quantile_result + narratives
-    from the same analyse-site run (no extra fetch).
+    Return all 4 weather metrics from the task result: value, unit, quantile_score
+    (percentile e.g. 50.1), quantile (Q1–Q4), category (Poor/Fair/Good/Strong), min, max,
+    and narrative summary. Category from v3: Q1→Poor, Q2→Fair, Q3→Good, Q4→Strong.
+    Uses fetched data + quantile_result from the same analyse-site run (no extra fetch).
     """
     result = _get_result_or_partial(task_id)
     climate = (result.get("fetched") or {}).get("climate") or {}
@@ -300,7 +303,7 @@ def get_weather_data_by_task(task_id: str):
     quantile_result = result.get("quantile_result") or {}
     feature_analysis = quantile_result.get("feature_analysis") or {}
     narratives_feature = (result.get("narratives") or {}).get("feature") or []
-    narrative_by_v3_key = {n["feature_key"]: n for n in narratives_feature}
+    narrative_by_v3_key = {n["feature_key"]: n for n in narratives_feature if isinstance(n, dict) and "feature_key" in n}
 
     metrics = []
     for metric_key in WEATHER_METRIC_CONFIG:
@@ -308,27 +311,48 @@ def get_weather_data_by_task(task_id: str):
         if value is None:
             continue
         v3_key = WEATHER_METRIC_TO_V3_FEATURE.get(metric_key)
-        fa = feature_analysis.get(v3_key) if v3_key else {}
+        fa = feature_analysis.get(v3_key, {}) if v3_key else {}
         pct = fa.get("adjusted_percentile")
-        boundaries = fa.get("quantile_boundaries")
+        boundaries = fa.get("quantile_boundaries") or []
         dist_min = fa.get("dist_min")
         dist_max = fa.get("dist_max")
         wash_q = fa.get("wash_correlated_q")
-        quantile_str = f"Q{int(wash_q)}" if wash_q is not None else None
-        narrative = narrative_by_v3_key.get(v3_key) if v3_key else {}
+        feature_q = fa.get("feature_quantile_adj")
+        quantile_str = f"Q{int(wash_q)}" if wash_q is not None else (f"Q{int(feature_q)}" if feature_q is not None else None)
+        category = get_category_for_quantile(wash_q) or get_category_for_quantile(feature_q)
+        narrative = narrative_by_v3_key.get(v3_key, {}) if v3_key else {}
         summary = narrative.get("summary")
+        business_impact = narrative.get("business_impact")
+        impact_classification = narrative.get("impact_classification")
+        min_val = float(dist_min) if dist_min is not None else (float(boundaries[0]) if len(boundaries) > 0 else None)
+        max_val = float(dist_max) if dist_max is not None else (float(boundaries[-1]) if len(boundaries) > 0 else None)
+        display_name, subtitle = WEATHER_METRIC_DISPLAY.get(metric_key, (metric_key, ""))
         metrics.append({
             "metric_key": metric_key,
-            "value": value,
+            "display_name": display_name,
+            "subtitle": subtitle,
+            "value": float(value),
             "unit": unit,
+            "min": min_val,
+            "max": max_val,
             "quantile_score": float(pct) if pct is not None else None,
             "quantile": quantile_str,
-            "category": fa.get("category"),  # from v3 predictor
-            "min": float(dist_min) if dist_min is not None else (float(boundaries[0]) if boundaries else None),
-            "max": float(dist_max) if dist_max is not None else (float(boundaries[-1]) if boundaries else None),
+            "category": category,
             "summary": summary,
+            "business_impact": business_impact,
+            "impact_classification": impact_classification,
         })
-    return {"task_id": task_id, "address": result.get("address"), "metrics": metrics}
+    narratives_overall = (result.get("narratives") or {}).get("overall") or {}
+    return {
+        "task_id": task_id,
+        "address": result.get("address"),
+        "metrics": metrics,
+        "overall": {
+            "insight": narratives_overall.get("insight"),
+            "observation": narratives_overall.get("observation"),
+            "conclusion": narratives_overall.get("conclusion"),
+        },
+    }
 
 
 # -----------------------------------------------------------------------------

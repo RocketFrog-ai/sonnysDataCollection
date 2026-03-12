@@ -1,5 +1,6 @@
 # app/modelling/ai — narrative generation from quantile result (LLM agents).
-# Stub implementations; wire LLM calls here for per-feature and overall summaries.
+# Feature-wise subfolders: weather/, gas/, retail/, competition/ (add as needed).
+# Top-level narratives.py orchestrates and delegates to each feature.
 
 from app.modelling.ai.narratives import (
     get_feature_narratives,

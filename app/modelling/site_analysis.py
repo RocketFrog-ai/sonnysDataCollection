@@ -3,6 +3,8 @@ Single-fetch site analysis: geocode → fetch all features (weather, gas, retail
 → build feature_values + v3 location_features → run quantile prediction → optional narratives.
 
 Used by the analyse-site Celery task. All feature fetching uses app.features.active.
+When FETCH_WEATHER_ONLY is True, only weather is fetched; gas/stores/retail/competitors
+use random placeholder data so quantile prediction can still run.
 Return value includes feature_values (for existing routes) and quantile_result (v3 output).
 """
 
@@ -10,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import math
+import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Callable, Dict, Optional
 
@@ -22,6 +25,9 @@ from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nea
 from app.features.active.weather.open_meteo import get_default_weather_range
 
 logger = logging.getLogger(__name__)
+
+# When True, only fetch weather; use random data for gas, stores, retailers, competitors (for quantile).
+FETCH_WEATHER_ONLY = True
 
 
 def _geocode(address: str) -> tuple[float, float]:
@@ -36,10 +42,44 @@ def _geocode(address: str) -> tuple[float, float]:
     return float(lat), float(lon)
 
 
+def _random_placeholder_fetched(lat: float, lon: float) -> Dict[str, Any]:
+    """Return placeholder data for gas, stores, retailers, competitors (for quantile when FETCH_WEATHER_ONLY)."""
+    # Seed by lat/lon so same address gives same placeholders
+    rng = random.Random(int(lat * 1e6) + int(lon * 1e6))
+    return {
+        "gas_stations": [
+            {
+                "distance_miles": round(rng.uniform(0.5, 2.5), 2),
+                "rating": round(rng.uniform(3.0, 4.5), 1),
+                "user_rating_count": rng.randint(20, 300),
+                "rating_count": rng.randint(20, 300),
+            }
+        ],
+        "stores": {
+            "distance_from_nearest_costco": round(rng.uniform(0.5, 4.0), 2),
+            "distance_from_nearest_walmart": round(rng.uniform(1.0, 3.0), 2),
+            "distance_from_nearest_target": round(rng.uniform(1.0, 3.0), 2),
+        },
+        "retailers_data": {"retailers": [], "count": 0},
+        "competitors_data": {
+            "count": rng.randint(2, 10),
+            "competitors": [
+                {
+                    "distance_miles": round(rng.uniform(0.3, 2.0), 2),
+                    "rating": round(rng.uniform(3.2, 4.8), 1),
+                    "user_rating_count": rng.randint(10, 400),
+                    "rating_count": rng.randint(10, 400),
+                }
+            ],
+        },
+    }
+
+
 def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
     """
     Fetch all feature data for (lat, lon) using features/active, in parallel.
     Returns a dict with keys: climate, gas_stations, stores, retailers_data, competitors_data.
+    When FETCH_WEATHER_ONLY is True, only climate is fetched; others get random placeholder data.
     """
     start_date, end_date = get_default_weather_range()
     api_key = calib.GOOGLE_MAPS_API_KEY or ""
@@ -47,6 +87,17 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
     def _fetch_climate() -> Dict[str, Any]:
         out = get_climate(lat, lon, start_date=start_date, end_date=end_date)
         return out if out and not out.get("error") else {}
+
+    if FETCH_WEATHER_ONLY:
+        climate = _fetch_climate()
+        placeholders = _random_placeholder_fetched(lat, lon)
+        return {
+            "climate": climate,
+            "gas_stations": placeholders["gas_stations"],
+            "stores": placeholders["stores"],
+            "retailers_data": placeholders["retailers_data"],
+            "competitors_data": placeholders["competitors_data"],
+        }
 
     def _fetch_gas() -> list:
         if not api_key:
@@ -297,9 +348,12 @@ def run_site_analysis(
     if run_narratives and quantile_result:
         try:
             from app.modelling.ai import get_feature_narratives, get_overall_narrative
+            feature_narratives = get_feature_narratives(quantile_result, feature_values)
             result["narratives"] = {
-                "feature": get_feature_narratives(quantile_result, feature_values),
-                "overall": get_overall_narrative(quantile_result, feature_values),
+                "feature": feature_narratives,
+                "overall": get_overall_narrative(
+                    quantile_result, feature_values, feature_narratives=feature_narratives
+                ),
             }
             if set_progress:
                 try:

@@ -41,10 +41,18 @@ WeatherMetricKey = Literal[
 ]
 
 WEATHER_METRIC_CONFIG: dict = {
-    "dirt-trigger-days": ("rainy_days", "days/year", "Rainy Days + Snowy Days (snowy_days to be added)"),
-    "dirt-deposit-severity": ("total_snowfall_cm", "cm/year", "Total Annual Snowfall"),
-    "comfortable-washing-days": ("days_pleasant_temp", "days/year", "Days 60–80°F (15–26°C)"),
+    "dirt-trigger-days": ("rainy_days", "days/year", "Rainy Days"),
+    "dirt-deposit-severity": ("total_snowfall_cm", "cm snowfall/year", "Total Annual Snowfall"),
+    "comfortable-washing-days": ("days_pleasant_temp", "days/year", "Comfortable Washing Days"),
     "shutdown-risk-days": ("days_below_freezing", "days/year", "Days Below Freezing (< 32°F)"),
+}
+
+# Display label for API responses: (display_name, subtitle)
+WEATHER_METRIC_DISPLAY: dict = {
+    "dirt-trigger-days": ("Dirt Trigger Days Window", "Rainy Days"),
+    "dirt-deposit-severity": ("Dirt Deposit Severity", "Total Annual Snowfall"),
+    "comfortable-washing-days": ("Comfortable Washing Days", "Days with 60–80°F temperatures"),
+    "shutdown-risk-days": ("Shutdown Risk Days", "Days Below Freezing (< 32°F)"),
 }
 
 # Map weather metric_key (API) → v3 feature_analysis key (quantile_result)

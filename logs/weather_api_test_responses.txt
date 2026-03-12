@@ -1,0 +1,1901 @@
+======================================================================
+Weather API test — 2026-03-12T04:28:50.754884
+Base URL: http://localhost:8001/v1
+======================================================================
+
+--- 1. POST /analyze-site ---
+{
+  "task_id": "aa09b159-eaf2-4269-b75a-5e60f26dc655",
+  "status": "PENDING",
+  "message": "Site successfully submitted for Analysis"
+}
+
+Task ID: aa09b159-eaf2-4269-b75a-5e60f26dc655
+
+--- 2. Poll GET /task/{task_id} ---
+  [0s] status=PENDING
+  [3s] status=STARTED
+  [6s] status=STARTED
+  [9s] status=STARTED
+  [12s] status=STARTED
+  [15s] status=STARTED
+  [18s] status=STARTED
+  [21s] status=STARTED
+  [24s] status=STARTED
+  [27s] status=STARTED
+  [30s] status=STARTED
+  [33s] status=STARTED
+  [36s] status=STARTED
+  [39s] status=STARTED
+  [42s] status=STARTED
+  [45s] status=SUCCESS
+  Task completed.
+
+--- 3. GET /result/{task_id} ---
+{
+  "task_id": "aa09b159-eaf2-4269-b75a-5e60f26dc655",
+  "status": "success",
+  "result": {
+    "address": "1600 Amphitheatre Parkway, Mountain View, CA",
+    "lat": 37.4221599,
+    "lon": -122.0842744,
+    "feature_values": {
+      "total_precipitation_mm": 516.1999999999999,
+      "rainy_days": 54,
+      "total_snowfall_cm": 0.0,
+      "days_below_freezing": 0,
+      "total_sunshine_hours": 3818.4586638888886,
+      "days_pleasant_temp": 223,
+      "avg_daily_max_windspeed_ms": 14.320218579234972,
+      "distance_from_nearest_gas_station": 1.18,
+      "nearest_gas_station_rating": 3.4,
+      "nearest_gas_station_rating_count": 109,
+      "distance_from_nearest_costco": 0.57,
+      "distance_from_nearest_walmart": 2.52,
+      "distance_from_nearest_target": 1.88,
+      "other_grocery_count_1mile": 0,
+      "count_food_joints_0_5miles": 0,
+      "count": 3,
+      "competitor_1_distance_miles": 1.27,
+      "competitor_1_google_rating": 3.4,
+      "competitor_1_rating_count": 290
+    },
+    "fetched": {
+      "climate": {
+        "total_precipitation_mm": 516.1999999999999,
+        "rainy_days": 54,
+        "snowy_days": 0,
+        "total_snowfall_cm": 0.0,
+        "days_below_freezing": 0,
+        "total_sunshine_hours": 3818.4586638888886,
+        "days_pleasant_temp": 223,
+        "avg_daily_max_windspeed_ms": 14.320218579234972
+      },
+      "gas_stations": [
+        {
+          "distance_miles": 1.18,
+          "rating": 3.4,
+          "user_rating_count": 109,
+          "rating_count": 264
+        }
+      ],
+      "stores": {
+        "distance_from_nearest_costco": 0.57,
+        "distance_from_nearest_walmart": 2.52,
+        "distance_from_nearest_target": 1.88
+      },
+      "retailers_data": {
+        "retailers": [],
+        "count": 0
+      },
+      "competitors_data": {
+        "count": 3,
+        "competitors": [
+          {
+            "distance_miles": 1.27,
+            "rating": 3.4,
+            "user_rating_count": 290,
+            "rating_count": 135
+          }
+        ]
+      }
+    },
+    "quantile_result": {
+      "predicted_wash_quantile": 4,
+      "predicted_wash_quantile_label": "Q4 (Top 25%)",
+      "predicted_wash_tier": "High Performer",
+      "predicted_wash_range": {
+        "min": 174047,
+        "max": 478789,
+        "label": "174,047 \u2013 478,789 cars/yr"
+      },
+      "quantile_probabilities": {
+        "1": 0.0,
+        "2": 0.0,
+        "3": 0.227,
+        "4": 0.773
+      },
+      "wash_count_distribution": {
+        "1": {
+          "range": "47 \u2013 57,846",
+          "min": 47,
+          "max": 57846
+        },
+        "2": {
+          "range": "57,846 \u2013 107,252",
+          "min": 57846,
+          "max": 107252
+        },
+        "3": {
+          "range": "107,252 \u2013 174,047",
+          "min": 107252,
+          "max": 174047
+        },
+        "4": {
+          "range": "174,047 \u2013 478,789",
+          "min": 174047,
+          "max": 478789
+        }
+      },
+      "feature_analysis": {
+        "weather_total_precipitation_mm": {
+          "value": 516.1999999999999,
+          "imputed": false,
+          "label": "Annual Precipitation (mm)",
+          "direction": "neutral",
+          "signal": 0.007,
+          "raw_percentile": 11.3,
+          "adjusted_percentile": 11.3,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 1057.5,
+            "2": 1092.0500000000002,
+            "3": 1095.5500000000002,
+            "4": 1069.15
+          },
+          "wash_q_q4_median": 1069.15,
+          "wash_q_low_signal": true,
+          "distribution_shape": "left-skewed",
+          "dist_min": 127.7,
+          "dist_max": 1753.8,
+          "dist_median": 1080.5,
+          "quantile_boundaries": [
+            127.7,
+            879.9,
+            1080.5,
+            1221.2,
+            1753.8
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0329
+        },
+        "weather_rainy_days": {
+          "value": 54.0,
+          "imputed": false,
+          "label": "Rainy Days / Year",
+          "direction": "higher",
+          "signal": 0.085,
+          "raw_percentile": 10.3,
+          "adjusted_percentile": 10.3,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": 1,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 117.0,
+            "2": 117.0,
+            "3": 120.0,
+            "4": 121.0
+          },
+          "wash_q_q4_median": 121.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "left-skewed",
+          "dist_min": 21.0,
+          "dist_max": 197.0,
+          "dist_median": 119.0,
+          "quantile_boundaries": [
+            21.0,
+            103.0,
+            119.0,
+            137.0,
+            197.0
+          ],
+          "shift_to_next_q_delta": 49.0,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.0264
+        },
+        "weather_total_snowfall_cm": {
+          "value": 0.0,
+          "imputed": false,
+          "label": "Annual Snowfall (cm)",
+          "direction": "lower",
+          "signal": 0.087,
+          "raw_percentile": 10.1,
+          "adjusted_percentile": 89.9,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": true,
+          "wash_q_group_medians": {
+            "1": 15.96,
+            "2": 12.11,
+            "3": 10.045,
+            "4": 9.52
+          },
+          "wash_q_q4_median": 9.52,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.0,
+          "dist_max": 182.07,
+          "dist_median": 10.64,
+          "quantile_boundaries": [
+            0.0,
+            1.89,
+            10.64,
+            42.63,
+            182.07
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0235
+        },
+        "weather_days_below_freezing": {
+          "value": 0.0,
+          "imputed": false,
+          "label": "Days Below Freezing",
+          "direction": "lower",
+          "signal": 0.061,
+          "raw_percentile": 10.4,
+          "adjusted_percentile": 89.6,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 50.0,
+            "2": 44.0,
+            "3": 43.0,
+            "4": 46.0
+          },
+          "wash_q_q4_median": 46.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.0,
+          "dist_max": 193.0,
+          "dist_median": 44.0,
+          "quantile_boundaries": [
+            0.0,
+            9.0,
+            44.0,
+            81.0,
+            193.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0235
+        },
+        "weather_total_sunshine_hours": {
+          "value": 3818.4586638888886,
+          "imputed": false,
+          "label": "Annual Sunshine Hours",
+          "direction": "neutral",
+          "signal": 0.048,
+          "raw_percentile": 96.9,
+          "adjusted_percentile": 96.9,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 3330.218383,
+            "2": 3327.4007735,
+            "3": 3336.5081585,
+            "4": 3309.306343
+          },
+          "wash_q_q4_median": 3309.306343,
+          "wash_q_low_signal": true,
+          "distribution_shape": "symmetric",
+          "dist_min": 2773.362478,
+          "dist_max": 3941.265747,
+          "dist_median": 3325.986792,
+          "quantile_boundaries": [
+            2773.362478,
+            3135.082978,
+            3325.986792,
+            3573.669258,
+            3941.265747
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0278
+        },
+        "weather_days_pleasant_temp": {
+          "value": 223.0,
+          "imputed": false,
+          "label": "Pleasant Temp Days",
+          "direction": "higher",
+          "signal": 0.139,
+          "raw_percentile": 95.8,
+          "adjusted_percentile": 95.8,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": true,
+          "wash_q_group_medians": {
+            "1": 140.0,
+            "2": 145.5,
+            "3": 149.0,
+            "4": 154.0
+          },
+          "wash_q_q4_median": 154.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 36.0,
+          "dist_max": 270.0,
+          "dist_median": 149.0,
+          "quantile_boundaries": [
+            36.0,
+            133.0,
+            149.0,
+            164.0,
+            270.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0261
+        },
+        "weather_avg_daily_max_windspeed_ms": {
+          "value": 14.320218579234972,
+          "imputed": false,
+          "label": "Avg Max Wind Speed (m/s)",
+          "direction": "lower",
+          "signal": 0.059,
+          "raw_percentile": 9.9,
+          "adjusted_percentile": 90.1,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 17.31557377,
+            "2": 16.86953552,
+            "3": 16.914754095,
+            "4": 16.90191257
+          },
+          "wash_q_q4_median": 16.90191257,
+          "wash_q_low_signal": true,
+          "distribution_shape": "right-skewed",
+          "dist_min": 10.27978142,
+          "dist_max": 34.76885246,
+          "dist_median": 16.9784153,
+          "quantile_boundaries": [
+            10.27978142,
+            15.6795082,
+            16.9784153,
+            18.52568306,
+            34.76885246
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0314
+        },
+        "nearest_gas_station_distance_miles": {
+          "value": 1.18,
+          "imputed": false,
+          "label": "Nearest Gas Station (miles)",
+          "direction": "neutral",
+          "signal": 0.028,
+          "raw_percentile": 96.3,
+          "adjusted_percentile": 96.3,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 0.28,
+            "2": 0.22,
+            "3": 0.235,
+            "4": 0.28
+          },
+          "wash_q_q4_median": 0.28,
+          "wash_q_low_signal": true,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.01,
+          "dist_max": 21.23,
+          "dist_median": 0.25,
+          "quantile_boundaries": [
+            0.01,
+            0.13,
+            0.25,
+            0.4475,
+            21.23
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0283
+        },
+        "nearest_gas_station_rating": {
+          "value": 3.4,
+          "imputed": false,
+          "label": "Gas Station Rating",
+          "direction": "higher",
+          "signal": 0.112,
+          "raw_percentile": 21.6,
+          "adjusted_percentile": 21.6,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": 1,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 3.8,
+            "2": 3.9,
+            "3": 3.9,
+            "4": 4.0
+          },
+          "wash_q_q4_median": 4.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "left-skewed",
+          "dist_min": 1.0,
+          "dist_max": 5.0,
+          "dist_median": 3.9,
+          "quantile_boundaries": [
+            1.0,
+            3.5,
+            3.9,
+            4.2,
+            5.0
+          ],
+          "shift_to_next_q_delta": 0.1,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.0239
+        },
+        "nearest_gas_station_rating_count": {
+          "value": 109.0,
+          "imputed": false,
+          "label": "Gas Station Review Count",
+          "direction": "neutral",
+          "signal": 0.032,
+          "raw_percentile": 75.2,
+          "adjusted_percentile": 75.2,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 50.0,
+            "2": 46.5,
+            "3": 49.0,
+            "4": 57.0
+          },
+          "wash_q_q4_median": 57.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "right-skewed",
+          "dist_min": 1.0,
+          "dist_max": 2014.0,
+          "dist_median": 51.0,
+          "quantile_boundaries": [
+            1.0,
+            18.0,
+            51.0,
+            108.25,
+            2014.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0285
+        },
+        "competitors_count_4miles": {
+          "value": 3.0,
+          "imputed": false,
+          "label": "Competitors within 4 Miles",
+          "direction": "neutral",
+          "signal": 0.035,
+          "raw_percentile": 11.7,
+          "adjusted_percentile": 11.7,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 9.0,
+            "2": 10.0,
+            "3": 10.0,
+            "4": 9.0
+          },
+          "wash_q_q4_median": 9.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "symmetric",
+          "dist_min": 0.0,
+          "dist_max": 15.0,
+          "dist_median": 9.0,
+          "quantile_boundaries": [
+            0.0,
+            6.0,
+            9.0,
+            12.0,
+            15.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0194
+        },
+        "competitor_1_google_rating": {
+          "value": 3.4,
+          "imputed": false,
+          "label": "Nearest Competitor Rating",
+          "direction": "neutral",
+          "signal": 0.028,
+          "raw_percentile": 12.0,
+          "adjusted_percentile": 12.0,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 4.2,
+            "2": 4.4,
+            "3": 4.2,
+            "4": 4.4
+          },
+          "wash_q_q4_median": 4.4,
+          "wash_q_low_signal": true,
+          "distribution_shape": "left-skewed",
+          "dist_min": 1.0,
+          "dist_max": 5.0,
+          "dist_median": 4.3,
+          "quantile_boundaries": [
+            1.0,
+            3.9,
+            4.3,
+            4.7,
+            5.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0187
+        },
+        "competitor_1_distance_miles": {
+          "value": 1.27,
+          "imputed": false,
+          "label": "Nearest Competitor (miles)",
+          "direction": "lower",
+          "signal": 0.083,
+          "raw_percentile": 82.5,
+          "adjusted_percentile": 17.5,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": 1,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 0.69,
+            "2": 0.6,
+            "3": 0.44,
+            "4": 0.51
+          },
+          "wash_q_q4_median": 0.51,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.08,
+          "dist_max": 3.86,
+          "dist_median": 0.56,
+          "quantile_boundaries": [
+            0.08,
+            0.23,
+            0.56,
+            0.98,
+            3.86
+          ],
+          "shift_to_next_q_delta": 0.29,
+          "shift_to_next_q_direction": "decrease",
+          "importance": 0.0289
+        },
+        "competitor_1_rating_count": {
+          "value": 290.0,
+          "imputed": false,
+          "label": "Competitor Review Count",
+          "direction": "higher",
+          "signal": 0.12,
+          "raw_percentile": 73.1,
+          "adjusted_percentile": 73.1,
+          "feature_quantile_raw": 3,
+          "feature_quantile_adj": 3,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": true,
+          "wash_q_group_medians": {
+            "1": 99.0,
+            "2": 112.0,
+            "3": 95.0,
+            "4": 220.5
+          },
+          "wash_q_q4_median": 220.5,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 1.0,
+          "dist_max": 6982.0,
+          "dist_median": 126.0,
+          "quantile_boundaries": [
+            1.0,
+            30.0,
+            126.0,
+            313.75,
+            6982.0
+          ],
+          "shift_to_next_q_delta": 23.75,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.0347
+        },
+        "distance_nearest_walmart(5 mile)": {
+          "value": 2.52,
+          "imputed": false,
+          "label": "Distance to Walmart (mi)",
+          "direction": "lower",
+          "signal": 0.088,
+          "raw_percentile": 77.2,
+          "adjusted_percentile": 22.8,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": 1,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 1.98,
+            "2": 1.2,
+            "3": 1.51,
+            "4": 1.57
+          },
+          "wash_q_q4_median": 1.57,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.03,
+          "dist_max": 4.98,
+          "dist_median": 1.52,
+          "quantile_boundaries": [
+            0.03,
+            0.61,
+            1.52,
+            2.43,
+            4.98
+          ],
+          "shift_to_next_q_delta": 0.09,
+          "shift_to_next_q_direction": "decrease",
+          "importance": 0.039
+        },
+        "distance_nearest_target (5 mile)": {
+          "value": 1.88,
+          "imputed": false,
+          "label": "Distance to Target (mi)",
+          "direction": "lower",
+          "signal": 0.089,
+          "raw_percentile": 44.8,
+          "adjusted_percentile": 55.2,
+          "feature_quantile_raw": 2,
+          "feature_quantile_adj": 3,
+          "wash_correlated_q": 2,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 2.1950000000000003,
+            "2": 2.085,
+            "3": 2.14,
+            "4": 1.59
+          },
+          "wash_q_q4_median": 1.59,
+          "wash_q_low_signal": false,
+          "distribution_shape": "symmetric",
+          "dist_min": 0.03,
+          "dist_max": 4.83,
+          "dist_median": 2.01,
+          "quantile_boundaries": [
+            0.03,
+            1.11,
+            2.01,
+            3.17,
+            4.83
+          ],
+          "shift_to_next_q_delta": 0.77,
+          "shift_to_next_q_direction": "decrease",
+          "importance": 0.0316
+        },
+        "other_grocery_count_1mile": {
+          "value": 0.0,
+          "imputed": false,
+          "label": "Grocery Stores within 1 Mile",
+          "direction": "neutral",
+          "signal": 0.022,
+          "raw_percentile": 0.0,
+          "adjusted_percentile": 0.0,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 2.0,
+            "2": 2.0,
+            "3": 2.0,
+            "4": 2.0
+          },
+          "wash_q_q4_median": 2.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "right-skewed",
+          "dist_min": 1.0,
+          "dist_max": 10.0,
+          "dist_median": 2.0,
+          "quantile_boundaries": [
+            1.0,
+            1.0,
+            2.0,
+            4.0,
+            10.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0151
+        },
+        "count_food_joints_0_5miles (0.5 mile)": {
+          "value": 0.0,
+          "imputed": false,
+          "label": "Food Joints within 0.5 Mile",
+          "direction": "neutral",
+          "signal": 0.063,
+          "raw_percentile": 3.2,
+          "adjusted_percentile": 3.2,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 5.0,
+            "2": 7.0,
+            "3": 7.0,
+            "4": 6.0
+          },
+          "wash_q_q4_median": 6.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.0,
+          "dist_max": 20.0,
+          "dist_median": 6.0,
+          "quantile_boundaries": [
+            0.0,
+            3.0,
+            6.0,
+            10.0,
+            20.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0234
+        },
+        "age_on_30_sep_25": {
+          "value": 3.6,
+          "imputed": true,
+          "label": "Site Age (years)",
+          "direction": "lower",
+          "signal": 0.335,
+          "raw_percentile": 42.7,
+          "adjusted_percentile": 57.3,
+          "feature_quantile_raw": 2,
+          "feature_quantile_adj": 3,
+          "wash_correlated_q": 3,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 5.0,
+            "2": 4.0,
+            "3": 3.0,
+            "4": 3.0
+          },
+          "wash_q_q4_median": 3.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 2.0,
+          "dist_max": 21.0,
+          "dist_median": 3.0,
+          "quantile_boundaries": [
+            2.0,
+            2.0,
+            3.0,
+            6.0,
+            21.0
+          ],
+          "shift_to_next_q_delta": 1.0,
+          "shift_to_next_q_direction": "decrease",
+          "importance": 0.0425
+        },
+        "region_enc": {
+          "value": 4.0,
+          "imputed": true,
+          "label": "Region",
+          "direction": "neutral",
+          "signal": 0.05,
+          "raw_percentile": 53.5,
+          "adjusted_percentile": 53.5,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 2.0,
+            "2": 2.0,
+            "3": 2.0,
+            "4": 2.0
+          },
+          "wash_q_q4_median": 2.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "discrete",
+          "dist_min": 0.0,
+          "dist_max": 4.0,
+          "dist_median": 2.0,
+          "quantile_boundaries": [
+            0.0,
+            2.0,
+            2.0,
+            2.0,
+            4.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0036
+        },
+        "state_enc": {
+          "value": 2.8,
+          "imputed": true,
+          "label": "State",
+          "direction": "neutral",
+          "signal": 0.06,
+          "raw_percentile": 49.6,
+          "adjusted_percentile": 49.6,
+          "feature_quantile_raw": 2,
+          "feature_quantile_adj": 2,
+          "wash_correlated_q": null,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 21.0,
+            "2": 15.0,
+            "3": 20.0,
+            "4": 19.0
+          },
+          "wash_q_q4_median": 19.0,
+          "wash_q_low_signal": true,
+          "distribution_shape": "symmetric",
+          "dist_min": 0.0,
+          "dist_max": 45.0,
+          "dist_median": 18.0,
+          "quantile_boundaries": [
+            0.0,
+            7.0,
+            18.0,
+            34.0,
+            45.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0204
+        },
+        "costco_enc": {
+          "value": 0.57,
+          "imputed": false,
+          "label": "Costco Distance (mi, 99=none)",
+          "direction": "lower",
+          "signal": 0.073,
+          "raw_percentile": 2.7,
+          "adjusted_percentile": 97.3,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": true,
+          "wash_q_group_medians": {
+            "1": 99.0,
+            "2": 99.0,
+            "3": 99.0,
+            "4": 99.0
+          },
+          "wash_q_q4_median": 99.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "left-skewed",
+          "dist_min": 0.05,
+          "dist_max": 99.0,
+          "dist_median": 99.0,
+          "quantile_boundaries": [
+            0.05,
+            3.395,
+            99.0,
+            99.0,
+            99.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0118
+        },
+        "tunnel_count": {
+          "value": 2.6,
+          "imputed": true,
+          "label": "Tunnel Count (proxy)",
+          "direction": "higher",
+          "signal": 0.891,
+          "raw_percentile": 27.9,
+          "adjusted_percentile": 27.9,
+          "feature_quantile_raw": 1,
+          "feature_quantile_adj": 1,
+          "wash_correlated_q": 1,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 1.0,
+            "2": 1.0,
+            "3": 2.0,
+            "4": 2.0
+          },
+          "wash_q_q4_median": 2.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "discrete",
+          "dist_min": 1.0,
+          "dist_max": 4.0,
+          "dist_median": 1.0,
+          "quantile_boundaries": [
+            1.0,
+            1.0,
+            1.0,
+            2.0,
+            4.0
+          ],
+          "shift_to_next_q_delta": 0.0,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.3187
+        },
+        "competition_quality": {
+          "value": 19.289299108383076,
+          "imputed": false,
+          "label": "Competition Quality Score",
+          "direction": "higher",
+          "signal": 0.13,
+          "raw_percentile": 53.9,
+          "adjusted_percentile": 53.9,
+          "feature_quantile_raw": 3,
+          "feature_quantile_adj": 3,
+          "wash_correlated_q": 1,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 18.46048206736504,
+            "2": 18.46048206736504,
+            "3": 18.46048206736504,
+            "4": 20.47197524966702
+          },
+          "wash_q_q4_median": 20.47197524966702,
+          "wash_q_low_signal": false,
+          "distribution_shape": "symmetric",
+          "dist_min": 0.6931471805599453,
+          "dist_max": 43.371046123945575,
+          "dist_median": 18.46048206736504,
+          "quantile_boundaries": [
+            0.6931471805599453,
+            15.09734550105851,
+            18.46048206736504,
+            24.04261676497735,
+            43.371046123945575
+          ],
+          "shift_to_next_q_delta": 4.75,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.0313
+        },
+        "gas_station_draw": {
+          "value": 15.981633243694215,
+          "imputed": false,
+          "label": "Gas Station Draw Score",
+          "direction": "higher",
+          "signal": 0.12,
+          "raw_percentile": 55.4,
+          "adjusted_percentile": 55.4,
+          "feature_quantile_raw": 3,
+          "feature_quantile_adj": 3,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": false,
+          "wash_q_group_medians": {
+            "1": 15.226649959081278,
+            "2": 14.749740487135183,
+            "3": 14.835225431234136,
+            "4": 16.513015367929313
+          },
+          "wash_q_q4_median": 16.513015367929313,
+          "wash_q_low_signal": false,
+          "distribution_shape": "symmetric",
+          "dist_min": 0.6931471805599453,
+          "dist_max": 32.71601023983737,
+          "dist_median": 15.31296745622112,
+          "quantile_boundaries": [
+            0.6931471805599453,
+            9.88591650272817,
+            15.31296745622112,
+            18.560516006568278,
+            32.71601023983737
+          ],
+          "shift_to_next_q_delta": 2.58,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.0284
+        },
+        "retail_proximity": {
+          "value": 0.2222222222222222,
+          "imputed": false,
+          "label": "Retail Proximity Score",
+          "direction": "higher",
+          "signal": 0.095,
+          "raw_percentile": 60.2,
+          "adjusted_percentile": 60.2,
+          "feature_quantile_raw": 3,
+          "feature_quantile_adj": 3,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": true,
+          "wash_q_group_medians": {
+            "1": 0.17889087656529518,
+            "2": 0.19704452623895385,
+            "3": 0.19193857965451055,
+            "4": 0.19193857965451055
+          },
+          "wash_q_q4_median": 0.19193857965451055,
+          "wash_q_low_signal": false,
+          "distribution_shape": "right-skewed",
+          "dist_min": 0.09900990099009901,
+          "dist_max": 1.8867924528301885,
+          "dist_median": 0.19193857965451055,
+          "quantile_boundaries": [
+            0.09900990099009901,
+            0.15111453396163463,
+            0.19193857965451055,
+            0.2976190476190476,
+            1.8867924528301885
+          ],
+          "shift_to_next_q_delta": 0.08,
+          "shift_to_next_q_direction": "increase",
+          "importance": 0.0318
+        },
+        "weather_drive_score": {
+          "value": 223.0,
+          "imputed": false,
+          "label": "Weather Drive Score",
+          "direction": "higher",
+          "signal": 0.115,
+          "raw_percentile": 96.1,
+          "adjusted_percentile": 96.1,
+          "feature_quantile_raw": 4,
+          "feature_quantile_adj": 4,
+          "wash_correlated_q": 4,
+          "wash_correlated_exceeds_q4": true,
+          "wash_q_group_medians": {
+            "1": 100.0,
+            "2": 107.5,
+            "3": 114.5,
+            "4": 111.0
+          },
+          "wash_q_q4_median": 111.0,
+          "wash_q_low_signal": false,
+          "distribution_shape": "symmetric",
+          "dist_min": -101.0,
+          "dist_max": 270.0,
+          "dist_median": 109.5,
+          "quantile_boundaries": [
+            -101.0,
+            56.0,
+            109.5,
+            137.0,
+            270.0
+          ],
+          "shift_to_next_q_delta": null,
+          "shift_to_next_q_direction": null,
+          "importance": 0.0284
+        }
+      },
+      "shift_opportunities": [],
+      "profile_comparison": {
+        "weather_total_precipitation_mm": {
+          "Q1": {
+            "profile_median": 1057.5,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 1092.05,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 1095.55,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 1069.15,
+            "alignment": "near"
+          }
+        },
+        "weather_rainy_days": {
+          "Q1": {
+            "profile_median": 117.0,
+            "alignment": "below"
+          },
+          "Q2": {
+            "profile_median": 117.0,
+            "alignment": "below"
+          },
+          "Q3": {
+            "profile_median": 120.0,
+            "alignment": "below"
+          },
+          "Q4": {
+            "profile_median": 121.0,
+            "alignment": "below"
+          }
+        },
+        "weather_total_snowfall_cm": {
+          "Q1": {
+            "profile_median": 15.96,
+            "alignment": "better"
+          },
+          "Q2": {
+            "profile_median": 12.11,
+            "alignment": "better"
+          },
+          "Q3": {
+            "profile_median": 10.04,
+            "alignment": "better"
+          },
+          "Q4": {
+            "profile_median": 9.52,
+            "alignment": "better"
+          }
+        },
+        "weather_days_below_freezing": {
+          "Q1": {
+            "profile_median": 50.0,
+            "alignment": "better"
+          },
+          "Q2": {
+            "profile_median": 44.0,
+            "alignment": "better"
+          },
+          "Q3": {
+            "profile_median": 43.0,
+            "alignment": "better"
+          },
+          "Q4": {
+            "profile_median": 46.0,
+            "alignment": "better"
+          }
+        },
+        "weather_total_sunshine_hours": {
+          "Q1": {
+            "profile_median": 3330.22,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 3327.4,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 3336.51,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 3309.31,
+            "alignment": "near"
+          }
+        },
+        "weather_days_pleasant_temp": {
+          "Q1": {
+            "profile_median": 140.0,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 145.5,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 149.0,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 154.0,
+            "alignment": "above"
+          }
+        },
+        "weather_avg_daily_max_windspeed_ms": {
+          "Q1": {
+            "profile_median": 17.32,
+            "alignment": "better"
+          },
+          "Q2": {
+            "profile_median": 16.87,
+            "alignment": "better"
+          },
+          "Q3": {
+            "profile_median": 16.91,
+            "alignment": "better"
+          },
+          "Q4": {
+            "profile_median": 16.9,
+            "alignment": "better"
+          }
+        },
+        "nearest_gas_station_distance_miles": {
+          "Q1": {
+            "profile_median": 0.28,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 0.22,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 0.23,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 0.28,
+            "alignment": "near"
+          }
+        },
+        "nearest_gas_station_rating": {
+          "Q1": {
+            "profile_median": 3.8,
+            "alignment": "below"
+          },
+          "Q2": {
+            "profile_median": 3.9,
+            "alignment": "below"
+          },
+          "Q3": {
+            "profile_median": 3.9,
+            "alignment": "below"
+          },
+          "Q4": {
+            "profile_median": 4.0,
+            "alignment": "below"
+          }
+        },
+        "nearest_gas_station_rating_count": {
+          "Q1": {
+            "profile_median": 50.0,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 46.5,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 49.0,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 57.0,
+            "alignment": "near"
+          }
+        },
+        "competitors_count_4miles": {
+          "Q1": {
+            "profile_median": 9.0,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 10.0,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 10.0,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 9.0,
+            "alignment": "near"
+          }
+        },
+        "competitor_1_google_rating": {
+          "Q1": {
+            "profile_median": 4.2,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 4.4,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 4.2,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 4.4,
+            "alignment": "near"
+          }
+        },
+        "competitor_1_distance_miles": {
+          "Q1": {
+            "profile_median": 0.69,
+            "alignment": "worse"
+          },
+          "Q2": {
+            "profile_median": 0.6,
+            "alignment": "worse"
+          },
+          "Q3": {
+            "profile_median": 0.44,
+            "alignment": "worse"
+          },
+          "Q4": {
+            "profile_median": 0.51,
+            "alignment": "worse"
+          }
+        },
+        "competitor_1_rating_count": {
+          "Q1": {
+            "profile_median": 99.0,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 112.0,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 95.0,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 220.5,
+            "alignment": "above"
+          }
+        },
+        "distance_nearest_walmart(5 mile)": {
+          "Q1": {
+            "profile_median": 1.98,
+            "alignment": "worse"
+          },
+          "Q2": {
+            "profile_median": 1.2,
+            "alignment": "worse"
+          },
+          "Q3": {
+            "profile_median": 1.51,
+            "alignment": "worse"
+          },
+          "Q4": {
+            "profile_median": 1.57,
+            "alignment": "worse"
+          }
+        },
+        "distance_nearest_target (5 mile)": {
+          "Q1": {
+            "profile_median": 2.2,
+            "alignment": "better"
+          },
+          "Q2": {
+            "profile_median": 2.08,
+            "alignment": "better"
+          },
+          "Q3": {
+            "profile_median": 2.14,
+            "alignment": "better"
+          },
+          "Q4": {
+            "profile_median": 1.59,
+            "alignment": "worse"
+          }
+        },
+        "other_grocery_count_1mile": {
+          "Q1": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          }
+        },
+        "count_food_joints_0_5miles (0.5 mile)": {
+          "Q1": {
+            "profile_median": 5.0,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 7.0,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 7.0,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 6.0,
+            "alignment": "near"
+          }
+        },
+        "age_on_30_sep_25": {
+          "Q1": {
+            "profile_median": 5.0,
+            "alignment": "better"
+          },
+          "Q2": {
+            "profile_median": 4.0,
+            "alignment": "better"
+          },
+          "Q3": {
+            "profile_median": 3.0,
+            "alignment": "worse"
+          },
+          "Q4": {
+            "profile_median": 3.0,
+            "alignment": "worse"
+          }
+        },
+        "region_enc": {
+          "Q1": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 2.0,
+            "alignment": "near"
+          }
+        },
+        "state_enc": {
+          "Q1": {
+            "profile_median": 21.0,
+            "alignment": "near"
+          },
+          "Q2": {
+            "profile_median": 15.0,
+            "alignment": "near"
+          },
+          "Q3": {
+            "profile_median": 20.0,
+            "alignment": "near"
+          },
+          "Q4": {
+            "profile_median": 19.0,
+            "alignment": "near"
+          }
+        },
+        "costco_enc": {
+          "Q1": {
+            "profile_median": 99.0,
+            "alignment": "better"
+          },
+          "Q2": {
+            "profile_median": 99.0,
+            "alignment": "better"
+          },
+          "Q3": {
+            "profile_median": 99.0,
+            "alignment": "better"
+          },
+          "Q4": {
+            "profile_median": 99.0,
+            "alignment": "better"
+          }
+        },
+        "tunnel_count": {
+          "Q1": {
+            "profile_median": 1.0,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 1.0,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 2.0,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 2.0,
+            "alignment": "above"
+          }
+        },
+        "competition_quality": {
+          "Q1": {
+            "profile_median": 18.46,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 18.46,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 18.46,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 20.47,
+            "alignment": "below"
+          }
+        },
+        "gas_station_draw": {
+          "Q1": {
+            "profile_median": 15.23,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 14.75,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 14.84,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 16.51,
+            "alignment": "below"
+          }
+        },
+        "retail_proximity": {
+          "Q1": {
+            "profile_median": 0.18,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 0.2,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 0.19,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 0.19,
+            "alignment": "above"
+          }
+        },
+        "weather_drive_score": {
+          "Q1": {
+            "profile_median": 100.0,
+            "alignment": "above"
+          },
+          "Q2": {
+            "profile_median": 107.5,
+            "alignment": "above"
+          },
+          "Q3": {
+            "profile_median": 114.5,
+            "alignment": "above"
+          },
+          "Q4": {
+            "profile_median": 111.0,
+            "alignment": "above"
+          }
+        }
+      },
+      "strengths": [
+        {
+          "label": "Competitor Review Count",
+          "value": 290.0,
+          "q4_median": 220.5,
+          "importance": 0.0347,
+          "signal": 0.12,
+          "note": "exceeds Q4 typical"
+        },
+        {
+          "label": "Retail Proximity Score",
+          "value": 0.2222222222222222,
+          "q4_median": 0.19193857965451055,
+          "importance": 0.0318,
+          "signal": 0.095,
+          "note": "exceeds Q4 typical"
+        },
+        {
+          "label": "Gas Station Draw Score",
+          "value": 15.981633243694215,
+          "q4_median": 16.513015367929313,
+          "importance": 0.0284,
+          "signal": 0.12,
+          "note": "matches Q4"
+        },
+        {
+          "label": "Weather Drive Score",
+          "value": 223.0,
+          "q4_median": 111.0,
+          "importance": 0.0284,
+          "signal": 0.115,
+          "note": "exceeds Q4 typical"
+        },
+        {
+          "label": "Pleasant Temp Days",
+          "value": 223.0,
+          "q4_median": 154.0,
+          "importance": 0.0261,
+          "signal": 0.139,
+          "note": "exceeds Q4 typical"
+        },
+        {
+          "label": "Annual Snowfall (cm)",
+          "value": 0.0,
+          "q4_median": 9.52,
+          "importance": 0.0235,
+          "signal": 0.087,
+          "note": "exceeds Q4 typical"
+        },
+        {
+          "label": "Costco Distance (mi, 99=none)",
+          "value": 0.57,
+          "q4_median": 99.0,
+          "importance": 0.0118,
+          "signal": 0.073,
+          "note": "exceeds Q4 typical"
+        }
+      ],
+      "weaknesses": [
+        {
+          "label": "Distance to Walmart (mi)",
+          "value": 2.52,
+          "q4_median": 1.57,
+          "importance": 0.039,
+          "signal": 0.088,
+          "note": "Q1-level (low performing)"
+        },
+        {
+          "label": "Distance to Target (mi)",
+          "value": 1.88,
+          "q4_median": 1.59,
+          "importance": 0.0316,
+          "signal": 0.089,
+          "note": "Q2-level (below median)"
+        },
+        {
+          "label": "Competition Quality Score",
+          "value": 19.289299108383076,
+          "q4_median": 20.47197524966702,
+          "importance": 0.0313,
+          "signal": 0.13,
+          "note": "Q1-level (low performing)"
+        },
+        {
+          "label": "Nearest Competitor (miles)",
+          "value": 1.27,
+          "q4_median": 0.51,
+          "importance": 0.0289,
+          "signal": 0.083,
+          "note": "Q1-level (low performing)"
+        },
+        {
+          "label": "Rainy Days / Year",
+          "value": 54.0,
+          "q4_median": 121.0,
+          "importance": 0.0264,
+          "signal": 0.085,
+          "note": "Q1-level (low performing)"
+        },
+        {
+          "label": "Gas Station Rating",
+          "value": 3.4,
+          "q4_median": 4.0,
+          "importance": 0.0239,
+          "signal": 0.112,
+          "note": "Q1-level (low performing)"
+        }
+      ],
+      "model_cv_accuracy": 0.622,
+      "model_adj_accuracy": 0.977,
+      "features_available": 23
+    },
+    "narratives": {
+      "feature": [
+        {
+          "feature_key": "weather_rainy_days",
+          "metric_key": "dirt-trigger-days",
+          "label": "Dirt Trigger Days Window",
+          "subtitle": "Rainy Days + Snowy Days",
+          "value": 54.0,
+          "unit": "days/year",
+          "category": "Poor",
+          "percentile": 10.3,
+          "wash_q": 1,
+          "summary": "Only 10% of sites with similar wash volumes have a Dirt Trigger Days Window of 21\u2013197 days/year; this site\u2019s 54 days/year places it in the lowest (Q1) percentile, indicating a poor performance.",
+          "business_impact": "Frequent dirt triggers create strong recurring wash demand.",
+          "impact_classification": "Poor \u00b7 21\u2013197 days"
+        },
+        {
+          "feature_key": "weather_total_snowfall_cm",
+          "metric_key": "dirt-deposit-severity",
+          "label": "Dirt Deposit Severity",
+          "subtitle": "Total Annual Snowfall",
+          "value": 0.0,
+          "unit": "cm snowfall/year",
+          "category": "Strong",
+          "percentile": 89.9,
+          "wash_q": 4,
+          "summary": "90% of sites with a Dirt Deposit Severity of 0\u2013182\u202fcm snowfall/year have a Strong category; this site, with 0\u202fcm snowfall/year, falls within that range.",
+          "business_impact": "Some winter dirt accumulation creates occasional seasonal washing demand.",
+          "impact_classification": "Strong \u00b7 0\u2013182 cm"
+        },
+        {
+          "feature_key": "weather_days_pleasant_temp",
+          "metric_key": "comfortable-washing-days",
+          "label": "Comfortable Washing Days",
+          "subtitle": "Days with 60\u201380\u00b0F temperatures",
+          "value": 223.0,
+          "unit": "days/year",
+          "category": "Strong",
+          "percentile": 95.8,
+          "wash_q": 4,
+          "summary": "96% of sites generating 36\u2013270 comfortable washing days per year have a Comfortable Washing Days of 223 days/year. This site falls within that range.",
+          "business_impact": "Plenty of comfortable weather supports steady customer visits and consistent wash activity.",
+          "impact_classification": "Strong \u00b7 36\u2013270 days"
+        },
+        {
+          "feature_key": "weather_days_below_freezing",
+          "metric_key": "shutdown-risk-days",
+          "label": "Shutdown Risk Days",
+          "subtitle": "Days Below Freezing (< 32\u00b0F)",
+          "value": 0.0,
+          "unit": "days/year",
+          "category": null,
+          "percentile": 89.6,
+          "wash_q": null,
+          "summary": "90% of sites have 0\u2013193 shutdown risk days; this site has 0 days, placing it at the very lowest end.",
+          "business_impact": "Noticeable winter disruption; wash volumes may drop for short seasonal periods.",
+          "impact_classification": null
+        }
+      ],
+      "overall": {
+        "insight": "Weather contributes roughly **70\u202f%** to the overall site potential. The low number of dirt\u2011trigger days (54\u202fdays/year) and the absence of snowfall keep the surface clean, while the high number of comfortable washing days (223\u202fdays/year) ensures that most of the year is suitable for operations. With virtually no shutdown risk, the combined weather profile supports a strong wash demand, reflected in the predicted Q4 wash volume band of 174,047\u2013478,789 cars per year.",
+        "observation": "The site benefits from a well-rounded weather profile. Dirt triggers are frequent enough to sustain recurring demand, comfortable days provide a long window for discretionary washes, and shutdown risk is moderate but manageable.",
+        "conclusion": "The weather profile supports consistent year\u2011round wash activity with moderate seasonal variation, making this a favorable location from a weather\u2011driven demand perspective."
+      }
+    }
+  }
+}
+
+--- 4. GET /weather/data-by-task/{task_id} ---
+{
+  "task_id": "aa09b159-eaf2-4269-b75a-5e60f26dc655",
+  "address": "1600 Amphitheatre Parkway, Mountain View, CA",
+  "metrics": [
+    {
+      "metric_key": "dirt-trigger-days",
+      "value": 54.0,
+      "unit": "days/year",
+      "quantile_score": 10.3,
+      "quantile": "Q1",
+      "category": "Poor",
+      "min": 21.0,
+      "max": 197.0,
+      "summary": "Only 10% of sites with similar wash volumes have a Dirt Trigger Days Window of 21\u2013197 days/year; this site\u2019s 54 days/year places it in the lowest (Q1) percentile, indicating a poor performance.",
+      "business_impact": "Frequent dirt triggers create strong recurring wash demand.",
+      "impact_classification": "Poor \u00b7 21\u2013197 days"
+    },
+    {
+      "metric_key": "dirt-deposit-severity",
+      "value": 0.0,
+      "unit": "cm/year",
+      "quantile_score": 89.9,
+      "quantile": "Q4",
+      "category": "Strong",
+      "min": 0.0,
+      "max": 182.07,
+      "summary": "90% of sites with a Dirt Deposit Severity of 0\u2013182\u202fcm snowfall/year have a Strong category; this site, with 0\u202fcm snowfall/year, falls within that range.",
+      "business_impact": "Some winter dirt accumulation creates occasional seasonal washing demand.",
+      "impact_classification": "Strong \u00b7 0\u2013182 cm"
+    },
+    {
+      "metric_key": "comfortable-washing-days",
+      "value": 223.0,
+      "unit": "days/year",
+      "quantile_score": 95.8,
+      "quantile": "Q4",
+      "category": "Strong",
+      "min": 36.0,
+      "max": 270.0,
+      "summary": "96% of sites generating 36\u2013270 comfortable washing days per year have a Comfortable Washing Days of 223 days/year. This site falls within that range.",
+      "business_impact": "Plenty of comfortable weather supports steady customer visits and consistent wash activity.",
+      "impact_classification": "Strong \u00b7 36\u2013270 days"
+    },
+    {
+      "metric_key": "shutdown-risk-days",
+      "value": 0.0,
+      "unit": "days/year",
+      "quantile_score": 89.6,
+      "quantile": "Q4",
+      "category": "Strong",
+      "min": 0.0,
+      "max": 193.0,
+      "summary": "90% of sites have 0\u2013193 shutdown risk days; this site has 0 days, placing it at the very lowest end.",
+      "business_impact": "Noticeable winter disruption; wash volumes may drop for short seasonal periods.",
+      "impact_classification": null
+    }
+  ]
+}
+
+  → 4 weather metrics returned.
+    - dirt-trigger-days: value=54.0 days/year category=Poor
+    - dirt-deposit-severity: value=0.0 cm/year category=Strong
+    - comfortable-washing-days: value=223.0 days/year category=Strong
+    - shutdown-risk-days: value=0.0 days/year category=Strong
+
+--- 5. GET /narratives/{task_id} ---
+{
+  "task_id": "aa09b159-eaf2-4269-b75a-5e60f26dc655",
+  "narratives": {
+    "feature": [
+      {
+        "feature_key": "weather_rainy_days",
+        "metric_key": "dirt-trigger-days",
+        "label": "Dirt Trigger Days Window",
+        "subtitle": "Rainy Days + Snowy Days",
+        "value": 54.0,
+        "unit": "days/year",
+        "category": "Poor",
+        "percentile": 10.3,
+        "wash_q": 1,
+        "summary": "Only 10% of sites with similar wash volumes have a Dirt Trigger Days Window of 21\u2013197 days/year; this site\u2019s 54 days/year places it in the lowest (Q1) percentile, indicating a poor performance.",
+        "business_impact": "Frequent dirt triggers create strong recurring wash demand.",
+        "impact_classification": "Poor \u00b7 21\u2013197 days"
+      },
+      {
+        "feature_key": "weather_total_snowfall_cm",
+        "metric_key": "dirt-deposit-severity",
+        "label": "Dirt Deposit Severity",
+        "subtitle": "Total Annual Snowfall",
+        "value": 0.0,
+        "unit": "cm snowfall/year",
+        "category": "Strong",
+        "percentile": 89.9,
+        "wash_q": 4,
+        "summary": "90% of sites with a Dirt Deposit Severity of 0\u2013182\u202fcm snowfall/year have a Strong category; this site, with 0\u202fcm snowfall/year, falls within that range.",
+        "business_impact": "Some winter dirt accumulation creates occasional seasonal washing demand.",
+        "impact_classification": "Strong \u00b7 0\u2013182 cm"
+      },
+      {
+        "feature_key": "weather_days_pleasant_temp",
+        "metric_key": "comfortable-washing-days",
+        "label": "Comfortable Washing Days",
+        "subtitle": "Days with 60\u201380\u00b0F temperatures",
+        "value": 223.0,
+        "unit": "days/year",
+        "category": "Strong",
+        "percentile": 95.8,
+        "wash_q": 4,
+        "summary": "96% of sites generating 36\u2013270 comfortable washing days per year have a Comfortable Washing Days of 223 days/year. This site falls within that range.",
+        "business_impact": "Plenty of comfortable weather supports steady customer visits and consistent wash activity.",
+        "impact_classification": "Strong \u00b7 36\u2013270 days"
+      },
+      {
+        "feature_key": "weather_days_below_freezing",
+        "metric_key": "shutdown-risk-days",
+        "label": "Shutdown Risk Days",
+        "subtitle": "Days Below Freezing (< 32\u00b0F)",
+        "value": 0.0,
+        "unit": "days/year",
+        "category": null,
+        "percentile": 89.6,
+        "wash_q": null,
+        "summary": "90% of sites have 0\u2013193 shutdown risk days; this site has 0 days, placing it at the very lowest end.",
+        "business_impact": "Noticeable winter disruption; wash volumes may drop for short seasonal periods.",
+        "impact_classification": null
+      }
+    ],
+    "overall": {
+      "insight": "Weather contributes roughly **70\u202f%** to the overall site potential. The low number of dirt\u2011trigger days (54\u202fdays/year) and the absence of snowfall keep the surface clean, while the high number of comfortable washing days (223\u202fdays/year) ensures that most of the year is suitable for operations. With virtually no shutdown risk, the combined weather profile supports a strong wash demand, reflected in the predicted Q4 wash volume band of 174,047\u2013478,789 cars per year.",
+      "observation": "The site benefits from a well-rounded weather profile. Dirt triggers are frequent enough to sustain recurring demand, comfortable days provide a long window for discretionary washes, and shutdown risk is moderate but manageable.",
+      "conclusion": "The weather profile supports consistent year\u2011round wash activity with moderate seasonal variation, making this a favorable location from a weather\u2011driven demand perspective."
+    }
+  }
+}
+
+======================================================================
+CONFIRMATION SUMMARY
+--------------------------------------------------
+1. POST /analyze-site: OK — returns task_id and submits analysis.
+2. GET /task/{task_id}: OK — status reaches SUCCESS (~12s).
+3. GET /result/{task_id}: OK — returns address, feature_values, fetched (climate, gas, stores, competitors).
+4. GET /weather/data-by-task: OK — returns 4 metrics with value, unit, category, summary, etc.
+5. GET /narratives/{task_id}: OK — returns null when run_narratives=False (default).
+--------------------------------------------------
+Full responses saved in: /Users/dhruvsood/sonnysDataCollection/logs/weather_api_test_responses.txt
