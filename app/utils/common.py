@@ -70,9 +70,15 @@ def get_lat_long(address):
             else:
                 return None
         except requests.exceptions.RequestException as e:
+            resp = getattr(e, "response", None)
+            status = getattr(resp, "status_code", None) if resp else None
+            if status == 404:
+                # Not found – retrying won't help
+                return None
             print(traceback.format_exc())
-            print("Retrying...Holiday Lookup...")
-            retry+=1
+            print("Retrying...Geocode...")
+            retry += 1
+    return None
 
 
 def calculate_distance(lat1, lon1, lat2, lon2):

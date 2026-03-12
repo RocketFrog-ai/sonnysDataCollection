@@ -101,6 +101,8 @@ def _geocode(address: str) -> Tuple[float, float]:
     if not address or not address.strip():
         raise HTTPException(status_code=400, detail="Address is required")
     geo = calib.get_lat_long(address)
+    if not geo:
+        raise HTTPException(status_code=400, detail="Could not geocode address (no results or API error)")
     lat = geo.get("lat")
     lon = geo.get("lon")
     if lat is None or lon is None:

@@ -35,6 +35,8 @@ def _geocode(address: str) -> tuple[float, float]:
     if not address or not address.strip():
         raise ValueError("Address is required")
     geo = calib.get_lat_long(address)
+    if not geo:
+        raise ValueError("Could not geocode address (no results or API error)")
     lat = geo.get("lat")
     lon = geo.get("lon")
     if lat is None or lon is None:
@@ -312,8 +314,11 @@ def run_site_analysis(
     Returns dict with address, lat, lon, feature_values, quantile_result (if run_quantile),
     narratives (if run_narratives).
     """
+    logger.info("run_site_analysis: geocoding address=%s", address)
     lat, lon = _geocode(address)
+    logger.info("run_site_analysis: geocode done lat=%.4f lon=%.4f, fetching features", lat, lon)
     fetched = fetch_all_features(lat, lon)
+    logger.info("run_site_analysis: fetch done, building feature_values and quantile input")
     feature_values, location_features = build_feature_values_and_v3_input(fetched)
 
     result: Dict[str, Any] = {

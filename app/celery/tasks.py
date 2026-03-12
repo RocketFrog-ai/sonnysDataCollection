@@ -37,6 +37,7 @@ def analyse_site(self, address: str = "1"):
     """
     task_id = self.request.id
     cache_key = f"site_analysis:{task_id}"
+    logger.info("analyse_site task started: task_id=%s address=%s", task_id, address)
 
     def set_progress(partial: dict):
         try:
@@ -53,4 +54,5 @@ def analyse_site(self, address: str = "1"):
         run_narratives=True,
         set_progress=set_progress,
     )
+    logger.info("analyse_site task finished: task_id=%s", task_id)
     return res
