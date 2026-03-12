@@ -89,9 +89,10 @@ def get_nearby_competitors(
 ) -> dict:
     """
     Nearby car washes (competitors) within radius_miles by driving distance.
-    Returns only real API data: name, distance_miles, rating, user_rating_count, address;
-    optional website, google_maps_uri, primary_type_display_name from Place Details.
-    No market share or threat level.
+    Returns: name, distance_miles, rating, user_rating_count, address; when
+    fetch_place_details=True also primary_type_display_name (Place Details).
+    Does not return place_id or google_maps_uri to save cost; set
+    fetch_place_details=False to skip Place Details API calls entirely.
     """
     if not api_key:
         return {"competitors": [], "count": 0}
@@ -166,7 +167,6 @@ def get_nearby_competitors(
 
         display_name = place.get("displayName")
         name = display_name.get("text") if isinstance(display_name, dict) else None
-        place_id = place.get("id") or (str(place.get("name", "")).replace("places/", "") if place.get("name") else None)
         rating = place.get("rating")
         if rating is not None:
             rating = float(rating)
@@ -175,40 +175,37 @@ def get_nearby_competitors(
             user_rating_count = int(user_rating_count)
         address = place.get("formattedAddress") or place.get("shortFormattedAddress")
 
+        # Optional: Place Details (websiteUri, primaryTypeDisplayName). Skipped when fetch_place_details=False.
         website_uri = None
-        google_maps_uri = None
         primary_type_display_name = None
-        if place_id and fetch_place_details:
-            details = _fetch_place_details(
-                api_key, place_id,
-                "websiteUri,googleMapsUri,primaryTypeDisplayName",
-            )
-            if details:
-                website_uri = details.get("websiteUri")
-                google_maps_uri = details.get("googleMapsUri")
-                ptd = details.get("primaryTypeDisplayName")
-                if isinstance(ptd, dict) and "text" in ptd:
-                    primary_type_display_name = ptd.get("text")
-                elif isinstance(ptd, str):
-                    primary_type_display_name = ptd
+        if fetch_place_details:
+            place_id = place.get("id") or (str(place.get("name", "")).replace("places/", "") if place.get("name") else None)
+            if place_id:
+                details = _fetch_place_details(
+                    api_key, place_id,
+                    "websiteUri,primaryTypeDisplayName",
+                )
+                if details:
+                    website_uri = details.get("websiteUri")
+                    ptd = details.get("primaryTypeDisplayName")
+                    if isinstance(ptd, dict) and "text" in ptd:
+                        primary_type_display_name = ptd.get("text")
+                    elif isinstance(ptd, str):
+                        primary_type_display_name = ptd
 
         comp: dict[str, Any] = {
             "name": name,
-            "distance_miles": distance_miles,
             "rating": rating,
             "user_rating_count": user_rating_count,
             "address": address,
-            "place_id": place_id,
+            "distance_miles": distance_miles,
+            "website": website_uri,
+            "primary_type": primary_type_display_name or "Car wash",
         }
-        if primary_type_display_name:
-            comp["primary_type_display_name"] = primary_type_display_name
-        if website_uri:
-            comp["website"] = website_uri
-        if google_maps_uri:
-            comp["google_maps_uri"] = google_maps_uri
 
         competitors.append(comp)
 
+    # Nearest first; entries with no distance last
     competitors.sort(key=lambda c: (c.get("distance_miles") is None, c.get("distance_miles") or float("inf")))
 
     if not competitors and places:

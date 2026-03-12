@@ -18,16 +18,21 @@ from typing import Any, Callable, Dict, Optional
 
 from app.utils import common as calib
 from app.server.app import get_climate
-from app.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
-from app.features.active.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
+from app.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.features.active.weather.open_meteo import get_default_weather_range
 
 logger = logging.getLogger(__name__)
 
-# When True, only fetch weather; use random data for gas, stores, retailers, competitors (for quantile).
+# When True, only fetch weather; use random placeholders for gas/retail/competitors.
 FETCH_WEATHER_ONLY = True
+# When True and FETCH_WEATHER_ONLY, also fetch real competitors (4-mile radius).
+FETCH_COMPETITION_WITH_WEATHER = True
+# When True and FETCH_WEATHER_ONLY, also fetch real gas stations (3-mile radius).
+FETCH_GAS_WITH_WEATHER = True
+# When True and FETCH_WEATHER_ONLY, also fetch real retail anchors (unified 3-mile radius fetch).
+FETCH_RETAIL_WITH_WEATHER = True
 
 
 def _geocode(address: str) -> tuple[float, float]:
@@ -45,8 +50,8 @@ def _geocode(address: str) -> tuple[float, float]:
 
 
 def _random_placeholder_fetched(lat: float, lon: float) -> Dict[str, Any]:
-    """Return placeholder data for gas, stores, retailers, competitors (for quantile when FETCH_WEATHER_ONLY)."""
-    # Seed by lat/lon so same address gives same placeholders
+    """Return placeholder data for gas, retail anchors, and competitors (for quantile when FETCH_WEATHER_ONLY)."""
+    # Seed by lat/lon so same address gives consistent placeholders
     rng = random.Random(int(lat * 1e6) + int(lon * 1e6))
     return {
         "gas_stations": [
@@ -57,12 +62,14 @@ def _random_placeholder_fetched(lat: float, lon: float) -> Dict[str, Any]:
                 "rating_count": rng.randint(20, 300),
             }
         ],
-        "stores": {
-            "distance_from_nearest_costco": round(rng.uniform(0.5, 4.0), 2),
-            "distance_from_nearest_walmart": round(rng.uniform(1.0, 3.0), 2),
-            "distance_from_nearest_target": round(rng.uniform(1.0, 3.0), 2),
+        "retail_anchors": {
+            "anchors": [],
+            "costco_dist": round(rng.uniform(0.5, 4.0), 2),
+            "walmart_dist": round(rng.uniform(1.0, 3.0), 2),
+            "target_dist": round(rng.uniform(1.0, 3.0), 2),
+            "grocery_count_1mile": rng.randint(0, 3),
+            "food_count_0_5miles": rng.randint(0, 5),
         },
-        "retailers_data": {"retailers": [], "count": 0},
         "competitors_data": {
             "count": rng.randint(2, 10),
             "competitors": [
@@ -79,9 +86,12 @@ def _random_placeholder_fetched(lat: float, lon: float) -> Dict[str, Any]:
 
 def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
     """
-    Fetch all feature data for (lat, lon) using features/active, in parallel.
+    Fetch all feature data for (lat, lon) using features/active. Called exactly once per
+    analyse-site run. Google API (Places searchNearby, Distance Matrix, Place Details) and
+    climate (Open-Meteo) are invoked only here — GET /weather/data-by-task and
+    GET /competition/data-by-task never re-fetch; they read from the stored task result.
     Returns a dict with keys: climate, gas_stations, stores, retailers_data, competitors_data.
-    When FETCH_WEATHER_ONLY is True, only climate is fetched; others get random placeholder data.
+    When FETCH_WEATHER_ONLY is True, only climate (+ optionally competitors) is fetched.
     """
     start_date, end_date = get_default_weather_range()
     api_key = calib.GOOGLE_MAPS_API_KEY or ""
@@ -91,15 +101,74 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
         return out if out and not out.get("error") else {}
 
     if FETCH_WEATHER_ONLY:
-        climate = _fetch_climate()
         placeholders = _random_placeholder_fetched(lat, lon)
-        return {
-            "climate": climate,
+
+        result_partial: Dict[str, Any] = {
+            "climate": {},
             "gas_stations": placeholders["gas_stations"],
-            "stores": placeholders["stores"],
-            "retailers_data": placeholders["retailers_data"],
+            "retail_anchors": placeholders["retail_anchors"],
             "competitors_data": placeholders["competitors_data"],
         }
+
+        def _partial_climate() -> Dict[str, Any]:
+            return _fetch_climate()
+
+        def _partial_competitors() -> Dict[str, Any]:
+            if not api_key:
+                return placeholders["competitors_data"]
+            try:
+                data = get_nearby_competitors(
+                    api_key, lat, lon,
+                    radius_miles=4.0,
+                    fetch_place_details=True,
+                )
+                return data or placeholders["competitors_data"]
+            except Exception as e:
+                logger.warning("Competitors fetch failed (using placeholder): %s", e)
+                return placeholders["competitors_data"]
+
+        def _partial_gas() -> list:
+            if not api_key:
+                return placeholders["gas_stations"]
+            try:
+                data = get_nearby_gas_stations(
+                    api_key, lat, lon,
+                    radius_miles=3.0,
+                    max_results=20,
+                    fetch_place_details=False,
+                )
+                return data or placeholders["gas_stations"]
+            except Exception as e:
+                logger.warning("Gas stations fetch failed (using placeholder): %s", e)
+                return placeholders["gas_stations"]
+
+        def _partial_retail() -> Dict[str, Any]:
+            if not api_key:
+                return placeholders["retail_anchors"]
+            try:
+                data = get_nearby_retail_anchors(api_key, lat, lon, radius_miles=3.0)
+                return data or placeholders["retail_anchors"]
+            except Exception as e:
+                logger.warning("Retail anchors fetch failed (using placeholder): %s", e)
+                return placeholders["retail_anchors"]
+
+        futures_map: Dict[Any, str] = {}
+        with ThreadPoolExecutor(max_workers=5) as ex:
+            futures_map[ex.submit(_partial_climate)] = "climate"
+            if FETCH_COMPETITION_WITH_WEATHER:
+                futures_map[ex.submit(_partial_competitors)] = "competitors_data"
+            if FETCH_GAS_WITH_WEATHER:
+                futures_map[ex.submit(_partial_gas)] = "gas_stations"
+            if FETCH_RETAIL_WITH_WEATHER:
+                futures_map[ex.submit(_partial_retail)] = "retail_anchors"
+            for future in as_completed(futures_map):
+                key = futures_map[future]
+                try:
+                    result_partial[key] = future.result()
+                except Exception as e:
+                    logger.warning("Partial fetch %s failed: %s", key, e)
+
+        return result_partial
 
     def _fetch_gas() -> list:
         if not api_key:
@@ -107,32 +176,21 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
         try:
             return get_nearby_gas_stations(
                 api_key, lat, lon,
-                radius_miles=2.0,
-                max_results=6,
-                fetch_place_details=True,
+                radius_miles=3.0,
+                max_results=20,
+                fetch_place_details=False,
             ) or []
         except Exception as e:
             logger.warning("Gas stations fetch failed: %s", e)
             return []
 
-    def _fetch_stores() -> Dict[str, Any]:
-        try:
-            return get_nearby_stores_data(lat, lon) or {}
-        except Exception as e:
-            logger.warning("Stores fetch failed: %s", e)
-            return {}
-
-    def _fetch_retailers() -> Dict[str, Any]:
+    def _fetch_retail_anchors() -> Dict[str, Any]:
         if not api_key:
             return {}
         try:
-            return get_nearby_retailers(
-                api_key, lat, lon,
-                radius_miles=0.5,
-                fetch_place_details=False,
-            ) or {}
+            return get_nearby_retail_anchors(api_key, lat, lon, radius_miles=3.0) or {}
         except Exception as e:
-            logger.warning("Retailers fetch failed: %s", e)
+            logger.warning("Retail anchors fetch failed: %s", e)
             return {}
 
     def _fetch_competitors() -> Dict[str, Any]:
@@ -151,16 +209,14 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
     result: Dict[str, Any] = {
         "climate": {},
         "gas_stations": [],
-        "stores": {},
-        "retailers_data": {},
+        "retail_anchors": {},
         "competitors_data": {},
     }
-    with ThreadPoolExecutor(max_workers=5) as executor:
+    with ThreadPoolExecutor(max_workers=4) as executor:
         future_to_key = {
             executor.submit(_fetch_climate): "climate",
             executor.submit(_fetch_gas): "gas_stations",
-            executor.submit(_fetch_stores): "stores",
-            executor.submit(_fetch_retailers): "retailers_data",
+            executor.submit(_fetch_retail_anchors): "retail_anchors",
             executor.submit(_fetch_competitors): "competitors_data",
         }
         for future in as_completed(future_to_key):
@@ -170,20 +226,10 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
             except Exception as e:
                 logger.warning("Feature fetch %s failed: %s", key, e)
 
-    competitors_list = (result["competitors_data"] or {}).get("competitors") or []
-    if competitors_list:
-        try:
-            from app.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
-            competitors_list = classify_competitors(competitors_list)
-        except Exception as e:
-            logger.warning("Competitor classification skipped: %s", e)
-        result["competitors_data"] = {**result["competitors_data"], "competitors": competitors_list}
-
     return {
         "climate": result["climate"],
         "gas_stations": result["gas_stations"],
-        "stores": result["stores"],
-        "retailers_data": result["retailers_data"],
+        "retail_anchors": result["retail_anchors"],
         "competitors_data": result["competitors_data"],
     }
 
@@ -229,10 +275,13 @@ def build_feature_values_and_v3_input(fetched: Dict[str, Any]) -> tuple[Dict[str
             feature_values["nearest_gas_station_rating_count"] = rc
             location_features["nearest_gas_station_rating_count"] = float(rc)
 
-    stores = fetched.get("stores") or {}
-    costco_dist = stores.get("distance_from_nearest_costco")
-    walmart_dist = stores.get("distance_from_nearest_walmart")
-    target_dist = stores.get("distance_from_nearest_target")
+    retail_anchors = fetched.get("retail_anchors") or {}
+    costco_dist = retail_anchors.get("costco_dist")
+    walmart_dist = retail_anchors.get("walmart_dist")
+    target_dist = retail_anchors.get("target_dist")
+    other_grocery = retail_anchors.get("grocery_count_1mile", 0)
+    food_joints = retail_anchors.get("food_count_0_5miles", 0)
+
     if costco_dist is not None:
         feature_values["distance_from_nearest_costco"] = costco_dist
         v = float(costco_dist) if isinstance(costco_dist, (int, float)) else None
@@ -248,12 +297,6 @@ def build_feature_values_and_v3_input(fetched: Dict[str, Any]) -> tuple[Dict[str
     if "costco_enc" not in location_features:
         location_features["costco_enc"] = 99.0
 
-    retailers_data = fetched.get("retailers_data") or {}
-    raw_list = retailers_data.get("retailers") or []
-    grocery_1mi = [r for r in raw_list if r.get("category") == "Grocery" and (r.get("distance_miles") or 0) <= 1.0]
-    food_05mi = [r for r in raw_list if r.get("category") == "Food Joint" and (r.get("distance_miles") or 0) <= 0.5]
-    other_grocery = len(grocery_1mi)
-    food_joints = len(food_05mi)
     feature_values["other_grocery_count_1mile"] = other_grocery
     feature_values["count_food_joints_0_5miles"] = food_joints
     location_features["other_grocery_count_1mile"] = float(other_grocery)
@@ -307,8 +350,8 @@ def run_site_analysis(
     set_progress: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
     """
-    Single entry point: geocode → fetch all features once → build feature_values + v3 input
-    → run quantile prediction → optionally run narrative agents.
+    Single entry point: geocode once → fetch all features once (no repeated Google/climate calls)
+    → build feature_values + v3 input → run quantile prediction → optionally run narrative agents.
     If set_progress is provided (e.g. from Celery task), it is called after fetch (data
     available quickly), after quantile, and after narratives so clients can poll partial results.
     Returns dict with address, lat, lon, feature_values, quantile_result (if run_quantile),
@@ -352,13 +395,22 @@ def run_site_analysis(
 
     if run_narratives and quantile_result:
         try:
-            from app.modelling.ai import get_feature_narratives, get_overall_narrative
+            from app.modelling.ai import (
+                get_feature_narratives,
+                get_overall_narrative,
+                get_competition_narrative,
+                get_retail_narrative,
+                get_gas_narrative,
+            )
             feature_narratives = get_feature_narratives(quantile_result, feature_values)
             result["narratives"] = {
                 "feature": feature_narratives,
                 "overall": get_overall_narrative(
                     quantile_result, feature_values, feature_narratives=feature_narratives
                 ),
+                "competition": get_competition_narrative(quantile_result, feature_narratives),
+                "retail": get_retail_narrative(quantile_result, feature_narratives),
+                "gas": get_gas_narrative(quantile_result, feature_narratives),
             }
             if set_progress:
                 try:

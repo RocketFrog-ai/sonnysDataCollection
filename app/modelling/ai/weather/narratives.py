@@ -66,7 +66,7 @@ Do not repeat a generic phrase; use the actual percentile and direction to expla
     summary: Optional[str] = None
     try:
         from app.utils.llm import local_llm as llm
-        raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
+        raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3, max_new_tokens=256)
         text = extract_llm_text(raw)
         if text:
             summary = text.strip()
@@ -117,7 +117,7 @@ def _insight_agent(
     prompt = "\n".join(lines)
     try:
         from app.utils.llm import local_llm as llm
-        raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
+        raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3, max_new_tokens=512)
         text = extract_llm_text(raw)
         return text if text else None
     except Exception as e:
@@ -153,7 +153,7 @@ Conclusion: [1-2 sentences: overall takeaway for weather-driven demand, e.g. "Th
     out: Dict[str, Optional[str]] = {"observation": None, "conclusion": None}
     try:
         from app.utils.llm import local_llm as llm
-        raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3)
+        raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3, max_new_tokens=512)
         text = extract_llm_text(raw)
         if not text:
             return out

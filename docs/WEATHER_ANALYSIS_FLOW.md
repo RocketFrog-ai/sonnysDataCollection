@@ -103,6 +103,26 @@ This single endpoint returns all 4 weather metrics (value, scale, quartile, summ
 
 ---
 
+## 5. Get competition (nearby same-format car washes, 4-mile radius)
+
+Same `task_id` from step 1. Single fetch includes competitors when `FETCH_COMPETITION_WITH_WEATHER` is True.
+
+**Request**
+
+```bash
+curl -s "http://localhost:8001/v1/competition/data-by-task/<task_id>"
+```
+
+**Response shape**
+
+- **complete**, **success** — true when quantile + competition narratives ready.
+- **competition_score** — 0–100, mean of competition metric percentiles.
+- **nearby_car_washes** — `count` (number) and `list` (each: name, rating, user_rating_count, address, distance_miles, website, primary_type), ordered by distance_miles.
+- **nearest** — `distance_miles`, `brand_strength` (High/Medium/Low), `rating`, `user_rating_count`.
+- **overall** — `insight` (quantiles and analysis from predictions), `observation` (total overall feature discussion).
+
+---
+
 *Optional:* `GET /v1/narratives/<task_id>` returns the raw narrative payload (feature array + overall) if you need it elsewhere.
 
 <details>
