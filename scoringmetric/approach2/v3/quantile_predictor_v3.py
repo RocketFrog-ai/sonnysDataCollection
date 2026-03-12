@@ -462,14 +462,16 @@ class QuantilePredictorV3:
         n_quantiles: int = 4,
         use_control_sites_only: bool = False,
     ):
-        base = Path(__file__).resolve().parents[1]
+        base = Path(__file__).resolve().parents[1]  # approach2
         excel_path = excel_path or base / "Proforma-v2-data-final (1).xlsx"
-        csv_path   = csv_path   or base / "v2" / "temp_extrapolated.csv"
+        # Count CSV: used only when building the merge. _load_and_merge loads v3/final_merged_dataset.csv when present.
+        # Default to extrapolation/ (file exists); v2/ was legacy. final_csv = base/v3/final_merged_dataset.csv.
+        csv_path = csv_path or base / "extrapolation" / "temp_extrapolated.csv"
 
         if not excel_path.exists():
             raise FileNotFoundError(f"Excel not found: {excel_path}")
         if not csv_path.exists():
-            raise FileNotFoundError(f"CSV not found: {csv_path}")
+            raise FileNotFoundError(f"CSV not found: {csv_path}. V3 uses approach2/v3/final_merged_dataset.csv when present.")
 
         self.n_quantiles = n_quantiles
 

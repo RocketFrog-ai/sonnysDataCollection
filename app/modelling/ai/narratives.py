@@ -1,15 +1,18 @@
 """
-Narrative generation from quantile result + feature values.
-
-Stub implementations: return structured placeholders. Replace with LLM agents that take
-quantile_result and feature_values and produce:
-- Per-feature: summary, business_impact, impact_classification
-- Overall: insight, observation, conclusion
+Narrative orchestration: delegates to feature-wise subfolders (weather, gas, retail, competition).
+Top-level entry point for get_feature_narratives and get_overall_narrative used by site_analysis and routes.
 """
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+# Feature narrative modules (add gas, retail, competition when ready)
+from app.modelling.ai.weather import (
+    get_feature_narratives as get_weather_feature_narratives,
+    get_insight as get_weather_insight,
+    get_overall_narrative as get_weather_overall_narrative,
+)
 
 
 def get_feature_narratives(
@@ -17,36 +20,39 @@ def get_feature_narratives(
     feature_values: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
     """
-    Build per-feature narrative entries (summary, business_impact, impact_classification).
-    Input: quantile_result from QuantilePredictorV3.analyze(), feature_values from site_analysis.
-    Stub: returns one placeholder per feature in feature_analysis; replace with LLM agent.
+    Build per-feature narrative entries from all enabled feature modules.
+    Currently returns weather narratives only; extend by merging results from
+    gas, retail, competition subfolders when added.
     """
-    feature_analysis = quantile_result.get("feature_analysis") or {}
     out: List[Dict[str, Any]] = []
-    for feat_key, info in feature_analysis.items():
-        out.append({
-            "feature_key": feat_key,
-            "label": info.get("label", feat_key),
-            "value": info.get("value"),
-            "percentile": info.get("adjusted_percentile"),
-            "wash_q": info.get("wash_correlated_q"),
-            "summary": None,  # LLM: e.g. "90% of sites generating 150k–350k washes..."
-            "business_impact": None,  # LLM: e.g. "Frequent dirt triggers create strong recurring wash demand."
-            "impact_classification": None,  # LLM: e.g. "Strong · 100–150 days"
-        })
+    out.extend(
+        get_weather_feature_narratives(quantile_result, feature_values)
+    )
+    # out.extend(gas_narratives.get_feature_narratives(quantile_result, feature_values))
+    # out.extend(retail_narratives.get_feature_narratives(...))
+    # out.extend(competition_narratives.get_feature_narratives(...))
     return out
 
 
 def get_overall_narrative(
     quantile_result: Dict[str, Any],
     feature_values: Dict[str, Any],
+    feature_narratives: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """
     Build overall narrative (insight, observation, conclusion).
-    Stub: returns placeholders; replace with LLM agent.
+    If feature_narratives is provided, reuses them to avoid duplicate LLM calls.
+    Currently weather-only; extend to merge or segment by dimension when more features exist.
     """
+    if feature_narratives is None:
+        feature_narratives = get_feature_narratives(quantile_result, feature_values)
+    # For now overall is weather-only (insight + observation + conclusion)
+    insight = get_weather_insight(quantile_result, feature_narratives)
+    overall = get_weather_overall_narrative(
+        quantile_result, feature_narratives
+    )
     return {
-        "insight": None,  # LLM: e.g. "Weather contributes ~20% to the site potential..."
-        "observation": None,  # LLM: e.g. "Site ABC benefits from a well-rounded weather profile..."
-        "conclusion": None,  # LLM: e.g. "The weather profile supports consistent year-round..."
+        "insight": insight,
+        "observation": overall.get("observation"),
+        "conclusion": overall.get("conclusion"),
     }

@@ -50,7 +50,7 @@ def analyse_site(self, address: str = "1"):
     res = run_site_analysis(
         address,
         run_quantile=True,
-        run_narratives=False,
+        run_narratives=True,
         set_progress=set_progress,
     )
     return res
