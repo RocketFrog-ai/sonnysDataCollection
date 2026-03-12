@@ -1,14 +1,15 @@
-"""
-Open-Meteo historical weather for site analysis.
 
-Core only: fetch daily data, aggregate to rainy_days, snowy_days, total_snowfall_cm,
-days_pleasant_temp, days_below_freezing (+ v3 metrics). USA/state/polygon reference
-lives in weather_reference.py.
-"""
+
+import logging
+import random
+import time
+from typing import Optional
 
 import pandas as pd
 import requests
 from datetime import date
+
+logger = logging.getLogger(__name__)
 
 # -----------------------------------------------------------------------------
 # Configuration
@@ -47,8 +48,36 @@ def _wind_speed_column(df):
 # Fetch
 # -----------------------------------------------------------------------------
 
-def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, retries=5, backoff_factor=20):
-    """Fetch daily weather from Open-Meteo archive for (lat, lon) and date range."""
+# Rate limit: exponential backoff (base seconds * 2^attempt), max wait cap, jitter
+OPEN_METEO_BACKOFF_BASE_SEC = 5
+OPEN_METEO_BACKOFF_MAX_SEC = 120
+OPEN_METEO_RETRIES = 5
+OPEN_METEO_TIMEOUT_SEC = 90
+
+
+def _rate_limit_delay(attempt: int, retry_after_header: Optional[int]) -> float:
+    """Compute delay for rate limit: use Retry-After if provided, else exponential backoff with jitter."""
+    if retry_after_header is not None and retry_after_header > 0:
+        wait = min(retry_after_header, OPEN_METEO_BACKOFF_MAX_SEC)
+    else:
+        wait = min(OPEN_METEO_BACKOFF_BASE_SEC * (2 ** attempt), OPEN_METEO_BACKOFF_MAX_SEC)
+        # Add jitter (±25%) to avoid thundering herd when multiple workers retry
+        jitter = wait * 0.25 * (2 * random.random() - 1)
+        wait = max(1, wait + jitter)
+    return wait
+
+
+def fetch_open_meteo_weather_data(
+    latitude,
+    longitude,
+    start_date,
+    end_date,
+    retries=OPEN_METEO_RETRIES,
+    backoff_base_sec=OPEN_METEO_BACKOFF_BASE_SEC,
+):
+    """Fetch daily weather from Open-Meteo archive for (lat, lon) and date range.
+    On 429 (rate limit), waits with exponential backoff (or Retry-After if present) and retries.
+    """
     start_date = str(start_date).strip()
     end_date = str(end_date).strip()
     params = {
@@ -59,9 +88,30 @@ def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, ret
         "daily": ",".join(_DAILY_VARIABLES),
         "timezone": "UTC",
     }
+    last_error = None
     for attempt in range(retries):
         try:
-            response = requests.get(BASE_URL_HISTORICAL_WEATHER, params=params)
+            response = requests.get(
+                BASE_URL_HISTORICAL_WEATHER, params=params, timeout=OPEN_METEO_TIMEOUT_SEC
+            )
+            if response.status_code == 429:
+                # Rate limited: back off then retry
+                retry_after = None
+                try:
+                    ra = response.headers.get("Retry-After")
+                    if ra is not None:
+                        retry_after = int(ra)
+                except (TypeError, ValueError):
+                    pass
+                wait = _rate_limit_delay(attempt, retry_after)
+                logger.warning(
+                    "Open-Meteo rate limit (429), attempt %s/%s — waiting %.1fs before retry",
+                    attempt + 1,
+                    retries,
+                    wait,
+                )
+                time.sleep(wait)
+                continue
             response.raise_for_status()
             data = response.json()
             if "daily" not in data or not data["daily"].get("time"):
@@ -71,14 +121,34 @@ def fetch_open_meteo_weather_data(latitude, longitude, start_date, end_date, ret
             df.set_index("time", inplace=True)
             return df
         except requests.exceptions.RequestException as e:
+            last_error = e
             resp = getattr(e, "response", None)
-            if resp is not None and getattr(resp, "status_code", None) == 429:
-                import time
-                time.sleep(backoff_factor * (2**attempt))
+            status = getattr(resp, "status_code", None) if resp else None
+            if status == 429:
+                retry_after = None
+                if resp and resp.headers:
+                    try:
+                        ra = resp.headers.get("Retry-After")
+                        if ra is not None:
+                            retry_after = int(ra)
+                    except (TypeError, ValueError):
+                        pass
+                wait = _rate_limit_delay(attempt, retry_after)
+                logger.warning(
+                    "Open-Meteo rate limit (429), attempt %s/%s — waiting %.1fs before retry",
+                    attempt + 1,
+                    retries,
+                    wait,
+                )
+                time.sleep(wait)
             else:
+                logger.warning("Open-Meteo request failed (attempt %s/%s): %s", attempt + 1, retries, e)
                 return pd.DataFrame()
-        except (KeyError, ValueError):
+        except (KeyError, ValueError) as e:
+            logger.warning("Open-Meteo response parse error: %s", e)
             return pd.DataFrame()
+    if last_error:
+        logger.warning("Open-Meteo failed after %s attempts: %s", retries, last_error)
     return pd.DataFrame()
 
 
