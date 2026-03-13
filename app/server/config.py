@@ -134,25 +134,19 @@ ANCHOR_TYPE_BY_KEYWORD: dict = {
     "target": "Big Box / Discount",
     "meijer": "Big Box",
     "kohl's": "Big Box",
-    "home depot": "Home Improvement",
-    "lowe's": "Home Improvement",
-    "kroger": "Grocery",
-    "publix": "Grocery",
-    "safeway": "Grocery",
-    "whole foods": "Grocery",
-    "aldi": "Grocery",
-    "trader joe's": "Grocery",
-    "h-e-b": "Grocery",
+    "kroger": "Grocery Anchor",
+    "publix": "Grocery Anchor",
+    "safeway": "Grocery Anchor",
+    "whole foods": "Grocery Anchor",
+    "aldi": "Grocery Anchor",
+    "trader joe's": "Grocery Anchor",
+    "h-e-b": "Grocery Anchor",
     "mcdonald's": "Food & Beverage",
     "chick-fil-a": "Food & Beverage",
     "starbucks": "Food & Beverage",
     "dunkin": "Food & Beverage",
     "chipotle": "Food & Beverage",
     "panera": "Food & Beverage",
-    "burger king": "Food & Beverage",
-    "wendy's": "Food & Beverage",
-    "taco bell": "Food & Beverage",
-    "subway": "Food & Beverage",
 }
 
 # Category from retailer fetch category field
@@ -210,6 +204,78 @@ def is_high_traffic_gas_brand(name: Optional[str]) -> bool:
         return False
     name_lower = name.lower()
     return any(brand in name_lower for brand in HIGH_TRAFFIC_GAS_BRANDS)
+
+
+# -----------------------------------------------------------------------------
+# Site score: business-logic feature weights
+# Maps v3 feature_analysis key → absolute weight (all weights sum to 1.0).
+# Formula: site_score = Σ (adjusted_percentile_i × weight_i) / 100  → result 0–100.
+#
+# Weight derivation:
+#   Weather 0.25:  sunshine hrs 0.035 (0.015 avg + 0.02 total sunny days merged),
+#                  precipitation 0.02, snowfall 0.09 (0.05 snowfall + 0.04 snowy days merged),
+#                  days_below_freezing 0.02, pleasant_temp 0.03, wind_speed 0.005, rainy_days 0.05
+#   Competition 0.35: count 0.12, rating 0.07, distance 0.10, reviews 0.06
+#   Retail 0.30:  costco 0.08, walmart 0.06, target 0.04, grocery_count 0.07, food_count 0.05
+#   Gas 0.10:     distance 0.04, draw_score 0.03, rating_count 0.025, rating 0.005
+# -----------------------------------------------------------------------------
+
+SITE_SCORE_WEIGHTS: dict = {
+    # Weather
+    "weather_total_sunshine_hours":           0.035,
+    "weather_total_precipitation_mm":         0.020,
+    "weather_total_snowfall_cm":              0.090,
+    "weather_days_below_freezing":            0.020,
+    "weather_days_pleasant_temp":             0.030,
+    "weather_avg_daily_max_windspeed_ms":     0.005,
+    "weather_rainy_days":                     0.050,
+    # Competition
+    "competitors_count_4miles":               0.120,
+    "competitor_1_google_rating":             0.070,
+    "competitor_1_distance_miles":            0.100,
+    "competitor_1_rating_count":              0.060,
+    # Retail
+    "costco_enc":                             0.080,
+    "distance_nearest_walmart(5 mile)":       0.060,
+    "distance_nearest_target (5 mile)":       0.040,
+    "other_grocery_count_1mile":              0.070,
+    "count_food_joints_0_5miles (0.5 mile)":  0.050,
+    # Gas
+    "nearest_gas_station_distance_miles":     0.040,
+    "gas_station_draw":                       0.030,
+    "nearest_gas_station_rating_count":       0.025,
+    "nearest_gas_station_rating":             0.005,
+}
+
+SITE_SCORE_CATEGORY_WEIGHTS: dict = {
+    "Weather":     0.25,
+    "Competition": 0.35,
+    "Retail":      0.30,
+    "Gas":         0.10,
+}
+
+SITE_SCORE_FEATURE_CATEGORY: dict = {
+    "weather_total_sunshine_hours":           "Weather",
+    "weather_total_precipitation_mm":         "Weather",
+    "weather_total_snowfall_cm":              "Weather",
+    "weather_days_below_freezing":            "Weather",
+    "weather_days_pleasant_temp":             "Weather",
+    "weather_avg_daily_max_windspeed_ms":     "Weather",
+    "weather_rainy_days":                     "Weather",
+    "competitors_count_4miles":               "Competition",
+    "competitor_1_google_rating":             "Competition",
+    "competitor_1_distance_miles":            "Competition",
+    "competitor_1_rating_count":              "Competition",
+    "costco_enc":                             "Retail",
+    "distance_nearest_walmart(5 mile)":       "Retail",
+    "distance_nearest_target (5 mile)":       "Retail",
+    "other_grocery_count_1mile":              "Retail",
+    "count_food_joints_0_5miles (0.5 mile)":  "Retail",
+    "nearest_gas_station_distance_miles":     "Gas",
+    "gas_station_draw":                       "Gas",
+    "nearest_gas_station_rating_count":       "Gas",
+    "nearest_gas_station_rating":             "Gas",
+}
 
 
 def get_weather_metric_value_from_climate(

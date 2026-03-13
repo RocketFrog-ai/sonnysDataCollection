@@ -12,6 +12,7 @@ This module re-exports it under a stable production import path:
 Accuracy (5-fold CV, 482 sites, 4-class):
   v3 : exact ~37–62%*  |  within-1-quartile ~74–97%*
   * Upper bound achieved when tunnel_count is provided (site capacity signal, r=0.89).
+    carwash_type_encoded (1=Express, 2=Mobile, 3=Hand Wash) adds signal (r≈-0.35).
     For brand-new sites without known tunnel count, exact accuracy ~37%.
 
 Key improvements over v2:

@@ -14,7 +14,7 @@ import logging
 import math
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Dict, Optional
 
 from app.utils import common as calib
 from app.server.app import get_climate
@@ -234,7 +234,11 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
     }
 
 
-def build_feature_values_and_v3_input(fetched: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, float]]:
+def build_feature_values_and_v3_input(
+    fetched: Dict[str, Any],
+    tunnel_count: Optional[int] = None,
+    carwash_type_encoded: Optional[int] = None,
+) -> tuple[Dict[str, Any], Dict[str, float]]:
     """
     From fetch_all_features output, build:
     1) feature_values: task-style keys (for existing routes / profiler).
@@ -322,6 +326,16 @@ def build_feature_values_and_v3_input(fetched: Dict[str, Any]) -> tuple[Dict[str
             feature_values["competitor_1_rating_count"] = rc1
             location_features["competitor_1_rating_count"] = float(rc1)
 
+    # Tunnel count: use provided value if given, otherwise let the predictor impute from KNN.
+    if tunnel_count is not None and 1 <= int(tunnel_count) <= 4:
+        feature_values["tunnel_count"] = int(tunnel_count)
+        location_features["tunnel_count"] = float(tunnel_count)
+
+    # Car wash type: 1=Express Tunnel, 2=Mobile, 3=Hand Wash/Detail. Improves quantile prediction.
+    if carwash_type_encoded is not None and 1 <= int(carwash_type_encoded) <= 3:
+        feature_values["carwash_type_encoded"] = int(carwash_type_encoded)
+        location_features["carwash_type_encoded"] = float(carwash_type_encoded)
+
     # Engineered features for v3
     comp_qual = location_features.get("competitor_1_google_rating"), location_features.get("competitor_1_rating_count")
     if comp_qual[0] is not None and comp_qual[1] is not None:
@@ -345,24 +359,29 @@ def build_feature_values_and_v3_input(fetched: Dict[str, Any]) -> tuple[Dict[str
 def run_site_analysis(
     address: str,
     *,
+    tunnel_count: Optional[int] = None,
+    carwash_type_encoded: Optional[int] = None,
     run_quantile: bool = True,
     run_narratives: bool = False,
-    set_progress: Optional[Callable[[Dict[str, Any]], None]] = None,
 ) -> Dict[str, Any]:
     """
-    Single entry point: geocode once → fetch all features once (no repeated Google/climate calls)
-    → build feature_values + v3 input → run quantile prediction → optionally run narrative agents.
-    If set_progress is provided (e.g. from Celery task), it is called after fetch (data
-    available quickly), after quantile, and after narratives so clients can poll partial results.
-    Returns dict with address, lat, lon, feature_values, quantile_result (if run_quantile),
-    narratives (if run_narratives).
+    Single entry point: geocode once → fetch all features once → quantile prediction → narratives.
+    Returns only when all stages are complete. Full result includes address, lat, lon,
+    feature_values, fetched, quantile_result, and narratives.
     """
-    logger.info("run_site_analysis: geocoding address=%s", address)
+    logger.info(
+        "run_site_analysis: geocoding address=%s tunnel_count=%s carwash_type=%s",
+        address, tunnel_count, carwash_type_encoded,
+    )
     lat, lon = _geocode(address)
     logger.info("run_site_analysis: geocode done lat=%.4f lon=%.4f, fetching features", lat, lon)
     fetched = fetch_all_features(lat, lon)
     logger.info("run_site_analysis: fetch done, building feature_values and quantile input")
-    feature_values, location_features = build_feature_values_and_v3_input(fetched)
+    feature_values, location_features = build_feature_values_and_v3_input(
+        fetched,
+        tunnel_count=tunnel_count,
+        carwash_type_encoded=carwash_type_encoded,
+    )
 
     result: Dict[str, Any] = {
         "address": address,
@@ -371,11 +390,6 @@ def run_site_analysis(
         "feature_values": feature_values,
         "fetched": fetched,
     }
-    if set_progress:
-        try:
-            set_progress(dict(result))
-        except Exception as e:
-            logger.warning("set_progress after fetch failed: %s", e)
 
     quantile_result: Optional[Dict[str, Any]] = None
     if run_quantile and location_features:
@@ -384,11 +398,7 @@ def run_site_analysis(
             predictor = QuantilePredictorV3()
             quantile_result = predictor.analyze(location_features, llm_narrative=False)
             result["quantile_result"] = quantile_result
-            if set_progress:
-                try:
-                    set_progress(dict(result))
-                except Exception as e:
-                    logger.warning("set_progress after quantile failed: %s", e)
+            logger.info("run_site_analysis: quantile prediction done (Q%s)", quantile_result.get("predicted_wash_quantile"))
         except Exception as e:
             logger.exception("Quantile prediction failed: %s", e)
             result["quantile_error"] = str(e)
@@ -412,11 +422,7 @@ def run_site_analysis(
                 "retail": get_retail_narrative(quantile_result, feature_narratives),
                 "gas": get_gas_narrative(quantile_result, feature_narratives),
             }
-            if set_progress:
-                try:
-                    set_progress(dict(result))
-                except Exception as e:
-                    logger.warning("set_progress after narratives failed: %s", e)
+            logger.info("run_site_analysis: narratives done")
         except Exception as e:
             logger.exception("Narratives failed: %s", e)
             result["narrative_error"] = str(e)
