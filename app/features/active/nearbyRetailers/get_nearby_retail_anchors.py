@@ -9,6 +9,7 @@ Replaces the separate nearbyStores (Costco/Walmart/Target) + nearbyRetailers (gr
 from __future__ import annotations
 
 import logging
+import math
 import requests
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -17,105 +18,115 @@ logger = logging.getLogger(__name__)
 DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json"
 PLACES_SEARCH_URL = "https://places.googleapis.com/v1/places:searchNearby"
 METERS_PER_MILE = 1609.34
+MAX_DESTINATIONS_PER_REQUEST = 25
 
 DEFAULT_RADIUS_MILES = 3.0
 
 # Google Places API types → anchor category
 # Two batches: anchor stores + food/beverage (Places API limits includedTypes to 50)
 ANCHOR_STORE_TYPES = [
-    "warehouse_store",       # Costco, Sam's Club, BJ's
-    "department_store",      # Target, Walmart, Meijer, Kohl's
-    "grocery_store",         # Kroger, Publix, Safeway, H-E-B
-    "supermarket",           # alternative Grocery label
-    "home_improvement_store",# Home Depot, Lowe's
-    "wholesaler",            # backup for warehouse retailers
+    "warehouse_store",   # Costco, Sam's Club, BJ's
+    "department_store",  # Target, Walmart, Meijer, Kohl's
+    "grocery_store",     # Kroger, Publix, Safeway, H-E-B, Whole Foods, Aldi, Trader Joe's
+    "supermarket",       # alternative grocery label
 ]
 FOOD_TYPES = [
-    "fast_food_restaurant",  # McDonald's, Chick-fil-A, Chipotle, Taco Bell
+    "fast_food_restaurant",  # McDonald's, Chick-fil-A, Chipotle
     "coffee_shop",           # Starbucks, Dunkin', Panera
 ]
 
-# Name keyword → (retail_type, brand_key used for v3 extraction)
-#   brand_key: "costco" | "walmart" | "target" | "grocery" | "food" | None
+# Only preferred anchor brands — anything not in this list is dropped.
+# Food & Beverage: keyword match is REQUIRED (no type-only fallback).
 KEYWORD_MAP: List[Tuple[str, str, str]] = [
     # Warehouse Club
-    ("costco",        "Warehouse Club",    "costco"),
-    ("sam's club",    "Warehouse Club",    "costco"),   # treat like Costco-class
-    ("bj's",          "Warehouse Club",    "costco"),
+    ("costco",          "Warehouse Club",     "costco"),
+    ("sam's club",      "Warehouse Club",     "costco"),
+    ("bj's",            "Warehouse Club",     "costco"),
     # Big Box / Discount
-    ("walmart",       "Supercenter",       "walmart"),
-    ("target",        "Big Box / Discount","target"),
-    ("meijer",        "Big Box",           "walmart"),  # closest class
-    ("kohl's",        "Big Box",           None),
-    # Home Improvement
-    ("home depot",    "Home Improvement",  None),
-    ("lowe's",        "Home Improvement",  None),
-    ("lowes",         "Home Improvement",  None),
+    ("walmart",         "Supercenter",        "walmart"),
+    ("target",          "Big Box / Discount", "target"),
+    ("meijer",          "Big Box",            "walmart"),
+    ("kohl's",          "Big Box",            None),
+    ("kohls",           "Big Box",            None),
     # Grocery Anchors
-    ("kroger",        "Grocery Anchor",    "grocery"),
-    ("publix",        "Grocery Anchor",    "grocery"),
-    ("safeway",       "Grocery Anchor",    "grocery"),
-    ("whole foods",   "Grocery Anchor",    "grocery"),
-    ("aldi",          "Grocery Anchor",    "grocery"),
-    ("trader joe's",  "Grocery Anchor",    "grocery"),
-    ("trader joes",   "Grocery Anchor",    "grocery"),
-    ("h-e-b",         "Grocery Anchor",    "grocery"),
-    ("heb",           "Grocery Anchor",    "grocery"),
-    ("wegmans",       "Grocery Anchor",    "grocery"),
-    ("sprouts",       "Grocery Anchor",    "grocery"),
-    ("market",        "Grocery Anchor",    "grocery"),
-    # Food & Beverage
-    ("mcdonald",      "Food & Beverage",   "food"),
-    ("chick-fil-a",   "Food & Beverage",   "food"),
-    ("chick fil a",   "Food & Beverage",   "food"),
-    ("starbucks",     "Food & Beverage",   "food"),
-    ("dunkin",        "Food & Beverage",   "food"),
-    ("chipotle",      "Food & Beverage",   "food"),
-    ("panera",        "Food & Beverage",   "food"),
-    ("burger king",   "Food & Beverage",   "food"),
-    ("wendy's",       "Food & Beverage",   "food"),
-    ("wendys",        "Food & Beverage",   "food"),
-    ("taco bell",     "Food & Beverage",   "food"),
-    ("subway",        "Food & Beverage",   "food"),
+    ("kroger",          "Grocery Anchor",     "grocery"),
+    ("publix",          "Grocery Anchor",     "grocery"),
+    ("h-e-b",           "Grocery Anchor",     "grocery"),
+    ("heb",             "Grocery Anchor",     "grocery"),
+    ("safeway",         "Grocery Anchor",     "grocery"),
+    ("whole foods",     "Grocery Anchor",     "grocery"),
+    ("aldi",            "Grocery Anchor",     "grocery"),
+    ("trader joe's",    "Grocery Anchor",     "grocery"),
+    ("trader joes",     "Grocery Anchor",     "grocery"),
+    # Food & Beverage — ONLY preferred brands
+    ("mcdonald",        "Food & Beverage",    "food"),
+    ("chick-fil-a",     "Food & Beverage",    "food"),
+    ("chick fil a",     "Food & Beverage",    "food"),
+    ("starbucks",       "Food & Beverage",    "food"),
+    ("dunkin",          "Food & Beverage",    "food"),
+    ("chipotle",        "Food & Beverage",    "food"),
+    ("panera",          "Food & Beverage",    "food"),
 ]
 
-# Google Places type → fallback retail type when no name keyword matches
+# Only grocery_store / supermarket fall back by type alone.
+# warehouse_store, department_store, fast_food_restaurant, coffee_shop all
+# REQUIRE a keyword match — prevents generic restaurants/stores slipping in.
 PLACES_TYPE_FALLBACK: Dict[str, Tuple[str, str]] = {
-    "warehouse_store":        ("Warehouse Club",   "costco"),
-    "wholesaler":             ("Warehouse Club",   "costco"),
-    "department_store":       ("Big Box",          None),
-    "grocery_store":          ("Grocery Anchor",   "grocery"),
-    "supermarket":            ("Grocery Anchor",   "grocery"),
-    "home_improvement_store": ("Home Improvement", None),
-    "fast_food_restaurant":   ("Food & Beverage",  "food"),
-    "coffee_shop":            ("Food & Beverage",  "food"),
+    "grocery_store": ("Grocery Anchor", "grocery"),
+    "supermarket":   ("Grocery Anchor", "grocery"),
+}
+
+# All non-grocery types must match a keyword to avoid false positives.
+REQUIRE_KEYWORD_TYPES = {
+    "warehouse_store",
+    "department_store",
+    "fast_food_restaurant",
+    "coffee_shop",
 }
 
 # Priority for deduplication: keep the highest-priority match per place_id
 ANCHOR_TYPE_PRIORITY = {
-    "Warehouse Club":   10,
-    "Supercenter":       9,
-    "Big Box / Discount":8,
-    "Big Box":           7,
-    "Grocery Anchor":    6,
-    "Home Improvement":  5,
-    "Food & Beverage":   4,
-    "General Retail":    1,
+    "Warehouse Club":    10,
+    "Supercenter":        9,
+    "Big Box / Discount": 8,
+    "Big Box":            7,
+    "Grocery Anchor":     6,
+    "Food & Beverage":    4,
+    "General Retail":     1,
 }
 
 
 def _classify(name: Optional[str], place_types: Optional[List[str]]) -> Tuple[str, Optional[str]]:
-    """Return (retail_type, brand_key). brand_key is 'costco'|'walmart'|'target'|'grocery'|'food'|None."""
+    """Return (retail_type, brand_key). Returns ('General Retail', None) for unknown places."""
     if name:
         nl = name.lower()
         for keyword, rtype, bkey in KEYWORD_MAP:
             if keyword in nl:
                 return rtype, bkey
-    for pt in (place_types or []):
-        if pt in PLACES_TYPE_FALLBACK:
-            rtype, bkey = PLACES_TYPE_FALLBACK[pt]
+
+    types_set = {t.lower() for t in (place_types or [])}
+
+    # warehouse_store and department_store require a keyword match to avoid false positives
+    if types_set & REQUIRE_KEYWORD_TYPES:
+        return "General Retail", None
+
+    for api_type, (rtype, bkey) in PLACES_TYPE_FALLBACK.items():
+        if api_type in types_set:
             return rtype, bkey
+
     return "General Retail", None
+
+
+def _straight_line_miles(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> float:
+    """Haversine distance in miles."""
+    R = 3958.8
+    lat1, lon1 = math.radians(origin_lat), math.radians(origin_lon)
+    lat2, lon2 = math.radians(dest_lat), math.radians(dest_lon)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    c = 2 * math.asin(math.sqrt(min(1.0, a)))
+    return round(R * c, 2)
 
 
 def _batch_distances(
@@ -124,37 +135,41 @@ def _batch_distances(
     origin_lon: float,
     dests: List[Tuple[float, float]],
 ) -> List[Optional[float]]:
-    """Google Distance Matrix batch call. Returns distance_miles per dest (None on error)."""
+    """Google Distance Matrix: up to 25 dests per request; batches if more. Returns distance_miles per dest (None on error)."""
     if not dests:
         return []
-    destinations = "|".join(f"{lat},{lon}" for lat, lon in dests)
-    params = {
-        "origins": f"{origin_lat},{origin_lon}",
-        "destinations": destinations,
-        "mode": "driving",
-        "units": "imperial",
-        "key": api_key,
-    }
-    try:
-        resp = requests.get(DISTANCE_MATRIX_URL, params=params, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception as exc:
-        logger.warning("Distance Matrix failed: %s", exc)
-        return [None] * len(dests)
-    if data.get("status") != "OK":
-        return [None] * len(dests)
-    elements = ((data.get("rows") or [{}])[0]).get("elements") or []
     out: List[Optional[float]] = []
-    for el in elements:
-        if el.get("status") == "OK":
-            dist_m = (el.get("distance") or {}).get("value")
-            out.append(round(dist_m / METERS_PER_MILE, 2) if dist_m is not None else None)
-        else:
+    for i in range(0, len(dests), MAX_DESTINATIONS_PER_REQUEST):
+        chunk = dests[i : i + MAX_DESTINATIONS_PER_REQUEST]
+        destinations = "|".join(f"{lat},{lon}" for lat, lon in chunk)
+        params = {
+            "origins": f"{origin_lat},{origin_lon}",
+            "destinations": destinations,
+            "mode": "driving",
+            "units": "imperial",
+            "key": api_key,
+        }
+        try:
+            resp = requests.get(DISTANCE_MATRIX_URL, params=params, timeout=15)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception as exc:
+            logger.warning("Distance Matrix failed: %s", exc)
+            out.extend([None] * len(chunk))
+            continue
+        if data.get("status") != "OK":
+            logger.warning("Distance Matrix status=%s: %s", data.get("status"), data.get("error_message"))
+            out.extend([None] * len(chunk))
+            continue
+        elements = ((data.get("rows") or [{}])[0]).get("elements") or []
+        for el in elements:
+            if el.get("status") == "OK":
+                dist_m = (el.get("distance") or {}).get("value")
+                out.append(round(dist_m / METERS_PER_MILE, 2) if dist_m is not None else None)
+            else:
+                out.append(None)
+        while len(out) < i + len(chunk):
             out.append(None)
-    # Pad if fewer elements returned than expected
-    while len(out) < len(dests):
-        out.append(None)
     return out
 
 
@@ -199,63 +214,71 @@ def get_nearby_retail_anchors(
     latitude: float,
     longitude: float,
     radius_miles: float = DEFAULT_RADIUS_MILES,
+    use_driving_distance: bool = False,
 ) -> Dict[str, Any]:
     """
-    Fetch all major retail anchors (Warehouse Club, Big Box, Grocery, Food & Beverage,
-    Home Improvement) within radius_miles using:
-      1. Google Places searchNearby — two calls (anchor stores + food types).
-      2. Google Distance Matrix — one batch call for driving distances.
-
-    Returns:
-        {
-            "anchors": [{"name": str, "type": str, "distance_miles": float}, ...],  # sorted by distance
-            "costco_dist": float | None,     # nearest Warehouse Club distance (for costco_enc)
-            "walmart_dist": float | None,    # nearest Supercenter/Big Box distance
-            "target_dist": float | None,     # nearest Big Box / Discount distance
-            "grocery_count_1mile": int,      # grocery anchors within 1 mile
-            "food_count_0_5miles": int,      # food & beverage within 0.5 miles
-        }
+    Fetch retail anchors within radius_miles. By default uses straight-line distance only
+    (2 Places searchNearby calls, no Distance Matrix) to keep cost low. Set use_driving_distance=True
+    to call Distance Matrix for driving distances.
     """
     if not api_key:
         return _empty_result()
 
-    # Two searchNearby calls (anchor stores + food), then merge
     raw_anchor = _search_places(api_key, latitude, longitude, radius_miles, ANCHOR_STORE_TYPES, max_results=20)
-    raw_food   = _search_places(api_key, latitude, longitude, radius_miles, FOOD_TYPES, max_results=20)
+    raw_food = _search_places(api_key, latitude, longitude, radius_miles, FOOD_TYPES, max_results=20)
     all_raw = raw_anchor + raw_food
 
     if not all_raw:
+        logger.info("Retail anchors: Places searchNearby returned 0 places (anchor=%s food=%s)", len(raw_anchor), len(raw_food))
         return _empty_result()
 
-    # Deduplicate by place_id, keep highest-priority anchor type
+    def _place_name(place: Dict[str, Any]) -> Optional[str]:
+        dn = place.get("displayName")
+        if isinstance(dn, dict):
+            return dn.get("text")
+        if isinstance(dn, str):
+            return dn
+        return None
+
     seen: Dict[str, Dict[str, Any]] = {}
     for place in all_raw:
         pid = place.get("id") or str(place.get("name", ""))
-        dn = place.get("displayName") or {}
-        name = dn.get("text") if isinstance(dn, dict) else None
+        name = _place_name(place)
         types = place.get("types") or []
         rtype, bkey = _classify(name, types)
         priority = ANCHOR_TYPE_PRIORITY.get(rtype, 0)
         if pid not in seen or priority > ANCHOR_TYPE_PRIORITY.get(seen[pid]["type"], 0):
+            loc = place.get("location") or {}
+            lat_val = loc.get("latitude")
+            lon_val = loc.get("longitude")
             seen[pid] = {
-                "name": name,
+                "name": name or (rtype if rtype != "General Retail" else "Store"),
                 "type": rtype,
                 "brand_key": bkey,
-                "lat": (place.get("location") or {}).get("latitude"),
-                "lon": (place.get("location") or {}).get("longitude"),
+                "lat": lat_val,
+                "lon": lon_val,
             }
 
     candidates = [v for v in seen.values() if v.get("lat") is not None and v.get("lon") is not None]
     if not candidates:
+        logger.info("Retail anchors: no candidates with valid location (seen=%d)", len(seen))
         return _empty_result()
 
-    # Batch distance matrix
-    dests = [(c["lat"], c["lon"]) for c in candidates]
-    distances = _batch_distances(api_key, latitude, longitude, dests)
+    if use_driving_distance:
+        dests = [(c["lat"], c["lon"]) for c in candidates]
+        distances = _batch_distances(api_key, latitude, longitude, dests)
+    else:
+        distances = [None] * len(candidates)
+
+    use_straight_line = all(d is None for d in distances)
+    if use_straight_line and use_driving_distance:
+        logger.info("Retail anchors: Distance Matrix returned no distances; using straight-line for %d candidates", len(candidates))
 
     anchors: List[Dict[str, Any]] = []
     for c, dist in zip(candidates, distances):
-        if dist is None or dist > radius_miles:
+        if dist is None:
+            dist = _straight_line_miles(latitude, longitude, c["lat"], c["lon"])
+        if dist > radius_miles:
             continue
         anchors.append({
             "name": c["name"],
@@ -263,6 +286,12 @@ def get_nearby_retail_anchors(
             "distance_miles": dist,
             "_brand_key": c["brand_key"],
         })
+
+    # Drop General Retail (unrecognised brands) — they add noise with no analytical value
+    anchors = [a for a in anchors if a.get("type") != "General Retail"]
+
+    if not anchors and candidates:
+        logger.warning("Retail anchors: %d candidates but none within radius %.1f mi (all distances > radius or all General Retail)", len(candidates), radius_miles)
 
     anchors.sort(key=lambda a: a["distance_miles"])
 

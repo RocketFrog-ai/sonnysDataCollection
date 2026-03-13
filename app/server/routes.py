@@ -1,24 +1,8 @@
-"""
-Tape Cracker API routes.
-
-Analysis flow (single fetch, async): POST /analyze-site enqueues a task that runs
-geocode → fetch all features once (features/active) → quantile (v3) → optional narratives.
-Google API (geocode, Places, Distance Matrix, Place Details) and climate are called only
-inside that task, once per analysis. GET /weather/data-by-task/{task_id} and
-GET /competition/data-by-task, GET /retail/data-by-task, GET /gas/data-by-task never re-fetch; they read from stored task result.
-
-Progressive result: the task writes partial result to Redis after fetch (data available
-quickly), then after quantile, then after narratives. Poll GET /result/{task_id} or
-GET /task/{task_id} to get partial or full result without waiting for the full run.
-
-Scoring / dimension summaries: app.modelling.ds. Quantile: app.modelling.ds.quantile_predictor (v3).
-"""
-
 import json
 import logging
 import redis
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
@@ -49,13 +33,12 @@ from app.server.config import (
     GAS_RADIUS_FAR_MILES,
     GAS_SCORE_V3_KEYS,
     is_high_traffic_gas_brand,
+    SITE_SCORE_WEIGHTS,
+    SITE_SCORE_CATEGORY_WEIGHTS,
+    SITE_SCORE_FEATURE_CATEGORY,
 )
 from app.server.models import (
     AnalyseRequest,
-    GasStationRequest,
-    DataFetchNearestGasRequest,
-    RetailersRequest,
-    CompetitorsDynamicsRequest,
     TaskResponse,
     TaskStatus,
     TaskStatusResponse,
@@ -63,32 +46,18 @@ from app.server.models import (
     QuantileSummaryResponse,
 )
 from app.server.app import (
-    get_competitors,
     get_traffic_lights,
     get_nearby_stores,
 )
-from app.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
-from app.features.active.nearbyGasStations.get_nearby_gas_stations import (
-    get_nearby_gas_stations,
-    get_nearest_gas_station_only,
-)
-from app.features.active.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
-from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
 from app.modelling.ds.scorer import (
     enrich_features_with_categories,
-    enrich_gas_features_with_categories,
-    enrich_competitors_features_with_categories,
-    enrich_retailers_features_with_categories,
     get_feature_final_scores,
     get_all_profiler_scores_from_task_feature_values,
     compute_dimension_score,
     compute_overall_score,
     WEATHER_API_TO_PROFILER,
-    GAS_API_TO_PROFILER,
-    COMPETITORS_API_TO_PROFILER,
-    RETAILER_API_TO_PROFILER,
 )
 from app.modelling.ds.dimension_summary import (
     get_dimension_summary_approach2,
@@ -266,11 +235,17 @@ def analyze_site_endpoint(features: AnalyseRequest):
     """
     Enqueue site analysis: geocode → single fetch (features/active) → quantile (v3).
     Returns task_id; use GET /task/{task_id} for status and result (feature_values, quantile_result).
+    tunnel_count (1–4): optional number of wash tunnels — strongly improves prediction accuracy.
+    carwash_type_encoded (1–3): optional car wash type — improves quantile prediction.
     """
     if not features.address:
         raise HTTPException(status_code=400, detail="No site address provided")
     try:
-        result = analyse_site.delay(features.address)
+        result = analyse_site.delay(
+            features.address,
+            tunnel_count=features.tunnel_count,
+            carwash_type_encoded=features.carwash_type_encoded,
+        )
         return TaskResponse(
             task_id=result.id,
             status=TaskStatus.PENDING,
@@ -299,9 +274,9 @@ def get_weather_data_by_task(task_id: str):
     Return all 4 weather metrics from the task result: value, unit, quantile_score
     (percentile e.g. 50.1), quantile (Q1–Q4), category (Poor/Fair/Good/Strong), min, max,
     and narrative summary. Category from v3: Q1→Poor, Q2→Fair, Q3→Good, Q4→Strong.
-    No Google or climate API calls — reads only from stored task result (Redis or Celery).
+    Only available once task is fully complete (fetch + quantile + narratives).
     """
-    result = _get_result_or_partial(task_id)
+    result = _get_task_result_or_raise(task_id)
     climate = (result.get("fetched") or {}).get("climate") or {}
     feature_values = result.get("feature_values") or {}
     if not climate and not feature_values:
@@ -387,19 +362,10 @@ def get_weather_data_by_task(task_id: str):
 
 @router.get("/competition/data-by-task/{task_id}")
 def get_competition_data_by_task(task_id: str):
-    """
-    Return competition: nearby car washes (count + list with details), nearest (distance, brand, rating, count),
-    insight (quantiles / predictions), observation (overall feature). No Google API calls — reads from task result.
-    """
-    result = _get_result_or_partial(task_id)
+    result = _get_task_result_or_raise(task_id)
     fetched = result.get("fetched") or {}
     competitors_data = fetched.get("competitors_data") or {}
     feature_values = result.get("feature_values") or {}
-    if not result.get("fetched") and not result.get("feature_values"):
-        raise HTTPException(
-            status_code=422,
-            detail=f"Task {task_id} has no analysis data yet.",
-        )
     quantile_result = result.get("quantile_result") or {}
     feature_analysis = quantile_result.get("feature_analysis") or {}
     narratives_comp = (result.get("narratives") or {}).get("competition") or {}
@@ -426,17 +392,23 @@ def get_competition_data_by_task(task_id: str):
     if percentiles_for_score:
         competition_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1)
 
+    from app.features.active.nearbyCompetitors.carwash_lookup import CarWashLookup
+    lookup = CarWashLookup.get()
+
     nearby_list = []
     for c in competitors_list:
-        nearby_list.append({
-            "name": c.get("name"),
+        name = c.get("name")
+        matched = lookup.match(name) if name else None
+        entry = {
+            "name": name,
             "rating": float(c["rating"]) if c.get("rating") is not None else None,
             "user_rating_count": c.get("user_rating_count") or c.get("rating_count"),
             "address": c.get("address"),
             "distance_miles": float(c["distance_miles"]) if c.get("distance_miles") is not None else None,
-            "website": c.get("website"),
-            "primary_type": c.get("primary_type") or c.get("primary_type_display_name") or "Car wash",
-        })
+            "official_website": matched.get("official_website") if matched else None,
+            "primary_carwash_type": matched.get("primary_carwash_type") if matched else None,
+        }
+        nearby_list.append(entry)
 
     has_comp_narrative = any(narratives_comp.get(k) for k in ("insight", "observation"))
     complete = bool(quantile_result and has_comp_narrative)
@@ -470,14 +442,7 @@ def get_competition_data_by_task(task_id: str):
 
 @router.get("/retail/data-by-task/{task_id}")
 def get_retail_data_by_task(task_id: str):
-    """
-    Return retail anchor ecosystem: anchor retailers within 1 and 3 miles (name, type, distance),
-    nearest anchor, retail_score (mean of key percentiles), and LLM narratives.
-    No external API calls — reads from stored task result (single fetch by analyse-site task).
-    """
-    result = _get_result_or_partial(task_id)
-    if not result.get("fetched") and not result.get("feature_values"):
-        raise HTTPException(status_code=422, detail=f"Task {task_id} has no analysis data yet.")
+    result = _get_task_result_or_raise(task_id)
 
     fetched = result.get("fetched") or {}
     retail_anchors_data = fetched.get("retail_anchors") or {}
@@ -485,11 +450,30 @@ def get_retail_data_by_task(task_id: str):
     feature_analysis = quantile_result.get("feature_analysis") or {}
     narratives_retail = (result.get("narratives") or {}).get("retail") or {}
 
-    # Anchors list comes pre-sorted by distance from the fetch
     anchors = retail_anchors_data.get("anchors") or []
     within_1 = [a for a in anchors if a.get("distance_miles") is not None and a["distance_miles"] <= RETAIL_RADIUS_NEAR_MILES]
-    within_3 = [a for a in anchors if a.get("distance_miles") is not None and a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES]
+    within_3 = [a for a in anchors if a.get("distance_miles") is not None and RETAIL_RADIUS_NEAR_MILES < a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES]
     nearest = anchors[0] if anchors else {}
+
+    # Named anchor lookup: nearest per class from fetched v3 values (pre-computed)
+    costco_dist = retail_anchors_data.get("costco_dist")
+    walmart_dist = retail_anchors_data.get("walmart_dist")
+    target_dist = retail_anchors_data.get("target_dist")
+
+    def _nearest_of_type(types: List[str]) -> Optional[Dict[str, Any]]:
+        for a in anchors:
+            if a.get("type") in types:
+                return {"name": a["name"], "type": a["type"], "distance_miles": a["distance_miles"]}
+        return None
+
+    key_anchors = {
+        "warehouse_club": _nearest_of_type(["Warehouse Club"])
+            or ({"name": None, "type": "Warehouse Club", "distance_miles": costco_dist} if costco_dist else None),
+        "big_box": _nearest_of_type(["Supercenter", "Big Box / Discount", "Big Box"])
+            or ({"name": None, "type": "Big Box", "distance_miles": walmart_dist or target_dist} if (walmart_dist or target_dist) else None),
+        "grocery": _nearest_of_type(["Grocery Anchor"]),
+        "food_beverage": _nearest_of_type(["Food & Beverage"]),
+    }
 
     # retail_score: mean of key v3 percentiles
     percentiles_for_score = []
@@ -509,22 +493,23 @@ def get_retail_data_by_task(task_id: str):
         "complete": complete,
         "success": complete,
         "retail_score": retail_score,
-        "nearest": {
+        "nearest_anchor": {
             "name": nearest.get("name"),
+            "type": nearest.get("type"),
             "distance_miles": nearest.get("distance_miles"),
-            "retail_type": nearest.get("type"),
         },
+        "key_anchors": key_anchors,
         "retail_anchors": {
             "within_1_mile": {
                 "count": len(within_1),
-                "list": within_1,
+                "list": [{"name": a["name"], "type": a["type"], "distance_miles": a["distance_miles"]} for a in within_1],
             },
             "within_3_miles": {
                 "count": len(within_3),
-                "list": within_3,
+                "list": [{"name": a["name"], "type": a["type"], "distance_miles": a["distance_miles"]} for a in within_3],
             },
         },
-        "overall": {
+        "narratives": {
             "insight": narratives_retail.get("insight"),
             "observation": narratives_retail.get("observation"),
             "conclusion": narratives_retail.get("conclusion"),
@@ -538,14 +523,7 @@ def get_retail_data_by_task(task_id: str):
 
 @router.get("/gas/data-by-task/{task_id}")
 def get_gas_data_by_task(task_id: str):
-    """
-    Return gas station ecosystem: stations within 1 and 3 miles, nearest gas station
-    (brand, distance, high_traffic_brand), gas_score, and LLM narratives.
-    No external API calls — reads from stored task result.
-    """
-    result = _get_result_or_partial(task_id)
-    if not result.get("fetched") and not result.get("feature_values"):
-        raise HTTPException(status_code=422, detail=f"Task {task_id} has no analysis data yet.")
+    result = _get_task_result_or_raise(task_id)
 
     fetched = result.get("fetched") or {}
     quantile_result = result.get("quantile_result") or {}
@@ -624,101 +602,6 @@ def get_gas_data_by_task(task_id: str):
 
 
 # -----------------------------------------------------------------------------
-# Gas stations
-# -----------------------------------------------------------------------------
-
-@router.post("/gas_station")
-def get_gas_stations_endpoint(req: GasStationRequest):
-    try:
-        lat, lon = _geocode(req.address)
-        api_key = calib.GOOGLE_MAPS_API_KEY
-        if not api_key:
-            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
-        radius = req.radius_miles if req.radius_miles is not None else 2.0
-        max_results = min(req.max_results if req.max_results is not None else 6, 6)
-        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
-        stations = get_nearby_gas_stations(
-            api_key, lat, lon,
-            radius_miles=radius,
-            max_results=max_results,
-            fetch_place_details=fetch_details,
-        )
-
-        feature_scores = {}
-        dimension_score = None
-        if stations:
-            s0 = stations[0]
-            feature_scores = enrich_gas_features_with_categories(s0)
-            flat = {
-                k: v for k, v in {
-                    "distance_miles": s0.get("distance_miles"),
-                    "rating": s0.get("rating"),
-                    "rating_count": s0.get("rating_count"),
-                }.items()
-                if v is not None
-            }
-            if flat:
-                scores = get_feature_final_scores(flat, GAS_API_TO_PROFILER)
-                dimension_score = compute_dimension_score(scores, "Gas")
-
-        return {
-            "address": req.address,
-            "lat": lat,
-            "lon": lon,
-            "radius_miles": radius,
-            "stations": stations,
-            "count": len(stations),
-            "nearest_station_feature_scores": feature_scores,
-            "dimension_score": {"Gas": dimension_score} if dimension_score is not None else {},
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Gas stations fetch failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/gas_station/summary/{task_id}")
-def get_gas_station_summary_by_task(task_id: str):
-    return _dimension_summary(task_id, "Gas")
-
-
-@router.post("/datafetch/nearbygasstations")
-def datafetch_nearby_gas_stations(req: DataFetchNearestGasRequest):
-    try:
-        lat, lon = _geocode(req.address)
-        api_key = calib.GOOGLE_MAPS_API_KEY
-        if not api_key:
-            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
-        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else True
-        nearest = get_nearest_gas_station_only(api_key, lat, lon, fetch_place_details=fetch_details)
-        feature_scores = enrich_gas_features_with_categories(nearest)
-        dimension_score = None
-        if nearest:
-            flat = {
-                k: nearest.get(k)
-                for k in ("distance_miles", "rating", "rating_count")
-                if nearest.get(k) is not None
-            }
-            if flat:
-                scores = get_feature_final_scores(flat, GAS_API_TO_PROFILER)
-                dimension_score = compute_dimension_score(scores, "Gas")
-        return {
-            "address": req.address,
-            "lat": lat,
-            "lon": lon,
-            "nearest_gas_station": nearest,
-            "feature_scores": feature_scores,
-            "dimension_score": {"Gas": dimension_score} if dimension_score is not None else {},
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Datafetch nearest gas station failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# -----------------------------------------------------------------------------
 # Traffic lights
 # -----------------------------------------------------------------------------
 
@@ -736,96 +619,6 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
 
 
 # -----------------------------------------------------------------------------
-# Retailers
-# -----------------------------------------------------------------------------
-
-@router.post("/retailers")
-def get_retailers_endpoint(req: RetailersRequest):
-    try:
-        lat, lon = _geocode(req.address)
-        api_key = calib.GOOGLE_MAPS_API_KEY
-        if not api_key:
-            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
-        radius = req.radius_miles if req.radius_miles is not None else 0.5
-        data = get_nearby_retailers(
-            api_key, lat, lon,
-            radius_miles=radius,
-            fetch_place_details=False,
-        )
-        stores = get_nearby_stores_data(lat, lon)
-
-        raw_list = data.get("retailers") or []
-        grocery_within_1mi = [r for r in raw_list if r.get("category") == "Grocery" and (r.get("distance_miles") or 0) <= 1.0]
-        food_within_0_5mi = [r for r in raw_list if r.get("category") == "Food Joint" and (r.get("distance_miles") or 0) <= 0.5]
-        other_grocery_count = len(grocery_within_1mi)
-        food_joint_count = len(food_within_0_5mi)
-
-        def _avg(items, key):
-            vals = [x[key] for x in items if x.get(key) is not None]
-            return round(sum(vals) / len(vals), 2) if vals else None
-
-        flat_retailer = {
-            k: v
-            for k, v in {
-                "distance_from_nearest_costco": stores.get("distance_from_nearest_costco"),
-                "distance_from_nearest_walmart": stores.get("distance_from_nearest_walmart"),
-                "distance_from_nearest_target": stores.get("distance_from_nearest_target"),
-                "other_grocery_count_1mile": other_grocery_count,
-                "count_food_joints_0_5miles": food_joint_count,
-            }.items()
-            if v is not None
-        }
-        feature_scores = enrich_retailers_features_with_categories(flat_retailer) if flat_retailer else {}
-        dimension_score = None
-        if flat_retailer:
-            scores = get_feature_final_scores(flat_retailer, RETAILER_API_TO_PROFILER)
-            dimension_score = compute_dimension_score(scores, "Retail Proximity")
-
-        def _anchor_item(display_name: str, details):
-            if details is None:
-                return {"name": display_name, "found": False, "message": "No store within 5 mile radius"}
-            rest = {k: v for k, v in details.items() if k != "name"}
-            return {"name": display_name, "found": True, "store_name": details.get("name"), **rest}
-
-        retailers = [
-            _anchor_item("Costco", stores.get("nearest_costco")),
-            _anchor_item("Walmart", stores.get("nearest_walmart")),
-            _anchor_item("Target", stores.get("nearest_target")),
-            {
-                "name": "Other groceries",
-                "count_within_1_mile": other_grocery_count,
-                "avg_rating": _avg(grocery_within_1mi, "rating"),
-                "avg_distance_miles": _avg(grocery_within_1mi, "distance_miles"),
-            },
-            {
-                "name": "Food joints",
-                "count_within_0_5_miles": food_joint_count,
-                "avg_rating": _avg(food_within_0_5mi, "rating"),
-                "avg_distance_miles": _avg(food_within_0_5mi, "distance_miles"),
-            },
-        ]
-
-        return {
-            "address": req.address,
-            "lat": lat,
-            "lon": lon,
-            "retailers": retailers,
-            "feature_scores": feature_scores,
-            "dimension_score": {"Retail Proximity": dimension_score} if dimension_score is not None else {},
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Retailers fetch failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/retailers/summary/{task_id}")
-def get_retailers_summary_by_task(task_id: str):
-    return _dimension_summary(task_id, "Retail Proximity")
-
-
-# -----------------------------------------------------------------------------
 # Nearby stores
 # -----------------------------------------------------------------------------
 
@@ -839,77 +632,6 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
         raise
     except Exception as e:
         logger.exception("Nearby stores fetch failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# -----------------------------------------------------------------------------
-# Competitors
-# -----------------------------------------------------------------------------
-
-@router.post("/competitors/dynamics")
-def get_competitors_dynamics_endpoint(req: CompetitorsDynamicsRequest):
-    """
-    Standalone endpoint: geocodes and fetches competitors from Google (Places + Distance Matrix).
-    For the single-fetch flow use POST /analyze-site then GET /competition/data-by-task/{task_id}.
-    """
-    try:
-        lat, lon = _geocode(req.address)
-        api_key = calib.GOOGLE_MAPS_API_KEY
-        if not api_key:
-            raise HTTPException(status_code=503, detail="Google Maps API key not configured")
-        radius = req.radius_miles if req.radius_miles is not None else 4.0
-        fetch_details = req.fetch_place_details if req.fetch_place_details is not None else False
-        data = get_nearby_competitors(
-            api_key, lat, lon,
-            radius_miles=radius,
-            fetch_place_details=fetch_details,
-        )
-        # Classification disabled to save cost; type uses primary_type_display_name or default.
-
-        count = data.get("count", 0)
-        feature_scores = enrich_competitors_features_with_categories(competitors, count)
-        flat_comp = {"count": count}
-        if competitors:
-            c1 = competitors[0]
-            flat_comp["competitor_1_distance_miles"] = c1.get("distance_miles")
-            flat_comp["competitor_1_google_rating"] = c1.get("rating")
-            flat_comp["competitor_1_rating_count"] = c1.get("user_rating_count")
-        flat_comp = {k: v for k, v in flat_comp.items() if v is not None}
-        dimension_score = None
-        if flat_comp:
-            scores = get_feature_final_scores(flat_comp, COMPETITORS_API_TO_PROFILER)
-            dimension_score = compute_dimension_score(scores, "Competition")
-        return {
-            "address": req.address,
-            "lat": lat,
-            "lon": lon,
-            "radius_miles": radius,
-            **data,
-            "feature_scores": feature_scores,
-            "dimension_score": {"Competition": dimension_score} if dimension_score is not None else {},
-        }
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Competitors dynamics fetch failed")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/competitors/dynamics/summary/{task_id}")
-def get_competitors_dynamics_summary_by_task(task_id: str):
-    return _dimension_summary(task_id, "Competition")
-
-
-@router.post("/competitors")
-def get_competitors_endpoint(features: AnalyseRequest):
-    try:
-        lat, lon = _geocode(features.address)
-        data = get_competitors(lat, lon)
-        return {"address": features.address, "lat": lat, "lon": lon, "data": data}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception("Competitors fetch failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -942,19 +664,14 @@ def get_task_status(task_id: str):
         response.result = task_result.result
     elif status == TaskStatus.FAILURE:
         response.error = str(task_result.result) if task_result.result else "Task failed"
-    elif status in (TaskStatus.PENDING, TaskStatus.STARTED):
-        partial = _get_partial_result_from_redis(task_id)
-        if partial is not None:
-            response.result = partial
     return response
 
 
 @router.get("/result/{task_id}")
 def get_result_by_task(task_id: str):
     """
-    Get analyse-site result by task_id (GET, no extra fetch).
-    Returns partial result as soon as fetch is done (data quickly), then quantile, then full.
-    Poll this after POST /analyze-site to get fetched data, quantile result, and narratives.
+    Get analyse-site result by task_id. Returns full result only once all stages
+    (fetch + quantile + narratives) are complete. Poll until status = success.
     """
     task_result = AsyncResult(task_id, app=celery_app)
     status_str = task_result.state
@@ -967,10 +684,7 @@ def get_result_by_task(task_id: str):
             "error": str(task_result.result) if task_result.result else "Task failed",
             "result": None,
         }
-    partial = _get_partial_result_from_redis(task_id)
-    if partial is not None:
-        return {"task_id": task_id, "status": "running", "result": partial}
-    return {"task_id": task_id, "status": "pending", "result": None}
+    return {"task_id": task_id, "status": task_result.state.lower(), "result": None}
 
 
 @router.get("/quantile/{task_id}")
@@ -1070,6 +784,98 @@ def get_full_profiling_summary(task_id: str):
     if result.get("narratives") is not None:
         response["narratives"] = result["narratives"]
     return response
+
+
+# -----------------------------------------------------------------------------
+# Overall site score (business-logic weights × v3 percentiles) + quantile
+# -----------------------------------------------------------------------------
+
+@router.get("/overall/{task_id}")
+def get_overall(task_id: str):
+    """
+    Returns:
+    - site_score (0–100): weighted composite using business-logic feature weights.
+      Formula: Σ (adjusted_percentile_i × weight_i) for each feature in SITE_SCORE_WEIGHTS.
+    - category_scores: per-category weighted scores (Weather, Competition, Retail, Gas).
+    - feature_scores: per-feature adjusted_percentile, weight, and weighted contribution.
+    - predicted_quantile: Q1–Q4 tier from v3 model.
+    - predicted_tier: label (High Performer, etc.)
+    - expected_annual_volume: min / max / label (cars/year).
+    - quantile_probabilities: model confidence per tier.
+    """
+    result = _get_task_result_or_raise(task_id)
+    quantile_result = result.get("quantile_result") or {}
+    feature_analysis = quantile_result.get("feature_analysis") or {}
+
+    if not quantile_result:
+        raise HTTPException(status_code=422, detail=f"Task {task_id} has no quantile_result yet.")
+
+    # Compute site score
+    weighted_sum = 0.0
+    total_weight_used = 0.0
+    feature_scores: dict = {}
+    category_accum: dict = {cat: {"weighted_sum": 0.0, "weight_used": 0.0} for cat in SITE_SCORE_CATEGORY_WEIGHTS}
+
+    for v3_key, weight in SITE_SCORE_WEIGHTS.items():
+        fa = feature_analysis.get(v3_key) or {}
+        pct = fa.get("adjusted_percentile")
+        if pct is None:
+            continue
+        contribution = float(pct) * weight
+        weighted_sum += contribution
+        total_weight_used += weight
+        category = SITE_SCORE_FEATURE_CATEGORY.get(v3_key, "Other")
+        feature_scores[v3_key] = {
+            "label": fa.get("label", v3_key),
+            "category": category,
+            "adjusted_percentile": round(float(pct), 1),
+            "weight": weight,
+            "weighted_contribution": round(contribution, 3),
+            "imputed": fa.get("imputed", False),
+        }
+        if category in category_accum:
+            category_accum[category]["weighted_sum"] += contribution
+            category_accum[category]["weight_used"] += weight
+
+    # Normalise: if some features were missing, scale score to 0–100 range
+    site_score = round(weighted_sum / total_weight_used, 1) if total_weight_used > 0 else None
+
+    # Per-category scores (0–100)
+    category_scores: dict = {}
+    for cat, cat_weight in SITE_SCORE_CATEGORY_WEIGHTS.items():
+        acc = category_accum.get(cat, {})
+        w_used = acc.get("weight_used", 0)
+        w_sum = acc.get("weighted_sum", 0.0)
+        category_scores[cat] = {
+            "score": round(w_sum / w_used, 1) if w_used > 0 else None,
+            "category_weight": cat_weight,
+            "features_scored": sum(1 for f in feature_scores.values() if f["category"] == cat),
+        }
+
+    # Quantile fields
+    predicted_q = quantile_result.get("predicted_wash_quantile")
+    wash_range = quantile_result.get("predicted_wash_range") or {}
+    proba = quantile_result.get("quantile_probabilities") or {}
+
+    return {
+        "task_id": task_id,
+        "address": result.get("address"),
+        "site_score": site_score,
+        "category_scores": category_scores,
+        "feature_scores": feature_scores,
+        "predicted_quantile": f"Q{predicted_q}" if predicted_q else None,
+        "predicted_tier": quantile_result.get("predicted_wash_tier"),
+        "expected_annual_volume": {
+            "min": wash_range.get("min"),
+            "max": wash_range.get("max"),
+            "label": wash_range.get("label"),
+        },
+        "quantile_probabilities": {
+            f"Q{k}": round(v * 100, 1) for k, v in proba.items()
+        },
+        "tunnel_count": (result.get("feature_values") or {}).get("tunnel_count"),
+        "carwash_type_encoded": (result.get("feature_values") or {}).get("carwash_type_encoded"),
+    }
 
 
 # -----------------------------------------------------------------------------

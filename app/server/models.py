@@ -6,6 +6,8 @@ from enum import Enum
 
 class AnalyseRequest(BaseModel):
     address: str = None
+    tunnel_count: Optional[int] = Field(None, ge=1, le=4, description="Number of wash tunnels at the site (1–4). Improves quantile prediction accuracy.")
+    carwash_type_encoded: Optional[int] = Field(None, ge=1, le=3, description="Car wash type: 1=Express Tunnel, 2=Mobile, 3=Hand Wash/Detail. Improves quantile prediction.")
 
 
 class WeatherRequest(BaseModel):

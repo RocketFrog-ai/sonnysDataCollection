@@ -1,9 +1,12 @@
 """
-Nearby retailers (complementary businesses) within a radius using Google Places API and Distance Matrix.
-Returns only real API data: name, category, distance, rating, hours; optional website/link via Place Details.
+Nearby complementary businesses (food/grocery) within a radius.
+For anchor retail analysis (Costco, Walmart, Target, Grocery chains) use get_nearby_retail_anchors.
 """
+import logging
 import requests
 from typing import Optional, Any
+
+logger = logging.getLogger(__name__)
 
 from app.utils import common as calib
 from app.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places
@@ -18,13 +21,40 @@ RETAIL_TYPES = [
     "grocery_store",
     "supermarket",
     "restaurant",
+    "fast_food_restaurant",
+    "coffee_shop",
 ]
 
 TYPE_TO_CATEGORY = {
     "grocery_store": "Grocery",
     "supermarket": "Grocery",
     "restaurant": "Food Joint",
+    "fast_food_restaurant": "Food Joint",
+    "coffee_shop": "Food Joint",
 }
+
+# Preferred anchor food/grocery brands — always shown regardless of count limit.
+# Non-preferred brands are capped to the closest MAX_NON_PREFERRED results.
+PREFERRED_FOOD_BRANDS: set = {
+    # Wholesale clubs
+    "costco", "sam's club", "bj's wholesale", "bj's",
+    # Big box
+    "walmart", "target", "meijer", "kohl's", "kohls",
+    # Grocery chains
+    "kroger", "publix", "h-e-b", "heb", "safeway",
+    "whole foods", "aldi", "trader joe's", "trader joes",
+    # Fast food / café anchors
+    "mcdonald's", "mcdonalds", "chick-fil-a", "chick fil a",
+    "starbucks", "dunkin'", "dunkin", "chipotle", "panera bread", "panera",
+}
+MAX_NON_PREFERRED = 5
+
+
+def _is_preferred_brand(name: Optional[str]) -> bool:
+    if not name:
+        return False
+    nl = name.lower()
+    return any(brand in nl for brand in PREFERRED_FOOD_BRANDS)
 
 
 def _route_distances(
@@ -149,7 +179,6 @@ def get_nearby_retailers(
     if search_radius_meters > 50000:
         search_radius_meters = 50000.0
 
-    # Single request: grocery + food only (no pharmacy, bank, gym, etc.)
     results = find_nearby_places(
         api_key,
         latitude,
@@ -161,6 +190,7 @@ def get_nearby_retailers(
     )
 
     if not results or "places" not in results or not results["places"]:
+        logger.info("get_nearby_retailers: find_nearby_places returned no places (keys=%s)", list(results.keys()) if results else None)
         return {
             "retailers": [],
             "count": 0,
@@ -168,6 +198,7 @@ def get_nearby_retailers(
         }
 
     places = results["places"]
+    logger.info("get_nearby_retailers: find_nearby_places returned %d places", len(places))
     dests = []
     for place in places:
         loc = place.get("location") or {}
@@ -178,10 +209,10 @@ def get_nearby_retailers(
         else:
             dests.append((None, None))
 
-    route_results = _route_distances(
-        api_key, latitude, longitude,
-        [(a, b) for a, b in dests if a is not None and b is not None],
-    )
+    valid_dests = [(a, b) for a, b in dests if a is not None and b is not None]
+    route_results = _route_distances(api_key, latitude, longitude, valid_dests)
+    distances_ok = sum(1 for r in route_results if r.get("distance_miles") is not None)
+    logger.info("get_nearby_retailers: Distance Matrix got %d/%d distances", distances_ok, len(route_results))
 
     dest_idx = 0
     within = []
@@ -233,12 +264,28 @@ def get_nearby_retailers(
         within.append(retailer)
 
     within.sort(key=lambda r: (r.get("distance_miles") is None, r.get("distance_miles") or float("inf")))
-    within_distances = [r["distance_miles"] for r in within]
+
+    # Preferred brands always shown; non-preferred capped to MAX_NON_PREFERRED closest.
+    preferred = [r for r in within if _is_preferred_brand(r.get("name"))]
+    non_preferred = [r for r in within if not _is_preferred_brand(r.get("name"))]
+    filtered = preferred + non_preferred[:MAX_NON_PREFERRED]
+    filtered.sort(key=lambda r: (r.get("distance_miles") is None, r.get("distance_miles") or float("inf")))
+
+    within_distances = [r["distance_miles"] for r in filtered]
     avg_distance_miles = round(sum(within_distances) / len(within_distances), 2) if within_distances else None
 
+    logger.info(
+        "get_nearby_retailers: within radius %.2f mi -> %d retailers (%d preferred, %d other capped at %d); names=%s",
+        radius_miles,
+        len(filtered),
+        len(preferred),
+        min(len(non_preferred), MAX_NON_PREFERRED),
+        MAX_NON_PREFERRED,
+        [r.get("name") for r in filtered[:10]],
+    )
     return {
-        "retailers": within,
-        "count": len(within),
+        "retailers": filtered,
+        "count": len(filtered),
         "avg_distance_miles": avg_distance_miles,
     }
 
@@ -247,7 +294,9 @@ if __name__ == "__main__":
     import json
     import os
     from dotenv import load_dotenv
+    from app.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
     load_dotenv()
     api_key = os.getenv("GOOGLE_MAPS_API_KEY")
     address = "1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA"
@@ -256,22 +305,37 @@ if __name__ == "__main__":
     else:
         geo = calib.get_lat_long(address)
         if not geo:
-            print(f"Could not geocode address: {address}")
+            print(f"Could not geocode: {address}")
         else:
             lat, lon = geo["lat"], geo["lon"]
-            print(f"Address: {address}\nLat: {lat}, Lon: {lon}\n")
-            data = get_nearby_retailers(
-                api_key, lat, lon,
-                radius_miles=0.5,
-                fetch_place_details=True,
-            )
-            retailers = data["retailers"]
-            print(f"Retailers within 0.5 mi: {data['count']}")
-            print(f"Avg distance: {data['avg_distance_miles']} mi")
+            print(f"\nAddress: {address}  |  lat={lat}  lon={lon}\n")
+
             print("=" * 60)
-            for i, r in enumerate(retailers, 1):
-                print(f"\n--- Retailer {i}: {r.get('name')} ---")
-                print(json.dumps(r, indent=2, default=str))
+            print("ANCHOR RETAILERS (Costco / Walmart / Target / Grocery / F&B)")
+            print("=" * 60)
+            anchors_data = get_nearby_retail_anchors(api_key, lat, lon, radius_miles=3.0)
+            anchors = anchors_data.get("anchors") or []
+            within_1 = [a for a in anchors if a["distance_miles"] <= 1.0]
+            between_1_and_3 = [a for a in anchors if 1.0 < a["distance_miles"] <= 3.0]
+            nearest = anchors[0] if anchors else None
+
+            if nearest:
+                print(f"\nNearest Anchor: {nearest['name']}  |  {nearest['type']}  |  {nearest['distance_miles']} mi\n")
+            print(f"Within 1 mile  ({len(within_1)}):")
+            for a in within_1:
+                print(f"  {a['name']:<35} {a['type']:<22} {a['distance_miles']} mi")
+            print(f"\n1–3 miles ({len(between_1_and_3)}):")
+            for a in between_1_and_3:
+                print(f"  {a['name']:<35} {a['type']:<22} {a['distance_miles']} mi")
+            print(f"\nKey distances extracted:")
+            print(f"  costco_dist  : {anchors_data.get('costco_dist')}")
+            print(f"  walmart_dist : {anchors_data.get('walmart_dist')}")
+            print(f"  target_dist  : {anchors_data.get('target_dist')}")
+            print(f"  grocery <=1mi: {anchors_data.get('grocery_count_1mile')}")
+            print(f"  food <=0.5mi : {anchors_data.get('food_count_0_5miles')}")
+
             print("\n" + "=" * 60)
-            if retailers:
-                print(f"Keys per retailer: {list(retailers[0].keys())}")
+            print("NEARBY FOOD & GROCERY (0.5 mi, complementary)")
+            print("=" * 60)
+            food_data = get_nearby_retailers(api_key, lat, lon, radius_miles=0.5, fetch_place_details=False)
+            print(json.dumps(food_data, indent=2, default=str))

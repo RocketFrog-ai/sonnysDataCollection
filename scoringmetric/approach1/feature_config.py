@@ -1,5 +1,9 @@
 # feature_config.py - 50 features (same set as Approach 2 & 3)
 
+
+
+
+
 FEATURE_DIRECTION = {
     # Higher is better
     "total_sunshine_hours": "higher",

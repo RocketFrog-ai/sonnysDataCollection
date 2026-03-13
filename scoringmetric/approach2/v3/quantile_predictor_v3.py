@@ -121,6 +121,8 @@ FEATURE_DIRECTIONS: Dict[str, str] = {
     "weather_drive_score":                  "higher",
     # Site capacity proxy (derived from current_count — see leakage note in docstring)
     "tunnel_count":                         "higher",  # r=+0.891 — more tunnels = more capacity
+    # Car wash format: 1=Express Tunnel, 2=Mobile, 3=Hand Wash/Detail etc. Lower = higher volume.
+    "carwash_type_encoded":                 "lower",   # r≈-0.35 — Express=1 highest volume
 }
 
 # Signal strength: |Spearman r| recomputed on 482 common site_client rows
@@ -152,6 +154,7 @@ FEATURE_SIGNAL: Dict[str, float] = {
     "retail_proximity":                     0.095,
     "weather_drive_score":                  0.115,
     "tunnel_count":                         0.891,  # NOTE: derived from current_count — leakage
+    "carwash_type_encoded":                 0.354,  # 1=Express, 2=Mobile, 3=Hand Wash
 }
 SIGNAL_THRESHOLD = 0.07  # |r| below this = low signal
 
@@ -183,6 +186,7 @@ FEATURE_LABELS: Dict[str, str] = {
     "retail_proximity":                     "Retail Proximity Score",
     "weather_drive_score":                  "Weather Drive Score",
     "tunnel_count":                         "Tunnel Count (proxy)",
+    "carwash_type_encoded":                 "Car Wash Type (1=Express, 2=Mobile, 3=Hand Wash)",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -348,6 +352,18 @@ def _load_and_merge(excel_path: Path, csv_path: Path) -> pd.DataFrame:
         print(f"  Rows: {len(merged)}")
     else:
         merged = _build_final_csv(excel_path, csv_path, final_csv)
+
+    # Join carwash_type_encoded from Type_of_carwash_final.xlsx (1=Express, 2=Mobile, 3=Hand Wash; r≈-0.35)
+    if "site_client_id" in merged.columns:
+        proj_root = Path(__file__).resolve().parents[3]
+        carwash_path = proj_root / "app" / "features" / "active" / "nearbyCompetitors" / "Type_of_carwash_final.xlsx"
+        if carwash_path.exists():
+            cw = pd.read_excel(carwash_path, engine="openpyxl")
+            if "site_client_id" in cw.columns and "carwash_type_encoded" in cw.columns:
+                cw = cw[["site_client_id", "carwash_type_encoded"]].drop_duplicates(subset=["site_client_id"])
+                merged = merged.merge(cw, on="site_client_id", how="left")
+                matched = merged["carwash_type_encoded"].notna().sum()
+                print(f"  Car wash type joined: {matched}/{len(merged)} rows")
 
     # Drop internal merge metadata
     for c in ("_match_type", "site_client_id", "location_id"):
@@ -1362,6 +1378,7 @@ if __name__ == "__main__":
         "region_enc":                           1.0,   # South region (typical)
         "state_enc":                            10.0,  # example state encoding
         "tunnel_count":                         2.0,   # estimated tunnels (1–4); or provide actual
+        "carwash_type_encoded":                 1.0,   # 1=Express, 2=Mobile, 3=Hand Wash (optional)
     }
 
     result = predictor.analyze(example, llm_narrative=True)
