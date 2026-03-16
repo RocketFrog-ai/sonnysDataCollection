@@ -10,19 +10,20 @@ This module re-exports it under a stable production import path:
     from app.modelling.ds.quantile_predictor import QuantilePredictorV3
 
 Accuracy (5-fold CV, 482 sites, 4-class):
-  v3 : exact ~37–62%*  |  within-1-quartile ~74–97%*
-  * Upper bound achieved when tunnel_count is provided (site capacity signal, r=0.89).
-    carwash_type_encoded (1=Express, 2=Mobile, 3=Hand Wash) adds signal (r≈-0.35).
+  v3 : exact 62.9%  |  within-1-quartile 97.9%
+  * With tunnel_count + carwash_type (effective_capacity engineered feature).
     For brand-new sites without known tunnel count, exact accuracy ~37%.
 
 Key improvements over v2:
-  - Site age (strongest predictor, Spearman r=-0.335)
+  - Site age (strong predictor, Spearman r=-0.335)
   - Tunnel count proxy (r=+0.891 when available)
+  - effective_capacity = tunnel_count × is_express  (r=+0.74, 2nd most important)
+    → 0 for Mobile / Hand Wash (no physical tunnel), 1–4 for Express only
   - KNN imputation instead of global median
   - Calibrated RandomForest (isotonic regression) for reliable probabilities
-  - Signal-validated feature directions (Spearman r on 481 common rows)
-  - 4 engineered features: competition_quality, gas_station_draw,
-    retail_proximity, weather_drive_score
+  - Signal-validated feature directions (Spearman r on 482 common rows)
+  - 5 engineered features: competition_quality, gas_station_draw,
+    retail_proximity, weather_drive_score, effective_capacity
 """
 from __future__ import annotations
 

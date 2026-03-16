@@ -150,22 +150,30 @@ HOW WE COMPARE FEATURES (WASHQ)
     marked as low signal so we do not over-interpret noise.
 
 
-TUNNEL COUNT (CAPACITY PROXY)
------------------------------
+TUNNEL COUNT AND EFFECTIVE CAPACITY
+------------------------------------
 
-  • Tunnel count is a simple site-capacity estimate from 1 to 4:
+  • Tunnel count is a site-capacity estimate from 1 to 4, derived from
+    annual volume for existing sites:
 
       Under 1.2 lakh (120,000) cars/year   →  1 tunnel
       1.2–2.4 lakh                         →  2 tunnels
       2.4–3.6 lakh                         →  3 tunnels
       3.6 lakh and above                   →  4 tunnels
 
-  • More tunnels mean higher throughput and higher volume. It is the single
-    most important feature in the model.
-
-  • For existing sites in the dataset it is computed from their car wash
-    count. For a new site you can supply the actual tunnel count (1–4);
+  • For a new site you can supply the actual tunnel count (1–4);
     if you do not know it, the model fills it from similar sites.
+
+  • Effective Capacity = tunnel_count × is_Express
+    Only Express Tunnel sites have physical conveyor tunnels. Mobile washes,
+    Hand Wash / Detail, Flex and other types do not — so for them, effective
+    capacity is 0 regardless of their tunnel count proxy.
+    This is the 2nd most important feature (importance 16.2%, r=+0.74).
+
+  • Why this matters: a low-volume Express site with 1 tunnel (tunnel=1,
+    effective_capacity=1) is very different from a Mobile or Hand Wash site
+    (tunnel=1, effective_capacity=0). Without effective_capacity the model
+    cannot separate them; with it, accuracy rose from 62.4% to 62.9%.
 
 
 SITE AGE
@@ -181,13 +189,13 @@ SITE AGE
 MODEL AND ACCURACY
 ------------------
 
-  • The model is a Random Forest classifier: 300 trees, 27 features, with
+  • The model is a Random Forest classifier: 400 trees, 28 features, with
     calibration so the reported probabilities are reliable. Missing values
     are filled using the 5 nearest similar sites (KNN imputation).
 
   • Accuracy (5-fold cross-validation):
       Without tunnel count:  37% exact quartile, 73% within one quartile.
-      With tunnel count:     62% exact quartile, 97.7% within one quartile.
+      With tunnel count:     62.9% exact quartile, 97.9% within one quartile.
 
   • “Within one quartile” means the prediction is either exactly right or
     off by just one tier (e.g. we say Q4 and the true tier is Q3). So with

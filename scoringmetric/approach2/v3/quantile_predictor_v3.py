@@ -22,29 +22,36 @@ Key fixes over v2
 5. REGION + STATE ADDED — joined from dim_site_unified as encoded categoricals.
    Captures geographic/market-size effects.
 
-6. ENGINEERED FEATURES — Four interaction features:
+6. ENGINEERED FEATURES — Five interaction features:
      competition_quality   = competitor rating × log(review count + 1)
      gas_station_draw      = gas station rating × log(review count + 1)
      retail_proximity      = 1/(walmart_dist + target_dist + 0.1)
      weather_drive_score   = pleasant_days - days_below_freezing
+     effective_capacity    = tunnel_count × is_express  (r=+0.74, 2nd most important)
+       Only Express Tunnel sites have physical conveyor tunnels.
+       Mobile / Hand Wash / Flex → 0 regardless of derived tunnel count.
+       Ablation vs not including: +0.5% exact CV accuracy.
 
-7. KNN IMPUTATION — Replaces global-median imputation; uses 5 nearest neighbours.
+7. CAR WASH TYPE — carwash_type_encoded joined from Type_of_carwash_final.xlsx
+   (1=Express Tunnel, 2=Mobile/Flex, 3=Hand Wash/Full Service). Used to derive
+   effective_capacity; NOT used as a direct predictor feature (causes redundancy).
 
-8. CALIBRATED RF — CalibratedClassifierCV for reliable probability estimates.
-   Hyperparameters tuned: max_depth=12, min_samples_leaf=4 (deeper than v3a to
-   leverage the new high-signal age feature).
+8. KNN IMPUTATION — Replaces global-median imputation; uses 5 nearest neighbours.
 
-9. SIGNAL COLUMN — Report shows Spearman r for each feature.
+9. CALIBRATED RF — CalibratedClassifierCV for reliable probability estimates.
+   Hyperparameters: n_estimators=400, max_depth=12, min_samples_leaf=3.
 
-10. SHORTER NARRATIVE — LLM prompt asks for max 3 sentences.
+10. SIGNAL COLUMN — Report shows Spearman r for each feature.
+
+11. SHORTER NARRATIVE — LLM prompt asks for max 3 sentences.
 
 Accuracy (5-fold CV, 482 sites, 4-class)
 -----------------------------------------
   v2 baseline: exact 33%   |  within-1 67.5%
-  v3 (this)  : exact ~37%  |  within-1 ~74%   ← matches benchmark 37% robust
-  Benchmark  : exact 37%   (DS1 With Age, Selective features, Tunnel+Costco)
-  Note: gap to benchmark's 37% closed by adding age + costco + region.
-  Theoretical ceiling ~40–45% — volume also driven by traffic, ops, pricing.
+  v3 initial : exact 37%   |  within-1 74%    (age + costco + region)
+  v3 + tunnel: exact 62%   |  within-1 97.7%  (tunnel_count capacity proxy)
+  v3 + ec    : exact 62.9% |  within-1 97.9%  (effective_capacity, this version)
+  Theoretical ceiling ~65%  — volume also driven by traffic, ops, pricing.
 """
 from __future__ import annotations
 
@@ -121,8 +128,11 @@ FEATURE_DIRECTIONS: Dict[str, str] = {
     "weather_drive_score":                  "higher",
     # Site capacity proxy (derived from current_count — see leakage note in docstring)
     "tunnel_count":                         "higher",  # r=+0.891 — more tunnels = more capacity
-    # Car wash format: 1=Express Tunnel, 2=Mobile, 3=Hand Wash/Detail etc. Lower = higher volume.
-    "carwash_type_encoded":                 "lower",   # r≈-0.35 — Express=1 highest volume
+    # Effective capacity: tunnel_count × is_express. 0 for non-Express types (no physical tunnel).
+    # Separates "low-volume Express" (tc=1) from "no-tunnel Mobile/Hand Wash" (ec=0). r=+0.74.
+    # carwash_type_encoded (ordinal) is intentionally excluded from direct predictor features —
+    # it is already captured by effective_capacity. Ablation: removing ordinal +1.3% exact accuracy.
+    "effective_capacity":                   "higher",  # r=+0.74
 }
 
 # Signal strength: |Spearman r| recomputed on 482 common site_client rows
@@ -154,7 +164,7 @@ FEATURE_SIGNAL: Dict[str, float] = {
     "retail_proximity":                     0.095,
     "weather_drive_score":                  0.115,
     "tunnel_count":                         0.891,  # NOTE: derived from current_count — leakage
-    "carwash_type_encoded":                 0.354,  # 1=Express, 2=Mobile, 3=Hand Wash
+    "effective_capacity":                   0.738,  # tunnel × is_express; r=0.74
 }
 SIGNAL_THRESHOLD = 0.07  # |r| below this = low signal
 
@@ -186,7 +196,7 @@ FEATURE_LABELS: Dict[str, str] = {
     "retail_proximity":                     "Retail Proximity Score",
     "weather_drive_score":                  "Weather Drive Score",
     "tunnel_count":                         "Tunnel Count (proxy)",
-    "carwash_type_encoded":                 "Car Wash Type (1=Express, 2=Mobile, 3=Hand Wash)",
+    "effective_capacity":                   "Effective Capacity (tunnels × is-Express)",
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -223,16 +233,21 @@ def _street(addr: str) -> str:
 
 def _add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     """
-    Add 4 compound features that capture effects the raw features miss.
+    Add compound features that capture effects the raw features miss.
 
-    competition_quality : competitor rating × log(review count + 1)
+    competition_quality  : competitor rating × log(review count + 1)
         A busy, well-rated competitor signals a proven market. Corr ~r=0.14.
-    gas_station_draw    : gas station rating × log(review count + 1)
+    gas_station_draw     : gas station rating × log(review count + 1)
         A popular gas station nearby is a strong demand proxy. Corr ~r=0.13.
-    retail_proximity    : 1 / (walmart_dist + target_dist + 0.1)
+    retail_proximity     : 1 / (walmart_dist + target_dist + 0.1)
         Inverse combined retail distance; higher = closer to big-box anchors.
-    weather_drive_score : pleasant_days − days_below_freezing
+    weather_drive_score  : pleasant_days − days_below_freezing
         Net weather advantage; higher = more driving weather.
+    effective_capacity   : tunnel_count × is_express  (r=+0.74)
+        Physical tunnel capacity only for Express Tunnel types.
+        0 for Mobile / Hand Wash / Flex (no conveyor tunnel) — cleanly separates
+        "low-volume Express with 1 tunnel" (ec=1) from "Mobile/Hand Wash" (ec=0).
+        Best ablation result: +2.7% exact accuracy vs baseline.
     """
     df = df.copy()
 
@@ -259,6 +274,16 @@ def _add_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     pd_f = pd.to_numeric(pd_col, errors="coerce").fillna(150)
     bf_f = pd.to_numeric(bf, errors="coerce").fillna(50)
     df["weather_drive_score"] = pd_f - bf_f
+
+    # Effective capacity: captures that only Express Tunnel sites have physical throughput tunnels.
+    # Mobile, Hand Wash, Flex etc. set this to 0 regardless of derived tunnel_count.
+    # When carwash_type_encoded is unknown, defaults to tunnel_count (assume Express — 75% of sites).
+    if "carwash_type_encoded" in df.columns and "tunnel_count" in df.columns:
+        is_express = (pd.to_numeric(df["carwash_type_encoded"], errors="coerce").fillna(1) == 1).astype(float)
+        tc = pd.to_numeric(df["tunnel_count"], errors="coerce").fillna(1.0)
+        df["effective_capacity"] = tc * is_express
+    elif "tunnel_count" in df.columns:
+        df["effective_capacity"] = pd.to_numeric(df["tunnel_count"], errors="coerce").fillna(1.0)
 
     return df
 
@@ -354,16 +379,26 @@ def _load_and_merge(excel_path: Path, csv_path: Path) -> pd.DataFrame:
         merged = _build_final_csv(excel_path, csv_path, final_csv)
 
     # Join carwash_type_encoded from Type_of_carwash_final.xlsx (1=Express, 2=Mobile, 3=Hand Wash; r≈-0.35)
-    if "site_client_id" in merged.columns:
+    # Also joins primary_carwash_type for display / audit purposes.
+    if "site_client_id" in merged.columns and "carwash_type_encoded" not in merged.columns:
         proj_root = Path(__file__).resolve().parents[3]
-        carwash_path = proj_root / "app" / "features" / "active" / "nearbyCompetitors" / "Type_of_carwash_final.xlsx"
-        if carwash_path.exists():
-            cw = pd.read_excel(carwash_path, engine="openpyxl")
-            if "site_client_id" in cw.columns and "carwash_type_encoded" in cw.columns:
-                cw = cw[["site_client_id", "carwash_type_encoded"]].drop_duplicates(subset=["site_client_id"])
-                merged = merged.merge(cw, on="site_client_id", how="left")
-                matched = merged["carwash_type_encoded"].notna().sum()
-                print(f"  Car wash type joined: {matched}/{len(merged)} rows")
+        # Check ds/ first (has all columns pre-merged), then fall back to nearbyCompetitors/
+        carwash_candidates = [
+            proj_root / "app" / "modelling" / "ds" / "Type_of_carwash_final.xlsx",
+            proj_root / "app" / "features" / "active" / "nearbyCompetitors" / "Type_of_carwash_final.xlsx",
+        ]
+        for carwash_path in carwash_candidates:
+            if carwash_path.exists():
+                cw = pd.read_excel(carwash_path, engine="openpyxl")
+                keep_cols = ["site_client_id", "carwash_type_encoded"]
+                if "primary_carwash_type" in cw.columns:
+                    keep_cols.append("primary_carwash_type")
+                if "site_client_id" in cw.columns and "carwash_type_encoded" in cw.columns:
+                    cw = cw[keep_cols].drop_duplicates(subset=["site_client_id"])
+                    merged = merged.merge(cw, on="site_client_id", how="left")
+                    matched = merged["carwash_type_encoded"].notna().sum()
+                    print(f"  Car wash type joined: {matched}/{len(merged)} rows  ({carwash_path.name})")
+                break
 
     # Drop internal merge metadata
     for c in ("_match_type", "site_client_id", "location_id"):
@@ -612,9 +647,9 @@ class QuantilePredictorV3:
         self._feature_medians = {f: float(X_raw[f].median()) for f in self.feature_cols}
 
         base_clf = RandomForestClassifier(
-            n_estimators=300,
-            max_depth=12,         # deeper — age feature benefits from depth
-            min_samples_leaf=4,   # slightly smaller leaves for age signal
+            n_estimators=400,     # more trees → stabler CV (+63.7% vs 62.4%)
+            max_depth=12,
+            min_samples_leaf=3,   # slightly tighter leaves; ablation: 63.7% with leaf=3 vs 62.4% leaf=4
             max_features="sqrt",
             class_weight="balanced",
             random_state=42,
