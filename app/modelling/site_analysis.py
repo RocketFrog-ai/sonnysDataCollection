@@ -353,6 +353,16 @@ def build_feature_values_and_v3_input(
     if pleasant is not None and freeze is not None:
         location_features["weather_drive_score"] = float(pleasant) - float(freeze)
 
+    # Effective capacity: tunnel_count × is_express.
+    # Only Express Tunnel (carwash_type_encoded=1) has a physical conveyor tunnel.
+    # Mobile, Hand Wash, Flex etc → effective_capacity=0 regardless of tunnel_count.
+    # If carwash_type unknown, defaults to tunnel_count (75% of sites are Express).
+    tc = location_features.get("tunnel_count", 1.0)
+    cw = location_features.get("carwash_type_encoded")
+    is_express = float(cw == 1) if cw is not None else 1.0
+    location_features["effective_capacity"] = float(tc) * is_express
+    feature_values["effective_capacity"] = location_features["effective_capacity"]
+
     return feature_values, location_features
 
 
