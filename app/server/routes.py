@@ -807,8 +807,31 @@ def get_overall(task_id: str):
     quantile_result = result.get("quantile_result") or {}
     feature_analysis = quantile_result.get("feature_analysis") or {}
 
+
     if not quantile_result:
-        raise HTTPException(status_code=422, detail=f"Task {task_id} has no quantile_result yet.")
+        feature_values = result.get("feature_values") or {}
+        site_score = None
+        category_scores: dict = {}
+        feature_scores: dict = {}
+        if feature_values:
+            profiler_scores = get_all_profiler_scores_from_task_feature_values(feature_values)
+            if profiler_scores:
+                overall = compute_overall_score(profiler_scores)
+                site_score = round(overall, 1)
+        return {
+            "task_id": task_id,
+            "status": "no_quantile_result",
+            "message": f"Task {task_id} has no v3 quantile_result (task may predate v3 or quantile was not run).",
+            "site_score": site_score,
+            "category_scores": category_scores,
+            "feature_scores": feature_scores,
+            "predicted_quantile": None,
+            "predicted_tier": None,
+            "expected_annual_volume": None,
+            "quantile_probabilities": {},
+            "tunnel_count": (result.get("feature_values") or {}).get("tunnel_count"),
+            "carwash_type_encoded": (result.get("feature_values") or {}).get("carwash_type_encoded"),
+        }
 
     # Compute site score
     weighted_sum = 0.0

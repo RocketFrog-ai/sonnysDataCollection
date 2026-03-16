@@ -93,7 +93,8 @@ def _insight_agent(
 ) -> Optional[str]:
     """
     Collate the 4 weather quantile results and generate one Insight paragraph
-    (e.g. "Weather contributes ~20% to the site potential. With a Weather Impact Score of 70%...").
+    that explains how the combined weather profile affects wash demand and
+    operational uptime, without forcing a fixed "% of site potential" line.
     """
     pred_q = quantile_result.get("predicted_wash_quantile")
     pred_label = quantile_result.get("predicted_wash_quantile_label") or f"Q{pred_q}"
@@ -112,7 +113,15 @@ def _insight_agent(
         line = f"- {name}: value={val} {unit}, category={cat}, percentile={pct}%"
         lines.append(line)
     lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}). Probabilities: {proba}")
-    lines.append("\nWrite one short paragraph (Insight) summarizing how weather contributes to site potential and what the combined weather profile means for wash demand. Start with something like 'Weather contributes ~X% to the site potential.' Keep it to 2-4 sentences.")
+    lines.append(
+        "\nWrite one short paragraph (Insight) explaining how the combined weather "
+        "profile affects car wash demand and operations. Use the metrics above to "
+        "highlight which aspects are strongest and which are weaker relative to other "
+        "sites, and connect them to wash demand and operational uptime. Focus on "
+        "qualitative strength/weakness language (e.g. 'strong tailwind', 'moderate drag') "
+        "and do not claim that weather contributes a specific percentage of overall site "
+        "potential. Keep it to 2-4 sentences."
+    )
 
     prompt = "\n".join(lines)
     try:

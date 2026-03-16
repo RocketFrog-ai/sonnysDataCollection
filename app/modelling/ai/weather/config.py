@@ -52,7 +52,7 @@ WEATHER_METRIC_BUSINESS_IMPACT = {
     "shutdown-risk-days": "Noticeable winter disruption; wash volumes may drop for short seasonal periods.",
 }
 
-# Suffix for impact classification range (metric_key -> e.g. "days" or "cm")
+
 WEATHER_IMPACT_CLASSIFICATION_SUFFIX = {
     "dirt-trigger-days": "days",
     "dirt-deposit-severity": "cm",
@@ -60,10 +60,10 @@ WEATHER_IMPACT_CLASSIFICATION_SUFFIX = {
     "shutdown-risk-days": "days",
 }
 
-# For summary rationale: "higher" = higher value is better for wash demand; "lower" = lower is better
+
 WEATHER_METRIC_DIRECTION = {
-    "dirt-trigger-days": "higher",       # more rainy days → more dirt triggers → more washes
-    "dirt-deposit-severity": "lower",    # less snowfall → less shutdown risk
+    "dirt-trigger-days": "higher",       
+    "dirt-deposit-severity": "higher",    
     "comfortable-washing-days": "higher",
-    "shutdown-risk-days": "lower",       # fewer freezing days → better
+    "shutdown-risk-days": "lower",       
 }
