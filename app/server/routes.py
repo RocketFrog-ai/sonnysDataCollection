@@ -553,7 +553,8 @@ def get_gas_data_by_task(task_id: str):
     stations.sort(key=lambda s: (s.get("distance_miles") is None, s.get("distance_miles") or float("inf")))
 
     within_1 = [s for s in stations if s.get("distance_miles") is not None and s["distance_miles"] <= GAS_RADIUS_NEAR_MILES]
-    within_3 = [s for s in stations if s.get("distance_miles") is not None and s["distance_miles"] <= GAS_RADIUS_FAR_MILES]
+    #within_3 = [s for s in stations if s.get("distance_miles") is not None and s["distance_miles"] <= GAS_RADIUS_FAR_MILES]
+    within_3 = [s for s in stations if s.get("distance_miles") is not None and GAS_RADIUS_NEAR_MILES < s["distance_miles"] <= GAS_RADIUS_FAR_MILES]
     nearest = stations[0] if stations else {}
 
     # Fallback nearest details from feature_values if no stations in fetched
