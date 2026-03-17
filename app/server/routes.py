@@ -833,7 +833,7 @@ def get_overall(task_id: str):
         vol_part = f"with an expected annual volume of **{expected_volume_label}**" if expected_volume_label else ""
         score_part = f"Overall site score is **{site_score:.1f}/100**." if site_score is not None else ""
 
-        def _top_labels(items: list | None, n: int = 2) -> str:
+        def _top_labels(items: Optional[List[Any]], n: int = 2) -> str:
             if not items:
                 return ""
             labels = []
