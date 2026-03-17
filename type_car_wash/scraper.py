@@ -16,7 +16,7 @@ def scrape_with_jina(url: str) -> str:
     print(f"[*] Scraping {url} via Jina AI...")
     try:
         # Added a timeout to prevent hanging indefinitely
-        response = requests.get(jina_url, headers=headers, timeout=15)
+        response = requests.get(jina_url, headers=headers, timeout=40)
         response.raise_for_status()
         return response.text
     except Exception as e:
