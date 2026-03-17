@@ -49,7 +49,7 @@ def _feature_summary_agent(
     else:
         direction_note = "context-dependent for competitive intensity"
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use the numbers given — no fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Refer to it as \"this site\" (not \"your site\"). Use the numbers given — no fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}

@@ -47,7 +47,7 @@ def _feature_summary_agent(
         else "higher values are better (higher rating/reviews = stronger fuel traffic node)"
     )
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use actual numbers, no fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Refer to it as \"this site\" (not \"your site\"). Use actual numbers, no fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}

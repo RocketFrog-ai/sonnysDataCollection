@@ -48,7 +48,7 @@ def _feature_summary_agent(
     max_str = f"{dist_max:.0f}" if dist_max is not None else "N/A"
     direction_note = "higher values are better for wash demand" if direction == "higher" else "lower values are better for wash demand"
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use the numbers given — do not use a fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Refer to it as "this site" (not "your site"). Use the numbers given — do not use a fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
@@ -61,6 +61,7 @@ Write a dynamic rationale that:
 - Explains what the percentile means using everyday words (e.g. "better than about X% of sites" or "worse than about X% of sites" depending on the direction).
 - Mentions quartile and category (Q1–Q4, Poor/Fair/Good/Strong).
 - Notes whether higher or lower is better for this metric so the reader understands the interpretation.
+Percentile rule: interpret the percentile as "better than about X% of sites" on the good direction (after applying higher/lower better).
 Avoid jargon (no 'distribution', 'correlation', 'quantile boundaries'). Reply with only the rationale, no prefix or label."""
 
     summary: Optional[str] = None
@@ -213,19 +214,69 @@ def get_feature_narratives(
         value = fa.get("value")
         if value is not None and hasattr(value, "__float__"):
             value = float(value)
-        percentile = fa.get("adjusted_percentile")
-        wash_q = fa.get("wash_correlated_q")
-        # Some weather metrics (e.g. Days Below Freezing / Shutdown Risk) can be flagged low-signal
-        # and therefore have wash_correlated_q=None. Still, we should provide a category label for
-        # impact_classification and narrative readability. Fall back to feature's own adjusted quantile.
-        q_for_category = wash_q if wash_q is not None else fa.get("feature_quantile_adj") or fa.get("feature_quantile_raw")
-        category = fa.get("category") or get_category_for_quantile(q_for_category)
-        quantile_label = f"Q{int(q_for_category)}" if q_for_category is not None else None
-        dist_min = fa.get("dist_min")
-        dist_max = fa.get("dist_max")
+
+        # IMPORTANT:
+        # These 4 weather cards (dirt trigger / deposit / comfortable / shutdown) are business
+        # metrics with their own direction rules (WEATHER_METRIC_DIRECTION).
+        #
+        # The quantile model's FEATURE_DIRECTIONS can differ (it is derived from correlation with wash count).
+        # If we reuse fa["adjusted_percentile"] here, we can invert the meaning and show wrong results
+        # (e.g. snowfall=0 appearing as "Strong"). So we compute percentile + Q1–Q4 for the UI using:
+        #   - fa["raw_percentile"]
+        #   - fa["feature_quantile_raw"]
+        # and then apply WEATHER_METRIC_DIRECTION for this metric_key.
+        direction = WEATHER_METRIC_DIRECTION.get(metric_key, "higher")
+
+        raw_pct = fa.get("raw_percentile")
+
+        if raw_pct is None:
+            percentile = None
+        else:
+            percentile = float(raw_pct)
+            if direction == "lower":
+                percentile = 100.0 - percentile
+
+        # Derive the displayed Q1–Q4 directly from the displayed percentile so the UI is consistent.
+        # Example: 68th percentile must be Q3 (not Q4). Using model quantile bins can disagree under ties.
+        if percentile is None:
+            metric_q = None
+        elif percentile <= 25:
+            metric_q = 1
+        elif percentile <= 50:
+            metric_q = 2
+        elif percentile <= 75:
+            metric_q = 3
+        else:
+            metric_q = 4
+
+        # For impact classification ranges, use the metric’s quantile boundaries (not dataset min/max).
+        # This yields ranges like “Q3: 120–160 days” rather than “0–270 days”.
+        q_bounds = fa.get("quantile_boundaries") or []
+        dist_min = None
+        dist_max = None
+        try:
+            if metric_q is not None and isinstance(q_bounds, list) and len(q_bounds) >= 5:
+                q = int(metric_q)
+                if direction == "higher":
+                    dist_min = float(q_bounds[q - 1])
+                    dist_max = float(q_bounds[q])
+                else:
+                    # For lower-is-better metrics, “Strong/Q4” corresponds to the LOWEST-value band.
+                    inv_q = 5 - q
+                    dist_min = float(q_bounds[inv_q - 1])
+                    dist_max = float(q_bounds[inv_q])
+        except Exception:
+            dist_min = fa.get("dist_min")
+            dist_max = fa.get("dist_max")
+
+        # Use metric_q (not wash_correlated_q) for the weather metric category shown in UI.
+        category = fa.get("category") or get_category_for_quantile(metric_q)
+        quantile_label = f"Q{int(metric_q)}" if metric_q is not None else None
+
+        # Keep wash_q field aligned with this metric's own tiering for UI consistency.
+        wash_q = metric_q
         unit = WEATHER_METRIC_UNITS.get(metric_key, "days/year")
 
-        direction = WEATHER_METRIC_DIRECTION.get(metric_key, "higher")
         llm_out = _feature_summary_agent(
             metric_key=metric_key,
             display_name=display_name,
