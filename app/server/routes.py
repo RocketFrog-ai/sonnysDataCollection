@@ -815,13 +815,15 @@ def get_overall(task_id: str):
     quantile_result = result.get("quantile_result") or {}
     feature_analysis = quantile_result.get("feature_analysis") or {}
 
+    from typing import Optional, List, Any
+
     def _overall_site_analysis_verdict(
         *,
-        predicted_tier: str | None,
-        expected_volume_label: str | None,
-        site_score: float | None,
-        strengths: list | None,
-        weaknesses: list | None,
+        predicted_tier: Optional[str],
+        expected_volume_label: Optional[str],
+        site_score: Optional[float],
+        strengths: Optional[List[Any]],
+        weaknesses: Optional[List[Any]],
     ) -> str:
         """
         Plain-English verdict for the overall site analysis.
