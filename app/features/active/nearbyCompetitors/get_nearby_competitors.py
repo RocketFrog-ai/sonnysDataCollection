@@ -178,8 +178,10 @@ def get_nearby_competitors(
         # Optional: Place Details (websiteUri, primaryTypeDisplayName). Skipped when fetch_place_details=False.
         website_uri = None
         primary_type_display_name = None
+        
+        place_id = place.get("id") or (str(place.get("name", "")).replace("places/", "") if place.get("name") else None)
+        
         if fetch_place_details:
-            place_id = place.get("id") or (str(place.get("name", "")).replace("places/", "") if place.get("name") else None)
             if place_id:
                 details = _fetch_place_details(
                     api_key, place_id,
@@ -194,6 +196,7 @@ def get_nearby_competitors(
                         primary_type_display_name = ptd
 
         comp: dict[str, Any] = {
+            "place_id": place_id,
             "name": name,
             "rating": rating,
             "user_rating_count": user_rating_count,

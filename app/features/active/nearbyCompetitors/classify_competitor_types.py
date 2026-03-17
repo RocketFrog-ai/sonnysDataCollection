@@ -25,12 +25,16 @@ def _process_single_competitor(comp_dict: Dict[str, Any]) -> Dict[str, Any]:
 
     url = comp_dict.get("website")
     if not url:
-        found_url, confidence = find_official_website(name)
+        address = comp_dict.get("address")
+        found_url, confidence = find_official_website(name, address=address)
         if found_url:
             url = found_url
-            logger.info(f"Found fallback URL for {name}: {url}")
+            # Write the discovered URL back into the dict so routes.py
+            # can surface it as official_website (even when no Place Details URL existed)
+            comp_dict["website"] = found_url
+            logger.info(f"Found fallback URL for {name} ({address}): {url}")
         else:
-            logger.info(f"Could not find URL for {name}")
+            logger.info(f"Could not find URL for {name} ({address})")
             comp_dict["classification_error"] = "No fallback URL found."
             
     if url:

@@ -66,6 +66,7 @@ from app.modelling.ds.dimension_summary import (
     DIMENSION_FEATURE_MAP,
 )
 from app.modelling.ds.quantile_display import get_category_for_quantile
+from app.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
 
 
 # -----------------------------------------------------------------------------
@@ -392,21 +393,27 @@ def get_competition_data_by_task(task_id: str):
     if percentiles_for_score:
         competition_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1)
 
-    from app.features.active.nearbyCompetitors.carwash_lookup import CarWashLookup
-    lookup = CarWashLookup.get()
+    # Run AI classification pipeline (scrape → Gemini AI) on each competitor.
+    # classify_competitors handles: DB cache read, website scraping, AI call, DB cache write.
+    # Each competitor dict already has "website" from Place Details (get_nearby_competitors).
+    classified_list = classify_competitors(competitors_list) if competitors_list else []
 
     nearby_list = []
-    for c in competitors_list:
-        name = c.get("name")
-        matched = lookup.match(name) if name else None
+    for c in classified_list:
+        classification = c.get("classification") or {}
         entry = {
-            "name": name,
+            "name": c.get("name"),
             "rating": float(c["rating"]) if c.get("rating") is not None else None,
             "user_rating_count": c.get("user_rating_count") or c.get("rating_count"),
             "address": c.get("address"),
             "distance_miles": float(c["distance_miles"]) if c.get("distance_miles") is not None else None,
-            "official_website": matched.get("official_website") if matched else None,
-            "primary_carwash_type": matched.get("primary_carwash_type") if matched else None,
+            # official_website: the URL that was actually used for classification
+            # (Place Details websiteUri, or fallback found by find_official_website)
+            "official_website": c.get("website"),
+            # primary_carwash_type: AI-classified type (e.g. "Express Tunnel", "Full Service")
+            "primary_carwash_type": classification.get("primary_type") if classification else None,
+            # Full classification payload for richer downstream use
+            "classification": classification if classification else None,
         }
         nearby_list.append(entry)
 

@@ -69,9 +69,11 @@ def domain_score(url: str, company_name: str) -> int:
     return min(score, 50)
 
 
-def content_score(url: str, company_name: str) -> int:
+def content_score(url: str, company_name: str, address: Optional[str] = None) -> int:
     """
-    Score homepage content similarity (0-50)
+    Score homepage content similarity (0-50).
+    When address is provided, address tokens (city, state) are also matched
+    against the page text for a stronger locality signal.
     """
     try:
         response = requests.get(url, headers=HEADERS, timeout=8)
@@ -86,6 +88,14 @@ def content_score(url: str, company_name: str) -> int:
 
         if "car wash" in text or "auto wash" in text:
             score += 10
+
+        # Bonus: match city/state tokens from the address in the page text
+        if address:
+            address_words = clean_text(address).split()
+            for word in address_words:
+                if len(word) > 3 and word in text:
+                    score += 5
+                    break  # one address token match is enough
 
         return min(score, 50)
 
@@ -116,11 +126,28 @@ def search_duckduckgo(query: str) -> list[str]:
 # MAIN FINDER
 # ----------------------------
 
-def find_official_website(company_name: str) -> tuple[Optional[str], int]:
-    print(f"[*] Searching DuckDuckGo for: '{company_name}'...")
-    query = f"{company_name} official website"
+def find_official_website(
+    company_name: str,
+    address: Optional[str] = None,
+) -> tuple[Optional[str], int]:
+    """
+    Search DuckDuckGo for the official website of a car wash.
+    Including the address in the query significantly improves accuracy
+    for businesses that don't have a strong brand-name domain.
+    Returns (url, confidence_score) where url is None if not confident enough.
+    """
+    # Build a locality hint from the address (e.g. "Burbank CA") if available
+    locality = ""
+    if address:
+        # Extract the city and state portion: everything after the first comma
+        parts = address.split(",")
+        if len(parts) >= 2:
+            locality = ", ".join(parts[1:]).strip()
+
+    query = f"{company_name} {locality} car wash official website".strip() if locality else f"{company_name} car wash official website"
+    print(f"[*] Searching DuckDuckGo for: '{query}'...")
     results = search_duckduckgo(query)
-    
+
     if not results:
         print("[-] DuckDuckGo returned no results or blocked the request.")
         return None, 0
@@ -135,7 +162,7 @@ def find_official_website(company_name: str) -> tuple[Optional[str], int]:
             continue
 
         d_score = domain_score(link, company_name)
-        c_score = content_score(link, company_name)
+        c_score = content_score(link, company_name, address=address)
 
         total_score = d_score + c_score
 
@@ -145,7 +172,7 @@ def find_official_website(company_name: str) -> tuple[Optional[str], int]:
 
         time.sleep(1)  # polite delay
 
-    if best_score >= 40:  # confidence threshold
+    if best_score >= 30:  # confidence threshold
         print(f"[+] Found official website: {best_match} (Confidence: {best_score}/100)")
         return best_match, best_score
 
