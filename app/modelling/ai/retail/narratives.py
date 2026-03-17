@@ -95,11 +95,18 @@ def _insight_agent(
         unit = n.get("unit", "")
         cat = n.get("category")
         pct = n.get("percentile")
-        lines.append(f"- {name}: value={val} {unit}, percentile={pct}%, category={cat}")
+        
+        if val is None:
+            val_str = "None found (estimated by model)"
+        else:
+            val_str = f"{val} {unit}"
+            
+        lines.append(f"- {name}: value={val_str}, percentile={pct}%, category={cat}")
     lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
     lines.append(
         "\nWrite one short paragraph (Insight) in plain English. Explain what nearby anchors mean for traffic and demand using: "
-        "(1) Costco distance (if present), (2) Walmart/Target proximity, (3) grocery/food anchors. "
+        "(1) Costco distance (if present; note that 99 miles means it is beyond the limit/not present), "
+        "(2) Walmart/Target proximity, (3) grocery/food anchors. "
         "Use the given percentiles/categories but describe them simply (e.g. 'better than most sites', 'around average'). "
         "Reference the predicted wash band. Keep it to 2-4 sentences. Avoid technical jargon."
     )
@@ -185,6 +192,7 @@ def get_feature_narratives(
         value = fa.get("value")
         if value is not None and hasattr(value, "__float__"):
             value = float(value)
+            
         percentile = fa.get("adjusted_percentile")
         wash_q = fa.get("wash_correlated_q")
         feature_q = fa.get("feature_quantile_adj")

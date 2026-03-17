@@ -129,6 +129,8 @@ def _insight_agent(
         from app.utils.llm import local_llm as llm
         raw = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.3, max_new_tokens=512)
         text = extract_llm_text(raw)
+        if text:
+            text = re.sub(r'^(?:\*\*)?Insight:(?:\*\*)?\s*', '', text.strip(), flags=re.IGNORECASE)
         return text if text else None
     except Exception as e:
         logger.warning("Insight LLM call failed: %s", e)
