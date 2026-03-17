@@ -1,8 +1,8 @@
 import textwrap
-from google import genai
+from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
-
+from type_car_wash.config import AZURE_OPENAI_API_KEY
 
 # Expanded classification types
 VALID_TYPES = [
@@ -51,21 +51,18 @@ def classify_car_wash_with_ai(scraped_text: str) -> Optional[CarWashClassificati
     if not scraped_text:
         return None
 
-    print("\n[*] Classifying with Gemini AI...")
+    print("\n[*] Classifying with OpenAI (gpt-4o-mini)...")
 
-    import asyncio
-    import os
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-    api_key = os.getenv("GEMINI_API_KEY")
+    endpoint = "https://soneastus2proformaai-dev.openai.azure.com/openai/v1"
+    deployment_name = "gpt-4o-mini"
+    api_key = AZURE_OPENAI_API_KEY
 
-    client = genai.Client(api_key=api_key)
+    client = OpenAI(
+        base_url=endpoint,
+        api_key=api_key
+    )
 
-    truncated = scraped_text[:120000]
+    truncated = scraped_text[:100000]
 
     prompt = f"""
 You are a world-class car wash classification AI used in a production data pipeline.
@@ -137,23 +134,30 @@ Return structured JSON containing:
 SCRAPED TEXT:
 {truncated}
 
-Only return valid JSON.
+Only return valid JSON string mapping exactly to the fields above.
 """
 
     try:
 
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config={
-                "response_mime_type": "application/json",
-                "response_schema": CarWashClassification,
-            },
+        completion = client.chat.completions.create(
+            model=deployment_name,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
         )
 
-        return response.parsed
+        response_text = completion.choices[0].message.content
+        if not response_text:
+            return None
+
+        import json
+        return CarWashClassification.model_validate_json(response_text)
 
     except Exception as e:
 
-        print("Gemini error:", e)
+        print("OpenAI error:", e)
         return None
