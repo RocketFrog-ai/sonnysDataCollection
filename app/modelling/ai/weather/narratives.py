@@ -48,7 +48,7 @@ def _feature_summary_agent(
     max_str = f"{dist_max:.0f}" if dist_max is not None else "N/A"
     direction_note = "higher values are better for wash demand" if direction == "higher" else "lower values are better for wash demand"
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences that explain this metric's result for a car wash site. Use the numbers given — do not use a fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use the numbers given — do not use a fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
@@ -58,10 +58,10 @@ Reference: For this metric, {direction_note}.
 Scale range in dataset: {min_str} – {max_str}
 
 Write a dynamic rationale that:
-- States the site's value and what the percentile means (e.g. "better than X% of car wash sites" or "worse than X% of sites" depending on the percentile and direction).
+- Explains what the percentile means using everyday words (e.g. "better than about X% of sites" or "worse than about X% of sites" depending on the direction).
 - Mentions quartile and category (Q1–Q4, Poor/Fair/Good/Strong).
 - Notes whether higher or lower is better for this metric so the reader understands the interpretation.
-Do not repeat a generic phrase; use the actual percentile and direction to explain. Reply with only the rationale, no prefix or label."""
+Avoid jargon (no 'distribution', 'correlation', 'quantile boundaries'). Reply with only the rationale, no prefix or label."""
 
     summary: Optional[str] = None
     try:
@@ -215,8 +215,12 @@ def get_feature_narratives(
             value = float(value)
         percentile = fa.get("adjusted_percentile")
         wash_q = fa.get("wash_correlated_q")
-        category = fa.get("category") or get_category_for_quantile(wash_q)
-        quantile_label = f"Q{int(wash_q)}" if wash_q is not None else None
+        # Some weather metrics (e.g. Days Below Freezing / Shutdown Risk) can be flagged low-signal
+        # and therefore have wash_correlated_q=None. Still, we should provide a category label for
+        # impact_classification and narrative readability. Fall back to feature's own adjusted quantile.
+        q_for_category = wash_q if wash_q is not None else fa.get("feature_quantile_adj") or fa.get("feature_quantile_raw")
+        category = fa.get("category") or get_category_for_quantile(q_for_category)
+        quantile_label = f"Q{int(q_for_category)}" if q_for_category is not None else None
         dist_min = fa.get("dist_min")
         dist_max = fa.get("dist_max")
         unit = WEATHER_METRIC_UNITS.get(metric_key, "days/year")

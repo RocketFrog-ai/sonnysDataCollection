@@ -49,7 +49,7 @@ def _feature_summary_agent(
     else:
         direction_note = "context-dependent for competitive intensity"
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences for this competition metric. Use the numbers given — no fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use the numbers given — no fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
@@ -58,7 +58,7 @@ Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
 Reference: {direction_note}.
 Scale range in dataset: {min_str} – {max_str}
 
-Write a dynamic rationale that states the value, what the percentile means (e.g. "better than X% of sites" or "more competitive than X%"), and quartile/category. Reply with only the rationale, no prefix or label."""
+Write a dynamic rationale that states the value, explains the percentile in everyday words, and mentions quartile/category. Avoid jargon (no 'distribution', 'correlation'). Reply with only the rationale, no prefix or label."""
 
     summary: Optional[str] = None
     try:
@@ -99,10 +99,10 @@ def _insight_agent(
         lines.append(f"- {name}: value={val} {unit}, percentile={pct}%, category={cat}")
     lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
     lines.append(
-        "\nWrite one short paragraph (Insight) that discusses the quantiles and analysis from the predictions: "
-        "narrative for (1) distance to nearest competitor in miles, (2) nearest competitor Google rating, (3) nearest competitor user rating count. "
-        "Use actual percentile and category (e.g. 'X% of sites have nearest within Y miles', 'rating in top Z%', 'review count in Q2'). "
-        "Reference the predicted wash band. Insight = quantiles and prediction analysis only. 2-4 sentences."
+        "\nWrite one short paragraph (Insight) in plain English. Explain what the competition situation means for demand using: "
+        "(1) distance to nearest competitor, (2) competitor rating, (3) competitor review count. "
+        "Use the given percentiles/categories but describe them simply (e.g. 'better than most sites' or 'around average'). "
+        "Reference the predicted wash band. Keep it to 2-4 sentences. Avoid technical jargon."
     )
 
     prompt = "\n".join(lines)

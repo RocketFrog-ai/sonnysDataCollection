@@ -1,0 +1,103 @@
+Current status of quantile models (simple summary)
+=================================================
+
+1. What we are predicting
+-------------------------
+- We are not predicting exact car wash count.
+- We are predicting which volume band a site will fall into.
+- Main production model (v4) predicts 4 bands (quartiles) based on annual wash count.
+- We also tested 3-band versions (Low / Medium / High) to see if accuracy can be higher.
+
+
+2. Main features that matter
+----------------------------
+- Tunnel count (1–4): strongest feature. More tunnels → more capacity → more cars.
+- Effective capacity = tunnel_count × is_express:
+  - Express Tunnel sites: effective_capacity = 1–4 (real conveyor tunnels).
+  - Non-Express (Flex, Mobile, Hand Wash): effective_capacity = 0 (no conveyor tunnel).
+- Site age: newer sites ramp faster (strong negative correlation with volume).
+- Retail anchors (Walmart / Target distance, food joints near by).
+- Competition and gas station strength (ratings × review counts).
+- Weather: rainy days, pleasant days, snowfall, freezing days, etc. These are weak but real signals.
+
+
+3. Why car wash type itself did NOT improve accuracy
+----------------------------------------------------
+Data facts from the training set:
+- Express Tunnel sites have the highest mean volume (~143K cars/year).
+- Mobile sites ~119K, Full Service/Flex ~79–84K, Hand Wash ~47K.
+  So the business pattern “Express > others” is TRUE in the data.
+
+How the model already uses this:
+- We already encode this pattern via:
+  - is_express = 1 only for Express Tunnel, 0 for all other types.
+  - effective_capacity = tunnel_count × is_express.
+- This means:
+  - Express Tunnel with 2 tunnels → effective_capacity = 2.
+  - Flex/Mobile/Hand Wash → effective_capacity = 0, regardless of any “tunnel_count” proxy.
+  - So “Express vs not Express” is already baked into effective_capacity.
+
+What happens when we add carwash_type_encoded directly:
+- carwash_type_encoded is an ordinal flag (1=Express, 2=Mobile/Flex, 3=Hand Wash).
+- This flag is highly correlated with effective_capacity:
+  - Express almost always has effective_capacity > 0.
+  - Non-Express almost always has effective_capacity = 0.
+- For tree models (RandomForest / ExtraTrees):
+  - Having both effective_capacity and carwash_type_encoded creates redundant, overlapping signals.
+  - Some trees split on the less helpful ordinal encoding instead of the cleaner continuous effective_capacity.
+  - This “multicollinearity” makes the ensemble slightly noisier.
+
+Measured effect (ablation):
+- Base feature set (without raw carwash_type_encoded):
+  - ExtraTrees 4-class quartiles: ~63.1% exact accuracy.
+- Adding carwash_type_encoded as an extra feature:
+  - Accuracy drops by about 0.9 percentage points.
+- Conclusion:
+  - The model already understands that Express Tunnel sites tend to do more volume via effective_capacity.
+  - Adding carwash_type_encoded again does not add new information and actually hurts accuracy slightly.
+  - We therefore keep carwash_type_encoded only as a DISPLAY-ONLY feature in the report (for explanation),
+    not as an input feature to the classifier.
+
+
+4. Final accuracy numbers (4-way and 3-way)
+-------------------------------------------
+4-way quartiles (v4 ExtraTrees model)
+- Classes: Q1 (bottom 25%), Q2 (25–50%), Q3 (50–75%), Q4 (top 25%).
+- 5-fold cross-validation on 482 sites:
+  - Exact quartile accuracy: ~63.1%.
+  - Within-1-quartile accuracy: ~98.5%.
+    (Almost all mistakes are off by only one quartile, e.g. Q3 vs Q4.)
+
+3-way equal-frequency bins (tertiles)
+- Classes: T1 (bottom ~1/3), T2 (middle ~1/3), T3 (top ~1/3).
+- Same features, same ExtraTrees settings:
+  - Exact 3-class accuracy: ~66.6%.
+  - This is only a modest gain because we removed just one boundary (Q2 vs Q3),
+    and most difficult mistakes (near the boundaries) still exist.
+
+3-way business bins (40/40/20)
+- Classes:
+  - Low    = bottom ~40% of sites by annual count.
+  - Medium = middle ~40%.
+  - High   = top ~20%.
+- Same features, same ExtraTrees settings:
+  - Exact 3-class accuracy: ~73.7%.
+  - This is a significant improvement in headline accuracy.
+  - The broader Medium band and smaller High band reduce boundary confusion.
+
+
+5. Practical interpretation
+---------------------------
+- The 4-way quartile model is already close to the ceiling of what the current
+  features can support (around 63% exact, 98.5% within-1 quartile).
+- The reason accuracy does not go much higher is that remaining differences
+  between similar sites are driven by things not in the dataset:
+  - Traffic counts.
+  - Pricing and membership penetration.
+  - Brand strength and operations quality.
+- Tweaking encodings (carwash_type, pruning weather features, etc.) changes
+  accuracy only by 1–2 points and often in the wrong direction.
+- Moving from 4 to 3 classes (especially the 40/40/20 version) is the most
+  effective way, with current data, to get a higher and more stable accuracy
+  metric for business communication.
+

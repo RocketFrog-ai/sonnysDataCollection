@@ -815,6 +815,52 @@ def get_overall(task_id: str):
     quantile_result = result.get("quantile_result") or {}
     feature_analysis = quantile_result.get("feature_analysis") or {}
 
+    def _overall_site_analysis_verdict(
+        *,
+        predicted_tier: str | None,
+        expected_volume_label: str | None,
+        site_score: float | None,
+        strengths: list | None,
+        weaknesses: list | None,
+    ) -> str:
+        """
+        Plain-English verdict for the overall site analysis.
+        Keep it short and business-readable; avoid technical language.
+        """
+        tier_part = f"This site is projected as **{predicted_tier}**" if predicted_tier else "This site has no quantile prediction yet"
+        vol_part = f"with an expected annual volume of **{expected_volume_label}**" if expected_volume_label else ""
+        score_part = f"Overall site score is **{site_score:.1f}/100**." if site_score is not None else ""
+
+        def _top_labels(items: list | None, n: int = 2) -> str:
+            if not items:
+                return ""
+            labels = []
+            for it in items:
+                if isinstance(it, dict):
+                    lbl = it.get("label") or it.get("feature") or it.get("name")
+                    if lbl:
+                        labels.append(str(lbl))
+                if len(labels) >= n:
+                    break
+            return ", ".join(labels)
+
+        s_lbls = _top_labels(strengths, 2)
+        w_lbls = _top_labels(weaknesses, 2)
+
+        sw_part = ""
+        if s_lbls and w_lbls:
+            sw_part = f" Biggest strengths are **{s_lbls}**, while key weaknesses are **{w_lbls}**."
+        elif s_lbls:
+            sw_part = f" Biggest strengths are **{s_lbls}**."
+        elif w_lbls:
+            sw_part = f" Key weaknesses are **{w_lbls}**."
+
+        # Keep to 1–2 sentences.
+        base = f"{tier_part} {vol_part}".strip()
+        if base.endswith(".") is False:
+            base = base + "."
+        return " ".join([p for p in [base, score_part, sw_part.strip()] if p]).strip()
+
 
     if not quantile_result:
         feature_values = result.get("feature_values") or {}
@@ -831,14 +877,20 @@ def get_overall(task_id: str):
             "status": "no_quantile_result",
             "message": f"Task {task_id} has no v3 quantile_result (task may predate v3 or quantile was not run).",
             "site_score": site_score,
-            "category_scores": category_scores,
-            "feature_scores": feature_scores,
+            # category_scores / feature_scores intentionally omitted for now
             "predicted_quantile": None,
             "predicted_tier": None,
             "expected_annual_volume": None,
             "quantile_probabilities": {},
             "tunnel_count": (result.get("feature_values") or {}).get("tunnel_count"),
             "carwash_type_encoded": (result.get("feature_values") or {}).get("carwash_type_encoded"),
+            "overall_site_analysis_verdict": _overall_site_analysis_verdict(
+                predicted_tier=None,
+                expected_volume_label=None,
+                site_score=site_score,
+                strengths=None,
+                weaknesses=None,
+            ),
         }
 
     # Compute site score
@@ -871,6 +923,17 @@ def get_overall(task_id: str):
     # Normalise: if some features were missing, scale score to 0–100 range
     site_score = round(weighted_sum / total_weight_used, 1) if total_weight_used > 0 else None
 
+    # Small business rule boost: Express + tunnel_count > 1 tends to perform better.
+    # Apply a slight uplift to the overall site score (2–3 points) for scoring display.
+    fv = result.get("feature_values") or {}
+    try:
+        tc_val = fv.get("tunnel_count")
+        cw_val = fv.get("carwash_type_encoded")
+        if site_score is not None and cw_val is not None and int(cw_val) == 1 and tc_val is not None and int(tc_val) > 1:
+            site_score = min(100.0, round(site_score + 2.5, 1))
+    except Exception:
+        pass
+
     # Per-category scores (0–100)
     category_scores: dict = {}
     for cat, cat_weight in SITE_SCORE_CATEGORY_WEIGHTS.items():
@@ -888,12 +951,14 @@ def get_overall(task_id: str):
     wash_range = quantile_result.get("predicted_wash_range") or {}
     proba = quantile_result.get("quantile_probabilities") or {}
 
-    return {
+    strengths = quantile_result.get("strengths") or []
+    weaknesses = quantile_result.get("weaknesses") or []
+
+    response = {
         "task_id": task_id,
         "address": result.get("address"),
         "site_score": site_score,
-        "category_scores": category_scores,
-        "feature_scores": feature_scores,
+        # category_scores / feature_scores intentionally omitted for now
         "predicted_quantile": f"Q{predicted_q}" if predicted_q else None,
         "predicted_tier": quantile_result.get("predicted_wash_tier"),
         "expected_annual_volume": {
@@ -906,7 +971,15 @@ def get_overall(task_id: str):
         },
         "tunnel_count": (result.get("feature_values") or {}).get("tunnel_count"),
         "carwash_type_encoded": (result.get("feature_values") or {}).get("carwash_type_encoded"),
+        "overall_site_analysis_verdict": _overall_site_analysis_verdict(
+            predicted_tier=quantile_result.get("predicted_wash_tier"),
+            expected_volume_label=(wash_range.get("label") if wash_range else None),
+            site_score=site_score,
+            strengths=strengths,
+            weaknesses=weaknesses,
+        ),
     }
+    return response
 
 
 # -----------------------------------------------------------------------------

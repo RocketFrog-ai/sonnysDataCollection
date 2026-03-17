@@ -48,7 +48,7 @@ def _feature_summary_agent(
         else "higher count is better (more retail anchors = more traffic)"
     )
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences for this retail proximity metric. Use actual numbers, no fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use actual numbers, no fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
@@ -57,7 +57,7 @@ Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
 Reference: {direction_note}.
 Scale range in dataset: {min_str} – {max_str}
 
-Dynamic rationale: state the value, what the percentile means (better/worse than X% of sites), quartile/category. Reply with only the rationale, no prefix."""
+Dynamic rationale: state the value, explain the percentile in everyday words (better/worse than most sites), and mention quartile/category. Avoid jargon. Reply with only the rationale, no prefix."""
 
     summary: Optional[str] = None
     try:
@@ -98,11 +98,10 @@ def _insight_agent(
         lines.append(f"- {name}: value={val} {unit}, percentile={pct}%, category={cat}")
     lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
     lines.append(
-        "\nWrite one short paragraph (Insight) discussing quantile predictions for: "
-        "(1) distance to nearest Warehouse Club (Costco), (2) Big Box (Walmart/Target) proximity, "
-        "(3) grocery anchor count within 1 mile. Use actual percentiles and categories. "
-        "Reference typical site ranges (e.g. '90% of sites generating 150k+ washes have anchor within X miles'). "
-        "Insight = quantiles and prediction analysis. 2-4 sentences."
+        "\nWrite one short paragraph (Insight) in plain English. Explain what nearby anchors mean for traffic and demand using: "
+        "(1) Costco distance (if present), (2) Walmart/Target proximity, (3) grocery/food anchors. "
+        "Use the given percentiles/categories but describe them simply (e.g. 'better than most sites', 'around average'). "
+        "Reference the predicted wash band. Keep it to 2-4 sentences. Avoid technical jargon."
     )
 
     prompt = "\n".join(lines)
