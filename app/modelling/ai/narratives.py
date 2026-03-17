@@ -52,6 +52,14 @@ GAS_V3_KEYS = frozenset({
     "nearest_gas_station_rating_count",
 })
 
+# Weather feature keys used by the weather narrative module
+WEATHER_V3_KEYS = frozenset({
+    "weather_rainy_days",
+    "weather_total_snowfall_cm",
+    "weather_days_pleasant_temp",
+    "weather_days_below_freezing",
+})
+
 
 def get_feature_narratives(
     quantile_result: Dict[str, Any],
@@ -79,9 +87,11 @@ def get_overall_narrative(
     """
     if feature_narratives is None:
         feature_narratives = get_feature_narratives(quantile_result, feature_values)
-    insight = get_weather_insight(quantile_result, feature_narratives)
+    # Weather overall narrative must only use the 4 weather metric narratives.
+    weather_narratives = [n for n in feature_narratives if n.get("feature_key") in WEATHER_V3_KEYS]
+    insight = get_weather_insight(quantile_result, weather_narratives)
     overall = get_weather_overall_narrative(
-        quantile_result, feature_narratives
+        quantile_result, weather_narratives
     )
     return {
         "insight": insight,
