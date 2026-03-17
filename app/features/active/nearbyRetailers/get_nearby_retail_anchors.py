@@ -224,9 +224,12 @@ def get_nearby_retail_anchors(
     if not api_key:
         return _empty_result()
 
-    raw_anchor = _search_places(api_key, latitude, longitude, radius_miles, ANCHOR_STORE_TYPES, max_results=20)
+    raw_warehouse = _search_places(api_key, latitude, longitude, radius_miles, ["warehouse_store"], max_results=20)
+    raw_department = _search_places(api_key, latitude, longitude, radius_miles, ["department_store"], max_results=20)
+    raw_grocery = _search_places(api_key, latitude, longitude, radius_miles, ["grocery_store", "supermarket"], max_results=20)
     raw_food = _search_places(api_key, latitude, longitude, radius_miles, FOOD_TYPES, max_results=20)
-    all_raw = raw_anchor + raw_food
+    
+    all_raw = raw_warehouse + raw_department + raw_grocery + raw_food
 
     if not all_raw:
         logger.info("Retail anchors: Places searchNearby returned 0 places (anchor=%s food=%s)", len(raw_anchor), len(raw_food))

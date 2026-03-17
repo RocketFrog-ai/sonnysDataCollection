@@ -305,17 +305,30 @@ def get_weather_data_by_task(task_id: str):
             continue
         v3_key = WEATHER_METRIC_TO_V3_FEATURE.get(metric_key)
         fa = feature_analysis.get(v3_key, {}) if v3_key else {}
-        pct = fa.get("adjusted_percentile")
+        narrative = narrative_by_v3_key.get(v3_key, {}) if v3_key else {}
+        
+        pct = narrative.get("percentile")
+        if pct is None:
+            pct = fa.get("adjusted_percentile")
+            
         if pct is not None:
             percentiles_for_score.append(float(pct))
+            
         boundaries = fa.get("quantile_boundaries") or []
         dist_min = fa.get("dist_min")
         dist_max = fa.get("dist_max")
-        wash_q = fa.get("wash_correlated_q")
+        
+        wash_q = narrative.get("wash_q")
+        if wash_q is None:
+            wash_q = fa.get("wash_correlated_q")
+            
         feature_q = fa.get("feature_quantile_adj")
         quantile_str = f"Q{int(wash_q)}" if wash_q is not None else (f"Q{int(feature_q)}" if feature_q is not None else None)
-        category = get_category_for_quantile(wash_q) or get_category_for_quantile(feature_q)
-        narrative = narrative_by_v3_key.get(v3_key, {}) if v3_key else {}
+        
+        category = narrative.get("category")
+        if category is None:
+            category = get_category_for_quantile(wash_q) or get_category_for_quantile(feature_q)
+            
         summary = narrative.get("summary")
         impact_classification = narrative.get("impact_classification")
         min_val = float(dist_min) if dist_min is not None else (float(boundaries[0]) if len(boundaries) > 0 else None)
@@ -841,7 +854,16 @@ def get_overall(task_id: str):
                 if isinstance(it, dict):
                     lbl = it.get("label") or it.get("feature") or it.get("name")
                     if lbl:
-                        labels.append(str(lbl))
+                        # Clean up technical labels for the plain English verdict
+                        lbl = str(lbl)
+                        lbl = lbl.replace("Costco Distance (mi, 99=none)", "Distance to Costco")
+                        lbl = lbl.replace("distance_nearest_walmart(5 mile)", "Distance to Walmart")
+                        lbl = lbl.replace("distance_nearest_target (5 mile)", "Distance to Target")
+                        lbl = lbl.replace("Nearest Competitor (miles)", "Distance to Nearest Competitor")
+                        # Strip any other parentheticals that leaked through
+                        import re
+                        lbl = re.sub(r'\s*\(.*?\)', '', lbl).strip()
+                        labels.append(lbl)
                 if len(labels) >= n:
                     break
             return ", ".join(labels)

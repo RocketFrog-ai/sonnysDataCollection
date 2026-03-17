@@ -47,7 +47,7 @@ PREFERRED_FOOD_BRANDS: set = {
     "mcdonald's", "mcdonalds", "chick-fil-a", "chick fil a",
     "starbucks", "dunkin'", "dunkin", "chipotle", "panera bread", "panera",
 }
-MAX_NON_PREFERRED = 5
+MAX_NON_PREFERRED = 15
 
 
 def _is_preferred_brand(name: Optional[str]) -> bool:
@@ -179,26 +179,43 @@ def get_nearby_retailers(
     if search_radius_meters > 50000:
         search_radius_meters = 50000.0
 
-    results = find_nearby_places(
-        api_key,
-        latitude,
-        longitude,
-        radius_miles=search_radius_miles,
-        included_types=RETAIL_TYPES,
-        max_results=20,
-        rank_preference="DISTANCE",
-    )
+    types_split = [
+        ["grocery_store", "supermarket"],
+        ["fast_food_restaurant", "coffee_shop"],
+        ["restaurant"]
+    ]
+    
+    places = []
+    for t_list in types_split:
+        res = find_nearby_places(
+            api_key,
+            latitude,
+            longitude,
+            radius_miles=search_radius_miles,
+            included_types=t_list,
+            max_results=20, # Google limits to 20 per request
+            rank_preference="DISTANCE",
+        )
+        if res and "places" in res and res["places"]:
+            places.extend(res["places"])
 
-    if not results or "places" not in results or not results["places"]:
-        logger.info("get_nearby_retailers: find_nearby_places returned no places (keys=%s)", list(results.keys()) if results else None)
+    if not places:
+        logger.info("get_nearby_retailers: find_nearby_places returned no places")
         return {
             "retailers": [],
             "count": 0,
             "avg_distance_miles": None,
         }
 
-    places = results["places"]
-    logger.info("get_nearby_retailers: find_nearby_places returned %d places", len(places))
+    # Deduplicate places by ID
+    unique_places = {}
+    for p in places:
+        pid = p.get("id") or str(p.get("name", ""))
+        if pid not in unique_places:
+            unique_places[pid] = p
+
+    places = list(unique_places.values())
+    logger.info("get_nearby_retailers: find_nearby_places returned %d unique places", len(places))
     dests = []
     for place in places:
         loc = place.get("location") or {}

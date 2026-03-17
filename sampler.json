@@ -1,0 +1,131 @@
+{
+  "task_id": "2456b1c4-2478-4cad-93b5-42b2edd46048",
+  "address": "36 Battery St, San Francisco, CA 94111",
+  "complete": true,
+  "success": true,
+  "retail_score": 58.0,
+  "nearest_anchor": {
+    "name": "Chipotle Mexican Grill",
+    "type": "Food & Beverage",
+    "distance_miles": 0.09
+  },
+  "key_anchors": {
+    "warehouse_club": null,
+    "big_box": null,
+    "grocery": {
+      "name": "711",
+      "type": "Grocery Anchor",
+      "distance_miles": 0.1
+    },
+    "food_beverage": {
+      "name": "Chipotle Mexican Grill",
+      "type": "Food & Beverage",
+      "distance_miles": 0.09
+    }
+  },
+  "retail_anchors": {
+    "within_1_mile": {
+      "count": 18,
+      "list": [
+        {
+          "name": "Chipotle Mexican Grill",
+          "type": "Food & Beverage",
+          "distance_miles": 0.09
+        },
+        {
+          "name": "711",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.1
+        },
+        {
+          "name": "Urban Organics",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.11
+        },
+        {
+          "name": "Limoncello",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.12
+        },
+        {
+          "name": "RK WORLDWIDE",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.25
+        },
+        {
+          "name": "Good Luck Company",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.31
+        },
+        {
+          "name": "Menjar Gourmet",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.32
+        },
+        {
+          "name": "Parking garage",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.34
+        },
+        {
+          "name": "Safeway",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.36
+        },
+        {
+          "name": "Grant Mini Market - grocery store",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.36
+        },
+        {
+          "name": "Mow Lee Shing Kee & Co",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.37
+        },
+        {
+          "name": "Super Nature Power",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.39
+        },
+        {
+          "name": "Charming Sun Market, Inc.",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.41
+        },
+        {
+          "name": "Ferry Building",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.41
+        },
+        {
+          "name": "Ha Mini Mart",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.42
+        },
+        {
+          "name": "Stonehouse California Olive Oil",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.42
+        },
+        {
+          "name": "Village Market",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.43
+        },
+        {
+          "name": "A&D Nepali Indian Grocery",
+          "type": "Grocery Anchor",
+          "distance_miles": 0.44
+        }
+      ]
+    },
+    "within_3_miles": {
+      "count": 0,
+      "list": []
+    }
+  },
+  "narratives": {
+    "insight": "The site’s proximity to key anchors suggests solid potential traffic. A Costco is 99 miles away—well below most sites’ distances—so its pull on shoppers will be modest. The Walmart/Target cluster sits just over 2 miles away, which is about average and should bring steady footfall. Meanwhile, having 17 grocery anchors within a mile and a food spot half a mile away gives the location strong local draw, supporting the forecast of a high‑volume wash band (Q3).",
+    "observation": "The retail environment surrounding this car wash is mixed but largely supportive of customer flow: while the distant warehouse club (99 mi, 32nd percentile) suggests limited draw from that anchor, the close proximity to a big‑box retailer (2.1 mi, 50th percentile) and a target store (1.8 mi, 50th percentile) provides solid mid‑tier anchors, and the exceptional density of grocery stores within one mile (100th percentile) signals a highly attractive shopping corridor. Overall, the site sits within an active retail trade area, bolstered by strong grocery anchoring even though its food‑and‑beverage presence is weak; this combination indicates moderate commercial corridor strength with room to improve through better F&B integration.",
+    "conclusion": "The retail environment surrounding this car wash is largely mixed: while the proximity to a major grocery anchor strongly boosts potential foot traffic and encourages trip bundling, the distant warehouse club and limited nearby food‑and‑beverage options dampen overall appeal, resulting in a neutral to slightly positive impact on customer volume and repeat visits."
+  }
