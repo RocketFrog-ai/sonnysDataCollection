@@ -1,0 +1,189 @@
+================================================================================
+  CAR WASH QUANTILE PREDICTION — V4 APPROACH (MODEL TRAINING FOCUSED)
+================================================================================
+
+This document explains the v4 model in simple terms:
+- what data we train on
+- how we create the target (quartiles)
+- what features we use
+- what model we train
+- how we calculate accuracy
+- what the main limitations are
+
+
+1) What the model predicts
+-------------------------
+The model predicts a site’s annual wash-count PERFORMANCE BAND, not the exact count.
+
+4-class (default / production):
+- Q1 = bottom 25% of sites by annual wash volume
+- Q2 = 25–50%
+- Q3 = 50–75%
+- Q4 = top 25%
+
+(We also tested 3-class versions for higher “headline accuracy”; see Section 8.)
+
+
+2) Training dataset
+------------------
+We train on 482 sites with:
+- computed features (weather, retail anchors, competition, gas station metrics)
+- site info (age, region, state)
+- car wash type (Express/Flex/Hand Wash etc.)
+- annual wash count = current_count (the target source)
+
+The merged training file used by v4 is:
+  scoringmetric/approach2/v3/final_merged_dataset.csv
+
+Car wash type lookup:
+  app/modelling/ds/Type_of_carwash_final.xlsx
+
+
+3) How the target (Q1–Q4) is built
+---------------------------------
+We take the 482 current_count values and split them into 4 equal-sized groups.
+
+In this dataset the quartile ranges are roughly:
+  Q1: 47 – 57,846 cars/year
+  Q2: 57,846 – 107,252 cars/year
+  Q3: 107,252 – 174,047 cars/year
+  Q4: 174,047 – 478,789 cars/year
+
+Important:
+- These ranges look “uneven”, but each quartile has ~120 sites.
+- The model is trained as a classification problem: predict Q1/Q2/Q3/Q4 label.
+
+
+4) Features used (what the model sees)
+--------------------------------------
+V4 uses the same 28 ML input features as v3, including:
+
+Weather (7):
+  - weather_total_precipitation_mm
+  - weather_rainy_days
+  - weather_total_snowfall_cm
+  - weather_days_below_freezing
+  - weather_total_sunshine_hours
+  - weather_days_pleasant_temp
+  - weather_avg_daily_max_windspeed_ms
+
+Gas (3):
+  - nearest_gas_station_distance_miles
+  - nearest_gas_station_rating
+  - nearest_gas_station_rating_count
+
+Competition (4):
+  - competitors_count_4miles
+  - competitor_1_google_rating
+  - competitor_1_distance_miles
+  - competitor_1_rating_count
+
+Retail / anchors (4):
+  - costco_enc                (Costco distance, NaN→99 meaning “no Costco nearby”)
+  - distance_nearest_walmart(5 mile)
+  - distance_nearest_target (5 mile)
+  - other_grocery_count_1mile
+  - count_food_joints_0_5miles (0.5 mile)
+
+Site (3):
+  - age_on_30_sep_25
+  - region_enc
+  - state_enc
+
+Engineered (4):
+  - competition_quality  = competitor rating × log(review_count+1)
+  - gas_station_draw     = gas station rating × log(review_count+1)
+  - retail_proximity     = 1 / (walmart_dist + target_dist + 0.1)
+  - weather_drive_score  = pleasant_days − days_below_freezing
+
+Capacity (2):
+  - tunnel_count
+  - effective_capacity = tunnel_count × is_express
+
+Car wash type handling:
+- carwash_type_encoded (Express/Flex/Hand Wash) is NOT used as a direct ML feature,
+  because effective_capacity already captures its effect.
+- We still show carwash_type in the report for explanation (display-only).
+
+
+5) Model training (v4 vs v3)
+----------------------------
+V3 model:
+- Calibrated RandomForestClassifier (isotonic calibration)
+
+V4 model (improvement):
+- ExtraTreesClassifier (Extremely Randomized Trees)
+  - n_estimators=600
+  - max_depth=8
+  - min_samples_leaf=5
+  - max_features='sqrt'
+  - class_weight='balanced'
+  - random_state=42
+
+Why ExtraTrees helps:
+- It reduces overfitting on small datasets by using random split thresholds.
+- In our tests it improves exact quartile accuracy vs v3.
+
+Missing values:
+- KNNImputer (5 nearest neighbours) is used to fill missing feature values.
+
+
+6) How we calculate accuracy (simple)
+-------------------------------------
+We use 5-fold cross-validation:
+- Split 482 sites into 5 folds.
+- Train on 4 folds, test on the remaining fold.
+- Repeat so each fold is tested once.
+
+Exact accuracy = (# of sites where predicted class == true class) / (total sites)
+
+Example:
+- If 304 out of 482 sites are predicted into the correct quartile:
+  accuracy = 304 / 482 = 63.1%
+
+We also track “within-1” accuracy:
+- Count a prediction as “good” if it is correct OR off by 1 quartile.
+  Example: true Q4 but predicted Q3 counts as within-1.
+
+
+7) V4 final performance (4-class)
+---------------------------------
+4-way quartiles (Q1–Q4), 482 sites, 5-fold CV:
+- Exact accuracy: ~63.1%
+- Within-1 accuracy: ~98.5%
+
+Confusion pattern:
+- Most errors are adjacent (Q1↔Q2 or Q3↔Q4).
+- Very few are far misses (Q1→Q4).
+
+
+8) Optional: 3-class versions for higher accuracy
+-------------------------------------------------
+We also trained 3-class models using the SAME features and ExtraTrees settings:
+
+Option A — 3 equal-frequency bins (tertiles):
+- Bottom ~1/3 = Low
+- Middle ~1/3 = Medium
+- Top ~1/3 = High
+Result: ~66.6% exact accuracy (5-fold CV)
+
+Option B — 40/40/20 business bins:
+- Low    = bottom 40%
+- Medium = middle 40%
+- High   = top 20%
+Result: ~73.7% exact accuracy (5-fold CV)
+
+This improves headline accuracy because there are fewer boundaries to confuse.
+
+
+9) Why accuracy cannot go much higher (with current features)
+-------------------------------------------------------------
+Even with strong capacity and age features, the remaining variance is driven by
+signals we do NOT have in the dataset:
+- Traffic counts (AADT)
+- Pricing, memberships, marketing
+- Brand strength / operational quality
+
+Therefore 63% exact for 4-way quartiles is close to the ceiling for this feature set.
+
+================================================================================

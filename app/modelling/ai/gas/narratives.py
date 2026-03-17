@@ -47,7 +47,7 @@ def _feature_summary_agent(
         else "higher values are better (higher rating/reviews = stronger fuel traffic node)"
     )
 
-    prompt = f"""You are a car wash site analyst. Write one or two short sentences for this gas station metric. Use actual numbers, no fixed template.
+    prompt = f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Use actual numbers, no fixed template.
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
@@ -56,7 +56,7 @@ Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
 Reference: {direction_note}.
 Scale range in dataset: {min_str} – {max_str}
 
-Dynamic rationale: state the value, what the percentile means, quartile/category. Reply with only the rationale, no prefix."""
+Dynamic rationale: state the value, explain the percentile in everyday words, and mention quartile/category. Avoid jargon. Reply with only the rationale, no prefix."""
 
     summary: Optional[str] = None
     try:
@@ -97,11 +97,10 @@ def _insight_agent(
         lines.append(f"- {name}: value={val} {unit}, percentile={pct}%, category={cat}")
     lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
     lines.append(
-        "\nWrite one short paragraph (Insight) discussing quantile predictions for: "
-        "(1) distance to nearest gas station, (2) nearest gas station rating, (3) review count. "
-        "Use actual percentiles and categories. Reference typical site indicators "
-        "(e.g. 'sites generating 150k+ washes typically have a gas station within 0.5 miles'). "
-        "Insight = quantile and prediction analysis. 2-4 sentences."
+        "\nWrite one short paragraph (Insight) in plain English. Explain what nearby gas stations mean for traffic and impulse demand using: "
+        "(1) distance to nearest gas station, (2) its rating, (3) its review count. "
+        "Use the given percentiles/categories but describe them simply (e.g. 'better than most sites', 'around average'). "
+        "Reference the predicted wash band. Keep it to 2-4 sentences. Avoid technical jargon."
     )
 
     prompt = "\n".join(lines)
