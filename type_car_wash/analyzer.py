@@ -3,10 +3,10 @@ import json
 import google.generativeai as genai
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from type_car_wash.config import GEMINI_API_KEY
+# from type_car_wash.config import GEMINI_API_KEY
 
 # Configure Gemini
-genai.configure(api_key=GEMINI_API_KEY)
+genai.configure(api_key="AIzaSyD3l7tmpfGevKmsEbMoKcnrN9dxycT-H-U")
 
 # Expanded classification types
 VALID_TYPES = [
@@ -54,7 +54,7 @@ def classify_car_wash_with_ai(scraped_text: str) -> Optional[CarWashClassificati
     print("\n[*] Classifying with Gemini (gemini-1.5-pro)...")
 
     # Initialize model
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("gemini-3-flash-preview")
 
     truncated = scraped_text[:100000]
 

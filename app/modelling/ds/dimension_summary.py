@@ -184,6 +184,8 @@ Be concise and use plain English only."""
         from app.utils.llm import local_llm as llm
         response = llm.get_llm_response(prompt, reasoning_effort="low", temperature=0.2)
         text = (response or {}).get("generated_text", "").strip()
+        if text:
+            text = text.replace("**", "")
         return text if text else ""
     except Exception:
         return ""

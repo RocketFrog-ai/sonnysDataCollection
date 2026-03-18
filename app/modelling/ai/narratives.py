@@ -61,6 +61,16 @@ WEATHER_V3_KEYS = frozenset({
 })
 
 
+def _strip_markdown(obj: Any) -> Any:
+    if isinstance(obj, str):
+        return obj.replace("**", "")
+    elif isinstance(obj, dict):
+        return {k: _strip_markdown(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_strip_markdown(i) for i in obj]
+    return obj
+
+
 def get_feature_narratives(
     quantile_result: Dict[str, Any],
     feature_values: Dict[str, Any],
@@ -73,7 +83,7 @@ def get_feature_narratives(
     out.extend(get_competition_feature_narratives(quantile_result, feature_values))
     out.extend(get_retail_feature_narratives(quantile_result, feature_values))
     out.extend(get_gas_feature_narratives(quantile_result, feature_values))
-    return out
+    return _strip_markdown(out)
 
 
 def get_overall_narrative(
@@ -93,11 +103,11 @@ def get_overall_narrative(
     overall = get_weather_overall_narrative(
         quantile_result, weather_narratives
     )
-    return {
+    return _strip_markdown({
         "insight": insight,
         "observation": overall.get("observation"),
         "conclusion": overall.get("conclusion"),
-    }
+    })
 
 
 def get_competition_narrative(
@@ -108,10 +118,10 @@ def get_competition_narrative(
     comp_narratives = [n for n in feature_narratives if n.get("feature_key") in COMPETITION_V3_KEYS]
     insight = get_competition_insight(quantile_result, comp_narratives)
     overall = get_competition_overall_narrative(quantile_result, comp_narratives)
-    return {
+    return _strip_markdown({
         "insight": insight,
         "observation": overall.get("observation"),
-    }
+    })
 
 
 def get_retail_narrative(
@@ -122,11 +132,11 @@ def get_retail_narrative(
     retail_narratives = [n for n in feature_narratives if n.get("feature_key") in RETAIL_V3_KEYS]
     insight = get_retail_insight(quantile_result, retail_narratives)
     overall = get_retail_overall_narrative(quantile_result, retail_narratives)
-    return {
+    return _strip_markdown({
         "insight": insight,
         "observation": overall.get("observation"),
         "conclusion": overall.get("conclusion"),
-    }
+    })
 
 
 def get_gas_narrative(
@@ -137,8 +147,8 @@ def get_gas_narrative(
     gas_narratives = [n for n in feature_narratives if n.get("feature_key") in GAS_V3_KEYS]
     insight = get_gas_insight(quantile_result, gas_narratives)
     overall = get_gas_overall_narrative(quantile_result, gas_narratives)
-    return {
+    return _strip_markdown({
         "insight": insight,
         "observation": overall.get("observation"),
         "conclusion": overall.get("conclusion"),
-    }
+    })
