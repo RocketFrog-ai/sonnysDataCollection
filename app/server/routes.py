@@ -425,8 +425,7 @@ def get_competition_data_by_task(task_id: str):
             "official_website": c.get("website"),
             # primary_carwash_type: AI-classified type (e.g. "Express Tunnel", "Full Service")
             "primary_carwash_type": classification.get("primary_type") if classification else None,
-            # Full classification payload for richer downstream use
-            "classification": classification if classification else None,
+            # Full classification payload for richer downstream use,
         }
         nearby_list.append(entry)
 
