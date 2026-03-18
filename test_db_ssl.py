@@ -1,34 +1,32 @@
-import pymysql
+import os
 
-try:
-    conn = pymysql.connect(
-        host="son-eus2-proforma-mysql02.mysql.database.azure.com",
-        user="mysqladmin",
-        password="ceu0hqf9jev3KQD*cme",
-        database="proforma_schema",
-        port=3306,
-        ssl={"check_hostname": False}
-    )
-    print("SUCCESS: Connected with ssl={'check_hostname': False}")
-    conn.close()
-except Exception as e:
-    print(f"FAILED with ssl={{'check_hostname': False}}: {e}")
+import psycopg
 
-try:
-    import ssl
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    conn = pymysql.connect(
-        host="son-eus2-proforma-mysql02.mysql.database.azure.com",
-        user="mysqladmin",
-        password="ceu0hqf9jev3KQD*cme",
-        database="proforma_schema",
-        port=3306,
-        ssl=ctx
-    )
-    print("SUCCESS: Connected with ssl=SSLContext")
-    conn.close()
-except Exception as e:
-    print(f"FAILED with ssl=SSLContext: {e}")
 
+def main() -> None:
+    host = os.environ.get("PGHOST")
+    dbname = os.environ.get("PGDATABASE", "postgres")
+    user = os.environ.get("PGUSER")
+    password = os.environ.get("PGPASSWORD")
+    port = int(os.environ.get("PGPORT", "5432"))
+    sslmode = os.environ.get("PGSSLMODE", "require")
+
+    missing = [k for k, v in {"PGHOST": host, "PGUSER": user, "PGPASSWORD": password}.items() if not v]
+    if missing:
+        raise SystemExit(f"Missing env vars: {', '.join(missing)}")
+
+    with psycopg.connect(
+        host=host,
+        dbname=dbname,
+        user=user,
+        password=password,
+        port=port,
+        sslmode=sslmode,
+    ) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT version();")
+            print(cur.fetchone())
+
+
+if __name__ == "__main__":
+    main()
