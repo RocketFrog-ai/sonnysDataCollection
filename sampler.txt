@@ -1,0 +1,148 @@
+Car wash count quartile ranges (equal-count, right-skewed):
+  Q1:         47 –     57,846 cars/yr  (n=121)
+  Q2:     57,846 –    107,252 cars/yr  (n=120)
+  Q3:    107,252 –    174,047 cars/yr  (n=120)
+  Q4:    174,047 –    478,789 cars/yr  (n=121)
+
+Classifier v4 (ExtraTrees) — 5-fold CV  exact: 63.1%  within-1: 98.5%  (n=482)
+  Top 5 features by importance:
+    Tunnel Count (proxy): 39.1%
+    Effective Capacity (tunnels × is-Express): 27.0%
+    Site Age (years): 4.6%
+    Distance to Walmart (mi): 2.1%
+    Days Below Freezing: 1.6%
+✓ QuantilePredictorV4 ready
+
+
+============================================================
+Testing Split: Standard Terciles (33-33-33)
+============================================================
+Boundaries:
+  Class 1 (Low):     47 - 69,842
+  Class 2 (Medium):  69,842 - 145,616
+  Class 3 (High):    145,616 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         66.6%
+  Soft Boundary (±20k):      83.0%
+  Wider Boundary (±30k):     90.5%
+
+============================================================
+Testing Split: Bottom Heavy (40-40-20)
+============================================================
+Boundaries:
+  Class 1 (Low):     47 - 86,100
+  Class 2 (Medium):  86,100 - 190,118
+  Class 3 (High):    190,118 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         73.7%
+  Soft Boundary (±20k):      87.3%
+  Wider Boundary (±30k):     92.9%
+
+============================================================
+Testing Split: Wide Middle (25-50-25)
+============================================================
+Boundaries:
+  Class 1 (Low):     47 - 57,846
+  Class 2 (Medium):  57,846 - 174,047
+  Class 3 (High):    174,047 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         58.9%
+  Soft Boundary (±20k):      73.9%
+  Wider Boundary (±30k):     81.1%
+
+============================================================
+Testing Split: Top Heavy (20-40-40)
+============================================================
+Boundaries:
+  Class 1 (Low):     47 - 48,842
+  Class 2 (Medium):  48,842 - 129,033
+  Class 3 (High):    129,033 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         76.1%
+  Soft Boundary (±20k):      89.8%
+  Wider Boundary (±30k):     92.9%
+
+(.venv) dhruvsood@sonnysDataCollection % conda run -n sonnysDataCollection python scoringme
+tric/approach2/v3/test_4class_custom.py
+Loading data using base QuantilePredictorV4...
+Loading and merging data…
+  Loading pre-built merge: /Users/dhruvsood/sonnysDataCollection/scoringmetric/approach2/v3/final_merged_dataset.csv
+  Rows: 482
+  Car wash type joined: 482/482 rows  (Type_of_carwash_final.xlsx)
+  482 sites  |  28 ML features  |  1 display-only features
+
+Car wash count quartile ranges (equal-count, right-skewed):
+  Q1:         47 –     57,846 cars/yr  (n=121)
+  Q2:     57,846 –    107,252 cars/yr  (n=120)
+  Q3:    107,252 –    174,047 cars/yr  (n=120)
+  Q4:    174,047 –    478,789 cars/yr  (n=121)
+
+Classifier v4 (ExtraTrees) — 5-fold CV  exact: 63.1%  within-1: 98.5%  (n=482)
+  Top 5 features by importance:
+    Tunnel Count (proxy): 39.1%
+    Effective Capacity (tunnels × is-Express): 27.0%
+    Site Age (years): 4.6%
+    Distance to Walmart (mi): 2.1%
+    Days Below Freezing: 1.6%
+✓ QuantilePredictorV4 ready
+
+
+============================================================
+Testing Split: Standard Quartiles (25-25-25-25)
+============================================================
+Boundaries:
+  Q1 (Low):          47 - 57,846
+  Q2 (Below Med):    57,846 - 107,252
+  Q3 (Above Med):    107,252 - 174,047
+  Q4 (High):         174,047 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         63.1%
+  Soft Boundary (±20k):      81.7%
+  Wider Boundary (±30k):     86.9%
+
+============================================================
+Testing Split: Bottom Heavy (30-30-20-20)
+============================================================
+Boundaries:
+  Q1 (Low):          47 - 64,494
+  Q2 (Below Med):    64,494 - 129,033
+  Q3 (Above Med):    129,033 - 190,118
+  Q4 (High):         190,118 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         65.4%
+  Soft Boundary (±20k):      83.8%
+  Wider Boundary (±30k):     88.0%
+
+============================================================
+Testing Split: Wide Middle (20-30-30-20)
+============================================================
+Boundaries:
+  Q1 (Low):          47 - 48,842
+  Q2 (Below Med):    48,842 - 107,252
+  Q3 (Above Med):    107,252 - 190,118
+  Q4 (High):         190,118 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         67.6%
+  Soft Boundary (±20k):      85.7%
+  Wider Boundary (±30k):     90.5%
+
+============================================================
+Testing Split: Top Heavy (20-20-30-30)
+============================================================
+Boundaries:
+  Q1 (Low):          47 - 48,842
+  Q2 (Below Med):    48,842 - 86,100
+  Q3 (Above Med):    86,100 - 156,063
+  Q4 (High):         156,063 - 478,789
+
+Results (n=482):
+  Exact Match Accuracy:         54.8%
+  Soft Boundary (±20k):      77.6%
+  Wider Boundary (±30k):     87.8%
