@@ -1,12 +1,10 @@
-"""
-Narrative orchestration: delegates to feature-wise subfolders (weather, gas, retail, competition).
-Top-level entry point for get_feature_narratives and get_overall_narrative used by site_analysis and routes.
-"""
+"""Top-level narrative orchestration."""
 
 from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.modelling.ai.common import load_input_payload
 # Feature narrative modules
 from app.modelling.ai.weather import (
     get_feature_narratives as get_weather_feature_narratives,
@@ -152,3 +150,25 @@ def get_gas_narrative(
         "observation": overall.get("observation"),
         "conclusion": overall.get("conclusion"),
     })
+
+
+if __name__ == "__main__":
+    payload = load_input_payload(
+        {
+            "quantile_result": {
+                "predicted_wash_quantile": 3,
+                "predicted_wash_quantile_label": "Q3",
+                "predicted_wash_range": {"label": "170-220 washes/day"},
+                "feature_analysis": {},
+            },
+            "feature_values": {},
+        }
+    )
+    qr = payload.get("quantile_result", {})
+    fv = payload.get("feature_values", {})
+    feature_narratives = get_feature_narratives(qr, fv)
+    print("Feature narratives:", feature_narratives)
+    print("Weather overall:", get_overall_narrative(qr, fv, feature_narratives))
+    print("Competition overall:", get_competition_narrative(qr, feature_narratives))
+    print("Retail overall:", get_retail_narrative(qr, feature_narratives))
+    print("Gas overall:", get_gas_narrative(qr, feature_narratives))
