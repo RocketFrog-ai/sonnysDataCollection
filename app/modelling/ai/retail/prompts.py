@@ -5,6 +5,14 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 
+def _is_out_of_range_costco(display_name: str, value: Optional[float]) -> bool:
+    return (
+        display_name == "Warehouse Club Distance"
+        and value is not None
+        and value >= 99
+    )
+
+
 def build_feature_summary_prompt(
     *,
     display_name: str,
@@ -18,6 +26,20 @@ def build_feature_summary_prompt(
     quantile_label: Optional[str],
     direction: str,
 ) -> str:
+    if _is_out_of_range_costco(display_name, value):
+        return """You are a car wash site analyst. Write one or two short plain-English sentences for this site.
+
+Metric: Warehouse Club Distance
+Site value: No warehouse club found within the configured search radius (encoded as out-of-range value).
+
+Instructions:
+- Do NOT treat the encoded value as literal miles.
+- Clearly state that no nearby warehouse club was found in range.
+- Explain what this means for local traffic in simple terms.
+- Keep it natural, short, and conversational.
+
+Reply with only the rationale."""
+
     val_str = f"{value:.1f}" if value is not None else "N/A"
     if value is not None and value == int(value):
         val_str = f"{int(value)}"
@@ -53,7 +75,10 @@ def build_insight_prompt(
     for n in feature_narratives:
         val = n.get("value")
         unit = n.get("unit", "")
-        val_str = "None found (estimated by model)" if val is None else f"{val} {unit}"
+        if (n.get("metric_key") == "costco-distance" or n.get("label") == "Warehouse Club Distance") and isinstance(val, (int, float)) and val >= 99:
+            val_str = "No warehouse club found within configured search radius"
+        else:
+            val_str = "None found (estimated by model)" if val is None else f"{val} {unit}"
         lines.append(
             f"- {n.get('label') or n.get('feature_key', '')}: "
             f"value={val_str}, percentile={n.get('percentile')}%, category={n.get('category')}"
@@ -69,6 +94,7 @@ def build_insight_prompt(
 def build_observation_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    car_wash_type: Optional[str] = None,
 ) -> str:
     pred_label = (
         quantile_result.get("predicted_wash_quantile_label")
@@ -95,12 +121,15 @@ Predicted wash band: {wash_band}
 Per-feature summaries:
 {feature_summaries}
 
+Car wash operating model: {car_wash_type or 'Unknown'}
+
 Instructions:
 - Write 2–3 short sentences (not too long, not too short)
 - Combine all points into a smooth, natural explanation (do not just list them)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the retail ecosystem affects this site's car wash demand
 - Use cause-and-effect reasoning (retail → demand)
+- If the operating model is Express Tunnel, do not describe behavior as "drop-off"; describe quick drive-through visits.
 
 Strict Rules:
 - No jargon or technical terms
@@ -117,6 +146,7 @@ Observation: <2–3 sentence explanation combining the factors>
 def build_conclusion_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    car_wash_type: Optional[str] = None,
 ) -> str:
     pred_label = (
         quantile_result.get("predicted_wash_quantile_label")
@@ -143,12 +173,15 @@ Predicted wash band: {wash_band}
 Per-feature summaries:
 {feature_summaries}
 
+Car wash operating model: {car_wash_type or 'Unknown'}
+
 Instructions:
 - Write 1–2 sentences max
 - Explain the overall takeaway for car wash demand in a natural way
 - Use simple cause-and-effect language
 - Avoid jargon and long sentences
 - Make it sound human and day-to-day conversational, never robotic or AI-generated
+- If the operating model is Express Tunnel, avoid wording like "drop off the car".
 
 Output Format (STRICT):
 Conclusion: <1 short sentence stating expected wash band in a natural way>
