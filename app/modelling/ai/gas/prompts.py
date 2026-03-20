@@ -104,6 +104,7 @@ Strict Rules:
 - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
 - Avoid long or complex sentences
 - Do NOT repeat the same idea
+- Make it sound human and day-to-day conversational, never robotic or AI-generated
 
 Output Format (STRICT):
 Observation: <2–3 sentence explanation combining the factors>
@@ -144,6 +145,7 @@ Instructions:
 - Explain the overall takeaway for car wash demand in a natural way
 - Use simple cause-and-effect language
 - Avoid jargon and long sentences
+- Make it sound human and day-to-day conversational, never robotic or AI-generated
 
 Output Format (STRICT):
 Conclusion: <1 short sentence stating expected wash band in a natural way>
