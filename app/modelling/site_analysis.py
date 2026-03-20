@@ -430,7 +430,11 @@ def run_site_analysis(
                     quantile_result, feature_values, feature_narratives=feature_narratives
                 ),
                 "competition": get_competition_narrative(quantile_result, feature_narratives),
-                "retail": get_retail_narrative(quantile_result, feature_narratives),
+                "retail": get_retail_narrative(
+                    quantile_result,
+                    feature_narratives,
+                    feature_values=feature_values,
+                ),
                 "gas": get_gas_narrative(quantile_result, feature_narratives),
             }
             logger.info("run_site_analysis: narratives done")

@@ -26,6 +26,23 @@ from app.modelling.ds.quantile_display import get_category_for_quantile
 logger = logging.getLogger(__name__)
 
 
+def _car_wash_type_label(feature_values: Optional[Dict[str, Any]]) -> Optional[str]:
+    if not feature_values:
+        return None
+    mapping = {
+        1: "Express Tunnel",
+        2: "Mobile",
+        3: "Hand Wash",
+    }
+    encoded = feature_values.get("carwash_type_encoded")
+    if encoded in mapping:
+        return mapping[encoded]
+    text = feature_values.get("type_of_car_wash")
+    if isinstance(text, str) and text.strip():
+        return text.strip()
+    return None
+
+
 def _feature_summary_agent(
     metric_key: str,
     display_name: str,
@@ -40,6 +57,14 @@ def _feature_summary_agent(
     direction: str = "lower",
 ) -> Dict[str, Optional[str]]:
     """LLM-generated dynamic summary for one retail proximity metric."""
+    if metric_key == "costco-distance" and value is not None and value >= 99:
+        summary = (
+            "No warehouse club was found within the configured search radius, "
+            "so this site does not get nearby warehouse-club traffic support."
+        )
+        impact_classification = category or "Out of range"
+        return {"summary": summary, "impact_classification": impact_classification}
+
     prompt = build_feature_summary_prompt(
         display_name=display_name,
         subtitle=subtitle,
@@ -87,10 +112,12 @@ def _insight_agent(
 def _overall_agent(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    feature_values: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Optional[str]]:
     """Observation + Conclusion: overall retail feature picture for the site."""
-    observation_prompt = build_observation_prompt(quantile_result, feature_narratives)
-    conclusion_prompt = build_conclusion_prompt(quantile_result, feature_narratives)
+    car_wash_type = _car_wash_type_label(feature_values)
+    observation_prompt = build_observation_prompt(quantile_result, feature_narratives, car_wash_type=car_wash_type)
+    conclusion_prompt = build_conclusion_prompt(quantile_result, feature_narratives, car_wash_type=car_wash_type)
     out: Dict[str, Optional[str]] = {"observation": None, "conclusion": None}
     try:
         text = get_llm_text(observation_prompt, max_new_tokens=512)
@@ -194,8 +221,9 @@ def get_insight(
 def get_overall_narrative(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    feature_values: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
-    overall = _overall_agent(quantile_result, feature_narratives)
+    overall = _overall_agent(quantile_result, feature_narratives, feature_values=feature_values)
     return {"observation": overall.get("observation"), "conclusion": overall.get("conclusion")}
 
 
@@ -299,9 +327,9 @@ if __name__ == "__main__":
         print("\n--- INSIGHT PROMPT ---")
         print(build_insight_prompt(qr, features))
         print("\n--- OBSERVATION PROMPT ---")
-        print(build_observation_prompt(qr, features))
+        print(build_observation_prompt(qr, features, car_wash_type=_car_wash_type_label(fv)))
         print("\n--- CONCLUSION PROMPT ---")
-        print(build_conclusion_prompt(qr, features))
+        print(build_conclusion_prompt(qr, features, car_wash_type=_car_wash_type_label(fv)))
     print("Feature narratives:", features)
     print("Insight:", get_insight(qr, features))
-    print("Overall:", get_overall_narrative(qr, features))
+    print("Overall:", get_overall_narrative(qr, features, feature_values=fv))

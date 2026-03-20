@@ -7,7 +7,7 @@ Used by weather narrative agents.
 # Subtitle = short label for the metric (e.g. "Rainy Days", "Total Annual Snowfall").
 WEATHER_NARRATIVE_METRICS = {
     "dirt-trigger-days": (
-        "Dirt Trigger Days Window",
+        "Dirt Creation Days",
         "Rainy Days",
         "weather_rainy_days",
     ),
@@ -46,7 +46,7 @@ WEATHER_METRIC_UNITS = {
 
 # Fixed business impact per metric (not LLM-generated)
 WEATHER_METRIC_BUSINESS_IMPACT = {
-    "dirt-trigger-days": "Frequent dirt triggers create strong recurring wash demand.",
+    "dirt-trigger-days": "Frequent dirt creation days create strong recurring wash demand.",
     "dirt-deposit-severity": "Some winter dirt accumulation creates occasional seasonal washing demand.",
     "comfortable-washing-days": "Plenty of comfortable weather supports steady customer visits and consistent wash activity.",
     "shutdown-risk-days": "Noticeable winter disruption; wash volumes may drop for short seasonal periods.",

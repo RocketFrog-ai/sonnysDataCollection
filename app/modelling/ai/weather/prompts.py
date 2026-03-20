@@ -79,7 +79,7 @@ def build_feature_summary_prompt(
     )
 
     return f"""
-You are a car wash site analyst. Write one or two short sentences in simple, everyday English that a layman can easily understand.
+You are a car wash site analyst. Write one or two short sentences in simple English.
 
 Refer to it as "this site" (not "your site").
 
@@ -91,6 +91,7 @@ Reference: {direction_note}
 Range: {min_str} – {max_str}
 
 Instructions:
+- Start with a short performance opener using percentile, like "Better than about X% of sites analyzed" (or equivalent plain wording).
 - Explain performance in plain language (e.g., "better than most sites", "on the higher side", "above average")
 - Clearly indicate if this is good, average, or strong
 - Briefly explain why it matters (e.g., more rain leads to more car washes)
