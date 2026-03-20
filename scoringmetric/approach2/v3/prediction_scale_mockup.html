@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car Wash Prediction Scale</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --q1-red: #ef4444;
+            --q2-yellow: #f59e0b;
+            --q3-light-green: #10b981;
+            --q4-dark-green: #059669;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .prediction-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem;
+            border-radius: 20px;
+            width: 800px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin: 0 0 0.5rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .header p {
+            color: var(--text-dim);
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        .scale-container {
+            position: relative;
+            margin: 4rem 0 2rem 0;
+        }
+
+        .tiers {
+            display: flex;
+            height: 80px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tier {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.8rem;
+            text-align: center;
+            position: relative;
+        }
+
+        /* Widths based on log-scale distribution or representative volume */
+        .q1 { background-color: var(--q1-red); width: 10%; }
+        .q2 { background-color: var(--q2-yellow); width: 30%; }
+        .q3 { background-color: var(--q3-light-green); width: 30%; }
+        .q4 { background-color: var(--q4-dark-green); width: 30%; }
+
+        .tier span { display: block; }
+        .tier .range { font-weight: 400; font-size: 0.7rem; opacity: 0.9; margin-top: 4px; }
+
+        .indicator-container {
+            position: absolute;
+            top: -30px;
+            bottom: -10px;
+            width: 4px;
+            background: #fff;
+            transform: translateX(-50%);
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.8);
+            transition: left 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .indicator-container::before {
+            content: "TOTAL WASHES";
+            position: absolute;
+            top: -55px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #fff;
+            color: #000;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.7rem;
+            white-space: nowrap;
+        }
+
+        .indicator-container::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .range-bar {
+            position: absolute;
+            top: 30px;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid #fff;
+            border-radius: 20px;
+            pointer-events: none;
+            z-index: 15;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .range-label {
+            position: absolute;
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 0.7rem;
+            font-weight: 700;
+            white-space: nowrap;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+            color: var(--text-dim);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.85rem;
+        }
+
+        .footer-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .footer-label { color: var(--text-dim); }
+        .footer-value { font-weight: 700; color: #fff; }
+
+    </style>
+</head>
+<body>
+
+<div class="prediction-card">
+    <div class="header">
+        <h1>Car Wash Volume Prediction</h1>
+        <p>Forecasted Annual Wash Volume (Wide Middle Weighted Model)</p>
+    </div>
+
+    <div class="scale-container">
+        <!-- The Range Bar (+/- 20k) -->
+        <div id="range-bar" class="range-bar">
+            <div class="range-label">Operational Range (+/- 20k)</div>
+        </div>
+        
+        <!-- The Tiers -->
+        <div class="tiers">
+            <div class="tier q1">LOW<span>47k - 48k</span></div>
+            <div class="tier q2">BELOW MED<span>48k - 107k</span></div>
+            <div class="tier q3">ABOVE MED<span>107k - 190k</span></div>
+            <div class="tier q4">HIGH<span>190k - 478k</span></div>
+        </div>
+
+        <!-- The Target Center Tick -->
+        <div id="target-indicator" class="indicator-container" data-value="155,000" style="left: 65%;"></div>
+
+        <div class="scale-labels">
+            <span>47k</span>
+            <span>48k</span>
+            <span>107k</span>
+            <span>190k</span>
+            <span>478k</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-item">
+            <span class="footer-label">Volume Prediction:</span>
+            <span class="footer-value">155,000 / year</span>
+        </div>
+        <div class="footer-item" style="text-align: center;">
+            <span class="footer-label">Confidence Range:</span>
+            <span id="range-text" class="footer-value">135,000 - 175,000</span>
+        </div>
+        <div class="footer-item" style="text-align: right;">
+            <span class="footer-label">Model Confidence:</span>
+            <span class="footer-value">Q3 (84%)</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    /**
+     * Logic to position the indicators on the nonlinear scale.
+     * Scale points: 47k (0%), 48k (10%), 107k (40%), 190k (70%), 478k (100%)
+     */
+    function getPercentage(val) {
+        let p = 0;
+        if (val <= 48000) p = 10 * (val - 47000) / (48000 - 47000);
+        else if (val <= 107000) p = 10 + 30 * (val - 48000) / (107000 - 48000);
+        else if (val <= 190000) p = 40 + 30 * (val - 107000) / (190000 - 107000);
+        else p = 70 + 30 * (val - 190000) / (478000 - 190000);
+        return Math.max(0, Math.min(100, p));
+    }
+
+    function setPrediction(val) {
+        const center_p = getPercentage(val);
+        const low_p = getPercentage(val - 20000);
+        const high_p = getPercentage(val + 20000);
+        
+        // Update center indicator
+        const target = document.getElementById('target-indicator');
+        target.style.left = center_p + '%';
+        target.setAttribute('data-value', val.toLocaleString());
+        
+        // Update range bar
+        const bar = document.getElementById('range-bar');
+        bar.style.left = low_p + '%';
+        bar.style.width = (high_p - low_p) + '%';
+        
+        // Update textual range
+        document.getElementById('range-text').innerText = 
+            (val - 20000).toLocaleString() + " - " + (val + 20000).toLocaleString();
+    }
+
+    // Example: Initialize at 155,000
+    setPrediction(155000);
+</script>
+
+</body>
+</html>

@@ -246,6 +246,7 @@ def analyze_site_endpoint(features: AnalyseRequest):
             features.address,
             tunnel_count=features.tunnel_count,
             carwash_type_encoded=features.carwash_type_encoded,
+            tier_strategy=features.tier_strategy,
         )
         return TaskResponse(
             task_id=result.id,
@@ -981,7 +982,6 @@ def get_overall(task_id: str):
         "task_id": task_id,
         "address": result.get("address"),
         "site_score": site_score,
-        # category_scores / feature_scores intentionally omitted for now
         "predicted_quantile": f"Q{predicted_q}" if predicted_q else None,
         "predicted_tier": quantile_result.get("predicted_wash_tier"),
         "expected_annual_volume": {
@@ -989,6 +989,12 @@ def get_overall(task_id: str):
             "max": wash_range.get("max"),
             "label": wash_range.get("label"),
         },
+        "weighted_volume_prediction": quantile_result.get("weighted_volume_prediction"),
+        "operational_range": {
+            "low":  (quantile_result.get("weighted_volume_prediction") - 20000) if quantile_result.get("weighted_volume_prediction") is not None else None,
+            "high": (quantile_result.get("weighted_volume_prediction") + 20000) if quantile_result.get("weighted_volume_prediction") is not None else None,
+        },
+        "tier_metadata": quantile_result.get("tier_metadata"),
         "quantile_probabilities": {
             f"Q{k}": round(v * 100, 1) for k, v in proba.items()
         },

@@ -77,6 +77,16 @@ QUANTILE_TIER_NAMES: Dict[int, str] = {
     4: "High Performer",
 }
 
+# ── Tier Strategy Presets ────────────────────────────────────────────────────
+# Percentile splits (sum must be 100)
+TIER_PRESETS: Dict[str, List[int]] = {
+    "3-class-standard":      [33, 33, 34],
+    "3-class-bottom-heavy":  [40, 40, 20],
+    "4-class-standard":      [25, 25, 25, 25],
+    "4-class-wide-middle":   [20, 30, 30, 20],
+    "4-class-top-heavy":     [10, 20, 30, 40],
+}
+
 # ── Feature directions (derived from actual Spearman correlation sign) ────────
 FEATURE_DIRECTIONS: Dict[str, str] = {
     "weather_total_precipitation_mm":       "neutral",   # r=+0.007
@@ -481,19 +491,27 @@ class QuantilePredictorV4:
         self,
         excel_path: Optional[Path] = None,
         csv_path: Optional[Path] = None,
-        n_quantiles: int = 4,
+        tier_strategy: str = "4-class-wide-middle",
+        n_quantiles: Optional[int] = None,  # inferred from strategy if None
         use_control_sites_only: bool = False,
     ):
         base = Path(__file__).resolve().parents[1]
         excel_path = excel_path or base / "Proforma-v2-data-final (1).xlsx"
         csv_path = csv_path or base / "extrapolation" / "temp_extrapolated.csv"
+        
+        if tier_strategy not in TIER_PRESETS:
+            print(f"Warning: Unknown tier_strategy '{tier_strategy}'. Falling back to '4-class-wide-middle'.")
+            tier_strategy = "4-class-wide-middle"
+        
+        self.tier_strategy = tier_strategy
+        self.percentile_splits = TIER_PRESETS[tier_strategy]
+        self.n_quantiles = n_quantiles or len(self.percentile_splits)
 
         if not excel_path.exists():
             raise FileNotFoundError(f"Excel not found: {excel_path}")
         if not csv_path.exists():
             raise FileNotFoundError(f"CSV not found: {csv_path}.")
 
-        self.n_quantiles = n_quantiles
 
         print("Loading and merging data…")
         self.df = _load_and_merge(excel_path, csv_path)
@@ -562,7 +580,13 @@ class QuantilePredictorV4:
     def _build_wash_quantiles(self):
         counts = self.df["current_count"].dropna().values
         self.wash_shape = _detect_shape(counts)
-        self.wash_boundaries = _quantile_boundaries(counts, self.n_quantiles)
+        
+        # Calculate boundaries based on percentile splits (e.g. 20-30-30-20)
+        cum_percentiles = np.cumsum([0] + self.percentile_splits)
+        self.wash_boundaries = np.percentile(counts, cum_percentiles)
+        # Ensure exact min/max from dataset if percentile interpolation shifts them
+        self.wash_boundaries[0] = np.min(counts)
+        self.wash_boundaries[-1] = np.max(counts)
 
         self.df["wash_q"] = pd.cut(
             self.df["current_count"],
@@ -572,13 +596,13 @@ class QuantilePredictorV4:
         ).astype("Int64")
 
         self.wash_q_ranges: Dict[int, Tuple[float, float]] = {
-            q: (self.wash_boundaries[q - 1], self.wash_boundaries[q])
+            q: (float(self.wash_boundaries[q - 1]), float(self.wash_boundaries[q]))
             for q in range(1, self.n_quantiles + 1)
         }
-        print(f"\nCar wash count quartile ranges (equal-count, {self.wash_shape}):")
+        print(f"\nCar wash count tier ranges (strategy: {self.tier_strategy}):")
         for q, (lo, hi) in self.wash_q_ranges.items():
             n = int((self.df["wash_q"] == q).sum())
-            print(f"  Q{q}: {lo:>10,.0f} – {hi:>10,.0f} cars/yr  (n={n})")
+            print(f"  Q{q}: {lo:>10,.0f} - {hi:>10,.0f} cars/yr  (n={n})")
 
     def _build_quantile_profiles(self):
         # Build profiles for ALL features (including display-only) for analysis
@@ -586,8 +610,18 @@ class QuantilePredictorV4:
             f for f in DISPLAY_ONLY_FEATURES if f in self.df.columns
         ]
         self.quantile_profiles: Dict[int, Dict[str, Dict]] = {}
+        self.tier_medians: Dict[int, float] = {}
+        
+        counts = self.df["current_count"].dropna()
+        
         for q in range(1, self.n_quantiles + 1):
-            subset = self.df[self.df["wash_q"] == q]
+            mask = self.df["wash_q"] == q
+            subset = self.df[mask]
+            
+            # Store median wash count for this tier (used for weighted predictions)
+            q_counts = counts[mask]
+            self.tier_medians[q] = float(q_counts.median()) if not q_counts.empty else 0.0
+            
             profile: Dict[str, Dict] = {}
             for feat in all_feats:
                 vals = subset[feat].dropna()
@@ -862,19 +896,30 @@ class QuantilePredictorV4:
         profile_comparison = self._profile_comparison(feature_analysis)
         strengths, weaknesses = self._strengths_weaknesses(feature_analysis)
 
+        # Calculate weighted average volume prediction based on tier probabilities
+        weighted_vol = sum(proba.get(q, 0.0) * self.tier_medians[q] for q in range(1, self.n_quantiles + 1))
+
         result: Dict = {
             "predicted_wash_quantile":          predicted_q,
-            "predicted_wash_quantile_label":    QUANTILE_LABELS[predicted_q],
-            "predicted_wash_tier":              QUANTILE_TIER_NAMES[predicted_q],
+            "predicted_wash_quantile_label":    QUANTILE_LABELS[predicted_q] if predicted_q in QUANTILE_LABELS else f"Q{predicted_q}",
+            "predicted_wash_tier":              QUANTILE_TIER_NAMES[predicted_q] if predicted_q in QUANTILE_TIER_NAMES else f"Tier {predicted_q}",
             "predicted_wash_range": {
                 "min":   round(wash_range[0]),
                 "max":   round(wash_range[1]),
-                "label": f"{wash_range[0]:,.0f} – {wash_range[1]:,.0f} cars/yr",
+                "label": f"{wash_range[0]:,.0f} - {wash_range[1]:,.0f} cars/yr",
             },
+            "weighted_volume_prediction":       round(weighted_vol),
             "quantile_probabilities":           proba,
+            "tier_metadata": {
+                "strategy":   self.tier_strategy,
+                "n_tiers":    self.n_quantiles,
+                "boundaries": [float(b) for b in self.wash_boundaries],
+                "medians":    self.tier_medians,
+                "labels":     [QUANTILE_TIER_NAMES.get(q, f"Tier {q}") for q in range(1, self.n_quantiles + 1)],
+            },
             "wash_count_distribution": {
                 q: {
-                    "range": f"{self.wash_q_ranges[q][0]:,.0f} – {self.wash_q_ranges[q][1]:,.0f}",
+                    "range": f"{self.wash_q_ranges[q][0]:,.0f} - {self.wash_q_ranges[q][1]:,.0f}",
                     "min":   round(self.wash_q_ranges[q][0]),
                     "max":   round(self.wash_q_ranges[q][1]),
                 }
