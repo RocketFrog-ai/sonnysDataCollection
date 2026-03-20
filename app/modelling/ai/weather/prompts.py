@@ -143,23 +143,75 @@ def build_insight_prompt(
     return "\n".join(lines)
 
 
+# def build_overall_prompt(
+#     quantile_result: Dict[str, Any],
+#     feature_narratives: List[Dict[str, Any]],
+# ) -> str:
+#     feature_lines = [
+#         f"- {n.get('label', n.get('feature_key', ''))}: {n.get('summary') or 'N/A'}"
+#         for n in feature_narratives
+#     ]
+#     pred_label = quantile_result.get("predicted_wash_quantile_label") or "N/A"
+#     wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
+#     return f"""You are a car wash site analyst. Use weather feature summaries and wash band to write:
+
+# Predicted wash band: {pred_label} ({wash_range})
+
+# Per-feature summaries:
+# {chr(10).join(feature_lines)}
+
+# Respond with exactly:
+# Observation: [2-3 sentences]
+# Conclusion: [1-2 sentences]"""
+
+
 def build_overall_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    feature_lines = [
-        f"- {n.get('label', n.get('feature_key', ''))}: {n.get('summary') or 'N/A'}"
-        for n in feature_narratives
-    ]
-    pred_label = quantile_result.get("predicted_wash_quantile_label") or "N/A"
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
-    return f"""You are a car wash site analyst. Use weather feature summaries and wash band to write:
+    wash_band = quantile_result.get("label", "N/A")
 
-Predicted wash band: {pred_label} ({wash_range})
+    # Combine feature summaries into bullet-like text
+    feature_summaries = "\n".join(
+        f"- {f.get('feature_name')}: {f.get('narrative')}"
+        for f in feature_narratives
+        if f.get("narrative")
+    )
+
+    return f"""
+You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
+
+Refer to it as "this site" (not "your site").
+
+Predicted wash band: {wash_band}
 
 Per-feature summaries:
-{chr(10).join(feature_lines)}
+{feature_summaries}
 
-Respond with exactly:
-Observation: [2-3 sentences]
-Conclusion: [1-2 sentences]"""
+Instructions:
+- Write 2–3 short sentences (not too long, not too short)
+- Combine all points into a smooth, natural explanation (do not just list them)
+- Use simple, conversational language (avoid formal or report-like tone)
+- Clearly explain why this site gets this level of car wash demand
+- Use cause-and-effect reasoning (weather → car wash demand)
+
+Strict Rules:
+- No jargon or technical terms
+- Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
+- Avoid long or complex sentences
+- Do NOT repeat the same idea
+- Do NOT sound like a report
+
+Style Guidance:
+- Write like you are explaining to a normal person
+- Keep it natural, smooth, and easy to follow
+- Use simple connectors like "because", "so", "which means"
+
+Output Format (STRICT):
+Observation: <2–3 sentence explanation combining the factors>
+Conclusion: <1 short sentence stating expected wash band in a natural way>
+
+Example style (do not copy):
+Observation: This site gets a good mix of rain, snow, and pleasant weather, so cars tend to get dirty often while people also have many chances to wash them. This keeps demand steady through the year.
+Conclusion: Because of this, the site can expect around 180–220 washes per day.
+"""
