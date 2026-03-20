@@ -371,6 +371,7 @@ def run_site_analysis(
     *,
     tunnel_count: Optional[int] = None,
     carwash_type_encoded: Optional[int] = None,
+    tier_strategy: str = "4-class-wide-middle",
     run_quantile: bool = True,
     run_narratives: bool = False,
 ) -> Dict[str, Any]:
@@ -405,7 +406,7 @@ def run_site_analysis(
     if run_quantile and location_features:
         try:
             from app.modelling.ds.quantile_predictor import QuantilePredictorV3
-            predictor = QuantilePredictorV3()
+            predictor = QuantilePredictorV3(tier_strategy=tier_strategy)
             quantile_result = predictor.analyze(location_features, llm_narrative=False)
             result["quantile_result"] = quantile_result
             logger.info("run_site_analysis: quantile prediction done (Q%s)", quantile_result.get("predicted_wash_quantile"))
