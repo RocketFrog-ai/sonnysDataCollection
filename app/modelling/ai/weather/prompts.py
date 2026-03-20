@@ -169,13 +169,20 @@ def build_overall_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    wash_band = quantile_result.get("label", "N/A")
+    pred_label = (
+        quantile_result.get("predicted_wash_quantile_label")
+        or quantile_result.get("label")
+        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
+        or "N/A"
+    )
+    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
+    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
 
-    # Combine feature summaries into bullet-like text
+    # Combine per-metric summaries into a compact input for the overall prompt.
     feature_summaries = "\n".join(
-        f"- {f.get('feature_name')}: {f.get('narrative')}"
+        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
         for f in feature_narratives
-        if f.get("narrative")
+        if f.get("summary")
     )
 
     return f"""
