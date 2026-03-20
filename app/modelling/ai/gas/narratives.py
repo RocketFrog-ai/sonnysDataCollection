@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from app.modelling.ai.common import get_llm_text
@@ -88,16 +89,22 @@ def _overall_agent(
     feature_narratives: List[Dict[str, Any]],
 ) -> Dict[str, Optional[str]]:
     """Observation + Conclusion: overall gas station ecosystem for the site."""
-    obs_prompt = build_observation_prompt(feature_narratives)
-    conc_prompt = build_conclusion_prompt(feature_narratives)
+    obs_prompt = build_observation_prompt(quantile_result, feature_narratives)
+    conc_prompt = build_conclusion_prompt(quantile_result, feature_narratives)
     out: Dict[str, Optional[str]] = {"observation": None, "conclusion": None}
     try:
         text = get_llm_text(obs_prompt, max_new_tokens=512)
         if text:
-            out["observation"] = text.strip()
+            obs_m = re.search(
+                r"Observation:\s*(.+?)(?=\s*Conclusion:|$)",
+                text,
+                re.DOTALL | re.IGNORECASE,
+            )
+            out["observation"] = (obs_m.group(1) if obs_m else text).strip()
         text2 = get_llm_text(conc_prompt, max_new_tokens=256)
         if text2:
-            out["conclusion"] = text2.strip()
+            con_m = re.search(r"Conclusion:\s*(.+)$", text2, re.DOTALL | re.IGNORECASE)
+            out["conclusion"] = (con_m.group(1) if con_m else text2).strip()
     except Exception as e:
         logger.warning("Gas overall LLM failed: %s", e)
     return out
@@ -273,9 +280,9 @@ if __name__ == "__main__":
         print("\n--- INSIGHT PROMPT ---")
         print(build_insight_prompt(qr, features))
         print("\n--- OBSERVATION PROMPT ---")
-        print(build_observation_prompt(features))
+        print(build_observation_prompt(qr, features))
         print("\n--- CONCLUSION PROMPT ---")
-        print(build_conclusion_prompt(features))
+        print(build_conclusion_prompt(qr, features))
     print("Feature narratives:", features)
     print("Insight:", get_insight(qr, features))
     print("Overall:", get_overall_narrative(qr, features))

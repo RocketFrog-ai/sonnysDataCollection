@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from app.modelling.ai.common import get_llm_text
@@ -86,13 +87,19 @@ def _overall_agent(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> Dict[str, Optional[str]]:
-    """Generate competition observation."""
-    prompt = build_overall_prompt(feature_narratives)
-    out: Dict[str, Optional[str]] = {"observation": None}
+    """Generate competition observation and conclusion."""
+    prompt = build_overall_prompt(quantile_result, feature_narratives)
+    out: Dict[str, Optional[str]] = {"observation": None, "conclusion": None}
     try:
         text = get_llm_text(prompt, max_new_tokens=512)
-        if text:
-            out["observation"] = text.strip()
+        if not text:
+            return out
+        obs_m = re.search(r"Observation:\s*(.+?)(?=\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+        con_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Observation:|$)", text, re.DOTALL | re.IGNORECASE)
+        if obs_m:
+            out["observation"] = obs_m.group(1).strip()
+        if con_m:
+            out["conclusion"] = con_m.group(1).strip()
     except Exception as e:
         logger.warning("Competition overall LLM failed: %s", e)
     return out
@@ -183,7 +190,7 @@ def get_overall_narrative(
     feature_narratives: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     overall = _overall_agent(quantile_result, feature_narratives)
-    return {"observation": overall.get("observation"), "conclusion": None}
+    return {"observation": overall.get("observation"), "conclusion": overall.get("conclusion")}
 
 
 if __name__ == "__main__":
@@ -286,7 +293,7 @@ if __name__ == "__main__":
         print("\n--- INSIGHT PROMPT ---")
         print(build_insight_prompt(qr, features))
         print("\n--- OVERALL PROMPT ---")
-        print(build_overall_prompt(features))
+        print(build_overall_prompt(qr, features))
     print("Feature narratives:", features)
     print("Insight:", get_insight(qr, features))
     print("Overall:", get_overall_narrative(qr, features))
