@@ -5,6 +5,50 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 
+# def build_feature_summary_prompt(
+#     *,
+#     display_name: str,
+#     subtitle: str,
+#     value: Optional[float],
+#     unit: str,
+#     category: Optional[str],
+#     percentile: Optional[float],
+#     dist_min: Optional[float],
+#     dist_max: Optional[float],
+#     quantile_label: Optional[str],
+#     direction: str,
+# ) -> str:
+#     val_str = (
+#         f"{value:.0f}"
+#         if value is not None and value == int(value)
+#         else (f"{value}" if value is not None else "N/A")
+#     )
+#     pct_str = f"{percentile:.1f}%" if percentile is not None else "N/A"
+#     cat_str = category or "N/A"
+#     min_str = f"{dist_min:.0f}" if dist_min is not None else "N/A"
+#     max_str = f"{dist_max:.0f}" if dist_max is not None else "N/A"
+#     direction_note = (
+#         "higher values are better for wash demand"
+#         if direction == "higher"
+#         else "lower values are better for wash demand"
+#     )
+#     return f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Refer to it as "this site" (not "your site"). Use the numbers given — do not use a fixed template.
+
+# Metric: {display_name} ({subtitle})
+# Site value: {val_str} {unit}
+# Percentile (vs. other car wash sites in the dataset): {pct_str}
+# Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
+# Reference: For this metric, {direction_note}.
+# Scale range in dataset: {min_str} – {max_str}
+
+# Write a dynamic rationale that:
+# - Explains what the percentile means using everyday words (e.g. "better than about X% of sites" or "worse than about X% of sites" depending on the direction).
+# - Mentions quartile and category (Q1–Q4, Poor/Fair/Good/Strong).
+# - Notes whether higher or lower is better for this metric.
+# Percentile rule: interpret the percentile as "better than about X% of sites" on the good direction.
+# Avoid jargon (no 'distribution', 'correlation', 'quantile boundaries'). Reply with only the rationale."""
+
+
 def build_feature_summary_prompt(
     *,
     display_name: str,
@@ -27,26 +71,50 @@ def build_feature_summary_prompt(
     cat_str = category or "N/A"
     min_str = f"{dist_min:.0f}" if dist_min is not None else "N/A"
     max_str = f"{dist_max:.0f}" if dist_max is not None else "N/A"
+
     direction_note = (
         "higher values are better for wash demand"
         if direction == "higher"
         else "lower values are better for wash demand"
     )
-    return f"""You are a car wash site analyst. Write one or two short sentences in plain, non-technical English. Refer to it as "this site" (not "your site"). Use the numbers given — do not use a fixed template.
+
+    return f"""
+You are a car wash site analyst. Write one or two short sentences in simple, everyday English that a layman can easily understand.
+
+Refer to it as "this site" (not "your site").
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
-Percentile (vs. other car wash sites in the dataset): {pct_str}
-Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
-Reference: For this metric, {direction_note}.
-Scale range in dataset: {min_str} – {max_str}
+Percentile: {pct_str}
+Category: {cat_str}
+Reference: {direction_note}
+Range: {min_str} – {max_str}
 
-Write a dynamic rationale that:
-- Explains what the percentile means using everyday words (e.g. "better than about X% of sites" or "worse than about X% of sites" depending on the direction).
-- Mentions quartile and category (Q1–Q4, Poor/Fair/Good/Strong).
-- Notes whether higher or lower is better for this metric.
-Percentile rule: interpret the percentile as "better than about X% of sites" on the good direction.
-Avoid jargon (no 'distribution', 'correlation', 'quantile boundaries'). Reply with only the rationale."""
+Instructions:
+- Explain performance in plain language (e.g., "better than most sites", "on the higher side", "above average")
+- Clearly indicate if this is good, average, or strong
+- Briefly explain why it matters (e.g., more rain leads to more car washes)
+- Keep it very simple, natural, and easy to read
+- Avoid ALL technical/statistical terms (no percentile, quartile, distribution, etc.)
+- Do NOT repeat the metric name
+
+Variability Rules (IMPORTANT):
+- Use different sentence structures each time
+- Vary how you describe performance (e.g., "better than most", "higher than many", "above typical levels")
+- Vary how you explain impact (e.g., "this can lead to more car washes", "this helps bring in more customers")
+- Do NOT always start with "This site has"
+- Keep tone natural and conversational
+
+Output Rules:
+- Maximum 2 sentences
+- No bullet points
+- No jargon
+- No templates or repeated phrasing
+
+Example style (do not copy):
+- "Rainy days are on the higher side at this site, which is a good sign since rain often brings in more car wash customers."
+- "This site sees more rain than many others, and that usually helps increase demand for car washes."
+"""
 
 
 def build_insight_prompt(
