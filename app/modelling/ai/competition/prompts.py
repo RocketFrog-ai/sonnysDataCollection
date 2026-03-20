@@ -113,6 +113,7 @@ Style Guidance:
 - Write like you are explaining to a normal person
 - Keep it natural, smooth, and easy to follow
 - Use simple connectors like "because", "so", "which means"
+- Make it sound human and day-to-day conversational, never robotic or AI-generated
 
 Output Format (STRICT):
 Observation: <2–3 sentence explanation combining the factors>
