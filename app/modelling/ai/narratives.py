@@ -111,11 +111,12 @@ def get_overall_narrative(
 def get_competition_narrative(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    feature_values: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Competition-only insight and observation (used by competition route)."""
     comp_narratives = [n for n in feature_narratives if n.get("feature_key") in COMPETITION_V3_KEYS]
-    insight = get_competition_insight(quantile_result, comp_narratives)
-    overall = get_competition_overall_narrative(quantile_result, comp_narratives)
+    insight = get_competition_insight(quantile_result, comp_narratives, feature_values=feature_values)
+    overall = get_competition_overall_narrative(quantile_result, comp_narratives, feature_values=feature_values)
     return _strip_markdown({
         "insight": insight,
         "observation": overall.get("observation"),
@@ -174,6 +175,6 @@ if __name__ == "__main__":
     feature_narratives = get_feature_narratives(qr, fv)
     print("Feature narratives:", feature_narratives)
     print("Weather overall:", get_overall_narrative(qr, fv, feature_narratives))
-    print("Competition overall:", get_competition_narrative(qr, feature_narratives))
+    print("Competition overall:", get_competition_narrative(qr, feature_narratives, feature_values=fv))
     print("Retail overall:", get_retail_narrative(qr, feature_narratives, fv))
     print("Gas overall:", get_gas_narrative(qr, feature_narratives))

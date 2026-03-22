@@ -429,7 +429,11 @@ def run_site_analysis(
                 "overall": get_overall_narrative(
                     quantile_result, feature_values, feature_narratives=feature_narratives
                 ),
-                "competition": get_competition_narrative(quantile_result, feature_narratives),
+                "competition": get_competition_narrative(
+                    quantile_result,
+                    feature_narratives,
+                    feature_values=feature_values,
+                ),
                 "retail": get_retail_narrative(
                     quantile_result,
                     feature_narratives,

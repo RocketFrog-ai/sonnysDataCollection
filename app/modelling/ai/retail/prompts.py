@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.modelling.ai.common import (
+    format_forecast_snapshot_for_prompt,
+    format_overall_dimension_context,
+    format_plain_narrative_summaries,
+)
+
 
 def _is_out_of_range_costco(display_name: str, value: Optional[float]) -> bool:
     return (
@@ -25,6 +31,7 @@ def build_feature_summary_prompt(
     dist_max: Optional[float],
     quantile_label: Optional[str],
     direction: str,
+    car_wash_type: Optional[str] = None,
 ) -> str:
     if _is_out_of_range_costco(display_name, value):
         return """You are a car wash site analyst. Write one or two short plain-English sentences for this site.
@@ -54,6 +61,8 @@ Reply with only the rationale."""
     )
     return f"""You are a car wash site analyst. Write one or two short plain-English sentences for this site.
 
+Car wash type: {car_wash_type or 'Unknown'}
+
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
 Percentile vs. other sites: {pct_str}
@@ -61,34 +70,41 @@ Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
 Reference: {direction_note}
 Scale range: {min_str} – {max_str}
 
-Explain value + percentile in simple words and mention quartile/category. Reply with only the rationale."""
+Instructions:
+- Explain value + percentile in simple words and mention quartile/category.
+- If the car wash type is "Express Tunnel", do NOT say customers "shop while their car is washed". 
+- Instead, describe it as a quick, convenient trip paired with their shopping (before or after).
+- Reply with only the rationale."""
 
 
 def build_insight_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    car_wash_type: Optional[str] = None,
 ) -> str:
-    pred_q = quantile_result.get("predicted_wash_quantile")
-    pred_label = quantile_result.get("predicted_wash_quantile_label") or f"Q{pred_q}"
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
-    lines = ["Retail proximity metrics for this site (value, percentile, category):"]
-    for n in feature_narratives:
-        val = n.get("value")
-        unit = n.get("unit", "")
-        if (n.get("metric_key") == "costco-distance" or n.get("label") == "Warehouse Club Distance") and isinstance(val, (int, float)) and val >= 99:
-            val_str = "No warehouse club found within configured search radius"
-        else:
-            val_str = "None found (estimated by model)" if val is None else f"{val} {unit}"
-        lines.append(
-            f"- {n.get('label') or n.get('feature_key', '')}: "
-            f"value={val_str}, percentile={n.get('percentile')}%, category={n.get('category')}"
+    snap = format_forecast_snapshot_for_prompt(quantile_result)
+    sums = format_plain_narrative_summaries(feature_narratives)
+    if not sums:
+        sums = (
+            "(No short summaries available—describe the forecast in plain language only "
+            "without naming internal metrics.)"
         )
-    lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
-    lines.append(
-        "\nWrite one short Insight paragraph (2-4 sentences) on retail anchor impact "
-        "(warehouse club, big box, grocery, food). Keep wording simple."
+    return "\n".join(
+        [
+            "Forecast (use these facts; do not invent numbers):",
+            snap,
+            "",
+            f"Car wash type: {car_wash_type or 'Unknown'}",
+            "",
+            sums,
+            "",
+            "Write one short Insight paragraph (2–4 sentences) on how shopping and food traffic "
+            "around the site affect wash demand (warehouse clubs, big box, grocery, food). "
+            "If the car wash type is 'Express Tunnel', never say characters 'shop while they wash'. "
+            "Instead, emphasize trip-pairing convenience (washing before or after a shopping visit). "
+            "Everyday words only—no quartile codes, percentiles, or metric field names.",
+        ]
     )
-    return "\n".join(lines)
 
 
 def build_observation_prompt(
@@ -96,32 +112,17 @@ def build_observation_prompt(
     feature_narratives: List[Dict[str, Any]],
     car_wash_type: Optional[str] = None,
 ) -> str:
-    pred_label = (
-        quantile_result.get("predicted_wash_quantile_label")
-        or quantile_result.get("label")
-        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
-        or "N/A"
-    )
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
-    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
-
-    feature_summaries = "\n".join(
-        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
-        for f in feature_narratives
-        if f.get("summary")
-    )
+    context_block = format_overall_dimension_context(quantile_result, feature_narratives)
 
     return f"""
 You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
 
 Refer to it as "this site" (not "your site").
 
-Predicted wash band: {wash_band}
-
-Per-feature summaries:
-{feature_summaries}
-
 Car wash operating model: {car_wash_type or 'Unknown'}
+
+Facts from the forecast and retail check (use only these numbers and ideas; do not invent):
+{context_block}
 
 Instructions:
 - Write 2–3 short sentences (not too long, not too short)
@@ -129,10 +130,12 @@ Instructions:
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the retail ecosystem affects this site's car wash demand
 - Use cause-and-effect reasoning (retail → demand)
-- If the operating model is Express Tunnel, do not describe behavior as "drop-off"; describe quick drive-through visits.
+- If the operating model is Express Tunnel, do NOT describe behavior as "drop-off" or "wash while shopping".
+- Instead, describe it as a quick drive-through visit paired with a shopping trip (e.g., "stopping for a quick wash after getting groceries").
 
 Strict Rules:
-- No jargon or technical terms
+- No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+- Do not name metric titles from the bullet text; paraphrase the ideas only
 - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
 - Avoid long or complex sentences
 - Do NOT repeat the same idea
@@ -148,38 +151,23 @@ def build_conclusion_prompt(
     feature_narratives: List[Dict[str, Any]],
     car_wash_type: Optional[str] = None,
 ) -> str:
-    pred_label = (
-        quantile_result.get("predicted_wash_quantile_label")
-        or quantile_result.get("label")
-        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
-        or "N/A"
-    )
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
-    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
-
-    feature_summaries = "\n".join(
-        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
-        for f in feature_narratives
-        if f.get("summary")
-    )
+    context_block = format_overall_dimension_context(quantile_result, feature_narratives)
 
     return f"""
 You are a car wash site analyst. Write a very short, natural wrap-up in simple, everyday English.
 
 Refer to it as "this site" (not "your site").
 
-Predicted wash band: {wash_band}
-
-Per-feature summaries:
-{feature_summaries}
-
 Car wash operating model: {car_wash_type or 'Unknown'}
+
+Facts from the forecast and retail check (use only these numbers and ideas; do not invent):
+{context_block}
 
 Instructions:
 - Write 1–2 sentences max
 - Explain the overall takeaway for car wash demand in a natural way
 - Use simple cause-and-effect language
-- Avoid jargon and long sentences
+- Avoid jargon and long sentences; do not use quartile codes or metric field names
 - Make it sound human and day-to-day conversational, never robotic or AI-generated
 - If the operating model is Express Tunnel, avoid wording like "drop off the car".
 

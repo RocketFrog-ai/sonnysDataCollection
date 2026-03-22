@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.modelling.ai.common import (
+    format_forecast_snapshot_for_prompt,
+    format_overall_dimension_context,
+    format_plain_narrative_summaries,
+)
+
 
 def build_feature_summary_prompt(
     *,
@@ -32,68 +38,73 @@ def build_feature_summary_prompt(
     else:
         direction_note = "context-dependent for competitive intensity"
 
-    return f"""You are a car wash site analyst. Write one or two short plain-English sentences about this site.
+    return f"""You are a car wash site analyst. Write one or two short plain-English sentences about the local market environment.
+
+IMPORTANT CONTEXT:
+1. The site being analyzed is a NEW proposed development and has NO ratings or reviews of its own yet.
+2. The values below describe the CLOSEST CAR WASH near to the site (the competitor).
 
 Metric: {display_name} ({subtitle})
-Site value: {val_str} {unit}
+Market value: {val_str} {unit}
 Percentile vs. other sites: {pct_str}
 Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
 Reference: {direction_note}
 Scale range: {min_str} – {max_str}
 
-Explain value + percentile in everyday words and mention quartile/category. Reply with only the rationale."""
+Explain how this neighboring wash metric reflects the local competitive intensity in everyday words. Reply with only the rationale."""
 
 
 def build_insight_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    car_wash_type: Optional[str] = None,
 ) -> str:
-    pred_q = quantile_result.get("predicted_wash_quantile")
-    pred_label = quantile_result.get("predicted_wash_quantile_label") or f"Q{pred_q}"
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
-    lines = ["Competition metrics for this site (value, percentile, category):"]
-    for n in feature_narratives:
-        lines.append(
-            f"- {n.get('label') or n.get('feature_key', '')}: "
-            f"value={n.get('value')} {n.get('unit', '')}, "
-            f"percentile={n.get('percentile')}%, category={n.get('category')}"
+    snap = format_forecast_snapshot_for_prompt(quantile_result)
+    sums = format_plain_narrative_summaries(feature_narratives)
+    if not sums:
+        sums = (
+            "(No short summaries available—describe the forecast in plain language only "
+            "without naming internal metrics.)"
         )
-    lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
-    lines.append(
-        "\nWrite one short Insight paragraph (2-4 sentences) explaining competition impact "
-        "using distance, rating, and review count in plain English."
+    parts: List[str] = []
+    if car_wash_type:
+        parts.append(f"Site type: {car_wash_type}.")
+    parts.extend(
+        [
+            "Forecast (use these facts; do not invent numbers):",
+            snap,
+            "",
+            "Site context: This is a NEW proposed car wash development (no ratings or reviews yet).",
+            "",
+            sums,
+            "",
+            "Write one short Insight paragraph (2–4 sentences) about how the competition from the **closest car wash near to you** affects your future wash demand. "
+            "Refer to neighbors as 'the closest car wash' or 'neighboring wash'. "
+            "Never say 'your ratings' or 'your reviews' because the site is not built yet. "
+            "Use everyday words only—no quartile codes, percentiles, or metric field names.",
+        ]
     )
-    return "\n".join(lines)
+    return "\n".join(parts)
 
 
 def build_overall_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
+    car_wash_type: Optional[str] = None,
 ) -> str:
-    pred_label = (
-        quantile_result.get("predicted_wash_quantile_label")
-        or quantile_result.get("label")
-        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
-        or "N/A"
-    )
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
-    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
-
-    feature_summaries = "\n".join(
-        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
-        for f in feature_narratives
-        if f.get("summary")
-    )
+    context_block = format_overall_dimension_context(quantile_result, feature_narratives)
+    site_type_line = f"\nSite type: {car_wash_type}" if car_wash_type else ""
 
     return f"""
 You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
 
 Refer to it as "this site" (not "your site").
+{site_type_line}
 
-Predicted wash band: {wash_band}
+Site context: This is a NEW proposed car wash development (no ratings or reviews yet).
 
-Per-feature summaries:
-{feature_summaries}
+Facts from the forecast and the **closest car wash near to you** (use only these numbers and ideas; do not invent):
+{context_block}
 
 Instructions:
 - Write 2–3 short sentences (not too long, not too short)
@@ -103,7 +114,8 @@ Instructions:
 - Use cause-and-effect reasoning (competition → demand)
 
 Strict Rules:
-- No jargon or technical terms
+- No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+- Do not name metric titles from the bullet text; paraphrase the ideas only
 - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
 - Avoid long or complex sentences
 - Do NOT repeat the same idea
@@ -114,6 +126,9 @@ Style Guidance:
 - Keep it natural, smooth, and easy to follow
 - Use simple connectors like "because", "so", "which means"
 - Make it sound human and day-to-day conversational, never robotic or AI-generated
+- Strictly refer to distance and ratings as belonging to the **closest car wash near to you** or the **neighboring wash**
+- Do NOT use phrases like "your ratings" or "your popularity" for this site
+- Do NOT use the word "rival"; use "closest car wash near to you" or "neighboring wash" instead
 
 Output Format (STRICT):
 Observation: <2–3 sentence explanation combining the factors>
