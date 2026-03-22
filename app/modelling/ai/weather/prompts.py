@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.modelling.ai.common import (
+    format_forecast_snapshot_for_prompt,
+    format_overall_dimension_context,
+    format_plain_narrative_summaries,
+)
+
 
 # def build_feature_summary_prompt(
 #     *,
@@ -78,6 +84,18 @@ def build_feature_summary_prompt(
         else "lower values are better for wash demand"
     )
 
+    # Same percentile as feature quantile logic in weather/narratives.py (good-direction rank vs peers).
+    if percentile is not None:
+        perf_anchor = (
+            f"Authoritative rank vs analyzed sites (use ONLY this number for “better than X%”; do not invent or round differently): "
+            f"better than about {percentile:.1f}% of sites analyzed."
+        )
+    else:
+        perf_anchor = (
+            "No peer rank is available for this metric; do not claim a “better than X%” line. "
+            "Describe the value and category only."
+        )
+
     return f"""
 You are a car wash site analyst. Write one or two short sentences in simple English.
 
@@ -85,36 +103,37 @@ Refer to it as "this site" (not "your site").
 
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
-Percentile: {pct_str}
+Peer comparison (from model feature quantiles — same basis as the app): {pct_str}
 Category: {cat_str}
 Reference: {direction_note}
 Range: {min_str} – {max_str}
 
+{perf_anchor}
+
+Metric Logic Hint:
+- If display_name is "Dirt Creation Days": Rain creates road grime; demand spikes after the rain stops.
+- If display_name is "Dirt Deposit Severity": Snow and salt create heavy dirt, driving seasonal volume.
+- If display_name is "Comfortable Washing Days": Pleasant weather supports steady, spontaneous washing.
+- If display_name is "Shutdown Risk Days": Freezing temperatures pose a risk to equipment and operations.
+
 Instructions:
-- Start with a short performance opener using percentile, like "Better than about X% of sites analyzed" (or equivalent plain wording).
-- Explain performance in plain language (e.g., "better than most sites", "on the higher side", "above average")
-- Clearly indicate if this is good, average, or strong
-- Briefly explain why it matters (e.g., more rain leads to more car washes)
-- Keep it very simple, natural, and easy to read
-- Avoid ALL technical/statistical terms (no percentile, quartile, distribution, etc.)
-- Do NOT repeat the metric name
+- FIRST sentence MUST state the peer comparison using ONLY the percentage above (when a rank is given). Do not use any other X%.
+- Second sentence: why that matters for wash demand in professional (but plain) English.
+- Use terms like "precipitation-driven demand", "operating window", or "dirt accumulation".
+- Avoid simplistic phrasing like "dirty cars", "stay clean", or "happy customers".
+- Avoid jargon like “distribution”, “correlation”, “quantile boundaries”.
+- Do NOT repeat the full metric title twice.
 
 Variability Rules (IMPORTANT):
-- Use different sentence structures each time
-- Vary how you describe performance (e.g., "better than most", "higher than many", "above typical levels")
-- Vary how you explain impact (e.g., "this can lead to more car washes", "this helps bring in more customers")
+- You may vary wording of the second sentence only; the X% in the first sentence must match the authoritative line above.
 - Do NOT always start with "This site has"
-- Keep tone natural and conversational
 
 Output Rules:
 - Maximum 2 sentences
 - No bullet points
-- No jargon
-- No templates or repeated phrasing
 
-Example style (do not copy):
-- "Rainy days are on the higher side at this site, which is a good sign since rain often brings in more car wash customers."
-- "This site sees more rain than many others, and that usually helps increase demand for car washes."
+Example shape (do not copy numbers):
+- “This site is better than about 68% of sites analyzed … [why it matters].”
 """
 
 
@@ -122,25 +141,26 @@ def build_insight_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    pred_q = quantile_result.get("predicted_wash_quantile")
-    pred_label = quantile_result.get("predicted_wash_quantile_label") or f"Q{pred_q}"
-    proba = quantile_result.get("quantile_probabilities") or {}
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
+    snap = format_forecast_snapshot_for_prompt(quantile_result)
+    sums = format_plain_narrative_summaries(feature_narratives)
+    if not sums:
+        sums = (
+            "(No short summaries available—describe the forecast in plain language only "
+            "without naming internal metrics.)"
+        )
 
-    lines = ["Weather metrics for this site:"]
-    for n in feature_narratives:
-        name = n.get("label") or n.get("feature_key", "")
-        val = n.get("value")
-        unit = n.get("unit", "")
-        cat = n.get("category") or n.get("wash_q")
-        pct = n.get("percentile")
-        lines.append(f"- {name}: value={val} {unit}, category={cat}, percentile={pct}%")
-    lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}). Probabilities: {proba}")
-    lines.append(
-        "\nWrite one short paragraph (Insight) about how this weather profile affects "
-        "wash demand and operations. Highlight strengths and weaker points relative to "
-        "other sites. Keep it 2-4 sentences and avoid technical jargon."
-    )
+    lines = [
+        "Forecast (use these facts; do not invent numbers):",
+        snap,
+        "",
+        sums,
+        "",
+        "Write one short paragraph (Insight) about how this weather picture affects wash demand and day-to-day operations. "
+        "Highlight how specific climate patterns (like precipitation or temperature) drive or limit consistent volume. "
+        "Use professional site-analysis language (e.g., 'climatic drivers', 'seasonal patterns', 'operating window'). "
+        "Do NOT mention 'extra cleaning capacity', 'staffing', or 'maintenance'—focus only on demand. "
+        "Keep it 2–4 sentences. No jargon: no quartile codes, percentiles, or metric field names.",
+    ]
     return "\n".join(lines)
 
 
@@ -170,31 +190,15 @@ def build_overall_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    pred_label = (
-        quantile_result.get("predicted_wash_quantile_label")
-        or quantile_result.get("label")
-        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
-        or "N/A"
-    )
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
-    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
-
-    # Combine per-metric summaries into a compact input for the overall prompt.
-    feature_summaries = "\n".join(
-        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
-        for f in feature_narratives
-        if f.get("summary")
-    )
+    context_block = format_overall_dimension_context(quantile_result, feature_narratives)
 
     return f"""
 You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
 
 Refer to it as "this site" (not "your site").
 
-Predicted wash band: {wash_band}
-
-Per-feature summaries:
-{feature_summaries}
+Facts from the forecast and weather check (use only these numbers and ideas; do not invent):
+{context_block}
 
 Instructions:
 - Write 2–3 short sentences (not too long, not too short)
@@ -204,7 +208,8 @@ Instructions:
 - Use cause-and-effect reasoning (weather → car wash demand)
 
 Strict Rules:
-- No jargon or technical terms
+- No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+- Do not name metric titles from the bullet text; paraphrase the ideas only
 - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
 - Avoid long or complex sentences
 - Do NOT repeat the same idea
@@ -214,13 +219,16 @@ Style Guidance:
 - Write like you are explaining to a normal person
 - Keep it natural, smooth, and easy to follow
 - Use simple connectors like "because", "so", "which means"
-- Make it sound human and day-to-day conversational, never robotic or AI-generated
+- Make it sound human and professional (site analyst tone), not conversational like a child
+- Avoid simplistic terms: do NOT use "this place", "the spot", "cars stay clean", "whenever they want"
+- Use professional terms: "the site's environment", "climatic conditions", "precipitation patterns", "operating window"
+- Do NOT mention "extra cleaning capacity", "staffing", or "internal maintenance"
 
 Output Format (STRICT):
 Observation: <2–3 sentence explanation combining the factors>
 Conclusion: <1 short sentence stating expected wash band in a natural way>
 
 Example style (do not copy):
-Observation: This site gets a good mix of rain, snow, and pleasant weather, so cars tend to get dirty often while people also have many chances to wash them. This keeps demand steady through the year.
-Conclusion: Because of this, the site can expect around 180–220 washes per day.
+Observation: This site benefits from a significant number of comfortable washing days and a lack of freezing temperatures, which provides a long and reliable operating window throughout the year. While limited precipitation reduces the frequency of dirt-driven demand spikes, the overall climatic stability supports steady and predictable customer volume.
+Conclusion: Given these favorable weather conditions, the site can expect between 180 and 220 washes per day on average.
 """

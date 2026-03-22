@@ -4,6 +4,12 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional
 
+from app.modelling.ai.common import (
+    format_forecast_snapshot_for_prompt,
+    format_overall_dimension_context,
+    format_plain_narrative_summaries,
+)
+
 
 def build_feature_summary_prompt(
     *,
@@ -46,51 +52,40 @@ def build_insight_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    pred_q = quantile_result.get("predicted_wash_quantile")
-    pred_label = quantile_result.get("predicted_wash_quantile_label") or f"Q{pred_q}"
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
-    lines = ["Gas station metrics for this site (value, percentile, category):"]
-    for n in feature_narratives:
-        lines.append(
-            f"- {n.get('label') or n.get('feature_key', '')}: "
-            f"value={n.get('value')} {n.get('unit', '')}, "
-            f"percentile={n.get('percentile')}%, category={n.get('category')}"
+    snap = format_forecast_snapshot_for_prompt(quantile_result)
+    sums = format_plain_narrative_summaries(feature_narratives)
+    if not sums:
+        sums = (
+            "(No short summaries available—describe the forecast in plain language only "
+            "without naming internal metrics.)"
         )
-    lines.append(f"\nPredicted wash volume band: {pred_label} ({wash_range}).")
-    lines.append(
-        "\nWrite one short Insight paragraph (2-4 sentences) on gas station proximity/rating/reviews impact."
+    return "\n".join(
+        [
+            "Forecast (use these facts; do not invent numbers):",
+            snap,
+            "",
+            sums,
+            "",
+            "Write one short Insight paragraph (2–4 sentences) on how nearby gas stations "
+            "(distance, ratings, busy-ness) affect wash demand. "
+            "Everyday words only—no quartile codes, percentiles, or metric field names.",
+        ]
     )
-    return "\n".join(lines)
 
 
 def build_observation_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    pred_label = (
-        quantile_result.get("predicted_wash_quantile_label")
-        or quantile_result.get("label")
-        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
-        or "N/A"
-    )
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
-    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
-
-    feature_summaries = "\n".join(
-        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
-        for f in feature_narratives
-        if f.get("summary")
-    )
+    context_block = format_overall_dimension_context(quantile_result, feature_narratives)
 
     return f"""
 You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
 
 Refer to it as "this site" (not "your site").
 
-Predicted wash band: {wash_band}
-
-Per-feature summaries:
-{feature_summaries}
+Facts from the forecast and gas-station check (use only these numbers and ideas; do not invent):
+{context_block}
 
 Instructions:
 - Write 2–3 short sentences (not too long, not too short)
@@ -100,7 +95,8 @@ Instructions:
 - Use cause-and-effect reasoning (gas → demand)
 
 Strict Rules:
-- No jargon or technical terms
+- No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+- Do not name metric titles from the bullet text; paraphrase the ideas only
 - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
 - Avoid long or complex sentences
 - Do NOT repeat the same idea
@@ -115,36 +111,21 @@ def build_conclusion_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> str:
-    pred_label = (
-        quantile_result.get("predicted_wash_quantile_label")
-        or quantile_result.get("label")
-        or (f"Q{quantile_result.get('predicted_wash_quantile')}" if quantile_result.get("predicted_wash_quantile") is not None else None)
-        or "N/A"
-    )
-    wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label")
-    wash_band = pred_label if not wash_range else f"{pred_label} ({wash_range})"
-
-    feature_summaries = "\n".join(
-        f"- {f.get('label', f.get('feature_key', ''))}: {f.get('summary')}"
-        for f in feature_narratives
-        if f.get("summary")
-    )
+    context_block = format_overall_dimension_context(quantile_result, feature_narratives)
 
     return f"""
 You are a car wash site analyst. Write a very short, natural wrap-up in simple, everyday English.
 
 Refer to it as "this site" (not "your site").
 
-Predicted wash band: {wash_band}
-
-Per-feature summaries:
-{feature_summaries}
+Facts from the forecast and gas-station check (use only these numbers and ideas; do not invent):
+{context_block}
 
 Instructions:
 - Write 1–2 sentences max
 - Explain the overall takeaway for car wash demand in a natural way
 - Use simple cause-and-effect language
-- Avoid jargon and long sentences
+- Avoid jargon and long sentences; do not use quartile codes or metric field names
 - Make it sound human and day-to-day conversational, never robotic or AI-generated
 
 Output Format (STRICT):
