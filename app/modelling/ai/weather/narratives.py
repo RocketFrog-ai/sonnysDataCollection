@@ -100,15 +100,23 @@ def _overall_agent(
         text = get_llm_text(prompt, max_new_tokens=512)
         if not text:
             return out
-        obs_m = re.search(r"Observation:\s*(.+?)(?=\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
-        con_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Observation:|$)", text, re.DOTALL | re.IGNORECASE)
-        if obs_m:
-            out["observation"] = obs_m.group(1).strip()
+        # obs_m = re.search(r"Observation:\s*(.+?)(?=\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+        # con_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Observation:|$)", text, re.DOTALL | re.IGNORECASE)
+        pro_m = re.search(r"Pro:\s*(.+?)(?=\s*Con:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+        con_m = re.search(r"Con:\s*(.+?)(?=\s*Pro:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+        conclusion_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Pro:|\s*Con:|$)", text, re.DOTALL | re.IGNORECASE)
+        # if obs_m:
+        #     out["observation"] = obs_m.group(1).strip()
+        if pro_m:
+            out["pro"] = pro_m.group(1).strip()
         if con_m:
-            out["conclusion"] = con_m.group(1).strip()
+            out["con"] = con_m.group(1).strip()
+        if conclusion_m:
+            out["conclusion"] = conclusion_m.group(1).strip()
     except Exception as e:
         logger.warning("Overall narrative LLM call failed: %s", e)
     return out
+
 
 
 
@@ -235,10 +243,11 @@ def get_overall_narrative(
 ) -> Dict[str, Any]:
     """Generate observation and conclusion from weather quantile results and business impacts."""
     overall = _overall_agent(quantile_result, feature_narratives)
-    return {
-        "observation": overall.get("observation"),
-        "conclusion": overall.get("conclusion"),
-    }
+    # return {
+    #     "observation": overall.get("observation"),
+    #     "conclusion": overall.get("conclusion"),
+    # }
+    return {"pro": overall.get("pro"), "con": overall.get("con"), "conclusion": overall.get("conclusion")}
 
 
 if __name__ == "__main__":

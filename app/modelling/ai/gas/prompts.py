@@ -73,6 +73,39 @@ def build_insight_prompt(
     )
 
 
+# def build_observation_prompt(
+#     quantile_result: Dict[str, Any],
+#     feature_narratives: List[Dict[str, Any]],
+# ) -> str:
+#     context_block = format_overall_dimension_context(quantile_result, feature_narratives)
+
+#     return f"""
+# You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
+
+# Refer to it as "this site" (not "your site").
+
+# Facts from the forecast and gas-station check (use only these numbers and ideas; do not invent):
+# {context_block}
+
+# Instructions:
+# - Write 2 short sentences (strictly 2; not too long, not too short)
+# - Combine all points into a smooth, natural explanation (do not just list them)
+# - Use simple, conversational language (avoid formal or report-like tone)
+# - Clearly explain why the nearby gas ecosystem affects this site's car wash demand
+# - Use cause-and-effect reasoning (gas → demand)
+
+# Strict Rules:
+# - No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+# - Do not name metric titles from the bullet text; paraphrase the ideas only
+# - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
+# - Avoid long or complex sentences
+# - Do NOT repeat the same idea
+# - Make it sound human and day-to-day conversational, never robotic or AI-generated
+
+# Output Format (STRICT):
+# Observation: <2 sentence explanation combining the factors>
+# """
+
 def build_observation_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
@@ -88,8 +121,9 @@ Facts from the forecast and gas-station check (use only these numbers and ideas;
 {context_block}
 
 Instructions:
-- Write 2 short sentences (strictly 2; not too long, not too short)
-- Combine all points into a smooth, natural explanation (do not just list them)
+- Write 1 sentence for Pro (what in the nearby gas ecosystem supports or increases car wash demand)
+- Write 1 sentence for Con (what in the nearby gas ecosystem limits or reduces car wash demand)
+- Each sentence should be concise but meaningful (not too long, not too short)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the nearby gas ecosystem affects this site's car wash demand
 - Use cause-and-effect reasoning (gas → demand)
@@ -100,10 +134,20 @@ Strict Rules:
 - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
 - Avoid long or complex sentences
 - Do NOT repeat the same idea
-- Make it sound human and day-to-day conversational, never robotic or AI-generated
+- Do NOT sound like a report
+- Make it sound human and natural, never robotic or AI-generated
+
+Style Guidance:
+- Write like you are explaining to a normal person
+- Keep it natural, smooth, and easy to follow
+- Use simple connectors like "because", "so", "which means"
+- Make it sound human and professional (site analyst tone), not overly casual
+- Avoid simplistic terms: do NOT use "this place", "the spot", "cars stay clean", "whenever they want"
+- Use professional terms: "the site's environment", "fuel stop patterns", "traffic flow", "visit behavior"
 
 Output Format (STRICT):
-Observation: <2 sentence explanation combining the factors>
+Pro: <1 sentence explaining the positive gas-related drivers>
+Con: <1 sentence explaining the limiting gas-related factors>
 """
 
 
