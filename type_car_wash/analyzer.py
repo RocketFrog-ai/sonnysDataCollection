@@ -6,7 +6,7 @@ from typing import Optional, List
 # from type_car_wash.config import GEMINI_API_KEY
 
 # Configure Gemini
-genai.configure(api_key="AIzaSyD3l7tmpfGevKmsEbMoKcnrN9dxycT-H-U")
+genai.configure(api_key="AIzaSyDIOFGm8HAMg2xI1bAFBJVJWpk6G8JKgkw")
 
 # Expanded classification types
 VALID_TYPES = [
