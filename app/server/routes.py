@@ -262,7 +262,7 @@ def analyze_site_endpoint(features: AnalyseRequest):
 # Weather — only from task result (no separate fetch; use GET with task_id)
 # -----------------------------------------------------------------------------
 # Flow: POST /analyze-site → GET /result/{task_id} or GET /weather/data-by-task/{task_id}.
-# Metric keys: dirt-trigger-days, dirt-deposit-severity, comfortable-washing-days, shutdown-risk-days.
+# Metric keys: dirt-creation-days, dirt-deposit-severity, comfortable-washing-days, shutdown-risk-days.
 # -----------------------------------------------------------------------------
 
 @router.get("/weather/summary/{task_id}")
@@ -300,6 +300,9 @@ def get_weather_data_by_task(task_id: str):
     narrative_by_v3_key = {n["feature_key"]: n for n in narratives_feature if isinstance(n, dict) and "feature_key" in n}
 
     metrics = []
+    metric_key_alias = {
+        "dirt-trigger-days": "dirt-creation-days",
+    }
     percentiles_for_score = []  # 0–100 per metric for weather_score (25% weight each)
     for metric_key in WEATHER_METRIC_CONFIG:
         value, unit = get_weather_metric_value_from_climate(climate, metric_key)
@@ -337,7 +340,7 @@ def get_weather_data_by_task(task_id: str):
         max_val = float(dist_max) if dist_max is not None else (float(boundaries[-1]) if len(boundaries) > 0 else None)
         display_name, subtitle = WEATHER_METRIC_DISPLAY.get(metric_key, (metric_key, ""))
         metrics.append({
-            "metric_key": metric_key,
+            "metric_key": metric_key_alias.get(metric_key, metric_key),
             "display_name": display_name,
             "subtitle": subtitle,
             "value": float(value),
@@ -821,7 +824,7 @@ def get_overall(task_id: str):
     - category_scores: per-category weighted scores (Weather, Competition, Retail, Gas).
     - feature_scores: per-feature adjusted_percentile, weight, and weighted contribution.
     - predicted_quantile: Q1–Q4 tier from v3 model.
-    - predicted_tier: label (High Performer, etc.)
+    - predicted_tier: plain tier label (poor, fair, good, strong).
     - expected_annual_volume: min / max / label (cars/year).
     - quantile_probabilities: model confidence per tier.
     """
@@ -916,6 +919,9 @@ def get_overall(task_id: str):
 
     # Quantile fields
     predicted_q = quantile_result.get("predicted_wash_quantile")
+    predicted_quantile = f"Q{predicted_q}" if predicted_q else None
+    predicted_tier_map = {1: "poor", 2: "fair", 3: "good", 4: "strong"}
+    predicted_tier = predicted_tier_map.get(predicted_q)
     wash_range = quantile_result.get("predicted_wash_range") or {}
     proba = quantile_result.get("quantile_probabilities") or {}
 
@@ -923,8 +929,8 @@ def get_overall(task_id: str):
         "task_id": task_id,
         "address": result.get("address"),
         "site_score": site_score,
-        "predicted_quantile": f"Q{predicted_q}" if predicted_q else None,
-        "predicted_tier": quantile_result.get("predicted_wash_tier"),
+        "predicted_quantile": predicted_quantile,
+        "predicted_tier": predicted_tier,
         "expected_annual_volume": {
             "min": wash_range.get("min"),
             "max": wash_range.get("max"),
@@ -942,11 +948,11 @@ def get_overall(task_id: str):
         "tunnel_count": (result.get("feature_values") or {}).get("tunnel_count"),
         "carwash_type_encoded": (result.get("feature_values") or {}).get("carwash_type_encoded"),
         "overall_site_analysis_verdict": build_overall_site_analysis_verdict(
-            predicted_tier=quantile_result.get("predicted_wash_tier"),
+            predicted_tier=predicted_tier,
             expected_volume_label=(wash_range.get("label") if wash_range else None),
             site_score=site_score,
             category_scores=category_scores,
-            predicted_quantile=(f"Q{predicted_q}" if predicted_q else None),
+            predicted_quantile=predicted_quantile,
             quantile_probabilities=proba,
         ),
     }

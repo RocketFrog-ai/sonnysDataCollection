@@ -49,7 +49,7 @@ WEATHER_METRIC_CONFIG: dict = {
 
 # Display label for API responses: (display_name, subtitle)
 WEATHER_METRIC_DISPLAY: dict = {
-    "dirt-trigger-days": ("Dirt Trigger Days Window", "Rainy Days"),
+    "dirt-trigger-days": ("Dirt Creation Days", "Rainy Days"),
     "dirt-deposit-severity": ("Dirt Deposit Severity", "Total Annual Snowfall"),
     "comfortable-washing-days": ("Comfortable Washing Days", "Days with 60–80°F temperatures"),
     "shutdown-risk-days": ("Shutdown Risk Days", "Days Below Freezing (< 32°F)"),
