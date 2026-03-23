@@ -87,6 +87,59 @@ def build_insight_prompt(
     return "\n".join(parts)
 
 
+# def build_overall_prompt(
+#     quantile_result: Dict[str, Any],
+#     feature_narratives: List[Dict[str, Any]],
+#     car_wash_type: Optional[str] = None,
+# ) -> str:
+#     context_block = format_overall_dimension_context(quantile_result, feature_narratives)
+#     site_type_line = f"\nSite type: {car_wash_type}" if car_wash_type else ""
+
+#     return f"""
+# You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
+
+# Refer to it as "this site" (not "your site").
+# {site_type_line}
+
+# Site context: This is a NEW proposed car wash development (no ratings or reviews yet).
+
+# Facts from the forecast and the **closest car wash near to you** (use only these numbers and ideas; do not invent):
+# {context_block}
+
+# Instructions:
+# - Write 2 short sentences (strictly 2; not too long, not too short)
+# - Combine all points into a smooth, natural explanation (do not just list them)
+# - Use simple, conversational language (avoid formal or report-like tone)
+# - Clearly explain why the competition situation affects this site's car wash demand
+# - Use cause-and-effect reasoning (competition → demand)
+
+# Strict Rules:
+# - No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+# - Do not name metric titles from the bullet text; paraphrase the ideas only
+# - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
+# - Avoid long or complex sentences
+# - Do NOT repeat the same idea
+# - Do NOT sound like a report
+
+# Style Guidance:
+# - Write like you are explaining to a normal person
+# - Keep it natural, smooth, and easy to follow
+# - Use simple connectors like "because", "so", "which means"
+# - Make it sound human and day-to-day conversational, never robotic or AI-generated
+# - Strictly refer to distance and ratings as belonging to the **closest car wash near to you** or the **neighboring wash**
+# - Do NOT use phrases like "your ratings" or "your popularity" for this site
+# - Do NOT use the word "rival"; use "closest car wash near to you" or "neighboring wash" instead
+
+# Output Format (STRICT):
+# Observation: <2 sentence explanation combining the factors>
+# Conclusion: <1 short sentence stating expected wash band in a natural way>
+
+# Example style (do not copy):
+# Observation: This site faces a balanced level of nearby competition, so customers have options, but your combination of distance and local reputation still supports strong demand. That keeps people choosing a wash without needing to over-discount.
+# Conclusion: Because of this, the site can expect around 130–170 washes per day.
+# """
+
+
 def build_overall_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
@@ -107,8 +160,10 @@ Facts from the forecast and the **closest car wash near to you** (use only these
 {context_block}
 
 Instructions:
-- Write 2 short sentences (strictly 2; not too long, not too short)
-- Combine all points into a smooth, natural explanation (do not just list them)
+- Write 1 sentence for Pro (what in the competition environment supports or increases car wash demand)
+- Write 1 sentence for Con (what in the competition environment limits or reduces car wash demand)
+- Write 1 short sentence for Conclusion
+- Each sentence should be concise but meaningful (not too long, not too short)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the competition situation affects this site's car wash demand
 - Use cause-and-effect reasoning (competition → demand)
@@ -131,10 +186,12 @@ Style Guidance:
 - Do NOT use the word "rival"; use "closest car wash near to you" or "neighboring wash" instead
 
 Output Format (STRICT):
-Observation: <2 sentence explanation combining the factors>
+Pro: <1 sentence explaining the positive competition drivers>
+Con: <1 sentence explaining the limiting competition factors>
 Conclusion: <1 short sentence stating expected wash band in a natural way>
 
 Example style (do not copy):
-Observation: This site faces a balanced level of nearby competition, so customers have options, but your combination of distance and local reputation still supports strong demand. That keeps people choosing a wash without needing to over-discount.
+Pro: This site benefits from limited nearby competition because the closest car wash near to you is farther away, which encourages more customers to choose this site.
+Con: However, a well-rated neighboring wash can still attract loyal customers, which reduces some of the potential demand.
 Conclusion: Because of this, the site can expect around 130–170 washes per day.
 """

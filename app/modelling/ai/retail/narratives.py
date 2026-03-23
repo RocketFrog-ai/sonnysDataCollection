@@ -117,16 +117,18 @@ def _overall_agent(
     try:
         text = get_llm_text(observation_prompt, max_new_tokens=512)
         if text:
-            obs_m = re.search(
-                r"Observation:\s*(.+?)(?=\s*Conclusion:|$)",
-                text,
-                re.DOTALL | re.IGNORECASE,
-            )
-            out["observation"] = (obs_m.group(1) if obs_m else text).strip()
+            pro_m = re.search(r"Pro:\s*(.+?)(?=\s*Con:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+            con_m = re.search(r"Con:\s*(.+?)(?=\s*Pro:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+            if pro_m:
+                out["pro"] = pro_m.group(1).strip()
+            if con_m:
+                out["con"] = con_m.group(1).strip()
+            # obs_m = re.search(r"Observation:\s*(.+?)(?=\s*Conclusion:|$)",text,re.DOTALL | re.IGNORECASE,)
+            # out["observation"] = (obs_m.group(1) if obs_m else text).strip()
         text2 = get_llm_text(conclusion_prompt, max_new_tokens=256)
         if text2:
-            con_m = re.search(r"Conclusion:\s*(.+)$", text2, re.DOTALL | re.IGNORECASE)
-            out["conclusion"] = (con_m.group(1) if con_m else text2).strip()
+            conclusion_m = re.search(r"Conclusion:\s*(.+)$", text2, re.DOTALL | re.IGNORECASE)
+            out["conclusion"] = (conclusion_m.group(1) if conclusion_m else text2).strip()
     except Exception as e:
         logger.warning("Retail overall LLM failed: %s", e)
     return out
@@ -222,7 +224,8 @@ def get_overall_narrative(
     feature_values: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     overall = _overall_agent(quantile_result, feature_narratives, feature_values=feature_values)
-    return {"observation": overall.get("observation"), "conclusion": overall.get("conclusion")}
+    # return {"observation": overall.get("observation"), "conclusion": overall.get("conclusion")}
+    return {"pro": overall.get("pro"), "con": overall.get("con"), "conclusion": overall.get("conclusion")}
 
 
 if __name__ == "__main__":

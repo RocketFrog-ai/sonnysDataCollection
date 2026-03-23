@@ -164,28 +164,6 @@ def build_insight_prompt(
     return "\n".join(lines)
 
 
-# def build_overall_prompt(
-#     quantile_result: Dict[str, Any],
-#     feature_narratives: List[Dict[str, Any]],
-# ) -> str:
-#     feature_lines = [
-#         f"- {n.get('label', n.get('feature_key', ''))}: {n.get('summary') or 'N/A'}"
-#         for n in feature_narratives
-#     ]
-#     pred_label = quantile_result.get("predicted_wash_quantile_label") or "N/A"
-#     wash_range = (quantile_result.get("predicted_wash_range") or {}).get("label") or "N/A"
-#     return f"""You are a car wash site analyst. Use weather feature summaries and wash band to write:
-
-# Predicted wash band: {pred_label} ({wash_range})
-
-# Per-feature summaries:
-# {chr(10).join(feature_lines)}
-
-# Respond with exactly:
-# Observation: [2-3 sentences]
-# Conclusion: [1-2 sentences]"""
-
-
 def build_overall_prompt(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
@@ -201,8 +179,10 @@ Facts from the forecast and weather check (use only these numbers and ideas; do 
 {context_block}
 
 Instructions:
-- Write 2 short sentences (strictly 2; not too long, not too short)
-- Combine all points into a smooth, natural explanation (do not just list them)
+- Write 1 sentence for Pro (what supports or increases car wash demand)
+- Write 1 sentence for Con (what limits or reduces car wash demand)
+- Write 1 short sentence for Conclusion
+- Each sentence should be concise but meaningful (not too long, not too short)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why this site gets this level of car wash demand
 - Use cause-and-effect reasoning (weather → car wash demand)
@@ -219,16 +199,66 @@ Style Guidance:
 - Write like you are explaining to a normal person
 - Keep it natural, smooth, and easy to follow
 - Use simple connectors like "because", "so", "which means"
-- Make it sound human and professional (site analyst tone), not conversational like a child
+- Make it sound human and professional (site analyst tone), not overly casual
 - Avoid simplistic terms: do NOT use "this place", "the spot", "cars stay clean", "whenever they want"
 - Use professional terms: "the site's environment", "climatic conditions", "precipitation patterns", "operating window"
 - Do NOT mention "extra cleaning capacity", "staffing", or "internal maintenance"
 
 Output Format (STRICT):
-Observation: <2–3 sentence explanation combining the factors>
+Pro: <1 sentence explaining the positive drivers>
+Con: <1 sentence explaining the limiting factors>
 Conclusion: <1 short sentence stating expected wash band in a natural way>
 
 Example style (do not copy):
-Observation: This site benefits from a significant number of comfortable washing days and a lack of freezing temperatures, which provides a long and reliable operating window throughout the year. While limited precipitation reduces the frequency of dirt-driven demand spikes, the overall climatic stability supports steady and predictable customer volume.
-Conclusion: Given these favorable weather conditions, the site can expect between 180 and 220 washes per day on average.
+Pro: This site benefits from stable climatic conditions and a long operating window, which supports consistent customer flow.
+Con: However, low precipitation reduces the need for frequent cleaning, which limits peak demand.
+Conclusion: Overall, the site can expect moderate and steady daily wash volumes.
 """
+
+
+# def build_overall_prompt(
+#     quantile_result: Dict[str, Any],
+#     feature_narratives: List[Dict[str, Any]],
+# ) -> str:
+#     context_block = format_overall_dimension_context(quantile_result, feature_narratives)
+
+#     return f"""
+# You are a car wash site analyst. Write a short, clear explanation in simple, everyday English that a layman can easily understand.
+
+# Refer to it as "this site" (not "your site").
+
+# Facts from the forecast and weather check (use only these numbers and ideas; do not invent):
+# {context_block}
+
+# Instructions:
+# - Write 2 short sentences (strictly 2; not too long, not too short)
+# - Combine all points into a smooth, natural explanation (do not just list them)
+# - Use simple, conversational language (avoid formal or report-like tone)
+# - Clearly explain why this site gets this level of car wash demand
+# - Use cause-and-effect reasoning (weather → car wash demand)
+
+# Strict Rules:
+# - No jargon or technical terms (no quartiles, percentiles, “model features”, or variable names)
+# - Do not name metric titles from the bullet text; paraphrase the ideas only
+# - Avoid formal phrases like "indicates", "suggests", "positions", "accumulation"
+# - Avoid long or complex sentences
+# - Do NOT repeat the same idea
+# - Do NOT sound like a report
+
+# Style Guidance:
+# - Write like you are explaining to a normal person
+# - Keep it natural, smooth, and easy to follow
+# - Use simple connectors like "because", "so", "which means"
+# - Make it sound human and professional (site analyst tone), not conversational like a child
+# - Avoid simplistic terms: do NOT use "this place", "the spot", "cars stay clean", "whenever they want"
+# - Use professional terms: "the site's environment", "climatic conditions", "precipitation patterns", "operating window"
+# - Do NOT mention "extra cleaning capacity", "staffing", or "internal maintenance"
+
+# Output Format (STRICT):
+# Observation: <2–3 sentence explanation combining the factors>
+# Conclusion: <1 short sentence stating expected wash band in a natural way>
+
+# Example style (do not copy):
+# Observation: This site benefits from a significant number of comfortable washing days and a lack of freezing temperatures, which provides a long and reliable operating window throughout the year. While limited precipitation reduces the frequency of dirt-driven demand spikes, the overall climatic stability supports steady and predictable customer volume.
+# Conclusion: Given these favorable weather conditions, the site can expect between 180 and 220 washes per day on average.
+# """
