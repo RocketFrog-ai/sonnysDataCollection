@@ -16,6 +16,7 @@ from app.modelling.ai.retail.config import (
     RETAIL_NARRATIVE_METRICS,
 )
 from app.modelling.ai.retail.prompts import (
+    _COUNT_CAP,
     build_conclusion_prompt,
     build_feature_summary_prompt,
     build_insight_prompt,
@@ -61,6 +62,7 @@ def _feature_summary_agent(
         dist_max=dist_max,
         quantile_label=quantile_label,
         direction=direction,
+        metric_key=metric_key,
         car_wash_type=car_wash_type,
     )
 
@@ -71,6 +73,11 @@ def _feature_summary_agent(
         logger.warning("Retail feature summary LLM failed for %s: %s", metric_key, e)
 
     suffix = RETAIL_IMPACT_CLASSIFICATION_SUFFIX.get(metric_key, "")
+    # For count metrics use capped value in impact_classification label
+    display_value = value
+    if metric_key in {"grocery-count", "food-joint-count"} and value is not None:
+        display_value = min(int(value), _COUNT_CAP)
+
     if category is not None and dist_min is not None and dist_max is not None:
         impact_classification = f"{category} · {dist_min:.1f}–{dist_max:.1f} {suffix}"
     elif category is not None:
@@ -78,7 +85,7 @@ def _feature_summary_agent(
     else:
         impact_classification = None
 
-    return {"summary": summary, "impact_classification": impact_classification}
+    return {"summary": summary, "impact_classification": impact_classification, "display_value": display_value}
 
 
 def _insight_agent(
@@ -189,6 +196,7 @@ def get_feature_narratives(
             "label": display_name,
             "subtitle": subtitle,
             "value": value,
+            "display_value": llm_out.get("display_value", value),
             "unit": unit,
             "category": category,
             "percentile": percentile,

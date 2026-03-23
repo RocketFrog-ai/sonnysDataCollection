@@ -66,7 +66,7 @@ def build_insight_prompt(
             "",
             sums,
             "",
-            "Write one short Insight paragraph (2–4 sentences) on how nearby gas stations "
+            "Write one short Insight paragraph (2 sentences) on how nearby gas stations "
             "(distance, ratings, busy-ness) affect wash demand. "
             "Everyday words only—no quartile codes, percentiles, or metric field names.",
         ]
@@ -88,7 +88,7 @@ Facts from the forecast and gas-station check (use only these numbers and ideas;
 {context_block}
 
 Instructions:
-- Write 2–3 short sentences (not too long, not too short)
+- Write 2 short sentences (strictly 2; not too long, not too short)
 - Combine all points into a smooth, natural explanation (do not just list them)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the nearby gas ecosystem affects this site's car wash demand
@@ -103,7 +103,7 @@ Strict Rules:
 - Make it sound human and day-to-day conversational, never robotic or AI-generated
 
 Output Format (STRICT):
-Observation: <2–3 sentence explanation combining the factors>
+Observation: <2 sentence explanation combining the factors>
 """
 
 

@@ -78,7 +78,7 @@ def build_insight_prompt(
             "",
             sums,
             "",
-            "Write one short Insight paragraph (2–4 sentences) about how the competition from the **closest car wash near to you** affects your future wash demand. "
+            "Write one short Insight paragraph (2 sentences) about how the competition from the **closest car wash near to you** affects your future wash demand. "
             "Refer to neighbors as 'the closest car wash' or 'neighboring wash'. "
             "Never say 'your ratings' or 'your reviews' because the site is not built yet. "
             "Use everyday words only—no quartile codes, percentiles, or metric field names.",
@@ -107,7 +107,7 @@ Facts from the forecast and the **closest car wash near to you** (use only these
 {context_block}
 
 Instructions:
-- Write 2–3 short sentences (not too long, not too short)
+- Write 2 short sentences (strictly 2; not too long, not too short)
 - Combine all points into a smooth, natural explanation (do not just list them)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the competition situation affects this site's car wash demand
@@ -131,7 +131,7 @@ Style Guidance:
 - Do NOT use the word "rival"; use "closest car wash near to you" or "neighboring wash" instead
 
 Output Format (STRICT):
-Observation: <2–3 sentence explanation combining the factors>
+Observation: <2 sentence explanation combining the factors>
 Conclusion: <1 short sentence stating expected wash band in a natural way>
 
 Example style (do not copy):

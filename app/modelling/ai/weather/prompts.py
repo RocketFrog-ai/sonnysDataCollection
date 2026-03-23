@@ -159,7 +159,7 @@ def build_insight_prompt(
         "Highlight how specific climate patterns (like precipitation or temperature) drive or limit consistent volume. "
         "Use professional site-analysis language (e.g., 'climatic drivers', 'seasonal patterns', 'operating window'). "
         "Do NOT mention 'extra cleaning capacity', 'staffing', or 'maintenance'—focus only on demand. "
-        "Keep it 2–4 sentences. No jargon: no quartile codes, percentiles, or metric field names.",
+        "Keep it 2 sentences. No jargon: no quartile codes, percentiles, or metric field names.",
     ]
     return "\n".join(lines)
 
@@ -201,7 +201,7 @@ Facts from the forecast and weather check (use only these numbers and ideas; do 
 {context_block}
 
 Instructions:
-- Write 2–3 short sentences (not too long, not too short)
+- Write 2 short sentences (strictly 2; not too long, not too short)
 - Combine all points into a smooth, natural explanation (do not just list them)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why this site gets this level of car wash demand
