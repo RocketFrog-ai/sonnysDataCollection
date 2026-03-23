@@ -1,12 +1,8 @@
 import textwrap
-import json
-import google.generativeai as genai
+from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
-# from type_car_wash.config import GEMINI_API_KEY
-
-# Configure Gemini
-genai.configure(api_key="AIzaSyDIOFGm8HAMg2xI1bAFBJVJWpk6G8JKgkw")
+from type_car_wash.config import AZURE_OPENAI_API_KEY
 
 # Expanded classification types
 VALID_TYPES = [
@@ -24,7 +20,9 @@ VALID_TYPES = [
 
 class CarWashClassification(BaseModel):
 
-    primary_type: str = Field(description="Primary classification type")
+    primary_type: str = Field(
+        description="Primary classification type"
+    )
 
     secondary_types: List[str] = Field(
         default_factory=list,
@@ -43,7 +41,9 @@ class CarWashClassification(BaseModel):
         description="Keywords or infrastructure markers detected"
     )
 
-    reasoning: str = Field(description="Explanation")
+    reasoning: str = Field(
+        description="Explanation"
+    )
 
 
 def classify_car_wash_with_ai(scraped_text: str) -> Optional[CarWashClassification]:
@@ -51,10 +51,16 @@ def classify_car_wash_with_ai(scraped_text: str) -> Optional[CarWashClassificati
     if not scraped_text:
         return None
 
-    print("\n[*] Classifying with Gemini (gemini-1.5-pro)...")
+    print("\n[*] Classifying with OpenAI (gpt-4o-mini)...")
 
-    # Initialize model
-    model = genai.GenerativeModel("gemini-3-flash-preview")
+    endpoint = "https://soneastus2proformaai-dev.openai.azure.com/openai/v1"
+    deployment_name = "gpt-4o-mini"
+    api_key = AZURE_OPENAI_API_KEY
+
+    client = OpenAI(
+        base_url=endpoint,
+        api_key=api_key
+    )
 
     truncated = scraped_text[:100000]
 
@@ -68,47 +74,47 @@ Analyze the following scraped website text and classify the car wash.
 CLASSIFICATION TYPES:
 
 Express Tunnel:
-conveyor
-tunnel
-express wash
-unlimited membership
-stay in vehicle
+- conveyor
+- tunnel
+- express wash
+- unlimited membership
+- stay in vehicle
 
 Full Service:
-interior cleaning
-vacuum included
-hand dry
-staff cleaning
+- interior cleaning
+- vacuum included
+- hand dry
+- staff cleaning
 
 In-Bay Automatic:
-pull into bay
-automatic wash bay
-touchless automatic
-rollover wash
+- pull into bay
+- automatic wash bay
+- touchless automatic
+- rollover wash
 
 Self-Serve:
-self serve
-coin operated
-wash bays
-manual spray wand
+- self serve
+- coin operated
+- wash bays
+- manual spray wand
 
 Touchless:
-touchless wash
-no brushes
-brushless
+- touchless wash
+- no brushes
+- brushless
 
 Hand Wash / Detail:
-hand wash
-detailing
-ceramic coating
-paint correction
+- hand wash
+- detailing
+- ceramic coating
+- paint correction
 
 Flex:
-express exterior + full service option
+- express exterior + full service option
 
 Mobile:
-mobile wash
-we come to you
+- mobile wash
+- we come to you
 
 ---
 
@@ -132,19 +138,26 @@ Only return valid JSON string mapping exactly to the fields above.
 """
 
     try:
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "response_mime_type": "application/json"
-            }
+
+        completion = client.chat.completions.create(
+            model=deployment_name,
+            response_format={"type": "json_object"},
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                }
+            ],
         )
 
-        response_text = response.text
+        response_text = completion.choices[0].message.content
         if not response_text:
             return None
 
+        import json
         return CarWashClassification.model_validate_json(response_text)
 
     except Exception as e:
-        print("Gemini error:", e)
+
+        print("OpenAI error:", e)
         return None
