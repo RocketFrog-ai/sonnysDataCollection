@@ -114,7 +114,7 @@ One object per UI metric (e.g. the 4 weather cards):
 ```python
 {
     "metric_key": "dirt-trigger-days",
-    "display_name": "Dirt Trigger Days Window",
+    "display_name": "Dirt Creation Days",
     "subtitle": "Rainy Days + Snowy Days",
     "value": 120,
     "unit": "days/year",

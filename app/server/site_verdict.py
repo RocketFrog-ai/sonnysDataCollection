@@ -12,8 +12,8 @@ from typing import Any, Dict, List, Optional, Tuple
 _CATEGORY_PLAIN: Dict[str, str] = {
     "Weather": "weather and seasons",
     "Competition": "competition nearby",
-    "Retail": "shopping traffic",
-    "Gas": "gas-station traffic",
+    "Retail": "nearby stores and food options",
+    "Gas": "fuel-stop visibility and passing drivers",
 }
 
 
@@ -81,8 +81,8 @@ def _category_balance_sentence(pairs: List[Tuple[str, float]]) -> str:
     if spread < 10.0:
         # All four buckets may not be present; mention generically.
         return (
-            " Across the main areas we measure—weather, competition, shopping traffic, "
-            "and gas—nothing is wildly out of line; the pieces look fairly even."
+            " Across the main areas we measure—weather, competition, nearby stores/food, "
+            "and fuel-stop visibility—the picture is fairly balanced."
         )
 
     strong = _CATEGORY_PLAIN.get(pairs[0][0], pairs[0][0].lower())
@@ -124,20 +124,16 @@ def build_overall_site_analysis_verdict(
     quantile_probabilities: Optional[Dict[Any, float]] = None,
 ) -> str:
     """
-    Short markdown-friendly verdict: tier, volume, score, category balance, confidence.
+    Short markdown-friendly verdict: volume, score, category balance, confidence.
 
     Strengths/weakness lists from the quantile model often expose internal feature
     labels; we prefer category_scores (same weighting as site_score) for plain English.
     """
-    tier_part = (
-        f"This site is projected as **{predicted_tier}**"
-        if predicted_tier
-        else "This site does not have a volume forecast yet"
-    )
+    # Intentionally do not expose tier labels in customer-facing text.
     vol_part = (
-        f" with an expected annual volume of **{expected_volume_label}**"
+        f"This site is expected to do about **{expected_volume_label}** per year."
         if expected_volume_label
-        else ""
+        else "This site does not have a volume forecast yet."
     )
     score_part = (
         f"Overall site score is **{site_score:.1f}/100**."
@@ -145,11 +141,7 @@ def build_overall_site_analysis_verdict(
         else ""
     )
 
-    base = f"{tier_part}{vol_part}".strip()
-    if base and not base.endswith("."):
-        base = base + "."
-
-    parts: List[str] = [p for p in [base, score_part] if p]
+    parts: List[str] = [p for p in [vol_part, score_part] if p]
 
     pairs = _category_pairs(category_scores)
     bal = _category_balance_sentence(pairs)

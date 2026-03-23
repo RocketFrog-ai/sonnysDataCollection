@@ -96,7 +96,7 @@ This single endpoint returns all 4 weather metrics (value, scale, quartile, summ
 
 | metric_key              | Display name               | Subtitle / description        | Example value + unit        |
 |-------------------------|----------------------------|-------------------------------|-----------------------------|
-| dirt-trigger-days       | Dirt Trigger Days Window   | Rainy Days                    | 120 days/year               |
+| dirt-trigger-days       | Dirt Creation Days   | Rainy Days                    | 120 days/year               |
 | dirt-deposit-severity   | Dirt Deposit Severity      | Total Annual Snowfall          | 18 cm snowfall/year        |
 | comfortable-washing-days| Comfortable Washing Days   | Days 60–80°F                  | 165 days/year               |
 | shutdown-risk-days      | Shutdown Risk Days         | Days Below Freezing (< 32°F)   | 35 days/year                |
@@ -136,7 +136,7 @@ curl -s "http://localhost:8001/v1/competition/data-by-task/<task_id>"
       {
         "feature_key": "weather_rainy_days",
         "metric_key": "dirt-trigger-days",
-        "label": "Dirt Trigger Days Window",
+        "label": "Dirt Creation Days",
         "subtitle": "Rainy Days",
         "value": 120,
         "unit": "days/year",
