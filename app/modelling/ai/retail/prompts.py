@@ -11,11 +11,66 @@ from app.modelling.ai.common import (
 )
 
 
+_NEAR_MILE = 1.0   
+_MID_MILE  = 3.0   
+_COUNT_CAP = 5     
+
+
 def _is_out_of_range_costco(display_name: str, value: Optional[float]) -> bool:
     return (
         display_name == "Warehouse Club Distance"
         and value is not None
         and value >= 99
+    )
+
+
+def _distance_band(metric_key: str, value: Optional[float]) -> Optional[str]:
+    """
+    Deterministic plain-English band for an anchor distance metric.
+    Returns an authoritative context line the LLM MUST use as its first sentence basis.
+    """
+    distance_metrics = {"costco-distance", "walmart-distance", "target-distance"}
+    if metric_key not in distance_metrics or value is None or value >= 99:
+        return None
+    if value <= _NEAR_MILE:
+        return (
+            f"Authoritative context (MUST use in first sentence): "
+            f"This site is within {value:.2g} mile{'s' if value != 1 else ''} of this anchor — "
+            f"that is very close and strong for pulling in traffic."
+        )
+    if value <= _MID_MILE:
+        return (
+            f"Authoritative context (MUST use in first sentence): "
+            f"This site is {value:.1f} miles from this anchor — "
+            f"a reasonable distance that still provides some traffic benefit, but not as strong as under 1 mile."
+        )
+    return (
+        f"Authoritative context (MUST use in first sentence): "
+        f"This site is {value:.1f} miles from this anchor — "
+        f"far enough that direct foot-traffic pull from this location is limited."
+    )
+
+
+def _count_band(metric_key: str, value: Optional[float]) -> Optional[str]:
+    """
+    Deterministic plain-English band for a count metric.
+    Caps display at _COUNT_CAP and returns an authoritative context line.
+    """
+    count_metrics = {"grocery-count", "food-joint-count"}
+    if metric_key not in count_metrics or value is None:
+        return None
+    raw = int(value)
+    capped = min(raw, _COUNT_CAP)
+    if capped == 0:
+        label = "none — no nearby activity boost from this category"
+    elif capped <= 2:
+        label = f"{capped} — limited presence nearby"
+    else:
+        label = f"{capped} — healthy concentration nearby"
+    cap_note = f" (capped at {_COUNT_CAP} for narrative; actual fetched: {raw})" if raw > _COUNT_CAP else ""
+    return (
+        f"Authoritative context (MUST use in first sentence): "
+        f"Count shown to user: {capped}{cap_note} — {label}."
     )
 
 
@@ -31,34 +86,46 @@ def build_feature_summary_prompt(
     dist_max: Optional[float],
     quantile_label: Optional[str],
     direction: str,
+    metric_key: str = "",
     car_wash_type: Optional[str] = None,
 ) -> str:
     if _is_out_of_range_costco(display_name, value):
         return """You are a car wash site analyst. Write one or two short plain-English sentences for this site.
 
 Metric: Warehouse Club Distance
-Site value: No warehouse club found within the configured search radius (encoded as out-of-range value).
+Site value: No warehouse club found within the configured search radius.
 
 Instructions:
-- Do NOT treat the encoded value as literal miles.
 - Clearly state that no nearby warehouse club was found in range.
-- Explain what this means for local traffic in simple terms.
+- Explain in simple terms what this means for local traffic.
 - Keep it natural, short, and conversational.
 
 Reply with only the rationale."""
 
-    val_str = f"{value:.1f}" if value is not None else "N/A"
-    if value is not None and value == int(value):
-        val_str = f"{int(value)}"
+    # Authoritative context line (distance band or count band)
+    auth_line = _distance_band(metric_key, value) or _count_band(metric_key, value) or ""
+
+    # Display value — for count metrics cap at _COUNT_CAP
+    if metric_key in {"grocery-count", "food-joint-count"} and value is not None:
+        display_val = min(int(value), _COUNT_CAP)
+        val_str = str(display_val)
+    elif value is not None and float(value) == int(float(value)):
+        val_str = str(int(float(value)))
+    else:
+        val_str = f"{value:.1f}" if value is not None else "N/A"
+
     pct_str = f"{percentile:.1f}%" if percentile is not None else "N/A"
     cat_str = category or "N/A"
     min_str = f"{dist_min:.1f}" if dist_min is not None else "N/A"
     max_str = f"{dist_max:.1f}" if dist_max is not None else "N/A"
     direction_note = (
-        "lower distance is better (closer anchor = more traffic)"
+        "closer (lower distance) is better — more traffic pull"
         if direction == "lower"
-        else "higher count is better (more anchors = more traffic)"
+        else "more (higher count) is better — more traffic activity nearby"
     )
+
+    auth_block = f"\n{auth_line}\n" if auth_line else ""
+
     return f"""You are a car wash site analyst. Write one or two short plain-English sentences for this site.
 
 Car wash type: {car_wash_type or 'Unknown'}
@@ -66,15 +133,17 @@ Car wash type: {car_wash_type or 'Unknown'}
 Metric: {display_name} ({subtitle})
 Site value: {val_str} {unit}
 Percentile vs. other sites: {pct_str}
-Quartile: {quantile_label or 'N/A'} — Category: {cat_str}
+Category: {cat_str}
 Reference: {direction_note}
 Scale range: {min_str} – {max_str}
-
+{auth_block}
 Instructions:
-- Explain value + percentile in simple words and mention quartile/category.
-- If the car wash type is "Express Tunnel", do NOT say customers "shop while their car is washed". 
-- Instead, describe it as a quick, convenient trip paired with their shopping (before or after).
-- Reply with only the rationale."""
+- Your FIRST sentence MUST reflect the authoritative context above (distance band or count band). Do not invent a different distance or count.
+- Second sentence: explain what it means for wash demand in everyday words.
+- If the car wash type is "Express Tunnel", describe quick trip-pairing (before/after a store visit) — not "shop while car is washed".
+- No jargon, no quartile codes, no metric field names.
+
+Reply with only the two sentences."""
 
 
 def build_insight_prompt(
@@ -98,7 +167,7 @@ def build_insight_prompt(
             "",
             sums,
             "",
-            "Write one short Insight paragraph (2–4 sentences) on how shopping and food traffic "
+            "Write one short Insight paragraph (2 sentences) on how shopping and food traffic "
             "around the site affect wash demand (warehouse clubs, big box, grocery, food). "
             "If the car wash type is 'Express Tunnel', never say characters 'shop while they wash'. "
             "Instead, emphasize trip-pairing convenience (washing before or after a shopping visit). "
@@ -125,7 +194,7 @@ Facts from the forecast and retail check (use only these numbers and ideas; do n
 {context_block}
 
 Instructions:
-- Write 2–3 short sentences (not too long, not too short)
+- Write 2 short sentences (strictly 2; not too long, not too short)
 - Combine all points into a smooth, natural explanation (do not just list them)
 - Use simple, conversational language (avoid formal or report-like tone)
 - Clearly explain why the retail ecosystem affects this site's car wash demand
@@ -142,7 +211,7 @@ Strict Rules:
 - Make it sound human and day-to-day conversational, never robotic or AI-generated
 
 Output Format (STRICT):
-Observation: <2–3 sentence explanation combining the factors>
+Observation: <2 sentence explanation combining the factors>
 """
 
 

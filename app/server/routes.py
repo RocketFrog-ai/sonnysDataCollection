@@ -479,6 +479,21 @@ def get_retail_data_by_task(task_id: str):
     within_3 = [a for a in anchors if a.get("distance_miles") is not None and RETAIL_RADIUS_NEAR_MILES < a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES]
     nearest = anchors[0] if anchors else {}
 
+    # Cap anchor display lists to 5 per anchor type (narrative and UI stay in sync).
+    _ANCHOR_DISPLAY_CAP = 5
+    def _cap_by_type(anchor_list: List[Dict[str, Any]], cap: int) -> List[Dict[str, Any]]:
+        seen: Dict[str, int] = {}
+        out = []
+        for a in anchor_list:
+            t = a.get("type", "Other")
+            if seen.get(t, 0) < cap:
+                out.append(a)
+                seen[t] = seen.get(t, 0) + 1
+        return out
+
+    within_1 = _cap_by_type(within_1, _ANCHOR_DISPLAY_CAP)
+    within_3 = _cap_by_type(within_3, _ANCHOR_DISPLAY_CAP)
+
     # Named anchor lookup: nearest per class from fetched v3 values (pre-computed)
     costco_dist = retail_anchors_data.get("costco_dist")
     walmart_dist = retail_anchors_data.get("walmart_dist")
@@ -954,6 +969,8 @@ def get_overall(task_id: str):
             category_scores=category_scores,
             predicted_quantile=predicted_quantile,
             quantile_probabilities=proba,
+            weighted_volume_prediction=quantile_result.get("weighted_volume_prediction"),
+            operational_buffer=20000,
         ),
     }
     return response
