@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather benchmark — peer wash splits</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #eceff5;
+      --card: #fafbfe;
+      --line: #d8deeb;
+      --text: #141b2d;
+      --muted: #5c6678;
+      --accent: #c45c1a;
+      --shadow: 0 14px 40px rgba(22, 34, 58, 0.08);
+      /* Bar: left green, right blue (swapped from prior) */
+      --below: linear-gradient(180deg, #d5f0e5 0%, #bfe8d8 100%);
+      --above: linear-gradient(180deg, #dbe7f8 0%, #c9daf0 100%);
+      --tick: #7d8aa6;
+      --you: #1e3a5f;
+      /* Summary tiles (match bar sides) */
+      --stat-below-bg: #e4f6ee;
+      --stat-below-border: #9dceb8;
+      --stat-below-accent: #0f766e;
+      --stat-above-bg: #e8f0fb;
+      --stat-above-border: #b8cce8;
+      --stat-above-accent: #2563b8;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      font-family: "Manrope", sans-serif;
+      color: var(--text);
+      padding: 16px;
+    }
+
+    .wrap { max-width: 1180px; margin: 0 auto; }
+
+    .page-title {
+      margin: 0 0 8px;
+      font-family: "Sora", sans-serif;
+      font-size: 1.35rem;
+    }
+    .page-sub {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      max-width: 62ch;
+      line-height: 1.5;
+    }
+
+    .concept-block {
+      margin-bottom: 32px;
+    }
+    .concept-block:last-child { margin-bottom: 0; }
+
+    .concept-header {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--line);
+    }
+    .concept-badge {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #fff;
+      background: linear-gradient(135deg, #4f6fe8, #7c3aed);
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    .concept-badge.v2 {
+      background: linear-gradient(135deg, #0d9488, #2563eb);
+    }
+    .concept-badge.recommended {
+      background: linear-gradient(135deg, #b45309, #d97706);
+    }
+
+    .bench-stat-count {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+    .concept-title {
+      margin: 0;
+      font-family: "Sora", sans-serif;
+      font-size: 1.1rem;
+    }
+    .concept-desc {
+      margin: 4px 0 0;
+      width: 100%;
+      font-size: 0.86rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      padding: 12px;
+    }
+
+    .head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+    .metric-name { margin: 0; font-weight: 800; font-size: 0.98rem; }
+    .metric-sub { margin: 4px 0 0; color: var(--muted); font-size: 0.82rem; font-weight: 600; }
+    .value-box { text-align: right; flex-shrink: 0; }
+    .value { margin: 0; color: var(--accent); font-size: 1.65rem; font-weight: 800; line-height: 1; }
+    .unit { margin: 3px 0 0; color: var(--muted); font-size: 0.74rem; font-weight: 700; }
+
+    /* ─── Option 1: 0–100 track, two regions, one “You” line ─── */
+    .bench-wrap {
+      position: relative;
+      padding: 4px 6px 6px;
+    }
+    /** “You” above bar; bubble below bar */
+    .bench-bar-stack {
+      position: relative;
+      padding-top: 18px;
+      padding-bottom: 44px;
+    }
+    .bench-you-label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      font-weight: 800;
+      color: #0a0a0a;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      z-index: 6;
+      line-height: 1;
+    }
+    .bench-bar {
+      position: relative;
+      height: 30px;
+      border-radius: 8px;
+      overflow: visible;
+      border: 1px solid rgba(30, 58, 95, 0.14);
+      background: #fff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+    }
+    .bench-regions {
+      position: absolute;
+      inset: 0;
+      border-radius: 7px;
+      overflow: hidden;
+      display: flex;
+    }
+    .bench-region {
+      height: 100%;
+      min-width: 0;
+    }
+    .bench-region--left {
+      background: var(--below);
+    }
+    .bench-region--right {
+      background: var(--above);
+    }
+    /** Single black vertical marker for your rank */
+    .bench-you-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      margin-left: -1.5px;
+      background: #0a0a0a;
+      border-radius: 1px;
+      transform: translateX(-50%);
+      z-index: 3;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.95);
+    }
+    /** Bubble under the bar; anchor left% matches line; translateX(-50%) + max-width avoids overlap */
+    .bench-you-anchor {
+      position: absolute;
+      bottom: 2px;
+      left: 0;
+      transform: translateX(-50%);
+      z-index: 4;
+      display: flex;
+      justify-content: center;
+      max-width: calc(100% - 8px);
+    }
+    .bench-you-bubble {
+      background: #fff;
+      border: 1px solid rgba(30, 58, 95, 0.16);
+      border-radius: 999px;
+      padding: 5px 12px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.35;
+      text-align: center;
+      max-width: min(240px, calc(100vw - 48px));
+      box-shadow: 0 2px 12px rgba(20, 27, 45, 0.1);
+    }
+    .bench-you-bubble strong {
+      font-weight: 800;
+      color: var(--you);
+      white-space: nowrap;
+    }
+
+    /** 0–100 scale: inset endpoints so bubble doesn’t cover “0”; hover shows ticks + live value */
+    .bench-axis-track {
+      margin-top: 10px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .bench-axis-hover {
+      position: relative;
+      z-index: 8;
+      padding: 2px 4px 4px;
+      margin-top: 2px;
+      cursor: crosshair;
+      border-radius: 8px;
+    }
+    .bench-axis-hover:hover {
+      background: rgba(30, 58, 95, 0.04);
+    }
+    .bench-axis-scale {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 14px 0;
+      border-top: 1px solid rgba(30, 58, 95, 0.12);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+    .bench-axis-hover:hover .bench-axis-scale {
+      border-top-color: rgba(30, 58, 95, 0.2);
+    }
+    .bench-axis-grads {
+      display: none;
+      grid-template-columns: repeat(11, minmax(0, 1fr));
+      gap: 0;
+      padding: 4px 8px 0;
+      margin-top: 2px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--muted);
+      user-select: none;
+    }
+    .bench-axis-hover:hover .bench-axis-grads {
+      display: grid;
+    }
+    .bench-axis-grads span {
+      text-align: center;
+      min-width: 0;
+    }
+    .bench-axis-tip {
+      position: absolute;
+      bottom: calc(100% - 2px);
+      left: 0;
+      transform: translateX(-50%);
+      padding: 3px 7px;
+      border-radius: 6px;
+      background: #1e293b;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      pointer-events: none;
+      z-index: 12;
+      white-space: nowrap;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.08s ease;
+    }
+    .bench-axis-tip.is-on {
+      opacity: 1;
+      visibility: visible;
+    }
+    .bench-caption {
+      margin-top: 10px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    /** Centered dot legend above the Avg below / Avg above tiles (matches bar colors) */
+    .bench-peer-legend {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 22px 28px;
+      margin-top: 6px;
+      margin-bottom: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.25;
+    }
+    .bench-legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      max-width: 100%;
+    }
+    .bench-legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+    }
+    .bench-legend-dot--left {
+      background: var(--stat-below-accent);
+    }
+    .bench-legend-dot--right {
+      background: var(--stat-above-accent);
+    }
+    .bench-summary {
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .bench-stat {
+      border-radius: 12px;
+      padding: 10px 10px 12px;
+      border: 1px solid;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+    .bench-stat--below {
+      background: var(--stat-below-bg);
+      border-color: var(--stat-below-border);
+    }
+    .bench-stat--above {
+      background: var(--stat-above-bg);
+      border-color: var(--stat-above-border);
+    }
+    .bench-stat-value {
+      margin: 0;
+      font-family: "Sora", sans-serif;
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+    }
+    .bench-stat--below .bench-stat-value {
+      color: var(--stat-below-accent);
+    }
+    .bench-stat--above .bench-stat-value {
+      color: var(--stat-above-accent);
+    }
+    .bench-stat-hint {
+      margin: 0;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.4;
+      opacity: 0.9;
+    }
+    .bench-stat-tier {
+      margin: 0;
+      font-size: 0.72rem;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+    }
+    .bench-stat--below .bench-stat-tier {
+      color: var(--stat-below-accent);
+      opacity: 0.85;
+    }
+    .bench-stat--above .bench-stat-tier {
+      color: var(--stat-above-accent);
+      opacity: 0.85;
+    }
+    @media (max-width: 520px) {
+      .bench-summary {
+        grid-template-columns: 1fr;
+      }
+    }
+    /* ─── Option 2: Mini distribution (histogram-lite) ─── */
+    .dist-wrap {
+      padding: 8px 0 8px;
+    }
+    .dist-inner {
+      position: relative;
+      margin-top: 8px;
+    }
+    .dist-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 56px;
+      padding: 0 2px;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #f1f4fb 0%, #e8ecf6 100%);
+      border: 1px solid var(--line);
+    }
+    .dist-bin {
+      flex: 1;
+      min-width: 0;
+      border-radius: 3px 3px 0 0;
+      background: linear-gradient(180deg, #7ea3d4 0%, #4a6fa8 100%);
+      opacity: 0.88;
+      transition: opacity 0.15s;
+    }
+    .dist-overlay {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 56px;
+      pointer-events: none;
+    }
+    .dist-vline {
+      position: absolute;
+      bottom: 0;
+      width: 1px;
+      height: 52px;
+      background: rgba(120, 130, 160, 0.45);
+      transform: translateX(-50%);
+      z-index: 2;
+    }
+    .dist-vline::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid rgba(120, 130, 160, 0.5);
+    }
+    .dist-dot {
+      position: absolute;
+      bottom: -2px;
+      width: 14px;
+      height: 14px;
+      background: #fff;
+      border: 3px solid #ea580c;
+      border-radius: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      box-shadow: 0 2px 10px rgba(234, 88, 12, 0.4);
+    }
+    .dist-dot-label {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      transform: translateX(-50%);
+      background: #1e293b;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .dist-axis {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .dist-caption {
+      margin-top: 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    /* ─── Step 1: inputs (ranges from training Excel) ─── */
+    .wb-input-section {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+    }
+    .wb-input-section h2 {
+      margin: 0 0 8px;
+      font-family: "Sora", sans-serif;
+      font-size: 1.05rem;
+    }
+    .wb-input-section .wb-lead {
+      margin: 0 0 14px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.45;
+      max-width: 72ch;
+    }
+    .wb-form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px 16px;
+    }
+    @media (max-width: 700px) {
+      .wb-form-grid { grid-template-columns: 1fr; }
+    }
+    .wb-field label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .wb-field input {
+      width: 100%;
+      max-width: 280px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-family: inherit;
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+    .wb-hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+    .wb-actions {
+      margin-top: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+    .wb-actions button {
+      font-family: inherit;
+      font-weight: 800;
+      font-size: 0.88rem;
+      padding: 10px 18px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      background: linear-gradient(135deg, #2563eb, #4f46e5);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    }
+    .wb-actions button:hover { filter: brightness(1.05); }
+    .wb-api-note {
+      margin: 12px 0 0;
+      font-size: 0.76rem;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    .wb-user-banner {
+      margin-bottom: 14px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: #fff6ec;
+      border: 1px solid rgba(196, 92, 26, 0.25);
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .wb-error {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+    .wb-results-hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1 class="page-title">Weather benchmark — peer wash splits</h1>
+    <p class="page-sub">
+      Enter your <strong>weather</strong> values. Ranges come from the training file
+      <code>app/modelling/ds/Type_of_carwash_final.xlsx</code> (peer sites with annual wash + weather). The two stat tiles use peers <strong>below vs above your value</strong> on that metric; each number is the <strong>midpoint of min and max</strong> annual wash among peers in that group (not your site’s volume).
+    </p>
+
+    <section class="wb-input-section" id="wb-input-section">
+      <h2>1 · Enter your values</h2>
+      <p class="wb-lead" id="wb-data-status">
+        Loading peer dataset… If this fails, open this HTML from the same folder as <code>weather_bench_peer_data.js</code> (or run
+        <code>python app/modelling/ds/export_weather_bench_frontend.py</code> to regenerate it).
+      </p>
+      <form id="wb-form" class="wb-form-grid" autocomplete="off">
+        <div class="wb-field" id="wb-field-rainy">
+          <label for="wb-rainy">Rainy days / year</label>
+          <input type="number" name="rainy" id="wb-rainy" required step="0.1" />
+          <span class="wb-hint" id="wb-hint-rainy"></span>
+        </div>
+        <div class="wb-field" id="wb-field-pleasant">
+          <label for="wb-pleasant">Comfortable temp days / year</label>
+          <input type="number" name="pleasant" id="wb-pleasant" required step="0.1" />
+          <span class="wb-hint" id="wb-hint-pleasant"></span>
+        </div>
+      </form>
+      <div class="wb-actions">
+        <button type="submit" form="wb-form">2 · Show benchmark on training peers</button>
+      </div>
+      <p class="wb-api-note">
+        Optional: prefill weather fields from a completed API task — add
+        <code>?task_id=…&amp;api_base=http://localhost:8000/v1</code>. Submit still benchmarks against the local Excel-derived peer file.
+      </p>
+      <div id="wb-error" class="wb-error" style="display: none"></div>
+    </section>
+
+    <div id="wb-results-wrap" class="wb-results-hidden">
+    <div id="wb-user-banner" class="wb-user-banner" style="display: none"></div>
+
+    <section class="concept-block" id="section-benchmark">
+      <div class="concept-header">
+        <span class="concept-badge">Approach 1</span>
+        <h2 class="concept-title">Midpoint of min &amp; max wash</h2>
+        <p class="concept-desc">
+          For each side of your value, the stat tile shows <strong>(min wash + max wash) / 2</strong> among peers below or above your metric.
+        </p>
+      </div>
+      <div class="grid" id="cards-benchmark"></div>
+    </section>
+
+    <section class="concept-block" id="section-mean">
+      <div class="concept-header">
+        <span class="concept-badge v2">Approach 2</span>
+        <h2 class="concept-title">Average wash + site count</h2>
+        <p class="concept-desc">
+          For each side, the stat tile shows the <strong>mean annual wash</strong> across all peers below or above your metric, plus how many sites are in each group.
+        </p>
+      </div>
+      <div class="grid" id="cards-mean"></div>
+    </section>
+
+    <section class="concept-block" id="section-recommended">
+      <div class="concept-header">
+        <span class="concept-badge recommended">Recommended</span>
+        <h2 class="concept-title">Median wash + site count</h2>
+        <p class="concept-desc">
+          <strong>Median</strong> is outlier-resistant — one mega-site can't skew the number. This section shows median annual wash for peers below and above your value, with group sizes.
+        </p>
+      </div>
+      <div class="grid" id="cards-recommended"></div>
+    </section>
+
+    </div>
+  </main>
+
+  <script src="weather_bench_peer_data.js"></script>
+  <script>
+    const METRIC_DEFS = [
+      {
+        key: "dirt-trigger-days",
+        name: "Dirt Creation Days",
+        subtitle: "Rainy Days",
+        formField: "rainy",
+      },
+      {
+        key: "comfortable-washing-days",
+        name: "Comfortable Washing Days",
+        subtitle: "Days with 60–80°F temperatures",
+        formField: "pleasant",
+      },
+    ];
+
+    function getBenchData() {
+      return typeof window.WEATHER_BENCH_DATA === "object" && window.WEATHER_BENCH_DATA
+        ? window.WEATHER_BENCH_DATA
+        : null;
+    }
+
+    /** scipy.stats.percentileofscore(..., kind='rank') */
+    function percentileOfScoreRank(data, score) {
+      const n = data.length;
+      if (!n) return 50;
+      let left = 0;
+      let right = 0;
+      for (let i = 0; i < n; i++) {
+        const x = data[i];
+        if (x < score) left++;
+        if (x <= score) right++;
+      }
+      return (100 * (left + right)) / (2 * n);
+    }
+
+    /** Quantile rank 0–100 (higher = more favorable for your weather metric). */
+    function adjustedPercentile(peerValues, userValue, direction) {
+      const raw = percentileOfScoreRank(peerValues, userValue);
+      return direction === "lower" ? 100 - raw : raw;
+    }
+
+    function rangeHint(r) {
+      if (!r) return "";
+      const fmt = (x) => (Number.isFinite(x) ? Number(x.toFixed(2)) : x);
+      const lo = fmt(r.min);
+      const hi = fmt(r.max);
+      const p10 = fmt(r.p10);
+      const p90 = fmt(r.p90);
+      return `Training range: ${lo}–${hi} · typical band ${p10}–${p90} (p10–p90)`;
+    }
+
+    function buildMetricsFromPeers(bench, inputs) {
+      const peers = bench.peers || [];
+      const ranges = bench.ranges || {};
+      const washes =
+        bench.peer_wash_sample && bench.peer_wash_sample.length
+          ? bench.peer_wash_sample
+          : peers.map((p) => p.wash).filter((w) => w != null);
+
+      return METRIC_DEFS.map((def) => {
+        const r = ranges[def.key];
+        const col = r && r.column;
+        const direction = (r && r.direction) || "higher";
+        const unit = (r && r.unit) || "";
+        const peerValues = peers
+          .map((p) => (col ? p[col] : null))
+          .filter((v) => v != null && !Number.isNaN(v))
+          .sort((a, b) => a - b);
+        const userVal = inputs[def.formField];
+        const pct = adjustedPercentile(peerValues, userVal, direction);
+        const pairs = peers
+          .filter((p) => p.wash != null && col != null && p[col] != null && !Number.isNaN(p[col]))
+          .map((p) => ({ wash: p.wash, feature: p[col] }));
+        const split = statsByFeatureThreshold(pairs, userVal, direction);
+        const meanSplit = statsByFeatureThresholdMean(pairs, userVal, direction);
+        const medSplit = statsByFeatureThresholdMedian(pairs, userVal, direction);
+        return {
+          key: def.key,
+          name: def.name,
+          subtitle: def.subtitle,
+          value: userVal,
+          unit,
+          percentile: pct,
+          featureDirection: direction,
+          washes,
+          peer_avg_wash_below_rank: split.lowerAvg,
+          peer_avg_wash_above_rank: split.upperAvg,
+          peer_n_below_rank: split.lowerCount,
+          peer_n_above_rank: split.upperCount,
+          peer_mean_wash_below: meanSplit.lowerAvg,
+          peer_mean_wash_above: meanSplit.upperAvg,
+          peer_mean_n_below: meanSplit.lowerCount,
+          peer_mean_n_above: meanSplit.upperCount,
+          peer_median_wash_below: medSplit.lowerMedian,
+          peer_median_wash_above: medSplit.upperMedian,
+          peer_median_n_below: medSplit.lowerCount,
+          peer_median_n_above: medSplit.upperCount,
+          usePeerSplits: true,
+        };
+      });
+    }
+
+    function userValueFromInputs() {
+      return {
+        rainy: Number(document.getElementById("wb-rainy").value),
+        pleasant: Number(document.getElementById("wb-pleasant").value),
+      };
+    }
+
+    function validateInputs(inputs) {
+      const keys = ["rainy", "pleasant"];
+      for (const k of keys) {
+        if (!Number.isFinite(inputs[k])) return `Enter a valid number for ${k}.`;
+      }
+      return null;
+    }
+
+    function fmt(n) {
+      if (n == null || Number.isNaN(n)) return "—";
+      return Math.round(n).toLocaleString();
+    }
+    /** Compact wash counts: 53k, 155k */
+    function fmtCompact(n) {
+      if (n == null || Number.isNaN(n)) return "—";
+      const x = Math.round(n);
+      if (Math.abs(x) >= 1_000_000) return (x / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+      if (Math.abs(x) >= 1_000) return Math.round(x / 1_000) + "k";
+      return String(x);
+    }
+    function avg(a) {
+      if (!a.length) return null;
+      return a.reduce((x, y) => x + y, 0) / a.length;
+    }
+
+    /** (min + max) / 2 of wash volumes in a peer subset */
+    function midpointMinMaxWash(washes) {
+      if (!washes || !washes.length) return null;
+      const mn = Math.min(...washes);
+      const mx = Math.max(...washes);
+      return (mn + mx) / 2;
+    }
+
+    /**
+     * Split peers by strict comparison to your feature value (ties excluded).
+     * "higher" is better: worse = feature < user, better = feature > user.
+     * "lower" is better: worse = feature > user, better = feature < user.
+     * Tiles = midpoint of min/max wash in each subset.
+     */
+    function statsByFeatureThreshold(pairs, userValue, featureDirection) {
+      const dir = featureDirection === "lower" ? "lower" : "higher";
+      let worse;
+      let better;
+      if (dir === "higher") {
+        worse = pairs.filter((p) => p.feature < userValue);
+        better = pairs.filter((p) => p.feature > userValue);
+      } else {
+        worse = pairs.filter((p) => p.feature > userValue);
+        better = pairs.filter((p) => p.feature < userValue);
+      }
+      const wW = worse.map((p) => p.wash);
+      const bW = better.map((p) => p.wash);
+      return {
+        lowerCount: worse.length,
+        upperCount: better.length,
+        lowerAvg: midpointMinMaxWash(wW),
+        upperAvg: midpointMinMaxWash(bW),
+      };
+    }
+    function medianOf(arr) {
+      if (!arr.length) return null;
+      const s = arr.slice().sort((a, b) => a - b);
+      const mid = Math.floor(s.length / 2);
+      return s.length % 2 === 0 ? (s[mid - 1] + s[mid]) / 2 : s[mid];
+    }
+
+    /** Split by threshold, return median wash per group + counts */
+    function statsByFeatureThresholdMedian(pairs, userValue, featureDirection) {
+      const dir = featureDirection === "lower" ? "lower" : "higher";
+      let worse, better;
+      if (dir === "higher") {
+        worse = pairs.filter((p) => p.feature < userValue);
+        better = pairs.filter((p) => p.feature > userValue);
+      } else {
+        worse = pairs.filter((p) => p.feature > userValue);
+        better = pairs.filter((p) => p.feature < userValue);
+      }
+      return {
+        lowerCount: worse.length,
+        upperCount: better.length,
+        lowerMedian: medianOf(worse.map((p) => p.wash)),
+        upperMedian: medianOf(better.map((p) => p.wash)),
+      };
+    }
+
+    /** Same split as statsByFeatureThreshold but uses plain mean instead of midpoint */
+    function statsByFeatureThresholdMean(pairs, userValue, featureDirection) {
+      const dir = featureDirection === "lower" ? "lower" : "higher";
+      let worse, better;
+      if (dir === "higher") {
+        worse = pairs.filter((p) => p.feature < userValue);
+        better = pairs.filter((p) => p.feature > userValue);
+      } else {
+        worse = pairs.filter((p) => p.feature > userValue);
+        better = pairs.filter((p) => p.feature < userValue);
+      }
+      return {
+        lowerCount: worse.length,
+        upperCount: better.length,
+        lowerAvg: worse.length ? avg(worse.map((p) => p.wash)) : null,
+        upperAvg: better.length ? avg(better.map((p) => p.wash)) : null,
+      };
+    }
+
+    /** Deterministic shuffle for reproducible demo peer feature values */
+    function hashSeed(str) {
+      let h = 2166136261;
+      for (let i = 0; i < str.length; i++) {
+        h ^= str.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return h >>> 0;
+    }
+    function shuffleDeterministic(arr, seedStr) {
+      const a = arr.slice();
+      let h = hashSeed(seedStr);
+      for (let i = a.length - 1; i > 0; i--) {
+        h = (h * 1103515245 + 12345) >>> 0;
+        const j = h % (i + 1);
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    /**
+     * Each peer: wash volume + synthetic feature value (rank proxy).
+     * Feature order is shuffled vs wash order so splits are by feature rank, not wash rank.
+     */
+    function buildFeaturePeers(washes, metricKey) {
+      const n = washes.length;
+      const ranks = Array.from({ length: n }, (_, i) => (n <= 1 ? 0 : i / (n - 1)));
+      const shuffled = shuffleDeterministic(ranks, metricKey + "|feature-peer");
+      return washes.map((wash, i) => ({ wash, feature: shuffled[i] }));
+    }
+
+    /**
+     * percentile P = your quantile on this feature (0–100): you outrank ~P% of peers.
+     * Worse bucket = peers in the bottom P% by feature performance; better = the rest.
+     * featureDirection: "higher" = larger feature is better; "lower" = smaller feature is better.
+     */
+    function statsByFeatureRank(peers, pct, featureDirection) {
+      const n = peers.length;
+      if (!n) {
+        return { lowerCount: 0, upperCount: 0, lowerAvg: null, upperAvg: null };
+      }
+      const dir = featureDirection === "lower" ? "lower" : "higher";
+      const sorted = peers.slice().sort((a, b) => {
+        if (dir === "higher") return a.feature - b.feature;
+        return b.feature - a.feature;
+      });
+      const k = Math.min(n, Math.max(0, Math.round((pct / 100) * n)));
+      const worse = sorted.slice(0, k);
+      const better = sorted.slice(k);
+      return {
+        lowerCount: worse.length,
+        upperCount: better.length,
+        lowerAvg: worse.length ? midpointMinMaxWash(worse.map((p) => p.wash)) : null,
+        upperAvg: better.length ? midpointMinMaxWash(better.map((p) => p.wash)) : null,
+      };
+    }
+
+    function normWash(value, min, max) {
+      if (value == null || Number.isNaN(value)) return 50;
+      if (max - min < 1e-9) return 50;
+      return Math.max(0, Math.min(100, ((value - min) / (max - min)) * 100));
+    }
+
+    /** Histogram bins: counts per bucket for peer wash list */
+    function histogramBins(washes, bins = 24) {
+      if (!washes || !washes.length) {
+        return { counts: new Array(bins).fill(0), maxCount: 1, min: 0, max: 1 };
+      }
+      const min = Math.min(...washes);
+      const max = Math.max(...washes);
+      const span = max - min || 1;
+      const counts = new Array(bins).fill(0);
+      for (const w of washes) {
+        let i = Math.floor(((w - min) / span) * bins);
+        if (i >= bins) i = bins - 1;
+        if (i < 0) i = 0;
+        counts[i]++;
+      }
+      const m = Math.max(...counts, 1);
+      return { counts, maxCount: m, min, max };
+    }
+
+    function benchmarkStatCopy(m, s) {
+      const lower = m.featureDirection === "lower";
+      const n = (bench) => bench != null ? bench.toLocaleString() : "—";
+      return {
+        belowTier: "Avg Car wash volume",
+        aboveTier: "Avg Car wash volume",
+        belowHint: lower
+          ? `Among ${n(s.lowerCount)} sites with a worse value on this metric`
+          : `Among ${n(s.lowerCount)} sites with a worse value on this metric`,
+        aboveHint: lower
+          ? `Among ${n(s.upperCount)} sites with a better value on this metric`
+          : `Among ${n(s.upperCount)} sites with a better value on this metric`,
+      };
+    }
+
+    /** Prefer training/API peer splits; else synthetic peers (demo fallback) */
+    function resolveBenchmarkStats(m) {
+      if (m.usePeerSplits) {
+        return {
+          lowerAvg: m.peer_avg_wash_below_rank,
+          upperAvg: m.peer_avg_wash_above_rank,
+          lowerCount: m.peer_n_below_rank ?? 0,
+          upperCount: m.peer_n_above_rank ?? 0,
+        };
+      }
+      if (m.peer_avg_wash_below_rank != null && m.peer_avg_wash_above_rank != null) {
+        return {
+          lowerAvg: m.peer_avg_wash_below_rank,
+          upperAvg: m.peer_avg_wash_above_rank,
+          lowerCount: m.peer_n_below_rank ?? 0,
+          upperCount: m.peer_n_above_rank ?? 0,
+        };
+      }
+      const peers = buildFeaturePeers(m.washes, m.key);
+      return statsByFeatureRank(peers, m.percentile, m.featureDirection);
+    }
+
+    function applyPrefillFromApi(data) {
+      const byKey = Object.fromEntries((data.metrics || []).map((m) => [m.metric_key, m]));
+      for (const def of METRIC_DEFS) {
+        let m = byKey[def.key];
+        if (!m && def.key === "dirt-trigger-days") m = byKey["dirt-creation-days"];
+        if (m && m.value != null && Number.isFinite(m.value)) {
+          const el = document.getElementById("wb-" + def.formField);
+          if (el) el.value = m.value;
+        }
+      }
+    }
+
+    function initBenchUi() {
+      const bench = getBenchData();
+      const status = document.getElementById("wb-data-status");
+      const submitBtn = document.querySelector(".wb-actions button");
+      if (!bench) {
+        if (status) {
+          status.textContent =
+            "Peer dataset not loaded. Place weather_bench_peer_data.js next to this HTML or run: python app/modelling/ds/export_weather_bench_frontend.py";
+        }
+        if (submitBtn) submitBtn.disabled = true;
+        return;
+      }
+      if (status) {
+        status.textContent = `Loaded ${bench.n_sites} training sites from ${bench.source}. Ranges are min–max and p10–p90 from that file.`;
+      }
+      for (const def of METRIC_DEFS) {
+        const r = bench.ranges[def.key];
+        const hint = document.getElementById("wb-hint-" + def.formField);
+        if (hint && r) hint.textContent = rangeHint(r);
+      }
+      for (const def of METRIC_DEFS) {
+        const r = bench.ranges[def.key];
+        const el = document.getElementById("wb-" + def.formField);
+        if (el && r && r.p50 != null) el.value = Number(r.p50.toFixed(2));
+      }
+    }
+
+    function renderMetrics(metrics) {
+      document.getElementById("cards-benchmark").innerHTML = metrics.map(cardBenchmark).join("");
+      document.getElementById("cards-mean").innerHTML = metrics.map(cardBenchmarkMean).join("");
+      document.getElementById("cards-recommended").innerHTML = metrics.map(cardRecommended).join("");
+      wireBenchAxisHover();
+    }
+
+    function formatWeatherInput(v) {
+      if (v == null || Number.isNaN(v)) return "—";
+      const x = Number(v);
+      return Number.isInteger(x) ? String(x) : String(Math.round(x * 100) / 100);
+    }
+
+    function cardBenchmark(m) {
+      const s = resolveBenchmarkStats(m);
+      const displayVal = formatWeatherInput(m.value);
+      const copy = benchmarkStatCopy(m, s);
+      const p = Math.max(0, Math.min(100, m.percentile));
+      const leftW = p;
+      const rightW = Math.max(0, 100 - p);
+      /** Keep bubble readable at extremes (line stays at true p) */
+      const bubbleLeft = Math.min(90, Math.max(10, p));
+      const axisTickHtml = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        .map((n) => `<span>${n}</span>`)
+        .join("");
+
+      return `
+      <article class="metric-card">
+        <div class="head">
+          <div>
+            <h3 class="metric-name">${m.name}</h3>
+            <p class="metric-sub">${m.subtitle}</p>
+          </div>
+          <div class="value-box">
+            <p class="value">${displayVal}</p>
+            <p class="unit">${m.unit}</p>
+          </div>
+        </div>
+        <div class="bench-wrap">
+          <div class="bench-bar-stack">
+            <div class="bench-you-label" style="left:${bubbleLeft}%">You</div>
+            <div class="bench-bar">
+              <div class="bench-regions">
+                <div class="bench-region bench-region--left" style="width:${leftW}%"></div>
+                <div class="bench-region bench-region--right" style="width:${rightW}%"></div>
+              </div>
+              <div class="bench-you-line" style="left:${p}%"></div>
+            </div>
+            <div class="bench-you-anchor" style="left:${bubbleLeft}%">
+              <div class="bench-you-bubble">
+                Better than <strong>${p.toFixed(1)}%</strong> of sites
+              </div>
+            </div>
+          </div>
+          <div class="bench-axis-track">
+            <div class="bench-axis-hover" aria-label="Scale 0 to 100. Hover to see tick marks and position.">
+              <div class="bench-axis-scale">
+                <span>0</span>
+                <span>100</span>
+              </div>
+              <div class="bench-axis-grads" aria-hidden="true">${axisTickHtml}</div>
+              <div class="bench-axis-tip" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="bench-peer-legend" aria-label="Peer groups vs bar colors">
+            <span class="bench-legend-item"><span class="bench-legend-dot bench-legend-dot--left" aria-hidden="true"></span>Peers you outrank</span>
+            <span class="bench-legend-item"><span class="bench-legend-dot bench-legend-dot--right" aria-hidden="true"></span>Peers above you</span>
+          </div>
+          <div class="bench-summary">
+            <div class="bench-stat bench-stat--below">
+              <p class="bench-stat-value">${fmtCompact(s.lowerAvg)}</p>
+              <p class="bench-stat-tier">${copy.belowTier}</p>
+              <p class="bench-stat-hint">${copy.belowHint}</p>
+            </div>
+            <div class="bench-stat bench-stat--above">
+              <p class="bench-stat-value">${fmtCompact(s.upperAvg)}</p>
+              <p class="bench-stat-tier">${copy.aboveTier}</p>
+              <p class="bench-stat-hint">${copy.aboveHint}</p>
+            </div>
+          </div>
+        </div>
+      </article>`;
+    }
+
+    function cardBenchmarkMean(m) {
+      const displayVal = formatWeatherInput(m.value);
+      const p = Math.max(0, Math.min(100, m.percentile));
+      const leftW = p;
+      const rightW = Math.max(0, 100 - p);
+      const bubbleLeft = Math.min(90, Math.max(10, p));
+      const axisTickHtml = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        .map((n) => `<span>${n}</span>`)
+        .join("");
+      const nBelow = m.peer_mean_n_below ?? 0;
+      const nAbove = m.peer_mean_n_above ?? 0;
+      const meanBelow = m.peer_mean_wash_below;
+      const meanAbove = m.peer_mean_wash_above;
+
+      return `
+      <article class="metric-card">
+        <div class="head">
+          <div>
+            <h3 class="metric-name">${m.name}</h3>
+            <p class="metric-sub">${m.subtitle}</p>
+          </div>
+          <div class="value-box">
+            <p class="value">${displayVal}</p>
+            <p class="unit">${m.unit}</p>
+          </div>
+        </div>
+        <div class="bench-wrap">
+          <div class="bench-bar-stack">
+            <div class="bench-you-label" style="left:${bubbleLeft}%">You</div>
+            <div class="bench-bar">
+              <div class="bench-regions">
+                <div class="bench-region bench-region--left" style="width:${leftW}%"></div>
+                <div class="bench-region bench-region--right" style="width:${rightW}%"></div>
+              </div>
+              <div class="bench-you-line" style="left:${p}%"></div>
+            </div>
+            <div class="bench-you-anchor" style="left:${bubbleLeft}%">
+              <div class="bench-you-bubble">
+                Better than <strong>${p.toFixed(1)}%</strong> of sites
+              </div>
+            </div>
+          </div>
+          <div class="bench-axis-track">
+            <div class="bench-axis-hover" aria-label="Scale 0 to 100. Hover to see tick marks and position.">
+              <div class="bench-axis-scale">
+                <span>0</span>
+                <span>100</span>
+              </div>
+              <div class="bench-axis-grads" aria-hidden="true">${axisTickHtml}</div>
+              <div class="bench-axis-tip" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="bench-peer-legend" aria-label="Peer groups vs bar colors">
+            <span class="bench-legend-item"><span class="bench-legend-dot bench-legend-dot--left" aria-hidden="true"></span>Peers you outrank</span>
+            <span class="bench-legend-item"><span class="bench-legend-dot bench-legend-dot--right" aria-hidden="true"></span>Peers above you</span>
+          </div>
+          <div class="bench-summary">
+            <div class="bench-stat bench-stat--below">
+              <p class="bench-stat-value">${fmtCompact(meanBelow)}</p>
+              <p class="bench-stat-tier">Avg wash</p>
+              <p class="bench-stat-hint">Among ${nBelow.toLocaleString()} sites with a worse value on this metric</p>
+            </div>
+            <div class="bench-stat bench-stat--above">
+              <p class="bench-stat-value">${fmtCompact(meanAbove)}</p>
+              <p class="bench-stat-tier">Avg wash</p>
+              <p class="bench-stat-hint">Among ${nAbove.toLocaleString()} sites with a better value on this metric</p>
+            </div>
+          </div>
+        </div>
+      </article>`;
+    }
+
+    function cardRecommended(m) {
+      const displayVal = formatWeatherInput(m.value);
+      const p = Math.max(0, Math.min(100, m.percentile));
+      const leftW = p;
+      const rightW = Math.max(0, 100 - p);
+      const bubbleLeft = Math.min(90, Math.max(10, p));
+      const axisTickHtml = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+        .map((n) => `<span>${n}</span>`)
+        .join("");
+
+      const medBelow = m.peer_median_wash_below;
+      const medAbove = m.peer_median_wash_above;
+      const nBelow = m.peer_median_n_below ?? 0;
+      const nAbove = m.peer_median_n_above ?? 0;
+
+
+      return `
+      <article class="metric-card">
+        <div class="head">
+          <div>
+            <h3 class="metric-name">${m.name}</h3>
+            <p class="metric-sub">${m.subtitle}</p>
+          </div>
+          <div class="value-box">
+            <p class="value">${displayVal}</p>
+            <p class="unit">${m.unit}</p>
+          </div>
+        </div>
+        <div class="bench-wrap">
+          <div class="bench-bar-stack">
+            <div class="bench-you-label" style="left:${bubbleLeft}%">You</div>
+            <div class="bench-bar">
+              <div class="bench-regions">
+                <div class="bench-region bench-region--left" style="width:${leftW}%"></div>
+                <div class="bench-region bench-region--right" style="width:${rightW}%"></div>
+              </div>
+              <div class="bench-you-line" style="left:${p}%"></div>
+            </div>
+            <div class="bench-you-anchor" style="left:${bubbleLeft}%">
+              <div class="bench-you-bubble">
+                Better than <strong>${p.toFixed(1)}%</strong> of sites
+              </div>
+            </div>
+          </div>
+          <div class="bench-axis-track">
+            <div class="bench-axis-hover" aria-label="Scale 0 to 100. Hover to see tick marks and position.">
+              <div class="bench-axis-scale">
+                <span>0</span>
+                <span>100</span>
+              </div>
+              <div class="bench-axis-grads" aria-hidden="true">${axisTickHtml}</div>
+              <div class="bench-axis-tip" aria-live="polite"></div>
+            </div>
+          </div>
+          <div class="bench-peer-legend" aria-label="Peer groups vs bar colors">
+            <span class="bench-legend-item"><span class="bench-legend-dot bench-legend-dot--left" aria-hidden="true"></span>Peers you outrank</span>
+            <span class="bench-legend-item"><span class="bench-legend-dot bench-legend-dot--right" aria-hidden="true"></span>Peers above you</span>
+          </div>
+          <div class="bench-summary">
+            <div class="bench-stat bench-stat--below">
+              <p class="bench-stat-value">${fmtCompact(medBelow)}</p>
+              <p class="bench-stat-tier">Median wash</p>
+              <p class="bench-stat-hint">Among ${nBelow.toLocaleString()} sites with a worse value</p>
+              <span class="bench-stat-count">${nBelow} sites</span>
+            </div>
+            <div class="bench-stat bench-stat--above">
+              <p class="bench-stat-value">${fmtCompact(medAbove)}</p>
+              <p class="bench-stat-tier">Median wash</p>
+              <p class="bench-stat-hint">Among ${nAbove.toLocaleString()} sites with a better value</p>
+              <span class="bench-stat-count">${nAbove} sites</span>
+            </div>
+          </div>
+        </div>
+      </article>`;
+    }
+
+    function cardDistribution(m) {
+      const s = resolveBenchmarkStats(m);
+      const displayVal = formatWeatherInput(m.value);
+      const p = Math.max(0, Math.min(100, m.percentile));
+      const min = m.washes && m.washes.length ? Math.min(...m.washes) : 0;
+      const max = m.washes && m.washes.length ? Math.max(...m.washes) : 1;
+      let la = normWash(s.lowerAvg, min, max);
+      let ua = normWash(s.upperAvg, min, max);
+      if (la > ua) { const t = la; la = ua; ua = t; }
+
+      const { counts, maxCount } = histogramBins(m.washes, 24);
+      const binsHtml = counts
+        .map((c) => {
+          const h = Math.round((c / maxCount) * 100);
+          return `<div class="dist-bin" style="height:${Math.max(8, h)}%" title="${c} sites"></div>`;
+        })
+        .join("");
+
+      return `
+      <article class="metric-card">
+        <div class="head">
+          <div>
+            <h3 class="metric-name">${m.name}</h3>
+            <p class="metric-sub">${m.subtitle}</p>
+          </div>
+          <div class="value-box">
+            <p class="value">${displayVal}</p>
+            <p class="unit">${m.unit}</p>
+          </div>
+        </div>
+        <div class="dist-wrap">
+          <div class="dist-inner">
+            <div class="dist-chart">${binsHtml}</div>
+            <div class="dist-overlay">
+              <div class="dist-vline" style="left:${la}%"></div>
+              <div class="dist-vline" style="left:${ua}%"></div>
+              <div class="dist-dot" style="left:${p}%">
+                <span class="dist-dot-label">${p.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="dist-axis"><span>0</span><span>100</span></div>
+          <p class="dist-caption">
+            Histogram = peer wash volumes. Gray lines = (min + max) wash / 2 among peers below vs above your value on <strong>this feature</strong> (ties at your value excluded). Dot = your percentile rank (0–100).
+          </p>
+        </div>
+      </article>`;
+    }
+
+    function wireBenchAxisHover() {
+      document.querySelectorAll(".bench-axis-hover").forEach((track) => {
+        const tip = track.querySelector(".bench-axis-tip");
+        if (!tip) return;
+        const update = (e) => {
+          const rect = track.getBoundingClientRect();
+          const w = rect.width || 1;
+          const x = Math.max(0, Math.min(w, e.clientX - rect.left));
+          const pct = Math.round((x / w) * 100);
+          tip.textContent = pct + "%";
+          tip.style.left = `${(x / w) * 100}%`;
+          tip.classList.add("is-on");
+        };
+        const leave = () => {
+          tip.classList.remove("is-on");
+          tip.textContent = "";
+        };
+        track.addEventListener("mousemove", update);
+        track.addEventListener("mouseenter", update);
+        track.addEventListener("mouseleave", leave);
+      });
+    }
+
+    async function main() {
+      initBenchUi();
+      const params = new URLSearchParams(window.location.search);
+      const taskId = params.get("task_id");
+      const apiBase = (params.get("api_base") || "").replace(/\/$/, "");
+      if (taskId && apiBase) {
+        try {
+          const res = await fetch(`${apiBase}/weather/data-by-task/${encodeURIComponent(taskId)}`, {
+            headers: { Accept: "application/json" },
+          });
+          if (res.ok) {
+            const data = await res.json();
+            applyPrefillFromApi(data);
+            const sub = document.querySelector(".page-sub");
+            if (sub && data.address) {
+              sub.innerHTML =
+                `Prefilled from <strong>${data.address}</strong> (task <code>${taskId}</code>). Submit to benchmark against the Excel peer file.`;
+            }
+          } else {
+            console.warn("Weather API:", res.status, await res.text());
+          }
+        } catch (e) {
+          console.warn("Weather API fetch failed (CORS or server down):", e);
+        }
+      }
+      document.getElementById("wb-form").addEventListener("submit", (ev) => {
+        ev.preventDefault();
+        const errEl = document.getElementById("wb-error");
+        errEl.style.display = "none";
+        errEl.textContent = "";
+        const bench = getBenchData();
+        if (!bench) {
+          errEl.textContent = "Peer dataset not loaded.";
+          errEl.style.display = "block";
+          return;
+        }
+        const inputs = userValueFromInputs();
+        const vErr = validateInputs(inputs);
+        if (vErr) {
+          errEl.textContent = vErr;
+          errEl.style.display = "block";
+          return;
+        }
+        const metrics = buildMetricsFromPeers(bench, inputs);
+        document.getElementById("wb-results-wrap").classList.remove("wb-results-hidden");
+        const banner = document.getElementById("wb-user-banner");
+        banner.style.display = "block";
+        banner.textContent = `Peer splits vs your weather values · ${(bench.peers || []).length} training sites from ${bench.source || "training data"}. Tiles = (min wash + max wash) / 2 within each side of your value.`;
+        renderMetrics(metrics);
+        document.getElementById("wb-results-wrap").scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+    main();
+  </script>
+</body>
+</html>

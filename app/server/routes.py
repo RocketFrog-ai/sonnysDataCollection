@@ -352,6 +352,10 @@ def get_weather_data_by_task(task_id: str):
             "category": category,
             "summary": summary,
             "impact_classification": impact_classification,
+            "peer_avg_wash_below_rank": fa.get("peer_avg_wash_below_rank"),
+            "peer_avg_wash_above_rank": fa.get("peer_avg_wash_above_rank"),
+            "peer_n_below_rank": fa.get("peer_n_below_rank"),
+            "peer_n_above_rank": fa.get("peer_n_above_rank"),
         })
     # weather_score: 25% of each metric's percentile (0–100) → mean of 4 percentiles, range 0–100
     weather_score = None
@@ -366,6 +370,7 @@ def get_weather_data_by_task(task_id: str):
         "complete": complete,
         "success": complete,
         "weather_score": weather_score,
+        "peer_wash_sample": quantile_result.get("peer_wash_sample") or [],
         "metrics": metrics,
         "overall": {
             "insight": narratives_overall.get("insight"),

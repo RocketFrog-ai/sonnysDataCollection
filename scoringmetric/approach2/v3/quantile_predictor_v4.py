@@ -54,7 +54,7 @@ import sys
 import textwrap
 import warnings
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -86,6 +86,14 @@ TIER_PRESETS: Dict[str, List[int]] = {
     "4-class-wide-middle":   [20, 30, 30, 20],
     "4-class-top-heavy":     [10, 20, 30, 40],
 }
+
+# Weather v3 keys used by the benchmark UI (peer wash split by feature rank on training set)
+WEATHER_PEER_BENCHMARK_KEYS: Tuple[str, ...] = (
+    "weather_rainy_days",
+    "weather_total_snowfall_cm",
+    "weather_days_pleasant_temp",
+    "weather_days_below_freezing",
+)
 
 # ── Feature directions (derived from actual Spearman correlation sign) ────────
 FEATURE_DIRECTIONS: Dict[str, str] = {
@@ -742,6 +750,58 @@ class QuantilePredictorV4:
         return {"wash_q": matched_q, "group_medians": group_medians,
                 "exceeds_q4": exceeds_q4, "q4_median": q4_med, "low_signal": False}
 
+    def _training_peer_wash_sample(self, max_n: int = 500) -> List[float]:
+        """Sorted annual wash counts from training sites (histogram / UI)."""
+        if "current_count" not in self.df.columns:
+            return []
+        ws = self.df["current_count"].dropna().astype(float).values
+        if len(ws) == 0:
+            return []
+        if len(ws) > max_n:
+            rng = np.random.RandomState(42)
+            ws = ws[rng.choice(len(ws), max_n, replace=False)]
+        return sorted([float(x) for x in ws])
+
+    def _peer_wash_benchmarks_for_feature(
+        self, feat: str, adjusted_percentile: float
+    ) -> Dict[str, Any]:
+        """
+        Training peers (merged Excel + CSV + carwash types): mean annual wash among
+        sites you outrank on this feature vs sites that rank above you (matches v3 UI).
+        """
+        if feat not in self.df.columns or "current_count" not in self.df.columns:
+            return {}
+        direction = FEATURE_DIRECTIONS.get(feat, "higher")
+        if direction not in ("higher", "lower"):
+            return {}
+        sub = self.df[[feat, "current_count"]].dropna()
+        if len(sub) < 2:
+            return {}
+        ascending = direction == "higher"
+        sub = sub.sort_values(by=feat, ascending=ascending)
+        n = len(sub)
+        washes = sub["current_count"].astype(float).values
+        k = int(round((adjusted_percentile / 100.0) * n))
+        k = max(0, min(n, k))
+        below = washes[:k]
+        above = washes[k:]
+        return {
+            "peer_avg_wash_below_rank": float(np.mean(below)) if len(below) else None,
+            "peer_avg_wash_above_rank": float(np.mean(above)) if len(above) else None,
+            "peer_n_below_rank": int(k),
+            "peer_n_above_rank": int(n - k),
+        }
+
+    def _enrich_weather_peer_wash_benchmarks(self, feature_analysis: Dict[str, Dict]) -> None:
+        for feat in WEATHER_PEER_BENCHMARK_KEYS:
+            if feat not in feature_analysis:
+                continue
+            fa = feature_analysis[feat]
+            adj = fa.get("adjusted_percentile")
+            if adj is None:
+                continue
+            fa.update(self._peer_wash_benchmarks_for_feature(feat, float(adj)))
+
     # ── Public API ────────────────────────────────────────────────────────────
 
     def analyze(
@@ -890,6 +950,8 @@ class QuantilePredictorV4:
 
         wash_range = self.wash_q_ranges[predicted_q]
 
+        self._enrich_weather_peer_wash_benchmarks(feature_analysis)
+
         shift_opportunities = self._quantile_shift_analysis(
             X_imputed[0].tolist(), feature_analysis, predicted_q
         )
@@ -925,6 +987,7 @@ class QuantilePredictorV4:
                 }
                 for q in range(1, self.n_quantiles + 1)
             },
+            "peer_wash_sample": self._training_peer_wash_sample(),
             "feature_analysis":     feature_analysis,
             "shift_opportunities":  shift_opportunities,
             "profile_comparison":   profile_comparison,
