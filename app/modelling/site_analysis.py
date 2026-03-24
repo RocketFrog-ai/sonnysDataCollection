@@ -371,7 +371,7 @@ def run_site_analysis(
     *,
     tunnel_count: Optional[int] = None,
     carwash_type_encoded: Optional[int] = None,
-    tier_strategy: str = "4-class-wide-middle",
+    tier_strategy: str = "4-class-90pct-custom",
     run_quantile: bool = True,
     run_narratives: bool = False,
 ) -> Dict[str, Any]:

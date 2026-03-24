@@ -85,6 +85,9 @@ TIER_PRESETS: Dict[str, List[int]] = {
     "4-class-standard":      [25, 25, 25, 25],
     "4-class-wide-middle":   [20, 30, 30, 20],
     "4-class-top-heavy":     [10, 20, 30, 40],
+    "4-class-ultra-wide-middle": [15, 35, 35, 15],
+    "4-class-90pct-custom":   [19, 31, 31, 19],
+    "2-class-standard":      [50, 50],
 }
 
 # ── Feature directions (derived from actual Spearman correlation sign) ────────

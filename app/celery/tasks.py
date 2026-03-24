@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @celery_app.task(bind=True)
-def analyse_site(self, address: str = "1", tunnel_count: int = None, carwash_type_encoded: int = None, tier_strategy: str = "4-class-wide-middle"):
+def analyse_site(self, address: str = "1", tunnel_count: int = None, carwash_type_encoded: int = None, tier_strategy: str = "4-class-90pct-custom"):
     """
     Run full site analysis: fetch → quantile → narratives. Returns only when all stages complete.
     tunnel_count (1–4): actual tunnel count for the site; improves quantile prediction.
