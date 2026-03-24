@@ -358,7 +358,10 @@ def get_weather_data_by_task(task_id: str):
     if percentiles_for_score:
         weather_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1)
     narratives_overall = (result.get("narratives") or {}).get("overall") or {}
-    has_overall = any(narratives_overall.get(k) for k in ("insight", "observation", "conclusion"))
+    has_overall = any(
+        narratives_overall.get(k)
+        for k in ("insight", "observation", "pro", "con", "conclusion")
+    )
     complete = bool(quantile_result and has_overall)
     return {
         "task_id": task_id,
@@ -369,7 +372,10 @@ def get_weather_data_by_task(task_id: str):
         "metrics": metrics,
         "overall": {
             "insight": narratives_overall.get("insight"),
-            "observation": narratives_overall.get("observation"),
+            "observation": {
+                "pro": narratives_overall.get("pro"),
+                "con": narratives_overall.get("con"),
+            },
             "conclusion": narratives_overall.get("conclusion"),
         },
     }

@@ -69,6 +69,51 @@ def _strip_markdown(obj: Any) -> Any:
     return obj
 
 
+def _compose_observation(overall: Optional[Dict[str, Any]]) -> Optional[str]:
+    """Normalize overall payloads that may return observation or pro/con."""
+    if not overall or not isinstance(overall, dict):
+        return None
+    observation = overall.get("observation")
+    if observation:
+        return observation
+    pro = overall.get("pro")
+    con = overall.get("con")
+    if pro and con:
+        return f"Pro: {pro} Con: {con}"
+    return pro or con
+
+
+def _extract_pro_con(overall: Optional[Dict[str, Any]]) -> Dict[str, Optional[str]]:
+    """Return explicit pro/con keys from either dedicated keys or observation text."""
+    out: Dict[str, Optional[str]] = {"pro": None, "con": None}
+    if not overall or not isinstance(overall, dict):
+        return out
+    pro = overall.get("pro")
+    con = overall.get("con")
+    if pro:
+        out["pro"] = pro
+    if con:
+        out["con"] = con
+    if out["pro"] or out["con"]:
+        return out
+
+    observation = overall.get("observation")
+    if not isinstance(observation, str) or not observation.strip():
+        return out
+    text = observation.strip()
+    lower = text.lower()
+    pro_idx = lower.find("pro:")
+    con_idx = lower.find("con:")
+    if pro_idx != -1 and con_idx != -1:
+        if pro_idx < con_idx:
+            out["pro"] = text[pro_idx + 4:con_idx].strip()
+            out["con"] = text[con_idx + 4:].strip()
+        else:
+            out["con"] = text[con_idx + 4:pro_idx].strip()
+            out["pro"] = text[pro_idx + 4:].strip()
+    return out
+
+
 def get_feature_narratives(
     quantile_result: Dict[str, Any],
     feature_values: Dict[str, Any],
@@ -101,9 +146,12 @@ def get_overall_narrative(
     overall = get_weather_overall_narrative(
         quantile_result, weather_narratives
     )
+    pro_con = _extract_pro_con(overall)
     return _strip_markdown({
         "insight": insight,
-        "observation": overall.get("observation"),
+        "observation": _compose_observation(overall),
+        "pro": pro_con.get("pro"),
+        "con": pro_con.get("con"),
         "conclusion": overall.get("conclusion"),
     })
 
@@ -117,9 +165,12 @@ def get_competition_narrative(
     comp_narratives = [n for n in feature_narratives if n.get("feature_key") in COMPETITION_V3_KEYS]
     insight = get_competition_insight(quantile_result, comp_narratives, feature_values=feature_values)
     overall = get_competition_overall_narrative(quantile_result, comp_narratives, feature_values=feature_values)
+    pro_con = _extract_pro_con(overall)
     return _strip_markdown({
         "insight": insight,
-        "observation": overall.get("observation"),
+        "observation": _compose_observation(overall),
+        "pro": pro_con.get("pro"),
+        "con": pro_con.get("con"),
     })
 
 
@@ -136,9 +187,12 @@ def get_retail_narrative(
         retail_narratives,
         feature_values=feature_values,
     )
+    pro_con = _extract_pro_con(overall)
     return _strip_markdown({
         "insight": insight,
-        "observation": overall.get("observation"),
+        "observation": _compose_observation(overall),
+        "pro": pro_con.get("pro"),
+        "con": pro_con.get("con"),
         "conclusion": overall.get("conclusion"),
     })
 
@@ -151,9 +205,12 @@ def get_gas_narrative(
     gas_narratives = [n for n in feature_narratives if n.get("feature_key") in GAS_V3_KEYS]
     insight = get_gas_insight(quantile_result, gas_narratives)
     overall = get_gas_overall_narrative(quantile_result, gas_narratives)
+    pro_con = _extract_pro_con(overall)
     return _strip_markdown({
         "insight": insight,
-        "observation": overall.get("observation"),
+        "observation": _compose_observation(overall),
+        "pro": pro_con.get("pro"),
+        "con": pro_con.get("con"),
         "conclusion": overall.get("conclusion"),
     })
 
