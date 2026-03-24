@@ -440,7 +440,9 @@ def get_competition_data_by_task(task_id: str):
         }
         nearby_list.append(entry)
 
-    has_comp_narrative = any(narratives_comp.get(k) for k in ("insight", "observation"))
+    has_comp_narrative = any(
+        narratives_comp.get(k) for k in ("insight", "observation", "pro", "con")
+    )
     complete = bool(quantile_result and has_comp_narrative)
 
     return {
@@ -461,7 +463,10 @@ def get_competition_data_by_task(task_id: str):
         },
         "overall": {
             "insight": narratives_comp.get("insight"),
-            "observation": narratives_comp.get("observation"),
+            "observation": {
+                "pro": narratives_comp.get("pro"),
+                "con": narratives_comp.get("con"),
+            },
         },
     }
 
@@ -529,7 +534,10 @@ def get_retail_data_by_task(task_id: str):
             percentiles_for_score.append(float(pct))
     retail_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1) if percentiles_for_score else None
 
-    has_narrative = any(narratives_retail.get(k) for k in ("insight", "observation", "conclusion"))
+    has_narrative = any(
+        narratives_retail.get(k)
+        for k in ("insight", "observation", "pro", "con", "conclusion")
+    )
     complete = bool(quantile_result and has_narrative)
 
     return {
@@ -556,7 +564,10 @@ def get_retail_data_by_task(task_id: str):
         },
         "narratives": {
             "insight": narratives_retail.get("insight"),
-            "observation": narratives_retail.get("observation"),
+            "observation": {
+                "pro": narratives_retail.get("pro"),
+                "con": narratives_retail.get("con"),
+            },
             "conclusion": narratives_retail.get("conclusion"),
         },
     }
@@ -615,7 +626,10 @@ def get_gas_data_by_task(task_id: str):
             percentiles_for_score.append(float(pct))
     gas_score = round(sum(percentiles_for_score) / len(percentiles_for_score), 1) if percentiles_for_score else None
 
-    has_narrative = any(narratives_gas.get(k) for k in ("insight", "observation", "conclusion"))
+    has_narrative = any(
+        narratives_gas.get(k)
+        for k in ("insight", "observation", "pro", "con", "conclusion")
+    )
     complete = bool(quantile_result and has_narrative)
 
     return {
@@ -641,7 +655,10 @@ def get_gas_data_by_task(task_id: str):
         },
         "overall": {
             "insight": narratives_gas.get("insight"),
-            "observation": narratives_gas.get("observation"),
+            "observation": {
+                "pro": narratives_gas.get("pro"),
+                "con": narratives_gas.get("con"),
+            },
             "conclusion": narratives_gas.get("conclusion"),
         },
     }
