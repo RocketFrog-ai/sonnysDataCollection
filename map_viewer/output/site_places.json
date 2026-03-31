@@ -1,0 +1,299 @@
+{
+  "origin": {
+    "address": "1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA",
+    "formatted_address": "1208 North Griffith Park Drive, Burbank, CA 91506",
+    "latitude": 34.1848994,
+    "longitude": -118.326125
+  },
+  "radius_miles": 2.0,
+  "counts": {
+    "car_washes": 12,
+    "nearest_costco_found": true,
+    "nearest_walmart_found": true
+  },
+  "car_washes": [
+    {
+      "id": "ChIJ3Ui7vziVwoARq7PXB0CczjM",
+      "name": "Burbank Express Car Wash",
+      "category": "car_wash",
+      "latitude": 34.1910765,
+      "longitude": -118.3224031,
+      "distance_miles": 0.477,
+      "rating": 3.5,
+      "user_rating_count": 215,
+      "address": "1420 N San Fernando Blvd, Burbank, CA 91504, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=3733092939960136619&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJ4yCbF0-VwoARnXgHggaiIDY",
+      "name": "VIP Mobile Car Wash and Detailing",
+      "category": "car_wash",
+      "latitude": 34.1859864,
+      "longitude": -118.3362003,
+      "distance_miles": 0.581,
+      "rating": 5,
+      "user_rating_count": 56,
+      "address": "1641 N Lincoln St, Burbank, CA 91506, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=3900295426137880733&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJWX5lnV6VwoARq_W-prd3pm8",
+      "name": "Magnolia Island Hand Car Wash",
+      "category": "car_wash",
+      "latitude": 34.1770858,
+      "longitude": -118.31883750000001,
+      "distance_miles": 0.682,
+      "rating": 4,
+      "user_rating_count": 586,
+      "address": "910 W Magnolia Blvd, Burbank, CA 91506, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=8045249415004222891&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJ_U8qltCVwoAR5svrE2dbjag",
+      "name": "Armex details",
+      "category": "car_wash",
+      "latitude": 34.1839569,
+      "longitude": -118.33944530000001,
+      "distance_miles": 0.764,
+      "rating": null,
+      "user_rating_count": null,
+      "address": "2600 W Victory Blvd, Burbank, CA 91505, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=12145464268362075110&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJKYFCR-O_woAR7clBOThxQ2Q",
+      "name": "Zeavy Car Wash",
+      "category": "car_wash",
+      "latitude": 34.1700154,
+      "longitude": -118.31285620000001,
+      "distance_miles": 1.278,
+      "rating": 4.5,
+      "user_rating_count": 502,
+      "address": "520 S Victory Blvd, Burbank, CA 91502, USA",
+      "types": [
+        "car_wash",
+        "chauffeur_service",
+        "transportation_service",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=7224742713525127661&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJFashFOO_woAR7qyOhn2_v58",
+      "name": "Coin-Op Car Wash",
+      "category": "car_wash",
+      "latitude": 34.1699895,
+      "longitude": -118.31285109999999,
+      "distance_miles": 1.279,
+      "rating": 4.3,
+      "user_rating_count": 6,
+      "address": "520 S Victory Blvd, Burbank, CA 91502, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=11511129718431591662&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJtzDfzFWVwoARrmq88S8lV7E",
+      "name": "Classic Hand Car Wash",
+      "category": "car_wash",
+      "latitude": 34.177965,
+      "longitude": -118.3043974,
+      "distance_miles": 1.331,
+      "rating": 3.4,
+      "user_rating_count": 156,
+      "address": "506 S San Fernando Blvd, Burbank, CA 91502, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=12778723355536419502&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJoXCx0uWVwoARywaBbXeuIVM",
+      "name": "Glenoaks Car Wash",
+      "category": "car_wash",
+      "latitude": 34.180751199999996,
+      "longitude": -118.30231060000001,
+      "distance_miles": 1.391,
+      "rating": 3.6,
+      "user_rating_count": 94,
+      "address": "444 S Glenoaks Blvd, Burbank, CA 91502, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=5990260807340984011&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJYd8G_a-_woARW9eekxTygDA",
+      "name": "Pristine Car Detailing Burbank",
+      "category": "car_wash",
+      "latitude": 34.1711054,
+      "longitude": -118.30708489999999,
+      "distance_miles": 1.447,
+      "rating": 4.9,
+      "user_rating_count": 178,
+      "address": "182 W Elmwood Ave, Burbank, CA 91502, USA",
+      "types": [
+        "car_wash",
+        "car_repair",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": null,
+      "google_maps_uri": "https://maps.google.com/?cid=3495059481029433179&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJjwarmXWVwoARYevrsZrFqI4",
+      "name": "VIP Mobile Car Wash",
+      "category": "car_wash",
+      "latitude": 34.209404299999996,
+      "longitude": -118.3298315,
+      "distance_miles": 1.706,
+      "rating": 5,
+      "user_rating_count": 4,
+      "address": "2812 Haven Way, Burbank, CA 91504, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=10279683417673821025&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJ9yjXS_e_woARo_R666iDqAg",
+      "name": "Sparkling Self Service Car Wash",
+      "category": "car_wash",
+      "latitude": 34.1641915,
+      "longitude": -118.30498599999999,
+      "distance_miles": 1.873,
+      "rating": 4.3,
+      "user_rating_count": 282,
+      "address": "1311 S Victory Blvd, Burbank, CA 91502, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=623893309919261859&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    },
+    {
+      "id": "ChIJe_0cEwCVwoARD_9El4c5n18",
+      "name": "car oil",
+      "category": "car_wash",
+      "latitude": 34.185383,
+      "longitude": -118.36008090000001,
+      "distance_miles": 1.941,
+      "rating": null,
+      "user_rating_count": null,
+      "address": "10505 Victory Blvd, North Hollywood, CA 91606, USA",
+      "types": [
+        "car_wash",
+        "service",
+        "point_of_interest",
+        "establishment"
+      ],
+      "primary_type": "car_wash",
+      "google_maps_uri": "https://maps.google.com/?cid=6890289209421397775&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"
+    }
+  ],
+  "nearest_costco": {
+    "id": "ChIJn3898WmVwoARVbXv6VwYWqY",
+    "name": "Costco Tire Service Center",
+    "category": "costco",
+    "latitude": 34.1853841,
+    "longitude": -118.3242537,
+    "distance_miles": 0.112,
+    "rating": 3.8,
+    "user_rating_count": 153,
+    "address": "1051 W Burbank Blvd, Burbank, CA 91506, USA",
+    "types": [
+      "tire_shop",
+      "auto_parts_store",
+      "car_repair",
+      "service",
+      "point_of_interest",
+      "store",
+      "establishment"
+    ],
+    "primary_type": "tire_shop",
+    "google_maps_uri": "https://maps.google.com/?cid=11986920145540855125&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+  },
+  "nearest_walmart": {
+    "id": "ChIJx7pCV2qVwoARLdYDPsViAoQ",
+    "name": "Walmart Garden Center",
+    "category": "walmart",
+    "latitude": 34.1881613,
+    "longitude": -118.3251817,
+    "distance_miles": 0.232,
+    "rating": 3.8,
+    "user_rating_count": 60,
+    "address": "1301 N Victory Pl, Burbank, CA 91502, USA",
+    "types": [
+      "garden_center",
+      "building_materials_store",
+      "furniture_store",
+      "home_improvement_store",
+      "home_goods_store",
+      "general_contractor",
+      "service",
+      "point_of_interest",
+      "store",
+      "establishment"
+    ],
+    "primary_type": "garden_center",
+    "google_maps_uri": "https://maps.google.com/?cid=9512273962248427053&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"
+  },
+  "route_api_base": "http://127.0.0.1:8765",
+  "artifacts": {
+    "html_map": "/Users/dhruvsood/sonnysDataCollection/map_viewer/output/site_map.html",
+    "static_map_png": "/Users/dhruvsood/sonnysDataCollection/map_viewer/output/site_map_static.png"
+  }
+}

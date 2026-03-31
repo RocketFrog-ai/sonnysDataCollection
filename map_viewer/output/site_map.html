@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Site Map Viewer</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f3f4f6;
+      color: #111827;
+    }
+    #map {
+      width: 100%;
+      height: 78vh;
+    }
+    .header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #ffffff;
+    }
+    .meta {
+      font-size: 13px;
+      color: #374151;
+      margin-top: 5px;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #374151;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      display: inline-block;
+      margin-right: 5px;
+    }
+    .marker-pin-img {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s ease;
+    }
+    .marker-pin-img:hover {
+      transform: scale(1.12);
+      z-index: 1000;
+    }
+    .marker-pin-img img {
+      display: block;
+      object-fit: contain;
+      background: #ffffff;
+      border-radius: 4px;
+      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+    }
+    .site-bounce {
+      width: 10px;
+      height: 10px;
+      border-radius: 9999px;
+      background: #22c55e;
+      border: 1.5px solid #ffffff;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22);
+      animation: bouncePin 1s ease-in-out infinite;
+    }
+    @keyframes bouncePin {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .pulse-ring {
+      stroke: #2563eb;
+      stroke-width: 2;
+      stroke-dasharray: 8 6;
+      fill: rgba(37, 99, 235, 0.035);
+      animation: pulseStroke 1.8s ease-in-out infinite;
+    }
+    @keyframes pulseStroke {
+      0% { stroke-opacity: 0.25; }
+      50% { stroke-opacity: 0.85; }
+      100% { stroke-opacity: 0.25; }
+    }
+    .route-hint {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+    }
+    .route-hint code {
+      font-size: 11px;
+      background: #f3f4f6;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+    .route-status {
+      font-size: 12px;
+      color: #1e3a8a;
+      margin-top: 6px;
+      padding: 6px 10px;
+      background: #eff6ff;
+      border-radius: 6px;
+      border: 1px solid #bfdbfe;
+    }
+    .btn-route {
+      margin-top: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+    }
+    .btn-route:hover {
+      background: #f8fafc;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <strong>Input Site Map (2D tile)</strong>
+    <div class="meta">1208 North Griffith Park Drive, Burbank, CA 91506 | Radius: 2.0 miles</div>
+    
+    <div id="routeStatus" class="route-status" style="display:none"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:#22c55e"></span>Site</span>
+      <!-- <span><span class="dot" style="background:#dc2626"></span>Car wash</span> -->
+      <span><span class="dot" style="background:#2563eb"></span>1 mi / 2 mi radius</span>
+      <!-- <span><span class="dot" style="background:#111827"></span>Retailers</span> -->
+    </div>
+  </div>
+  <div id="map"></div>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script>
+    const data = {"origin": {"address": "1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA", "formatted_address": "1208 North Griffith Park Drive, Burbank, CA 91506", "latitude": 34.1848994, "longitude": -118.326125}, "radius_meters": 3218.68, "markers": [{"id": "ChIJ3Ui7vziVwoARq7PXB0CczjM", "name": "Burbank Express Car Wash", "category": "car_wash", "latitude": 34.1910765, "longitude": -118.3224031, "distance_miles": 0.477, "rating": 3.5, "user_rating_count": 215, "address": "1420 N San Fernando Blvd, Burbank, CA 91504, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=3733092939960136619&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJ4yCbF0-VwoARnXgHggaiIDY", "name": "VIP Mobile Car Wash and Detailing", "category": "car_wash", "latitude": 34.1859864, "longitude": -118.3362003, "distance_miles": 0.581, "rating": 5, "user_rating_count": 56, "address": "1641 N Lincoln St, Burbank, CA 91506, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=3900295426137880733&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJWX5lnV6VwoARq_W-prd3pm8", "name": "Magnolia Island Hand Car Wash", "category": "car_wash", "latitude": 34.1770858, "longitude": -118.31883750000001, "distance_miles": 0.682, "rating": 4, "user_rating_count": 586, "address": "910 W Magnolia Blvd, Burbank, CA 91506, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=8045249415004222891&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJ_U8qltCVwoAR5svrE2dbjag", "name": "Armex details", "category": "car_wash", "latitude": 34.1839569, "longitude": -118.33944530000001, "distance_miles": 0.764, "rating": null, "user_rating_count": null, "address": "2600 W Victory Blvd, Burbank, CA 91505, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=12145464268362075110&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJKYFCR-O_woAR7clBOThxQ2Q", "name": "Zeavy Car Wash", "category": "car_wash", "latitude": 34.1700154, "longitude": -118.31285620000001, "distance_miles": 1.278, "rating": 4.5, "user_rating_count": 502, "address": "520 S Victory Blvd, Burbank, CA 91502, USA", "types": ["car_wash", "chauffeur_service", "transportation_service", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=7224742713525127661&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJFashFOO_woAR7qyOhn2_v58", "name": "Coin-Op Car Wash", "category": "car_wash", "latitude": 34.1699895, "longitude": -118.31285109999999, "distance_miles": 1.279, "rating": 4.3, "user_rating_count": 6, "address": "520 S Victory Blvd, Burbank, CA 91502, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=11511129718431591662&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJtzDfzFWVwoARrmq88S8lV7E", "name": "Classic Hand Car Wash", "category": "car_wash", "latitude": 34.177965, "longitude": -118.3043974, "distance_miles": 1.331, "rating": 3.4, "user_rating_count": 156, "address": "506 S San Fernando Blvd, Burbank, CA 91502, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=12778723355536419502&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJoXCx0uWVwoARywaBbXeuIVM", "name": "Glenoaks Car Wash", "category": "car_wash", "latitude": 34.180751199999996, "longitude": -118.30231060000001, "distance_miles": 1.391, "rating": 3.6, "user_rating_count": 94, "address": "444 S Glenoaks Blvd, Burbank, CA 91502, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=5990260807340984011&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJYd8G_a-_woARW9eekxTygDA", "name": "Pristine Car Detailing Burbank", "category": "car_wash", "latitude": 34.1711054, "longitude": -118.30708489999999, "distance_miles": 1.447, "rating": 4.9, "user_rating_count": 178, "address": "182 W Elmwood Ave, Burbank, CA 91502, USA", "types": ["car_wash", "car_repair", "service", "point_of_interest", "establishment"], "primary_type": null, "google_maps_uri": "https://maps.google.com/?cid=3495059481029433179&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJjwarmXWVwoARYevrsZrFqI4", "name": "VIP Mobile Car Wash", "category": "car_wash", "latitude": 34.209404299999996, "longitude": -118.3298315, "distance_miles": 1.706, "rating": 5, "user_rating_count": 4, "address": "2812 Haven Way, Burbank, CA 91504, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=10279683417673821025&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJ9yjXS_e_woARo_R666iDqAg", "name": "Sparkling Self Service Car Wash", "category": "car_wash", "latitude": 34.1641915, "longitude": -118.30498599999999, "distance_miles": 1.873, "rating": 4.3, "user_rating_count": 282, "address": "1311 S Victory Blvd, Burbank, CA 91502, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=623893309919261859&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJe_0cEwCVwoARD_9El4c5n18", "name": "car oil", "category": "car_wash", "latitude": 34.185383, "longitude": -118.36008090000001, "distance_miles": 1.941, "rating": null, "user_rating_count": null, "address": "10505 Victory Blvd, North Hollywood, CA 91606, USA", "types": ["car_wash", "service", "point_of_interest", "establishment"], "primary_type": "car_wash", "google_maps_uri": "https://maps.google.com/?cid=6890289209421397775&g_mp=Cilnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaE5lYXJieRACGAQgAA"}, {"id": "ChIJn3898WmVwoARVbXv6VwYWqY", "name": "Costco Tire Service Center", "category": "costco", "latitude": 34.1853841, "longitude": -118.3242537, "distance_miles": 0.112, "rating": 3.8, "user_rating_count": 153, "address": "1051 W Burbank Blvd, Burbank, CA 91506, USA", "types": ["tire_shop", "auto_parts_store", "car_repair", "service", "point_of_interest", "store", "establishment"], "primary_type": "tire_shop", "google_maps_uri": "https://maps.google.com/?cid=11986920145540855125&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"}, {"id": "ChIJx7pCV2qVwoARLdYDPsViAoQ", "name": "Walmart Garden Center", "category": "walmart", "latitude": 34.1881613, "longitude": -118.3251817, "distance_miles": 0.232, "rating": 3.8, "user_rating_count": 60, "address": "1301 N Victory Pl, Burbank, CA 91502, USA", "types": ["garden_center", "building_materials_store", "furniture_store", "home_improvement_store", "home_goods_store", "general_contractor", "service", "point_of_interest", "store", "establishment"], "primary_type": "garden_center", "google_maps_uri": "https://maps.google.com/?cid=9512273962248427053&g_mp=Cidnb29nbGUubWFwcy5wbGFjZXMudjEuUGxhY2VzLlNlYXJjaFRleHQQAhgEIAA"}]};
+    const VIEWER = {"routeApiBase": "http://127.0.0.1:8765"};
+
+    function escHtml(s) {
+      return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+    }
+
+    let routeLine = null;
+    let routeDashTimer = null;
+
+    function clearDrivingRoute() {
+      if (routeDashTimer) {
+        clearInterval(routeDashTimer);
+        routeDashTimer = null;
+      }
+      if (routeLine) {
+        map.removeLayer(routeLine);
+        routeLine = null;
+      }
+    }
+
+    function setRouteStatus(msg) {
+      const el = document.getElementById("routeStatus");
+      if (!el) return;
+      if (!msg) {
+        el.style.display = "none";
+        el.textContent = "";
+        return;
+      }
+      el.textContent = msg;
+      el.style.display = "block";
+    }
+
+    async function fetchDrivingRoute(destLat, destLon, title) {
+      const base = VIEWER.routeApiBase;
+      if (!base) {
+        setRouteStatus("Set MAP_VIEWER_ROUTE_API_BASE and run map_viewer/route_proxy.py for driving routes.");
+        return;
+      }
+      setRouteStatus("Loading route…");
+      clearDrivingRoute();
+      const u = new URL(base + "/api/route");
+      u.searchParams.set("olat", String(data.origin.latitude));
+      u.searchParams.set("olon", String(data.origin.longitude));
+      u.searchParams.set("dlat", String(destLat));
+      u.searchParams.set("dlon", String(destLon));
+      let j;
+      try {
+        const res = await fetch(u.toString());
+        j = await res.json();
+      } catch (e) {
+        setRouteStatus("Route request failed. Is route_proxy.py running?");
+        return;
+      }
+      if (!j.ok) {
+        setRouteStatus(j.error || "Route failed.");
+        return;
+      }
+      const latlngs = (j.coordinates || []).map(([a, b]) => [a, b]);
+      routeLine = L.polyline(latlngs, {
+        color: "#1d4ed8",
+        weight: 5,
+        opacity: 0.92,
+        lineCap: "round",
+        lineJoin: "round",
+        dashArray: "10 16",
+      }).addTo(map);
+      let off = 0;
+      routeDashTimer = setInterval(() => {
+        off = (off + 2) % 32;
+        if (routeLine) routeLine.setStyle({ dashOffset: String(off) });
+      }, 100);
+      map.fitBounds(routeLine.getBounds().pad(0.08));
+      const s = j.summary || {};
+      const km = s.length_meters != null ? (s.length_meters / 1000).toFixed(1) : "?";
+      const min = s.travel_time_seconds != null ? Math.round(s.travel_time_seconds / 60) : "?";
+      setRouteStatus(`Drive to ${String(title || "")} — ~${km} km, ~${min} min.`);
+    }
+
+    const map = L.map("map", {
+      zoomControl: true,
+      scrollWheelZoom: true,
+      doubleClickZoom: true,
+      touchZoom: true,
+      boxZoom: true,
+      keyboard: true
+    }).setView([34.1848994, -118.326125], 15);
+
+    const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    const satellite = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution:
+          "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics"
+      }
+    );
+
+    const siteMarker = L.marker([data.origin.latitude, data.origin.longitude], {
+      icon: L.divIcon({
+        className: "",
+        html: '<div class="site-bounce"></div>',
+        iconSize: [10, 10],
+        iconAnchor: [5, 5]
+      })
+    }).addTo(map);
+    siteMarker.bindPopup(`<b>Input Site</b><br>${data.origin.formatted_address}`);
+
+    const radiusCircle2Mi = L.circle([data.origin.latitude, data.origin.longitude], {
+      radius: data.radius_meters,
+      color: "#2563eb",
+      weight: 2,
+      fillOpacity: 0.05
+    });
+
+    const oneMilePulse = L.circle([data.origin.latitude, data.origin.longitude], {
+      radius: 1609.34,
+      color: "#2563eb",
+      weight: 2,
+      fillOpacity: 0.03,
+      className: "pulse-ring"
+    }).addTo(map);
+
+    const markerAssets = {
+      car_wash: "assets/marker_car_wash.png",
+      costco: "assets/marker_costco.png",
+      walmart: "assets/marker_walmart.png",
+    };
+    const markerLayout = {
+      car_wash: { w: 26, h: 26 },
+      costco: { w: 22, h: 22 },
+      walmart: { w: 40, h: 18 },
+    };
+
+    const markerLayer = L.layerGroup().addTo(map);
+
+    for (const p of data.markers) {
+      const cat = p.category || "car_wash";
+      const src = markerAssets[cat] || markerAssets.car_wash;
+      const lay = markerLayout[cat] || markerLayout.car_wash;
+      const icon = L.divIcon({
+        className: "",
+        html: `<div class="marker-pin-img"><img src="${src}" alt="" width="${lay.w}" height="${lay.h}" /></div>`,
+        iconSize: [lay.w, lay.h],
+        iconAnchor: [Math.round(lay.w / 2), Math.round(lay.h / 2)]
+      });
+      const marker = L.marker([p.latitude, p.longitude], { icon }).addTo(markerLayer);
+
+      const popupHtml =
+        `<b>${escHtml(p.name || "Unknown")}</b><br>` +
+        `Category: ${escHtml(p.category)}<br>` +
+        `Distance: ${p.distance_miles} mi<br>` +
+        `${escHtml(p.address || "")}` +
+        `<div><button type="button" class="btn-route">Driving route</button></div>`;
+      marker.bindPopup(popupHtml);
+      marker.on("popupopen", () => {
+        const el = marker.getPopup().getElement();
+        const btn = el && el.querySelector(".btn-route");
+        if (btn) {
+          btn.onclick = () => fetchDrivingRoute(p.latitude, p.longitude, p.name || "");
+        }
+      });
+    }
+
+    const baseLayers = { "Street Map": streets, "Satellite": satellite };
+    const overlays = {
+      Markers: markerLayer,
+      "Radius 1mi": oneMilePulse,
+      "Radius 2mi": radiusCircle2Mi,
+    };
+    L.control.layers(baseLayers, overlays, { collapsed: false }).addTo(map);
+
+    const defaultGroup = new L.featureGroup([siteMarker, oneMilePulse, markerLayer]);
+    map.fitBounds(defaultGroup.getBounds().pad(0.035));
+    map.setZoom(Math.min(19, Math.max(16, map.getZoom())));
+  </script>
+</body>
+</html>
