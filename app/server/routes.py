@@ -50,6 +50,7 @@ from app.server.app import (
     get_traffic_lights,
     get_nearby_stores,
 )
+from app.server.db_cache import get_all_site_analysis_cache
 from app.celery.tasks import analyse_site
 from app.celery.celery_app import celery_app
 from app.modelling.ds.scorer import (
@@ -975,9 +976,16 @@ def get_overall(task_id: str):
             "label": wash_range.get("label"),
         },
         "weighted_volume_prediction": quantile_result.get("weighted_volume_prediction"),
+        "prediction_confidence": quantile_result.get("prediction_confidence"),
         "operational_range": {
-            "low":  (quantile_result.get("weighted_volume_prediction") - 20000) if quantile_result.get("weighted_volume_prediction") is not None else None,
-            "high": (quantile_result.get("weighted_volume_prediction") + 20000) if quantile_result.get("weighted_volume_prediction") is not None else None,
+            "low":  ((quantile_result.get("volume_uncertainty") or {}).get("low")
+                     if (quantile_result.get("volume_uncertainty") or {}).get("low") is not None
+                     else ((quantile_result.get("weighted_volume_prediction") - 20000)
+                           if quantile_result.get("weighted_volume_prediction") is not None else None)),
+            "high": ((quantile_result.get("volume_uncertainty") or {}).get("high")
+                     if (quantile_result.get("volume_uncertainty") or {}).get("high") is not None
+                     else ((quantile_result.get("weighted_volume_prediction") + 20000)
+                           if quantile_result.get("weighted_volume_prediction") is not None else None)),
         },
         "tier_metadata": quantile_result.get("tier_metadata"),
         "quantile_probabilities": {
@@ -1006,3 +1014,13 @@ def get_overall(task_id: str):
 @router.get("/health")
 def health_check():
     return {"status": "healthy", "service": "site-analysis-pipeline"}
+
+
+@router.get("/cache/site-analysis/all")
+def get_site_analysis_cache_all():
+    data = get_all_site_analysis_cache(
+        page=1,
+        page_size=50,
+        include_response=True,
+    )
+    return data

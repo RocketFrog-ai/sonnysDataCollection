@@ -549,6 +549,7 @@ class QuantilePredictorV4:
         self._build_wash_quantiles()
         self._build_quantile_profiles()
         self._train_classifier()
+        self._train_volume_regressors()
         print("✓ QuantilePredictorV4 ready\n")
 
     # ── Build helpers ─────────────────────────────────────────────────────────
@@ -614,6 +615,7 @@ class QuantilePredictorV4:
         ]
         self.quantile_profiles: Dict[int, Dict[str, Dict]] = {}
         self.tier_medians: Dict[int, float] = {}
+        self.tier_means: Dict[int, float] = {}
         
         counts = self.df["current_count"].dropna()
         
@@ -624,6 +626,7 @@ class QuantilePredictorV4:
             # Store median wash count for this tier (used for weighted predictions)
             q_counts = counts[mask]
             self.tier_medians[q] = float(q_counts.median()) if not q_counts.empty else 0.0
+            self.tier_means[q] = float(q_counts.mean()) if not q_counts.empty else 0.0
             
             profile: Dict[str, Dict] = {}
             for feat in all_feats:
@@ -671,6 +674,9 @@ class QuantilePredictorV4:
         X_clean = imputer.fit_transform(X_raw_m)
         self._knn_imputer = imputer
         self._feature_medians = {f: float(X_raw[f].median()) for f in self.feature_cols}
+        self._X_train_imputed = X_clean
+        self._y_train = y_clean
+        self._counts_train = self.df.loc[mask, "current_count"].astype(float).values
 
         # ExtraTrees with Optuna-tuned hyperparameters
         # Optuna best (50 trials, 5-fold CV on 482 sites):
@@ -714,6 +720,40 @@ class QuantilePredictorV4:
         print("  Top 5 features by importance:")
         for f, imp in top:
             print(f"    {FEATURE_LABELS.get(f, f)}: {imp:.1%}")
+
+    def _train_volume_regressors(self):
+        """
+        Train one regressor per wash quantile to estimate E[Y | Q_i, X].
+        This is used for conditional expectation volume:
+            E[Y|X] = sum_i P(Q_i|X) * E[Y|Q_i, X]
+        Falls back to tier means when a quantile has too few samples.
+        """
+        from sklearn.ensemble import ExtraTreesRegressor
+
+        self._volume_regressors: Dict[int, object] = {}
+        self._volume_fallback_means: Dict[int, float] = dict(self.tier_means)
+
+        X_clean = getattr(self, "_X_train_imputed", None)
+        y_clean = getattr(self, "_y_train", None)
+        counts = getattr(self, "_counts_train", None)
+        if X_clean is None or y_clean is None or counts is None:
+            return
+
+        for q in range(1, self.n_quantiles + 1):
+            mask_q = y_clean == q
+            n_q = int(mask_q.sum())
+            if n_q < 15:
+                self._volume_regressors[q] = None
+                continue
+            reg = ExtraTreesRegressor(
+                n_estimators=200,
+                max_depth=6,
+                min_samples_leaf=3,
+                random_state=42,
+                n_jobs=-1,
+            )
+            reg.fit(X_clean[mask_q], counts[mask_q])
+            self._volume_regressors[q] = reg
 
     # ── Feature-to-wash-Q mapping ─────────────────────────────────────────────
 
@@ -899,8 +939,40 @@ class QuantilePredictorV4:
         profile_comparison = self._profile_comparison(feature_analysis)
         strengths, weaknesses = self._strengths_weaknesses(feature_analysis)
 
-        # Calculate weighted average volume prediction based on tier probabilities
-        weighted_vol = sum(proba.get(q, 0.0) * self.tier_medians[q] for q in range(1, self.n_quantiles + 1))
+        # Weighted volume estimates:
+        # - mean_by_tier: quick expectation baseline (uses E[Y|Q_i] as tier means)
+        # - conditional_regression: best estimate from per-tier regressors E[Y|Q_i, X]
+        weighted_vol_mean = sum(
+            proba.get(q, 0.0) * self.tier_means.get(q, 0.0)
+            for q in range(1, self.n_quantiles + 1)
+        )
+        conditional_expectations: Dict[int, float] = {}
+        for q in range(1, self.n_quantiles + 1):
+            reg = (getattr(self, "_volume_regressors", {}) or {}).get(q)
+            if reg is None:
+                conditional_expectations[q] = float(
+                    (getattr(self, "_volume_fallback_means", {}) or {}).get(q, self.tier_means.get(q, 0.0))
+                )
+            else:
+                conditional_expectations[q] = float(reg.predict(X_imputed)[0])
+        weighted_vol_conditional = sum(
+            proba.get(q, 0.0) * conditional_expectations.get(q, 0.0)
+            for q in range(1, self.n_quantiles + 1)
+        )
+        weighted_vol = weighted_vol_conditional
+
+        # Probabilistic uncertainty from class-probability spread around the
+        # conditional expectation (same estimator used for point prediction).
+        variance = sum(
+            proba.get(q, 0.0) * ((conditional_expectations.get(q, 0.0) - weighted_vol) ** 2)
+            for q in range(1, self.n_quantiles + 1)
+        )
+        sigma = float(np.sqrt(max(variance, 0.0)))
+        confidence_score = float(max(proba.values())) if proba else None
+        entropy = (
+            float(-sum(p * np.log(max(p, 1e-12)) for p in proba.values()))
+            if proba else None
+        )
 
         result: Dict = {
             "predicted_wash_quantile":          predicted_q,
@@ -912,12 +984,28 @@ class QuantilePredictorV4:
                 "label": f"{wash_range[0]:,.0f} - {wash_range[1]:,.0f} cars/yr",
             },
             "weighted_volume_prediction":       round(weighted_vol),
+            "weighted_volume_prediction_mean_by_tier": round(weighted_vol_mean),
+            "weighted_volume_prediction_method": "conditional_regression",
+            "conditional_expectations_by_quantile": {
+                f"Q{q}": round(v, 1) for q, v in conditional_expectations.items()
+            },
+            "volume_uncertainty": {
+                "sigma": round(sigma),
+                "low": round(weighted_vol - sigma),
+                "high": round(weighted_vol + sigma),
+                "method": "probability_variance",
+            },
+            "prediction_confidence": {
+                "max_probability": round(confidence_score, 4) if confidence_score is not None else None,
+                "entropy": round(entropy, 4) if entropy is not None else None,
+            },
             "quantile_probabilities":           proba,
             "tier_metadata": {
                 "strategy":   self.tier_strategy,
                 "n_tiers":    self.n_quantiles,
                 "boundaries": [float(b) for b in self.wash_boundaries],
                 "medians":    self.tier_medians,
+                "means":      self.tier_means,
                 "labels":     [QUANTILE_TIER_NAMES.get(q, f"Tier {q}") for q in range(1, self.n_quantiles + 1)],
             },
             "wash_count_distribution": {
