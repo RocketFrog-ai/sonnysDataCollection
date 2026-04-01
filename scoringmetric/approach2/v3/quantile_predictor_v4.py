@@ -360,34 +360,20 @@ def _build_final_csv(excel_path: Path, csv_path: Path, out_path: Path) -> pd.Dat
     return merged
 
 
-def _load_and_merge(excel_path: Path, csv_path: Path) -> pd.DataFrame:
-    final_csv = csv_path.parent.parent / "v3" / "final_merged_dataset.csv"
-
-    if final_csv.exists():
-        print(f"  Loading pre-built merge: {final_csv}")
-        merged = pd.read_csv(final_csv)
-        print(f"  Rows: {len(merged)}")
-    else:
-        merged = _build_final_csv(excel_path, csv_path, final_csv)
-
-    if "site_client_id" in merged.columns and "carwash_type_encoded" not in merged.columns:
-        proj_root = Path(__file__).resolve().parents[3]
-        carwash_candidates = [
-            proj_root / "app" / "modelling" / "ds" / "Type_of_carwash_final.xlsx",
-            proj_root / "app" / "features" / "active" / "nearbyCompetitors" / "Type_of_carwash_final.xlsx",
-        ]
-        for carwash_path in carwash_candidates:
-            if carwash_path.exists():
-                cw = pd.read_excel(carwash_path, engine="openpyxl")
-                keep_cols = ["site_client_id", "carwash_type_encoded"]
-                if "primary_carwash_type" in cw.columns:
-                    keep_cols.append("primary_carwash_type")
-                if "site_client_id" in cw.columns and "carwash_type_encoded" in cw.columns:
-                    cw = cw[keep_cols].drop_duplicates(subset=["site_client_id"])
-                    merged = merged.merge(cw, on="site_client_id", how="left")
-                    matched = merged["carwash_type_encoded"].notna().sum()
-                    print(f"  Car wash type joined: {matched}/{len(merged)} rows  ({carwash_path.name})")
-                break
+def _load_and_merge(canonical_path: Path) -> pd.DataFrame:
+    """
+    Load canonical v3 merged dataset as the single source of truth.
+    """
+    base = Path(__file__).resolve().parents[1]
+    final_csv = canonical_path
+    if not final_csv.exists():
+        raise FileNotFoundError(
+            f"Canonical dataset not found: {final_csv}. "
+            "Please provide scoringmetric/approach2/v3/final_merged_dataset.csv"
+        )
+    print(f"  Loading canonical dataset: {final_csv}")
+    merged = pd.read_csv(final_csv)
+    print(f"  Rows: {len(merged)}")
 
     for c in ("_match_type", "site_client_id", "location_id"):
         merged = merged.drop(columns=[c], errors="ignore")
@@ -398,7 +384,7 @@ def _load_and_merge(excel_path: Path, csv_path: Path) -> pd.DataFrame:
         ).fillna(99)
         merged = merged.drop(columns=["distance_nearest_costco(5 mile)"], errors="ignore")
 
-    dim_path = csv_path.parent / "dim_site_unified_202603030226.csv"
+    dim_path = base / "extrapolation" / "dim_site_unified_202603030226.csv"
     if dim_path.exists() and not all(c in merged.columns for c in ("age_on_30_sep_25","region_enc")):
         dim = pd.read_csv(dim_path, low_memory=False)
         dim["_street"] = dim["street"].apply(_norm_street)
@@ -422,10 +408,9 @@ def _load_and_merge(excel_path: Path, csv_path: Path) -> pd.DataFrame:
 
     if "tunnel_count" not in merged.columns and "current_count" in merged.columns:
         def _tc(c):
-            if c < 120_000:  return 1.0
-            elif c < 240_000: return 2.0
-            elif c < 360_000: return 3.0
-            else:             return 4.0
+            # Fallback proxy only when tunnel_count is missing:
+            # allow 0 for sites with current_count < 120k.
+            return float(np.floor(float(c) / 120_000.0))
         merged["tunnel_count"] = merged["current_count"].apply(_tc)
 
     return merged
@@ -499,8 +484,7 @@ class QuantilePredictorV4:
         use_control_sites_only: bool = False,
     ):
         base = Path(__file__).resolve().parents[1]
-        excel_path = excel_path or base / "Proforma-v2-data-final (1).xlsx"
-        csv_path = csv_path or base / "extrapolation" / "temp_extrapolated.csv"
+        canonical_path = base / "v3" / "final_merged_dataset.csv"
         
         if tier_strategy not in TIER_PRESETS:
             print(f"Warning: Unknown tier_strategy '{tier_strategy}'. Falling back to '4-class-wide-middle'.")
@@ -510,14 +494,13 @@ class QuantilePredictorV4:
         self.percentile_splits = TIER_PRESETS[tier_strategy]
         self.n_quantiles = n_quantiles or len(self.percentile_splits)
 
-        if not excel_path.exists():
-            raise FileNotFoundError(f"Excel not found: {excel_path}")
-        if not csv_path.exists():
-            raise FileNotFoundError(f"CSV not found: {csv_path}.")
+        # Single-source mode: canonical merged dataset only.
+        if not canonical_path.exists():
+            raise FileNotFoundError(f"Canonical dataset not found: {canonical_path}")
 
 
         print("Loading and merging data…")
-        self.df = _load_and_merge(excel_path, csv_path)
+        self.df = _load_and_merge(canonical_path)
 
         if use_control_sites_only and "client_id" in self.df.columns:
             before = len(self.df)
