@@ -1,17 +1,10 @@
-"""
-Single-fetch site analysis: geocode → fetch all features (weather, gas, retail, competitors)
-→ build feature_values + v3 location_features → run quantile prediction → optional narratives.
-
-Used by the analyse-site Celery task. All feature fetching uses app.features.active.
-When FETCH_WEATHER_ONLY is True, only weather is fetched; gas/stores/retail/competitors
-use random placeholder data so quantile prediction can still run.
-Return value includes feature_values (for existing routes) and quantile_result (v3 output).
-"""
 
 from __future__ import annotations
 
 import logging
 import math
+import hashlib
+import os
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Optional
@@ -22,6 +15,12 @@ from app.features.active.nearbyGasStations.get_nearby_gas_stations import get_ne
 from app.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.features.active.weather.open_meteo import get_default_weather_range
+from app.server.db_cache import (
+    get_cached_site_fetch,
+    save_site_fetch_cache,
+    get_cached_site_analysis_by_latlon,
+    save_site_analysis_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +32,10 @@ FETCH_COMPETITION_WITH_WEATHER = True
 FETCH_GAS_WITH_WEATHER = True
 # When True and FETCH_WEATHER_ONLY, also fetch real retail anchors (unified 3-mile radius fetch).
 FETCH_RETAIL_WITH_WEATHER = True
+
+SITE_FETCH_CACHE_VERSION = "v1"
+SITE_FETCH_CACHE_TTL_DAYS = int(os.getenv("SITE_FETCH_CACHE_TTL_DAYS", "30"))
+SITE_RESPONSE_CACHE_TOLERANCE = float(os.getenv("SITE_RESPONSE_CACHE_TOLERANCE", "0.5"))
 
 
 def _geocode(address: str) -> tuple[float, float]:
@@ -380,13 +383,71 @@ def run_site_analysis(
     Returns only when all stages are complete. Full result includes address, lat, lon,
     feature_values, fetched, quantile_result, and narratives.
     """
-    logger.info(
-        "run_site_analysis: geocoding address=%s tunnel_count=%s carwash_type=%s",
-        address, tunnel_count, carwash_type_encoded,
-    )
+    normalized_address = " ".join((address or "").strip().lower().split())
     lat, lon = _geocode(address)
-    logger.info("run_site_analysis: geocode done lat=%.4f lon=%.4f, fetching features", lat, lon)
-    fetched = fetch_all_features(lat, lon)
+    cached_response = get_cached_site_analysis_by_latlon(
+        lat, lon, tolerance=SITE_RESPONSE_CACHE_TOLERANCE
+    )
+    if cached_response and cached_response.get("response"):
+        cached_result = cached_response["response"]
+        cached_result["fetch_cache"] = {
+            "hit": True,
+            "cache_version": cached_response.get("cache_version"),
+            "match_address": normalized_address,
+            "match_lat": cached_response.get("lat"),
+            "match_lon": cached_response.get("lon"),
+            "match_type": "lat_lon_closest",
+            "tolerance": SITE_RESPONSE_CACHE_TOLERANCE,
+        }
+        return cached_result
+
+    cache_key = hashlib.sha256(
+        f"{SITE_FETCH_CACHE_VERSION}|{normalized_address}".encode("utf-8")
+    ).hexdigest()
+
+    cached = get_cached_site_fetch(cache_key)
+    cached_fetched = (cached or {}).get("fetched") or {}
+    cache_hit = bool(
+        cached
+        and cached.get("lat") is not None
+        and cached.get("lon") is not None
+        and cached_fetched
+        and "climate" in cached_fetched
+        and "gas_stations" in cached_fetched
+        and "retail_anchors" in cached_fetched
+        and "competitors_data" in cached_fetched
+    )
+
+    if cache_hit:
+        lat = float(cached["lat"])
+        lon = float(cached["lon"])
+        fetched = cached["fetched"] or {}
+        logger.info("run_site_analysis: cache hit for address=%s", address)
+    else:
+        logger.info(
+            "run_site_analysis: cache miss, fetching address=%s tunnel_count=%s carwash_type=%s",
+            address, tunnel_count, carwash_type_encoded,
+        )
+        logger.info("run_site_analysis: geocode done lat=%.4f lon=%.4f, fetching features", lat, lon)
+        fetched = fetch_all_features(lat, lon)
+        climate = fetched.get("climate") or {}
+        has_any_data = bool(
+            (climate and not climate.get("error"))
+            or (fetched.get("gas_stations") or [])
+            or (fetched.get("retail_anchors") or {})
+            or (fetched.get("competitors_data") or {})
+        )
+        if has_any_data:
+            save_site_fetch_cache(
+                address_key=cache_key,
+                address_input=address,
+                normalized_address=normalized_address,
+                lat=lat,
+                lon=lon,
+                fetched=fetched,
+                cache_version=SITE_FETCH_CACHE_VERSION,
+                ttl_days=SITE_FETCH_CACHE_TTL_DAYS,
+            )
     logger.info("run_site_analysis: fetch done, building feature_values and quantile input")
     feature_values, location_features = build_feature_values_and_v3_input(
         fetched,
@@ -398,6 +459,11 @@ def run_site_analysis(
         "address": address,
         "lat": lat,
         "lon": lon,
+        "fetch_cache": {
+            "hit": cache_hit,
+            "cache_version": SITE_FETCH_CACHE_VERSION,
+            "match_address": normalized_address,
+        },
         "feature_values": feature_values,
         "fetched": fetched,
     }
@@ -445,6 +511,17 @@ def run_site_analysis(
         except Exception as e:
             logger.exception("Narratives failed: %s", e)
             result["narrative_error"] = str(e)
+
+    save_site_analysis_response(
+        address_key=cache_key,
+        address_input=address,
+        normalized_address=normalized_address,
+        lat=lat,
+        lon=lon,
+        response=result,
+        cache_version=SITE_FETCH_CACHE_VERSION,
+        ttl_days=SITE_FETCH_CACHE_TTL_DAYS,
+    )
 
     return result
 
