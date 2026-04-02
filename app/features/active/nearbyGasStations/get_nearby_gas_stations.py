@@ -189,6 +189,8 @@ def get_nearby_gas_stations(
             "address": formatted_address or short_address,
             "regular_opening_hours": regular_opening_hours,
             "place_id": place_id,
+            "latitude": float(lat),
+            "longitude": float(lon),
         }
         if duration_seconds is not None:
             station["duration_seconds"] = duration_seconds
