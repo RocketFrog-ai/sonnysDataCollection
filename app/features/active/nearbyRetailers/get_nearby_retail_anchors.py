@@ -232,7 +232,13 @@ def get_nearby_retail_anchors(
     all_raw = raw_warehouse + raw_department + raw_grocery + raw_food
 
     if not all_raw:
-        logger.info("Retail anchors: Places searchNearby returned 0 places (anchor=%s food=%s)", len(raw_anchor), len(raw_food))
+        logger.info(
+            "Retail anchors: Places searchNearby returned 0 places (warehouse=%s, department=%s, grocery=%s, food=%s)",
+            len(raw_warehouse),
+            len(raw_department),
+            len(raw_grocery),
+            len(raw_food),
+        )
         return _empty_result()
 
     def _place_name(place: Dict[str, Any]) -> Optional[str]:
@@ -254,12 +260,15 @@ def get_nearby_retail_anchors(
             loc = place.get("location") or {}
             lat_val = loc.get("latitude")
             lon_val = loc.get("longitude")
+            formatted_address = place.get("formattedAddress")
             seen[pid] = {
+                "place_id": pid,
                 "name": name or (rtype if rtype != "General Retail" else "Store"),
                 "type": rtype,
                 "brand_key": bkey,
                 "lat": lat_val,
                 "lon": lon_val,
+                "address": formatted_address,
             }
 
     candidates = [v for v in seen.values() if v.get("lat") is not None and v.get("lon") is not None]
@@ -284,9 +293,13 @@ def get_nearby_retail_anchors(
         if dist > radius_miles:
             continue
         anchors.append({
+            "place_id": c["place_id"],
             "name": c["name"],
             "type": c["type"],
             "distance_miles": dist,
+            "latitude": float(c["lat"]),
+            "longitude": float(c["lon"]),
+            "address": c.get("address"),
             "_brand_key": c["brand_key"],
         })
 
@@ -320,7 +333,18 @@ def get_nearby_retail_anchors(
             food_count_0_5miles += 1
 
     # Strip internal _brand_key before returning
-    clean_anchors = [{"name": a["name"], "type": a["type"], "distance_miles": a["distance_miles"]} for a in anchors]
+    clean_anchors = [
+        {
+            "place_id": a.get("place_id"),
+            "name": a["name"],
+            "type": a["type"],
+            "distance_miles": a["distance_miles"],
+            "latitude": a.get("latitude"),
+            "longitude": a.get("longitude"),
+            "address": a.get("address"),
+        }
+        for a in anchors
+    ]
 
     return {
         "anchors": clean_anchors,

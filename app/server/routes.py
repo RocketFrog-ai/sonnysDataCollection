@@ -1,6 +1,7 @@
 import json
 import logging
 import redis
+import requests
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -77,6 +78,7 @@ from app.features.active.nearbyCompetitors.classify_competitor_types import clas
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 
 
 # -----------------------------------------------------------------------------
@@ -227,6 +229,70 @@ def _dimension_summary(task_id: str, dimension: str) -> dict:
         feature_values_slice=fv_slice,
         feature_performance=feat_perf,
     ).model_dump()
+
+
+def _retail_anchor_category(anchor_type: Optional[str], anchor_name: Optional[str]) -> str:
+    at = (anchor_type or "").strip().lower()
+    an = (anchor_name or "").strip().lower()
+    if "warehouse club" in at or "costco" in an or "sam's club" in an or "bj's" in an:
+        return "costco"
+    if "target" in an:
+        return "target"
+    if "supercenter" in at or "walmart" in an:
+        return "walmart"
+    if "big box" in at:
+        return "big_box"
+    if "grocery" in at:
+        return "grocery_anchor"
+    if "food" in at:
+        return "food_beverage"
+    return "retail_anchor"
+
+
+def _resolve_marker_coordinates(raw: Dict[str, Any]) -> Tuple[Optional[float], Optional[float]]:
+    """
+    Resolve marker coordinates from:
+    1) embedded latitude/longitude (new tasks),
+    2) Place Details lookup by place_id (older tasks),
+    3) address geocode fallback.
+    """
+    lat = raw.get("latitude")
+    lon = raw.get("longitude")
+    if lat is not None and lon is not None:
+        return float(lat), float(lon)
+
+    place_id = raw.get("place_id")
+    api_key = calib.GOOGLE_MAPS_API_KEY or ""
+    if place_id and api_key:
+        try:
+            resp = requests.get(
+                f"{PLACE_DETAILS_URL}{place_id}",
+                headers={
+                    "Content-Type": "application/json",
+                    "X-Goog-Api-Key": api_key,
+                    "X-Goog-FieldMask": "location",
+                },
+                timeout=8,
+            )
+            resp.raise_for_status()
+            loc = (resp.json() or {}).get("location") or {}
+            dlat = loc.get("latitude")
+            dlon = loc.get("longitude")
+            if dlat is not None and dlon is not None:
+                return float(dlat), float(dlon)
+        except Exception:
+            pass
+
+    address = raw.get("address")
+    if address:
+        try:
+            geo = calib.get_lat_long(address)
+            if geo and geo.get("lat") is not None and geo.get("lon") is not None:
+                return float(geo["lat"]), float(geo["lon"])
+        except Exception:
+            pass
+
+    return None, None
 
 
 # -----------------------------------------------------------------------------
@@ -662,6 +728,131 @@ def get_gas_data_by_task(task_id: str):
             },
             "conclusion": narratives_gas.get("conclusion"),
         },
+    }
+
+
+@router.get("/map/data-by-task/{task_id}")
+def get_map_data_by_task(task_id: str):
+    """
+    Return map-ready markers for frontend rendering (Leaflet/Mapbox/etc).
+    Includes origin site + nearby competitors, gas stations, and retail anchors.
+    """
+    result = _get_result_or_partial(task_id)
+    fetched = result.get("fetched") or {}
+
+    lat = result.get("lat")
+    lon = result.get("lon")
+    if lat is None or lon is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Task {task_id} has no geocoded site coordinates yet.",
+        )
+
+    markers: List[Dict[str, Any]] = [
+        {
+            "id": "origin",
+            "name": "Input Site",
+            "category": "origin",
+            "latitude": float(lat),
+            "longitude": float(lon),
+            "distance_miles": 0.0,
+            "address": result.get("address"),
+        }
+    ]
+
+    def _add_marker(raw: Dict[str, Any], category: str, fallback_id: str) -> None:
+        mlat, mlon = _resolve_marker_coordinates(raw)
+        if mlat is None or mlon is None:
+            return
+        distance = raw.get("distance_miles")
+        rating_count = raw.get("user_rating_count")
+        if rating_count is None:
+            rating_count = raw.get("rating_count")
+        markers.append(
+            {
+                "id": raw.get("place_id") or fallback_id,
+                "name": raw.get("name"),
+                "category": category,
+                "latitude": float(mlat),
+                "longitude": float(mlon),
+                "distance_miles": float(distance) if distance is not None else None,
+                "rating": float(raw["rating"]) if raw.get("rating") is not None else None,
+                "user_rating_count": int(rating_count) if rating_count is not None else None,
+                "address": raw.get("address"),
+            }
+        )
+
+    # Match gas endpoint scope: within_1_mile + within_3_miles only.
+    gas_list_raw = fetched.get("gas_stations") or []
+    gas_stations = []
+    for s in gas_list_raw:
+        d = s.get("distance_miles")
+        gas_stations.append(
+            {
+                **s,
+                "distance_miles": float(d) if d is not None else None,
+            }
+        )
+    gas_stations.sort(key=lambda s: (s.get("distance_miles") is None, s.get("distance_miles") or float("inf")))
+    gas_within_1 = [s for s in gas_stations if s.get("distance_miles") is not None and s["distance_miles"] <= GAS_RADIUS_NEAR_MILES]
+    gas_within_3 = [
+        s
+        for s in gas_stations
+        if s.get("distance_miles") is not None and GAS_RADIUS_NEAR_MILES < s["distance_miles"] <= GAS_RADIUS_FAR_MILES
+    ]
+    gas_for_map = gas_within_1 + gas_within_3
+    for idx, station in enumerate(gas_for_map, start=1):
+        _add_marker(station, "gas_station", f"gas_{idx}")
+
+    competitors = ((fetched.get("competitors_data") or {}).get("competitors") or [])
+    for idx, comp in enumerate(competitors, start=1):
+        _add_marker(comp, "car_wash", f"competitor_{idx}")
+
+    # Match retail endpoint scope:
+    # - within_1_mile and within_3_miles buckets
+    # - cap display lists to 5 per anchor type
+    retail_anchors_all = (fetched.get("retail_anchors") or {}).get("anchors") or []
+    retail_within_1 = [
+        a
+        for a in retail_anchors_all
+        if a.get("distance_miles") is not None and a["distance_miles"] <= RETAIL_RADIUS_NEAR_MILES
+    ]
+    retail_within_3 = [
+        a
+        for a in retail_anchors_all
+        if a.get("distance_miles") is not None and RETAIL_RADIUS_NEAR_MILES < a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES
+    ]
+
+    def _cap_by_type(anchor_list: List[Dict[str, Any]], cap: int = 5) -> List[Dict[str, Any]]:
+        seen: Dict[str, int] = {}
+        out: List[Dict[str, Any]] = []
+        for a in anchor_list:
+            t = a.get("type", "Other")
+            if seen.get(t, 0) < cap:
+                out.append(a)
+                seen[t] = seen.get(t, 0) + 1
+        return out
+
+    retail_for_map = _cap_by_type(retail_within_1, 5) + _cap_by_type(retail_within_3, 5)
+    for idx, anchor in enumerate(retail_for_map, start=1):
+        category = _retail_anchor_category(anchor.get("type"), anchor.get("name"))
+        _add_marker(anchor, category, f"retail_{idx}")
+
+    return {
+        "task_id": task_id,
+        "address": result.get("address"),
+        "lat": float(lat),
+        "lon": float(lon),
+        "complete": bool((result.get("quantile_result") or {})),
+        "counts": {
+            "markers_total": len(markers),
+            "gas_stations": len([m for m in markers if m["category"] == "gas_station"]),
+            "competitors": len([m for m in markers if m["category"] == "car_wash"]),
+            "retail_anchors": len(
+                [m for m in markers if m["category"] not in {"origin", "gas_station", "car_wash"}]
+            ),
+        },
+        "markers": markers,
     }
 
 

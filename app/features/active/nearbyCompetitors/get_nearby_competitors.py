@@ -202,6 +202,8 @@ def get_nearby_competitors(
             "user_rating_count": user_rating_count,
             "address": address,
             "distance_miles": distance_miles,
+            "latitude": float(lat),
+            "longitude": float(lon),
             "website": website_uri,
             "primary_type": primary_type_display_name or "Car wash",
         }
