@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
 from app.utils import common as calib
-from app.server.app import get_climate
+from app.features.active.weather.open_meteo import fetch_climate_for_site
 
 # Input/output: datafetching/input_data/Proforma-v2-weather.xlsx
 _DATA_DIR = Path(__file__).resolve().parent.parent
@@ -34,7 +34,7 @@ ADDRESS_COL = "Address"
 WEATHER_START_DATE = "2024-12-31"
 WEATHER_END_DATE = "2025-12-31"
 
-# Columns added (matches get_climate / get_climate_data_for_range from v1/weather/data)
+# Columns added (matches fetch_climate_for_site / get_climate_data_for_range)
 WEATHER_COLUMNS = [
     "weather_total_precipitation_mm",
     "weather_rainy_days",
@@ -47,7 +47,7 @@ WEATHER_COLUMNS = [
 
 
 def _climate_to_row(climate: dict) -> dict:
-    """Map get_climate() result to flat row dict (our column names)."""
+    """Map fetch_climate_for_site() result to flat row dict (our column names)."""
     if not climate or climate.get("error"):
         return {c: None for c in WEATHER_COLUMNS}
     return {
@@ -98,7 +98,7 @@ def run(start_index: int = 0, end_index: int | None = None) -> None:
 
         lat, lon = geo["lat"], geo["lon"]
         try:
-            climate = get_climate(
+            climate = fetch_climate_for_site(
                 float(lat), float(lon),
                 start_date=WEATHER_START_DATE,
                 end_date=WEATHER_END_DATE,

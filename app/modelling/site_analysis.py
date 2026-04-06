@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import logging
@@ -10,17 +9,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, Optional
 
 from app.utils import common as calib
-from app.server.app import get_climate
 from app.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
 from app.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
-from app.features.active.weather.open_meteo import get_default_weather_range
+from app.features.active.weather.open_meteo import fetch_climate_for_site, get_default_weather_range
 from app.server.db_cache import (
     get_cached_site_fetch,
     save_site_fetch_cache,
     get_cached_site_analysis_by_latlon,
     save_site_analysis_response,
 )
+from app.celery.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 
@@ -36,20 +35,6 @@ FETCH_RETAIL_WITH_WEATHER = True
 SITE_FETCH_CACHE_VERSION = "v1"
 SITE_FETCH_CACHE_TTL_DAYS = int(os.getenv("SITE_FETCH_CACHE_TTL_DAYS", "30"))
 SITE_RESPONSE_CACHE_TOLERANCE = float(os.getenv("SITE_RESPONSE_CACHE_TOLERANCE", "0.5"))
-
-
-def _geocode(address: str) -> tuple[float, float]:
-    """Return (lat, lon). Raises ValueError if geocoding fails."""
-    if not address or not address.strip():
-        raise ValueError("Address is required")
-    geo = calib.get_lat_long(address)
-    if not geo:
-        raise ValueError("Could not geocode address (no results or API error)")
-    lat = geo.get("lat")
-    lon = geo.get("lon")
-    if lat is None or lon is None:
-        raise ValueError("Could not geocode address")
-    return float(lat), float(lon)
 
 
 def _random_placeholder_fetched(lat: float, lon: float) -> Dict[str, Any]:
@@ -100,7 +85,7 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
     api_key = calib.GOOGLE_MAPS_API_KEY or ""
 
     def _fetch_climate() -> Dict[str, Any]:
-        out = get_climate(lat, lon, start_date=start_date, end_date=end_date)
+        out = fetch_climate_for_site(lat, lon, start_date=start_date, end_date=end_date)
         return out if out and not out.get("error") else {}
 
     if FETCH_WEATHER_ONLY:
@@ -112,9 +97,6 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
             "retail_anchors": placeholders["retail_anchors"],
             "competitors_data": placeholders["competitors_data"],
         }
-
-        def _partial_climate() -> Dict[str, Any]:
-            return _fetch_climate()
 
         def _partial_competitors() -> Dict[str, Any]:
             if not api_key:
@@ -157,7 +139,7 @@ def fetch_all_features(lat: float, lon: float) -> Dict[str, Any]:
 
         futures_map: Dict[Any, str] = {}
         with ThreadPoolExecutor(max_workers=5) as ex:
-            futures_map[ex.submit(_partial_climate)] = "climate"
+            futures_map[ex.submit(_fetch_climate)] = "climate"
             if FETCH_COMPETITION_WITH_WEATHER:
                 futures_map[ex.submit(_partial_competitors)] = "competitors_data"
             if FETCH_GAS_WITH_WEATHER:
@@ -369,22 +351,31 @@ def build_feature_values_and_v3_input(
     return feature_values, location_features
 
 
+@celery_app.task(bind=True, name="analyse_site")
 def run_site_analysis(
+    self,
     address: str,
-    *,
     tunnel_count: Optional[int] = None,
     carwash_type_encoded: Optional[int] = None,
     tier_strategy: str = "4-class-90pct-custom",
     run_quantile: bool = True,
-    run_narratives: bool = False,
+    run_narratives: bool = True,
 ) -> Dict[str, Any]:
     """
-    Single entry point: geocode once → fetch all features once → quantile prediction → narratives.
-    Returns only when all stages are complete. Full result includes address, lat, lon,
-    feature_values, fetched, quantile_result, and narratives.
+    Celery task + implementation: geocode → fetch → quantile → narratives.
+    Call via run_site_analysis.delay(...). Registered Celery name: analyse_site.
     """
+    task_id = self.request.id
+    logger.info(
+        "analyse_site task started: task_id=%s address=%s tunnel_count=%s carwash_type=%s strategy=%s",
+        task_id,
+        address,
+        tunnel_count,
+        carwash_type_encoded,
+        tier_strategy,
+    )
     normalized_address = " ".join((address or "").strip().lower().split())
-    lat, lon = _geocode(address)
+    lat, lon = calib.resolve_lat_lon(address)
     cached_response = get_cached_site_analysis_by_latlon(
         lat, lon, tolerance=SITE_RESPONSE_CACHE_TOLERANCE
     )
@@ -399,6 +390,7 @@ def run_site_analysis(
             "match_type": "lat_lon_closest",
             "tolerance": SITE_RESPONSE_CACHE_TOLERANCE,
         }
+        logger.info("analyse_site task finished (lat/lon cache hit): task_id=%s", task_id)
         return cached_result
 
     cache_key = hashlib.sha256(
@@ -523,10 +515,5 @@ def run_site_analysis(
         ttl_days=SITE_FETCH_CACHE_TTL_DAYS,
     )
 
+    logger.info("analyse_site task finished: task_id=%s", task_id)
     return result
-
-
-# Alias for backward compatibility with Celery / routes that expect analyze_site_from_dict
-def analyze_site_from_dict(address: str) -> Dict[str, Any]:
-    """Run full site analysis (single fetch + quantile). No narratives by default."""
-    return run_site_analysis(address, run_quantile=True, run_narratives=False)
