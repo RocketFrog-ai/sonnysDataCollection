@@ -72,7 +72,7 @@ def _feature_summary_agent(
     }
 
 
-def _insight_agent(
+def get_insight(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> Optional[str]:
@@ -81,43 +81,11 @@ def _insight_agent(
     try:
         text = get_llm_text(prompt, max_new_tokens=512)
         if text:
-            text = re.sub(r'^(?:\*\*)?Insight:(?:\*\*)?\s*', '', text.strip(), flags=re.IGNORECASE)
+            text = re.sub(r"^(?:\*\*)?Insight:(?:\*\*)?\s*", "", text.strip(), flags=re.IGNORECASE)
         return text if text else None
     except Exception as e:
         logger.warning("Insight LLM call failed: %s", e)
         return None
-
-
-def _overall_agent(
-    quantile_result: Dict[str, Any],
-    feature_narratives: List[Dict[str, Any]],
-) -> Dict[str, Optional[str]]:
-    """Generate observation and conclusion for weather."""
-    prompt = build_overall_prompt(quantile_result, feature_narratives)
-
-    out: Dict[str, Optional[str]] = {"observation": None, "conclusion": None}
-    try:
-        text = get_llm_text(prompt, max_new_tokens=512)
-        if not text:
-            return out
-        # obs_m = re.search(r"Observation:\s*(.+?)(?=\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
-        # con_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Observation:|$)", text, re.DOTALL | re.IGNORECASE)
-        pro_m = re.search(r"Pro:\s*(.+?)(?=\s*Con:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
-        con_m = re.search(r"Con:\s*(.+?)(?=\s*Pro:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
-        conclusion_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Pro:|\s*Con:|$)", text, re.DOTALL | re.IGNORECASE)
-        # if obs_m:
-        #     out["observation"] = obs_m.group(1).strip()
-        if pro_m:
-            out["pro"] = pro_m.group(1).strip()
-        if con_m:
-            out["con"] = con_m.group(1).strip()
-        if conclusion_m:
-            out["conclusion"] = conclusion_m.group(1).strip()
-    except Exception as e:
-        logger.warning("Overall narrative LLM call failed: %s", e)
-    return out
-
-
 
 
 def get_feature_narratives(
@@ -229,25 +197,28 @@ def get_feature_narratives(
     return out
 
 
-def get_insight(
-    quantile_result: Dict[str, Any],
-    feature_narratives: List[Dict[str, Any]],
-) -> Optional[str]:
-    """Generate one Insight paragraph from weather quantile results."""
-    return _insight_agent(quantile_result, feature_narratives)
-
-
 def get_overall_narrative(
     quantile_result: Dict[str, Any],
     feature_narratives: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Generate observation and conclusion from weather quantile results and business impacts."""
-    overall = _overall_agent(quantile_result, feature_narratives)
-    # return {
-    #     "observation": overall.get("observation"),
-    #     "conclusion": overall.get("conclusion"),
-    # }
-    return {"pro": overall.get("pro"), "con": overall.get("con"), "conclusion": overall.get("conclusion")}
+    prompt = build_overall_prompt(quantile_result, feature_narratives)
+    out: Dict[str, Optional[str]] = {"observation": None, "conclusion": None}
+    try:
+        text = get_llm_text(prompt, max_new_tokens=512)
+        if text:
+            pro_m = re.search(r"Pro:\s*(.+?)(?=\s*Con:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+            con_m = re.search(r"Con:\s*(.+?)(?=\s*Pro:|\s*Conclusion:|$)", text, re.DOTALL | re.IGNORECASE)
+            conclusion_m = re.search(r"Conclusion:\s*(.+?)(?=\s*Pro:|\s*Con:|$)", text, re.DOTALL | re.IGNORECASE)
+            if pro_m:
+                out["pro"] = pro_m.group(1).strip()
+            if con_m:
+                out["con"] = con_m.group(1).strip()
+            if conclusion_m:
+                out["conclusion"] = conclusion_m.group(1).strip()
+    except Exception as e:
+        logger.warning("Overall narrative LLM call failed: %s", e)
+    return {"pro": out.get("pro"), "con": out.get("con"), "conclusion": out.get("conclusion")}
 
 
 if __name__ == "__main__":

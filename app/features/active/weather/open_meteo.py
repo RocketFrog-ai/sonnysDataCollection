@@ -161,6 +161,25 @@ def get_default_weather_range():
     return start_date.isoformat(), end_date.isoformat()
 
 
+def fetch_climate_for_site(
+    latitude: float,
+    longitude: float,
+    start_date: str = None,
+    end_date: str = None,
+) -> dict:
+    """
+    Single entry for site pipelines and scripts: range-based or default multi-year climatology.
+    Returns metrics dict on success, or {"error": "..."} if data could not be retrieved.
+    """
+    if start_date is not None and end_date is not None:
+        climate_data = get_climate_data_for_range(latitude, longitude, start_date, end_date)
+    else:
+        climate_data = get_climate_data(latitude, longitude, "2024", "2025")
+    if climate_data:
+        return climate_data
+    return {"error": "Could not retrieve climate data."}
+
+
 def get_climate_data_for_range(latitude, longitude, start_date_str, end_date_str):
     """
     Aggregate daily weather over a date range into metrics used by v3 and UI.

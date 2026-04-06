@@ -76,6 +76,24 @@ def filter_duplicate_locations(sorted_lights, threshold_miles=0.05):
 
     return unique_lights
 
+
+def get_traffic_lights_summary(lat: float, lon: float) -> dict:
+    """API row: count + up to 10 nearest traffic-light distances (miles)."""
+    sorted_lights = get_nearby_traffic_lights(lat, lon)
+    unique_lights = filter_duplicate_locations(sorted_lights)
+    output_row = {
+        "Latitude": lat,
+        "Longitude": lon,
+        "nearby_traffic_lights_count": len(unique_lights),
+    }
+    for i in range(10):
+        if i < len(unique_lights):
+            output_row[f"distance_nearest_traffic_light_{i + 1}"] = unique_lights[i]["distance_miles"]
+        else:
+            output_row[f"distance_nearest_traffic_light_{i + 1}"] = None
+    return output_row
+
+
 if __name__ == "__main__":
     # Query location
     QUERY_LAT = 34.5810125

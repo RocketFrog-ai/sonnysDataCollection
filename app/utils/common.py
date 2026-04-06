@@ -89,6 +89,20 @@ def get_lat_long(address):
     return None
 
 
+def resolve_lat_lon(address: str):
+    """Geocode to (lat, lon) as floats. Raises ValueError if the address is empty or not found."""
+    if not address or not str(address).strip():
+        raise ValueError("Address is required")
+    geo = get_lat_long(address)
+    if not geo:
+        raise ValueError("Could not geocode address (no results or API error)")
+    lat = geo.get("lat")
+    lon = geo.get("lon")
+    if lat is None or lon is None:
+        raise ValueError("Could not geocode address")
+    return float(lat), float(lon)
+
+
 def calculate_distance(lat1, lon1, lat2, lon2):
     """Calculate the distance between two points in miles."""
     if pd.isna(lat1) or pd.isna(lon1) or pd.isna(lat2) or pd.isna(lon2):

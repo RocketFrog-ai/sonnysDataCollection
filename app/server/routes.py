@@ -1,8 +1,6 @@
 import json
 import logging
-import redis
 import requests
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from celery.result import AsyncResult
@@ -10,26 +8,16 @@ from fastapi import APIRouter, HTTPException
 
 from app.utils import common as calib
 from app.server.config import (
-    REDIS_HOST,
-    REDIS_PORT,
-    REDIS_DB,
-    REDIS_PASSWORD,
-    CELERY_BROKER_URL,
-    CELERY_RESULT_BACKEND,
     DIMENSIONS,
     WEATHER_METRIC_CONFIG,
     WEATHER_METRIC_DISPLAY,
     WEATHER_METRIC_TO_V3_FEATURE,
     get_weather_metric_value_from_climate,
-    COMPETITION_METRIC_DISPLAY,
     COMPETITION_METRIC_TO_V3_FEATURE,
-    COMPETITION_RADIUS_MILES,
     nearest_brand_strength_from_quantile,
-    RETAIL_METRIC_TO_V3_FEATURE,
     RETAIL_RADIUS_NEAR_MILES,
     RETAIL_RADIUS_FAR_MILES,
     RETAIL_SCORE_V3_KEYS,
-    GAS_METRIC_TO_V3_FEATURE,
     GAS_RADIUS_NEAR_MILES,
     GAS_RADIUS_FAR_MILES,
     GAS_SCORE_V3_KEYS,
@@ -47,20 +35,15 @@ from app.server.models import (
     DimensionSummaryResponse,
     QuantileSummaryResponse,
 )
-from app.server.app import (
-    get_traffic_lights,
-    get_nearby_stores,
-)
+from app.features.active.trafficLights.nearby_traffic_lights import get_traffic_lights_summary
+from app.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.server.db_cache import get_all_site_analysis_cache
-from app.celery.tasks import analyse_site
+from app.modelling.site_analysis import run_site_analysis
 from app.celery.celery_app import celery_app
 from app.modelling.ds.scorer import (
-    enrich_features_with_categories,
-    get_feature_final_scores,
     get_all_profiler_scores_from_task_feature_values,
     compute_dimension_score,
     compute_overall_score,
-    WEATHER_API_TO_PROFILER,
 )
 from app.modelling.ds.dimension_summary import (
     get_dimension_summary_approach2,
@@ -85,45 +68,28 @@ PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 # Helpers
 # -----------------------------------------------------------------------------
 
-def _geocode(address: str) -> Tuple[float, float]:
-    if not address or not address.strip():
-        raise HTTPException(status_code=400, detail="Address is required")
-    geo = calib.get_lat_long(address)
-    if not geo:
-        raise HTTPException(status_code=400, detail="Could not geocode address (no results or API error)")
-    lat = geo.get("lat")
-    lon = geo.get("lon")
-    if lat is None or lon is None:
-        raise HTTPException(status_code=400, detail="Could not geocode address")
-    return lat, lon
+# Retail / map: cap how many anchors we show per type (narrative + map stay aligned).
+_ANCHOR_DISPLAY_CAP = 5
 
 
-def get_redis_client():
-    return redis.Redis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        db=REDIS_DB,
-        password=REDIS_PASSWORD,
-        decode_responses=True,
-    )
+def _cap_anchors_by_type(anchor_list: List[Dict[str, Any]], cap: int) -> List[Dict[str, Any]]:
+    seen: Dict[str, int] = {}
+    out: List[Dict[str, Any]] = []
+    for a in anchor_list:
+        t = a.get("type", "Other")
+        n = seen.get(t, 0)
+        if n < cap:
+            out.append(a)
+            seen[t] = n + 1
+    return out
 
 
-# Redis key for partial result (written by Celery task after fetch / quantile / narratives)
-RESULT_CACHE_KEY = "site_analysis:{task_id}"
-
-
-def _get_partial_result_from_redis(task_id: str) -> Optional[Dict[str, Any]]:
-    """Return partial or full result from Redis when task is still running (or just finished)."""
+def _lat_lon_from_address_or_400(address: str) -> Tuple[float, float]:
+    """Geocode for HTTP handlers: map geocode failures to 400."""
     try:
-        client = get_redis_client()
-        key = RESULT_CACHE_KEY.format(task_id=task_id)
-        raw = client.get(key)
-        if not raw:
-            return None
-        return json.loads(raw)
-    except Exception as e:
-        logger.warning("Redis partial result read failed: %s", e)
-        return None
+        return calib.resolve_lat_lon(address)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 def _get_task_result_or_raise(task_id: str):
@@ -137,98 +103,15 @@ def _get_task_result_or_raise(task_id: str):
             )
         raise HTTPException(
             status_code=404,
-            detail=f"Task {task_id} not completed yet (status={task_result.state}). Poll GET /result/{task_id} for partial or full result.",
+            detail=(
+                f"Task {task_id} not completed yet (status={task_result.state}). "
+                "Poll GET /task/{task_id} or GET /result/{task_id} until status is success."
+            ),
         )
     result = task_result.result
     if result is None:
         raise HTTPException(status_code=422, detail=f"Task {task_id} completed but result is empty.")
     return result
-
-
-def _get_result_or_partial(task_id: str):
-    """Return result (partial from Redis or full from Celery). Raises if task failed or not found."""
-    task_result = AsyncResult(task_id, app=celery_app)
-    if task_result.state == TaskStatus.FAILURE.value:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Task {task_id} failed: {str(task_result.result) if task_result.result else 'Task failed'}",
-        )
-    if task_result.state == TaskStatus.SUCCESS.value and task_result.result is not None:
-        return task_result.result
-    partial = _get_partial_result_from_redis(task_id)
-    if partial is not None:
-        return partial
-    raise HTTPException(
-        status_code=404,
-        detail=f"Task {task_id} not started or no result yet. Poll GET /result/{task_id}.",
-    )
-
-
-def _dimension_summary(task_id: str, dimension: str) -> dict:
-    result = _get_task_result_or_raise(task_id)
-    feature_values = result.get("feature_values") or {}
-
-    if dimension not in DIMENSION_FEATURE_MAP:
-        return DimensionSummaryResponse(
-            task_id=task_id,
-            dimension=dimension,
-            predicted_tier="Insufficient Data",
-            fit_score=0.0,
-            features_scored=0,
-            feature_breakdown={},
-            discriminatory_power={},
-            summary=f"No Approach 2 data for dimension {dimension}.",
-            feature_values_slice={},
-            feature_performance={},
-        ).model_dump()
-
-    try:
-        a2 = get_dimension_summary_approach2(dimension, feature_values)
-    except Exception as e:
-        logger.warning(f"Approach 2 summary failed for {dimension}: {e}")
-        a2 = None
-
-    if not a2 or a2.get("features_scored", 0) == 0:
-        return DimensionSummaryResponse(
-            task_id=task_id,
-            dimension=dimension,
-            predicted_tier="Insufficient Data",
-            fit_score=0.0,
-            features_scored=0,
-            feature_breakdown={},
-            discriminatory_power={},
-            summary=a2.get("summary", f"No scorable features for {dimension}.") if a2 else f"No data for {dimension}.",
-            feature_values_slice={},
-            feature_performance={},
-        ).model_dump()
-
-    scored = a2.get("feature_scores", [])
-    fit_avg = sum(s.get("final_score", 0) for s in scored) / len(scored) if scored else 0
-    feat_breakdown = {
-        s["feature"]: {
-            "value": s["value"],
-            "raw_percentile": s.get("raw_percentile"),
-            "final_score": s.get("final_score"),
-            "category": s.get("category"),
-        }
-        for s in scored
-    }
-    feat_perf = {s["feature"]: s.get("category", "N/A") for s in scored}
-    mapping = DIMENSION_FEATURE_MAP[dimension]
-    fv_slice = {tk: feature_values.get(tk) for tk in mapping if feature_values.get(tk) is not None}
-
-    return DimensionSummaryResponse(
-        task_id=task_id,
-        dimension=dimension,
-        predicted_tier=a2.get("overall_category", "Insufficient Data"),
-        fit_score=round(fit_avg, 1),
-        features_scored=a2.get("features_scored", 0),
-        feature_breakdown=feat_breakdown,
-        discriminatory_power={},
-        summary=a2.get("summary", ""),
-        feature_values_slice=fv_slice,
-        feature_performance=feat_perf,
-    ).model_dump()
 
 
 def _retail_anchor_category(anchor_type: Optional[str], anchor_name: Optional[str]) -> str:
@@ -310,7 +193,7 @@ def analyze_site_endpoint(features: AnalyseRequest):
     if not features.address:
         raise HTTPException(status_code=400, detail="No site address provided")
     try:
-        result = analyse_site.delay(
+        result = run_site_analysis.delay(
             features.address,
             tunnel_count=features.tunnel_count,
             carwash_type_encoded=features.carwash_type_encoded,
@@ -335,7 +218,71 @@ def analyze_site_endpoint(features: AnalyseRequest):
 @router.get("/weather/summary/{task_id}")
 def get_weather_summary_by_task(task_id: str):
     """Dimension summary for Weather from task result (feature_values)."""
-    return _dimension_summary(task_id, "Weather")
+    dimension = "Weather"
+    result = _get_task_result_or_raise(task_id)
+    feature_values = result.get("feature_values") or {}
+
+    if dimension not in DIMENSION_FEATURE_MAP:
+        return DimensionSummaryResponse(
+            task_id=task_id,
+            dimension=dimension,
+            predicted_tier="Insufficient Data",
+            fit_score=0.0,
+            features_scored=0,
+            feature_breakdown={},
+            discriminatory_power={},
+            summary=f"No Approach 2 data for dimension {dimension}.",
+            feature_values_slice={},
+            feature_performance={},
+        ).model_dump()
+
+    try:
+        a2 = get_dimension_summary_approach2(dimension, feature_values)
+    except Exception as e:
+        logger.warning("Approach 2 summary failed for %s: %s", dimension, e)
+        a2 = None
+
+    if not a2 or a2.get("features_scored", 0) == 0:
+        return DimensionSummaryResponse(
+            task_id=task_id,
+            dimension=dimension,
+            predicted_tier="Insufficient Data",
+            fit_score=0.0,
+            features_scored=0,
+            feature_breakdown={},
+            discriminatory_power={},
+            summary=a2.get("summary", f"No scorable features for {dimension}.") if a2 else f"No data for {dimension}.",
+            feature_values_slice={},
+            feature_performance={},
+        ).model_dump()
+
+    scored = a2.get("feature_scores", [])
+    fit_avg = sum(s.get("final_score", 0) for s in scored) / len(scored) if scored else 0
+    feat_breakdown = {
+        s["feature"]: {
+            "value": s["value"],
+            "raw_percentile": s.get("raw_percentile"),
+            "final_score": s.get("final_score"),
+            "category": s.get("category"),
+        }
+        for s in scored
+    }
+    feat_perf = {s["feature"]: s.get("category", "N/A") for s in scored}
+    mapping = DIMENSION_FEATURE_MAP[dimension]
+    fv_slice = {tk: feature_values.get(tk) for tk in mapping if feature_values.get(tk) is not None}
+
+    return DimensionSummaryResponse(
+        task_id=task_id,
+        dimension=dimension,
+        predicted_tier=a2.get("overall_category", "Insufficient Data"),
+        fit_score=round(fit_avg, 1),
+        features_scored=a2.get("features_scored", 0),
+        feature_breakdown=feat_breakdown,
+        discriminatory_power={},
+        summary=a2.get("summary", ""),
+        feature_values_slice=fv_slice,
+        feature_performance=feat_perf,
+    ).model_dump()
 
 
 @router.get("/weather/data-by-task/{task_id}")
@@ -557,20 +504,8 @@ def get_retail_data_by_task(task_id: str):
     within_3 = [a for a in anchors if a.get("distance_miles") is not None and RETAIL_RADIUS_NEAR_MILES < a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES]
     nearest = anchors[0] if anchors else {}
 
-    # Cap anchor display lists to 5 per anchor type (narrative and UI stay in sync).
-    _ANCHOR_DISPLAY_CAP = 5
-    def _cap_by_type(anchor_list: List[Dict[str, Any]], cap: int) -> List[Dict[str, Any]]:
-        seen: Dict[str, int] = {}
-        out = []
-        for a in anchor_list:
-            t = a.get("type", "Other")
-            if seen.get(t, 0) < cap:
-                out.append(a)
-                seen[t] = seen.get(t, 0) + 1
-        return out
-
-    within_1 = _cap_by_type(within_1, _ANCHOR_DISPLAY_CAP)
-    within_3 = _cap_by_type(within_3, _ANCHOR_DISPLAY_CAP)
+    within_1 = _cap_anchors_by_type(within_1, _ANCHOR_DISPLAY_CAP)
+    within_3 = _cap_anchors_by_type(within_3, _ANCHOR_DISPLAY_CAP)
 
     # Named anchor lookup: nearest per class from fetched v3 values (pre-computed)
     costco_dist = retail_anchors_data.get("costco_dist")
@@ -736,8 +671,9 @@ def get_map_data_by_task(task_id: str):
     """
     Return map-ready markers for frontend rendering (Leaflet/Mapbox/etc).
     Includes origin site + nearby competitors, gas stations, and retail anchors.
+    Requires the analyse-site task to be fully complete (same as other data-by-task endpoints).
     """
-    result = _get_result_or_partial(task_id)
+    result = _get_task_result_or_raise(task_id)
     fetched = result.get("fetched") or {}
 
     lat = result.get("lat")
@@ -823,17 +759,9 @@ def get_map_data_by_task(task_id: str):
         if a.get("distance_miles") is not None and RETAIL_RADIUS_NEAR_MILES < a["distance_miles"] <= RETAIL_RADIUS_FAR_MILES
     ]
 
-    def _cap_by_type(anchor_list: List[Dict[str, Any]], cap: int = 5) -> List[Dict[str, Any]]:
-        seen: Dict[str, int] = {}
-        out: List[Dict[str, Any]] = []
-        for a in anchor_list:
-            t = a.get("type", "Other")
-            if seen.get(t, 0) < cap:
-                out.append(a)
-                seen[t] = seen.get(t, 0) + 1
-        return out
-
-    retail_for_map = _cap_by_type(retail_within_1, 5) + _cap_by_type(retail_within_3, 5)
+    retail_for_map = _cap_anchors_by_type(retail_within_1, _ANCHOR_DISPLAY_CAP) + _cap_anchors_by_type(
+        retail_within_3, _ANCHOR_DISPLAY_CAP
+    )
     for idx, anchor in enumerate(retail_for_map, start=1):
         category = _retail_anchor_category(anchor.get("type"), anchor.get("name"))
         _add_marker(anchor, category, f"retail_{idx}")
@@ -843,7 +771,7 @@ def get_map_data_by_task(task_id: str):
         "address": result.get("address"),
         "lat": float(lat),
         "lon": float(lon),
-        "complete": bool((result.get("quantile_result") or {})),
+        "complete": bool(result.get("quantile_result")),
         "counts": {
             "markers_total": len(markers),
             "gas_stations": len([m for m in markers if m["category"] == "gas_station"]),
@@ -863,8 +791,8 @@ def get_map_data_by_task(task_id: str):
 @router.post("/traffic-lights")
 def get_traffic_lights_endpoint(features: AnalyseRequest):
     try:
-        lat, lon = _geocode(features.address)
-        data = get_traffic_lights(lat, lon)
+        lat, lon = _lat_lon_from_address_or_400(features.address)
+        data = get_traffic_lights_summary(lat, lon)
         return {"address": features.address, "lat": lat, "lon": lon, "data": data}
     except HTTPException:
         raise
@@ -880,8 +808,12 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
 @router.post("/nearby-stores")
 def get_nearby_stores_endpoint(features: AnalyseRequest):
     try:
-        lat, lon = _geocode(features.address)
-        data = get_nearby_stores(lat, lon)
+        lat, lon = _lat_lon_from_address_or_400(features.address)
+        try:
+            data = get_nearby_stores_data(lat, lon)
+        except Exception:
+            logger.exception("Nearby stores fetch failed")
+            data = {"error": "Could not retrieve nearby stores data."}
         return {"address": features.address, "lat": lat, "lon": lon, "data": data}
     except HTTPException:
         raise
@@ -897,8 +829,8 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
 @router.get("/task/{task_id}", response_model=TaskStatusResponse)
 def get_task_status(task_id: str):
     """
-    Task status and result. While task is running, result may contain partial data
-    (fetched first, then quantile, then full) from Redis so clients can show progress.
+    Task status and result from Celery. Full `result` is present only when status is success.
+    Poll until success for the complete analyse-site payload (fetch + quantile + narratives).
     """
     task_result = AsyncResult(task_id, app=celery_app)
     status_str = task_result.state
