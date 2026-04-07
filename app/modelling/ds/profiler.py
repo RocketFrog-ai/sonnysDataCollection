@@ -1,21 +1,4 @@
-"""
-Percentile-based feature scoring (CTOExactProfiler) — production module.
-
-BASED ON CTO'S COSTCO EXAMPLE:
-"Minimum distance from Costco is 100 meters. Maximum is 10 kilometers.
-When it is 10 kilometers, you give a zero score. 
-When it is 100 meter, you give a one score.
-Based on the percentile value you get the score.
-Value a kilometer and you are sitting on 94th percentile. 94.3 percentile.
-Then your value is 94.3."
-
-KEY PRINCIPLES:
-1. For EACH feature: Calculate min, max, distribution
-2. Score = Percentile rank (0-100)
-3. If "lower is better": Invert the percentile
-4. Use ABSOLUTE percentile (94.3%, not "High")
-5. NO target variable involved
-"""
+"""Portfolio percentile scoring vs Proforma: raw percentile, invert when lower-is-better."""
 
 import pandas as pd
 import numpy as np
@@ -24,39 +7,11 @@ from typing import Dict, List, Tuple
 import json
 
 
-class CTOExactProfiler:
-    """
-    Implements CTO's exact scoring methodology.
-    
-    Example from CTO:
-    -----------------
-    Feature: distance_from_costco
-    
-    All 531 sites:
-      Min: 100 meters (0.1 km)
-      Max: 10 km
-      Distribution: [0.1, 0.3, 0.5, ..., 2.0, ..., 10.0]
-    
-    Your site: 1.0 km
-    
-    Step 1: Find percentile rank
-      percentile = percentileofscore(all_distances, 1.0)
-      = 94.3%  (you rank at 94.3rd percentile)
-    
-    Step 2: Interpret based on direction
-      Lower is better for distance
-      So INVERT: score = 100 - 94.3 = 5.7
-      
-      (If you're at 94.3 percentile, you're FARTHER than 94.3% of sites)
-      (Which is BAD because closer is better)
-      (So your score is low: 5.7/100)
-    
-    Step 3: Your score is 5.7/100
-      This is your WEAKNESS because you're far from Costco
-    """
-    
+class PercentileProfiler:
+    """Percentile-of-portfolio scoring per feature; invert score when lower values are better."""
+
     def __init__(self, df: pd.DataFrame):
-        """Initialize with data and analyze distributions."""
+        """Load numeric feature columns and precompute distributions."""
         self.df = df.copy()
         
         # Identify features
@@ -64,7 +19,7 @@ class CTOExactProfiler:
         self.feature_cols = [col for col in df.columns 
                             if col not in exclude and df[col].dtype in ['int64', 'float64']]
         
-        # Define directionality (CTO: "higher the better, lower the better")
+        # Define directionality (higher vs lower is better per feature)
         self._define_directions()
         
         # Precompute distributions
@@ -75,14 +30,7 @@ class CTOExactProfiler:
         print(f"  - {len(self.feature_cols)} features")
     
     def _define_directions(self):
-        """
-        Define directionality for each feature.
-        
-        CTO examples:
-        - "distance from Costco: Lower the better"
-        - "rain: higher the better" (NOTE: This seems wrong - more rain is NOT better
-          for car wash, I think he meant as an example of variable directionality)
-        """
+        """Populate higher_is_better / lower_is_better sets from business rules."""
         # HIGHER IS BETTER
         self.higher_is_better = {
             # Weather - good conditions
@@ -134,7 +82,7 @@ class CTOExactProfiler:
             'count_food_joints_0_5miles (0.5 mile)': 'More food options nearby is better',
         }
         
-        # LOWER IS BETTER (CTO example: "distance from Costco: Lower the better")
+        # LOWER IS BETTER (e.g. distance to anchor: closer is better)
         self.lower_is_better = {
             # Weather - bad conditions (less is better)
             'total_precipitation_mm': 'Less rain is better',
@@ -148,7 +96,7 @@ class CTOExactProfiler:
             'competitors_count': 'Fewer competitors is better',
             'competitor_1_distance_miles': 'Actually this is tricky - farther might mean less competition OR less traffic',
             
-            # Distance to amenities - CLOSER IS BETTER (CTO's Costco example)
+            # Distance to amenities — closer is better
             'distance_from_nearest_target': 'Closer to Target is better',
             'distance_from_nearest_costco': 'Closer to Costco is better',
             'distance_from_nearest_walmart': 'Closer to Walmart is better',
@@ -181,14 +129,7 @@ class CTOExactProfiler:
         }
     
     def _analyze_distributions(self):
-        """
-        CTO: "You can calculate the min and max. And you can draw the distribution."
-        
-        For EACH feature, compute:
-        - Min, Max (CTO emphasized this)
-        - Full distribution (for percentile calculation)
-        - Statistics
-        """
+        """For each feature: min, max, full distribution for percentiles, and summary stats."""
         self.distributions = {}
         
         for feature in self.feature_cols:
@@ -218,21 +159,10 @@ class CTOExactProfiler:
                 'shape': shape
             }
     
-    def score_feature_cto_method(self, feature: str, value: float) -> Dict:
+    def score_feature_percentile(self, feature: str, value: float) -> Dict:
         """
-        Score using CTO's EXACT method from the Costco example.
-        
-        CTO's steps:
-        1. "Minimum distance from Costco is 100 meters. Maximum is 10 kilometers."
-        2. "When it is 10 kilometers, you give a zero score. When it is 100 meter, you give a one score."
-        3. "Based on the percentile value you get the score."
-        4. "Value a kilometer and you are sitting on 94th percentile. 94.3 percentile."
-        5. "Then your value is 94.3."
-        
-        Translation:
-        - Find where this value ranks in the distribution (percentile)
-        - If "lower is better": High percentile = bad (far from ideal)
-        - If "higher is better": High percentile = good (close to ideal)
+        Rank the value in the portfolio distribution (percentile), then map to a 0–100 score.
+        For lower-is-better features, invert: score = 100 - raw percentile.
         """
         if feature not in self.distributions:
             return {'error': 'Feature not found'}
@@ -240,15 +170,11 @@ class CTOExactProfiler:
         dist = self.distributions[feature]
         data = dist['data']
         
-        # Step 1: Calculate EXACT percentile (CTO: "94.3 percentile")
         raw_percentile = stats.percentileofscore(data, value, kind='rank')
         
-        # Step 2: Determine direction
         if feature in self.lower_is_better:
             direction = 'lower_is_better'
-            # CTO's Costco example: 1km at 94.3%ile means you're FARTHER than 94.3%
-            # That's BAD (because closer is better)
-            # So invert: score = 100 - 94.3 = 5.7
+            # High raw percentile = worse (e.g. farther when closer is better) → invert
             final_score = 100 - raw_percentile
             
             interpretation = self._interpret_lower_is_better(raw_percentile)
@@ -267,7 +193,7 @@ class CTOExactProfiler:
             'min': dist['min'],
             'max': dist['max'],
             'median': dist['median'],
-            'raw_percentile': round(raw_percentile, 2),  # CTO: "94.3" (exact)
+            'raw_percentile': round(raw_percentile, 2),
             'final_score': round(final_score, 2),  # This is what we use
             'direction': direction,
             'interpretation': interpretation,
@@ -322,13 +248,13 @@ class CTOExactProfiler:
         """
         Score all features for a location.
         
-        CTO: "For every feature you get a score. Individual percentile score."
+        Per-feature percentile-based scores, then an overall mean.
         """
         feature_scores = {}
         
         for feature, value in location_features.items():
             if feature in self.feature_cols:
-                score_info = self.score_feature_cto_method(feature, value)
+                score_info = self.score_feature_percentile(feature, value)
                 feature_scores[feature] = score_info
         
         # Calculate overall score
@@ -336,7 +262,7 @@ class CTOExactProfiler:
                  if 'final_score' in fs]
         overall_score = np.mean(scores) if scores else 0
         
-        # Identify top K good, top K bad (CTO: "Identify top K good, top K bad")
+        # Top strengths / weaknesses by final score
         sorted_features = sorted(feature_scores.items(), 
                                 key=lambda x: x[1].get('final_score', 0), 
                                 reverse=True)
@@ -351,7 +277,7 @@ class CTOExactProfiler:
     
     def print_detailed_report(self, result: Dict):
         """
-        Print report showing CTO's methodology.
+        Print a text report of strengths and weaknesses.
         """
         print("="*80)
         print("SCORING REPORT")
@@ -377,11 +303,9 @@ class CTOExactProfiler:
         for feature, details in result['top_weaknesses']:
             print(f"{feature[:38]:<40s} {details['value']:>10,.1f} {details['raw_percentile']:>11.2f}% {details['final_score']:>7.1f} {details['interpretation']}")
     
-    def explain_cto_logic_with_example(self, feature: str, value: float):
-        """
-        Explain CTO's logic using a specific example.
-        """
-        score_info = self.score_feature_cto_method(feature, value)
+    def explain_scoring_with_example(self, feature: str, value: float):
+        """Print a step-by-step walkthrough for one feature and value."""
+        score_info = self.score_feature_percentile(feature, value)
         
         print("\n" + "="*80)
         print(f"METHODOLOGY EXAMPLE: {feature}")
@@ -419,7 +343,6 @@ class CTOExactProfiler:
     def print_distribution_stats(self):
         """
         Print distribution statistics (min, max, mean, median, std) for all features.
-        CTO: "You can calculate the min and max. And you can draw the distribution."
         """
         print("\n" + "="*140)
         print("DISTRIBUTION STATISTICS - ALL FEATURES")

@@ -463,7 +463,7 @@ def run_site_analysis(
     quantile_result: Optional[Dict[str, Any]] = None
     if run_quantile and location_features:
         try:
-            from app.modelling.ds.quantile_predictor import QuantilePredictorV4
+            from app.modelling.ds.prediction import QuantilePredictorV4
             predictor = QuantilePredictorV4(tier_strategy=tier_strategy)
             quantile_result = predictor.analyze(location_features, llm_narrative=False)
             result["quantile_result"] = quantile_result

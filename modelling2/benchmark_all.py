@@ -1,7 +1,7 @@
 """
 Unified benchmarks for modelling2/finale.csv — plain-language "accuracy" + parity with app/modelling.
 
-- Production (`app.modelling.ds.quantile_predictor`) reports **classification accuracy**:
+- Production (`app.modelling.ds.prediction`) reports **classification accuracy**:
   predict wash tier Q1–Q4 from site features; "exact" = predicted tier equals true tier (% of sites).
 - Earlier modelling2 regression reported **R²** and **MAPE** — that is not the same as tier accuracy.
 
@@ -45,7 +45,7 @@ TIER_PERCENTILE_SPLITS = [19, 31, 31, 19]  # "4-class-90pct-custom"
 
 
 def add_engineered_features(df: pd.DataFrame, *, include_effective_capacity: bool) -> pd.DataFrame:
-    """Mirror app.modelling.ds.quantile_predictor._add_engineered_features (subset)."""
+    """Mirror app.modelling.ds.prediction._add_engineered_features (subset)."""
     df = df.copy()
 
     cr = df.get("competitor_1_rating_count", pd.Series(np.nan, index=df.index))
@@ -108,7 +108,7 @@ def assign_wash_quantile_labels(counts: np.ndarray, splits: list[int]) -> np.nda
     return q.astype(int).values
 
 
-# Features aligned with quantile_predictor.ML_FEATURE_ORDER (no tunnel / no EC variant)
+# Features aligned with prediction.ML_FEATURE_ORDER (no tunnel / no EC variant)
 FEATURES_NO_TUNNEL = [
     "weather_total_precipitation_mm",
     "weather_rainy_days",
@@ -363,7 +363,7 @@ def main() -> None:
         "knn_k5_distance": cv_classify_metrics(_pipe_knn5("distance"), X_nt, y_q),
     }
 
-    # Optional: with tunnel + EC (reference — same spirit as production quantile_predictor)
+    # Optional: with tunnel + EC (reference — same spirit as production prediction module)
     df_wt = add_engineered_features(raw, include_effective_capacity=True)
     X_wt = materialize_X(df_wt, FEATURES_WITH_TUNNEL)
     results["quantile_classification_REFERENCE_with_tunnel_and_effective_capacity"] = {}
@@ -502,7 +502,7 @@ def main() -> None:
 
 | What you saw | What it measures |
 |---|---|
-| **`app/modelling`** (`ds.quantile_predictor`) | **Classification:** each site gets a **tier** Q1–Q4 from `current_count`. **Accuracy** = % of sites where the **predicted tier equals the true tier** (5-fold CV). Docs cite ~**63.5%** exact and ~**98%** within one tier when **tunnel_count + effective_capacity** are in the model. |
+| **`app/modelling`** (`ds.prediction`) | **Classification:** each site gets a **tier** Q1–Q4 from `current_count`. **Accuracy** = % of sites where the **predicted tier equals the true tier** (5-fold CV). Docs cite ~**63.5%** exact and ~**98%** within one tier when **tunnel_count + effective_capacity** are in the model. |
 | **Earlier modelling2 regression** | **Regression:** predict the **number** of washes. **R²** = variance explained (not “% correct”). **MAPE** = average **percent** error. There is no single “accuracy %” unless we define one (e.g. % predictions within 20% of true). |
 
 So: **production “accuracy” is tier hit rate; regression “accuracy” must be defined** (we use median APE + “within 20% of actual” below).

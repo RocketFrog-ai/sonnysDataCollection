@@ -51,7 +51,7 @@ from app.modelling.ds.dimension_summary import (
     _overall_score_to_category,
     DIMENSION_FEATURE_MAP,
 )
-from app.modelling.ds.quantile_display import get_category_for_quantile
+from app.modelling.ds.prediction import get_category_for_quantile
 from app.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
 
 
