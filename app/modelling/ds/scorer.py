@@ -1,10 +1,4 @@
-"""
-Feature scorer for API responses — Approach 2 (percentile-based).
-
-Uses CTOExactProfiler to assign a category (Excellent → Very Poor) to each
-feature value for display in the UI, and exposes dimension / overall scoring
-helpers used by the route handlers.
-"""
+"""Maps task features through PercentileProfiler for UI categories and weighted dimension/overall scores."""
 
 from contextlib import redirect_stdout
 from io import StringIO
@@ -13,7 +7,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from app.modelling.ds.profiler import CTOExactProfiler
+from app.modelling.ds.profiler import PercentileProfiler
 from app.modelling.ds.feature_weights_config import (
     FEATURE_WEIGHTS,
     DIMENSION_FEATURES,
@@ -24,7 +18,7 @@ from app.modelling.ds.feature_weights_config import (
 
 # ── Singleton profiler (lazy-loaded) ─────────────────────────────────────────
 
-_profiler: Optional[CTOExactProfiler] = None
+_profiler: Optional[PercentileProfiler] = None
 _ds_dir = Path(__file__).resolve().parent
 
 
@@ -71,7 +65,7 @@ TASK_GAS_TO_PROFILER: Dict[str, str] = {
 
 # ── Profiler singleton ────────────────────────────────────────────────────────
 
-def _get_profiler() -> CTOExactProfiler:
+def _get_profiler() -> PercentileProfiler:
     global _profiler
     if _profiler is None:
         data_path = _ds_dir / "datasets" / "Proforma-v2-data-final (1).xlsx"
@@ -87,7 +81,7 @@ def _get_profiler() -> CTOExactProfiler:
             kwargs["header"] = 1
         df = pd.read_excel(data_path, **kwargs)
         with redirect_stdout(StringIO()):
-            _profiler = CTOExactProfiler(df)
+            _profiler = PercentileProfiler(df)
     return _profiler
 
 
@@ -156,13 +150,10 @@ def _apply_direction_override(profiler_key: str, score_info: Dict[str, Any]) -> 
 # ── Public scoring API ────────────────────────────────────────────────────────
 
 def score_feature_with_config(profiler_key: str, value: float) -> Optional[Dict[str, Any]]:
-    """
-    Score one feature using the profiler then apply FEATURE_DIRECTION override.
-    Returns the same shape as CTOExactProfiler.score_feature_cto_method, or None on error.
-    """
+    """Profiler score + FEATURE_DIRECTION override; None if unscorable."""
     profiler = _get_profiler()
     try:
-        info = profiler.score_feature_cto_method(profiler_key, float(value))
+        info = profiler.score_feature_percentile(profiler_key, float(value))
     except (KeyError, TypeError, ValueError):
         return None
     if "error" in info:
@@ -174,10 +165,7 @@ def enrich_features_with_categories(
     flat_data: Dict[str, Any],
     api_to_profiler_map: Optional[Dict[str, str]] = None,
 ) -> Dict[str, Dict[str, Any]]:
-    """
-    Transform a flat feature dict into { feature: { value, category } } using
-    Approach 2 scoring.  Defaults to WEATHER_API_TO_PROFILER if no map given.
-    """
+    """{api_key: {value, category}}; default map WEATHER_API_TO_PROFILER."""
     if api_to_profiler_map is None:
         api_to_profiler_map = WEATHER_API_TO_PROFILER
 
@@ -217,10 +205,7 @@ def compute_dimension_score(
     profiler_scores: Dict[str, float],
     dimension_name: str,
 ) -> Optional[float]:
-    """
-    Weighted average of feature scores (0-100) for one dimension.
-    Weights defined in DIMENSION_FEATURE_WEIGHTS.  Returns None if no data.
-    """
+    """Weighted dimension score from DIMENSION_FEATURE_WEIGHTS; None if empty."""
     dim_weights = DIMENSION_FEATURE_WEIGHTS.get(dimension_name, {})
     features = DIMENSION_FEATURES.get(dimension_name, [])
     if not features:
@@ -239,10 +224,7 @@ def compute_dimension_score(
 
 
 def compute_overall_score(profiler_scores: Dict[str, float]) -> Optional[float]:
-    """
-    Overall site score (0-100).
-    Uses DIMENSION_WEIGHTS_FOR_OVERALL if set, otherwise weighted avg of all features.
-    """
+    """0–100 overall; uses DIMENSION_WEIGHTS_FOR_OVERALL or all-feature weights."""
     if not profiler_scores:
         return None
     if DIMENSION_WEIGHTS_FOR_OVERALL:
@@ -273,10 +255,7 @@ def compute_overall_score(profiler_scores: Dict[str, float]) -> Optional[float]:
 def get_all_profiler_scores_from_task_feature_values(
     feature_values: Dict[str, Any],
 ) -> Dict[str, float]:
-    """
-    Map task feature_values to profiler keys and return { profiler_key: final_score }
-    across all four dimensions (Weather, Gas, Retail Proximity, Competition).
-    """
+    """Task feature_values → {profiler_key: final_score} for all dimensions present."""
     all_scores: Dict[str, float] = {}
     flat_w = {k: feature_values[k] for k in WEATHER_API_TO_PROFILER if feature_values.get(k) is not None}
     if flat_w:

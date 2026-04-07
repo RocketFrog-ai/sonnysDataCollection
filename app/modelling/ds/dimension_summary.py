@@ -1,16 +1,4 @@
-"""
-Approach 2 Dimension Summaries
-==============================
-
-Generates human-readable summaries and rationale for each dimension (Weather,
-Gas Stations, Competition, etc.) using Approach 2 categories (Excellent, Very Good,
-Good, Fair, Poor, Very Poor) and percentile ranks.
-
-Methodology (from output.txt / output2.txt):
-  - Step 1: Calculate percentile rank of your value vs Proforma dataset
-  - Step 2: Apply direction (invert if lower is better)
-  - Step 3: Category from interpretation (Excellent, Very Good, Good, Fair, Poor, Very Poor)
-"""
+"""Per-dimension text summaries from Approach 2 (percentile) scores and categories."""
 
 from __future__ import annotations
 
@@ -148,10 +136,7 @@ def _llm_summary_tail(
     scored: List[Dict[str, Any]],
     overall_category: str,
 ) -> str:
-    """
-    Use local LLM to generate a short tail: driving factors, negative factors, and one-line score summary.
-    Returns empty string on failure so caller can keep summary unchanged.
-    """
+    """Optional LLM tail for dimension summary; empty string on failure."""
     if not scored:
         return ""
     profiler_scores = {s["feature"]: float(s.get("final_score", 0)) for s in scored}
@@ -195,17 +180,7 @@ def get_dimension_summary_approach2(
     dimension: str,
     feature_values: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """
-    Get Approach 2 summary for a dimension.
-
-    Returns:
-        {
-            "features_scored": int,
-            "feature_scores": [ { feature, value, raw_percentile, final_score, category } ],
-            "overall_category": str (dominant category or average),
-            "summary": str (human-readable rationale),
-        }
-    """
+    """Build scored features, overall category, and rationale for one dimension."""
     flat = _extract_flat_for_dimension(dimension, feature_values)
     if not flat:
         return {
@@ -276,7 +251,7 @@ def build_full_profiling_rationale(
 
 
 def _favorable_pct(pct: float, direction: str) -> float:
-    """Convert raw percentile to 'favorable' share (higher = better for the site)."""
+    """Percentile adjusted so higher = better for the site."""
     if direction in ("lower_is_better",):
         return 100 - pct
     if direction == "moderate_is_best":
@@ -286,10 +261,7 @@ def _favorable_pct(pct: float, direction: str) -> float:
 
 
 def _pct_context(pct: float, direction: str, n_sites: int | None = None) -> str:
-    """
-    Plain-English comparison. If n_sites given, include portfolio size (use once per block).
-    Otherwise short form for use after an intro that already stated the portfolio.
-    """
+    """Short 'better than X% of sites' phrase; optional portfolio count."""
     favorable = _favorable_pct(pct, direction)
     if n_sites is not None:
         return f"better than {favorable:.0f}% of the {n_sites:,} car wash sites analysed"
@@ -303,10 +275,7 @@ def _fmt_val(value: Any) -> str:
 
 
 def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
-    """
-    Short, human-readable paragraph using actual values and plain English.
-    No jargon — explains what the numbers mean for this location.
-    """
+    """Plain-language paragraph for a dimension from scored rows."""
     if not scored:
         return f"No data available for {dimension}."
 
@@ -423,5 +392,5 @@ def _build_rationale(dimension: str, scored: List[Dict[str, Any]]) -> str:
 
 
 def get_feature_performance_map(scored: List[Dict[str, Any]]) -> Dict[str, str]:
-    """Map feature name -> category for backward compatibility with feature_performance."""
+    """feature → category (legacy feature_performance shape)."""
     return {s["feature"]: s.get("category", "N/A") for s in scored}

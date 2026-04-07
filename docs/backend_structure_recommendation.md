@@ -71,7 +71,7 @@ app/
 │   └── run_site_profiling.py      # run(address) → feature dict → v3.analyze() → raw v3 result
 │
 ├── modelling/
-│   └── ds/                        # Existing: scorer, quantile_predictor (v3), dimension_summary
+│   └── ds/                        # Existing: scorer, prediction (wash tiers), dimension_summary
 │       └── ...
 │
 ├── narrative/                     # NEW: quantile data → text
@@ -184,7 +184,7 @@ Start with **Option A**; add Option B later if you need to re-run only LLM or ca
 |-------------|------------------------------------|------------------------|
 | Feature fetch | Geocode, get weather/gas/retail/competitors (single fetch) | `app/modelling/site_analysis.py` (fetch_all_features) |
 | Feature mapping | API keys ↔ v3 internal keys       | `app/modelling/site_analysis.py` (build_feature_values_and_v3_input) |
-| Quantile prediction | v3.analyze(location_features)     | `app/modelling/ds/quantile_predictor` |
+| Quantile prediction | v4.analyze(location_features)     | `app/modelling/ds/prediction` |
 | Per-feature narrative | One metric’s quantile data → summary, business_impact, impact_classification | `app/modelling/ai/narratives.py` (get_feature_narratives) |
 | Overall narrative | All narratives + score → insight, observation, conclusion | `app/modelling/ai/narratives.py` (get_overall_narrative) |
 | HTTP         | Validate, call analysis, return JSON | `app/server/routes.py` |

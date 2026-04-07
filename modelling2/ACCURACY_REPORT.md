@@ -6,7 +6,7 @@
 
 | What you saw | What it measures |
 |---|---|
-| **`app/modelling`** (`ds.quantile_predictor`) | **Classification:** each site gets a **tier** Q1–Q4 from `current_count`. **Accuracy** = % of sites where the **predicted tier equals the true tier** (5-fold CV). Docs cite ~**63.5%** exact and ~**98%** within one tier when **tunnel_count + effective_capacity** are in the model. |
+| **`app/modelling`** (`ds.prediction`) | **Classification:** each site gets a **tier** Q1–Q4 from `current_count`. **Accuracy** = % of sites where the **predicted tier equals the true tier** (5-fold CV). Docs cite ~**63.5%** exact and ~**98%** within one tier when **tunnel_count + effective_capacity** are in the model. |
 | **Earlier modelling2 regression** | **Regression:** predict the **number** of washes. **R²** = variance explained (not “% correct”). **MAPE** = average **percent** error. There is no single “accuracy %” unless we define one (e.g. % predictions within 20% of true). |
 
 So: **production “accuracy” is tier hit rate; regression “accuracy” must be defined** (we use median APE + “within 20% of actual” below).

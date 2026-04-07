@@ -1,8 +1,4 @@
-"""
-Feature Weights & Direction Config — tunable per-feature direction and weights.
-Source: P-2.0 Data Points Mapping (Sheet4). Edit here to change which way is
-better for a feature or to adjust dimension/overall weights.
-"""
+"""Tunable feature directions and weights for Approach 2 scoring (see inline sections)."""
 
 from typing import Dict, List, Optional
 

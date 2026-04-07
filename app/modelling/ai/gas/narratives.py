@@ -21,7 +21,7 @@ from app.modelling.ai.gas.prompts import (
     build_insight_prompt,
     build_observation_prompt,
 )
-from app.modelling.ds.quantile_display import get_category_for_quantile
+from app.modelling.ds.prediction import get_category_for_quantile
 
 logger = logging.getLogger(__name__)
 
