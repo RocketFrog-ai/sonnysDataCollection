@@ -227,7 +227,7 @@ def build_feature_values_and_v3_input(
     """
     From fetch_all_features output, build:
     1) feature_values: task-style keys (for existing routes / profiler).
-    2) location_features: v3 predictor keys (for QuantilePredictorV3.analyze).
+    2) location_features: predictor keys (for QuantilePredictorV4.analyze).
     """
     feature_values: Dict[str, Any] = {}
     location_features: Dict[str, float] = {}
@@ -463,8 +463,8 @@ def run_site_analysis(
     quantile_result: Optional[Dict[str, Any]] = None
     if run_quantile and location_features:
         try:
-            from app.modelling.ds.quantile_predictor import QuantilePredictorV3
-            predictor = QuantilePredictorV3(tier_strategy=tier_strategy)
+            from app.modelling.ds.quantile_predictor import QuantilePredictorV4
+            predictor = QuantilePredictorV4(tier_strategy=tier_strategy)
             quantile_result = predictor.analyze(location_features, llm_narrative=False)
             result["quantile_result"] = quantile_result
             logger.info("run_site_analysis: quantile prediction done (Q%s)", quantile_result.get("predicted_wash_quantile"))

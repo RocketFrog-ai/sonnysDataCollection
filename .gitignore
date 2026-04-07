@@ -71,5 +71,5 @@ htmlcov/
 .dmypy.json
 dmypy.json
 
-# One-off / temp scoringmetric artifacts (not used by app) — leave on disk, don't stage
-scoringmetric/approach2/v2/
+# Local geocode cache for modelling2 weather script
+modelling2/.finale_geocode_cache.json

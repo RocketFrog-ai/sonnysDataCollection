@@ -25,7 +25,7 @@ from app.modelling.ds.feature_weights_config import (
 # ── Singleton profiler (lazy-loaded) ─────────────────────────────────────────
 
 _profiler: Optional[CTOExactProfiler] = None
-_project_root = Path(__file__).resolve().parents[3]
+_ds_dir = Path(__file__).resolve().parent
 
 
 # ── API key → Profiler key mappings ──────────────────────────────────────────
@@ -74,13 +74,13 @@ TASK_GAS_TO_PROFILER: Dict[str, str] = {
 def _get_profiler() -> CTOExactProfiler:
     global _profiler
     if _profiler is None:
-        data_path = _project_root / "scoringmetric" / "approach2" / "Proforma-v2-data-final (1).xlsx"
+        data_path = _ds_dir / "datasets" / "Proforma-v2-data-final (1).xlsx"
         if not data_path.exists():
-            data_path = _project_root / "scoringmetric" / "approach2" / "Proforma-v2-data-final.xlsx"
+            data_path = _ds_dir / "datasets" / "Proforma-v2-data-final.xlsx"
         if not data_path.exists():
             raise FileNotFoundError(
                 f"Scoring dataset not found at {data_path}. "
-                "Ensure Proforma-v2-data-final.xlsx is in scoringmetric/approach2/."
+                "Place Proforma-v2-data-final.xlsx under app/modelling/ds/datasets/."
             )
         kwargs: Dict[str, Any] = {"engine": "openpyxl"}
         if "Proforma-v2-data" in str(data_path):

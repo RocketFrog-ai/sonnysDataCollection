@@ -22,7 +22,7 @@ Address
    ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │  LAYER 2: Quantile prediction (v3)                                           │
-│  Map API feature dict → v3 internal keys → QuantilePredictorV3.analyze()     │
+│  Map API feature dict → internal keys → QuantilePredictorV4.analyze()          │
 │  Output: predicted_wash_quantile, predicted_wash_range, feature_analysis     │
 │  (per feature: value, label, raw_percentile, wash_correlated_q,               │
 │   wash_q_q4_median, quantile_boundaries, importance, etc.)                   │
@@ -100,7 +100,7 @@ app/
 
 ### 3.1 After Layer 2 (v3 output you already have)
 
-From `QuantilePredictorV3.analyze()` you get, per feature in `feature_analysis`:
+From `QuantilePredictorV4.analyze()` you get, per feature in `feature_analysis`:
 
 - `value`, `label`, `raw_percentile`, `adjusted_percentile`
 - `wash_correlated_q`, `wash_correlated_exceeds_q4`, `wash_q_q4_median`
