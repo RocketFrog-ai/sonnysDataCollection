@@ -1,0 +1,521 @@
+{
+  "n_rows": 482,
+  "n_features_used": 25,
+  "target_column": "current_count",
+  "excluded_from_X": [
+    "tunnel_count",
+    "client_id",
+    "street",
+    "city",
+    "zip",
+    "site_client_id",
+    "location_id",
+    "_match_type",
+    "region",
+    "state",
+    "primary_carwash_type",
+    "official_website"
+  ],
+  "feature_columns": [
+    "weather_total_precipitation_mm",
+    "weather_rainy_days",
+    "weather_total_snowfall_cm",
+    "weather_days_below_freezing",
+    "weather_total_sunshine_hours",
+    "weather_days_pleasant_temp",
+    "weather_avg_daily_max_windspeed_ms",
+    "nearest_gas_station_distance_miles",
+    "nearest_gas_station_rating",
+    "nearest_gas_station_rating_count",
+    "competitors_count_4miles",
+    "competitor_1_google_rating",
+    "competitor_1_distance_miles",
+    "competitor_1_rating_count",
+    "distance_nearest_costco(5 mile)",
+    "distance_nearest_walmart(5 mile)",
+    "distance_nearest_target (5 mile)",
+    "other_grocery_count_1mile",
+    "count_food_joints_0_5miles (0.5 mile)",
+    "previous_count",
+    "age_on_30_sep_25",
+    "region_enc",
+    "state_enc",
+    "costco_enc",
+    "carwash_type_encoded"
+  ],
+  "best_model": "extra_trees",
+  "holdout_fraction": 0.2,
+  "test_metrics": {
+    "r2": 0.8484685093529041,
+    "r2_as_variance_explained_pct": 84.8468509352904,
+    "mean_absolute_error": 16382.953348447338,
+    "mean_absolute_percentage_error_pct": 18.208385083623572,
+    "accuracy_style_100_minus_mape": 81.79161491637643,
+    "mean_actual_count_on_test": 123212.9480412371
+  },
+  "bootstrap_test_n": 2000,
+  "bootstrap_test_ci95": {
+    "r2_ci95_low": 0.6941613227743149,
+    "r2_ci95_high": 0.9686825849843606,
+    "mape_pct_ci95_low": 13.922936120240795,
+    "mape_pct_ci95_high": 23.39412183403508
+  },
+  "all_model_comparison": [
+    {
+      "name": "extra_trees",
+      "cv": {
+        "r2_mean": 0.9448076924749296,
+        "r2_std": 0.008270364084197686,
+        "mae_mean": 13527.363484664273,
+        "mae_std": 1049.4809633061952,
+        "r2_folds": [
+          0.9510891269324071,
+          0.9407802139956254,
+          0.9439769253168478,
+          0.9560253625309211,
+          0.9321668335988462
+        ]
+      },
+      "train_r2": 0.9816430833468682,
+      "test_r2": 0.8484685093529041,
+      "test_mae": 16382.953348447338,
+      "test_mape_pct": 18.208385083623572,
+      "overfit_gap_r2": 0.036835390871938656
+    },
+    {
+      "name": "random_forest",
+      "cv": {
+        "r2_mean": 0.9411044584733921,
+        "r2_std": 0.00711323365352454,
+        "mae_mean": 14290.279294620585,
+        "mae_std": 1102.1263759718245,
+        "r2_folds": [
+          0.9339222686714174,
+          0.9415024864560979,
+          0.9421619695575243,
+          0.953552474613421,
+          0.9343830930684999
+        ]
+      },
+      "train_r2": 0.9803212889984111,
+      "test_r2": 0.8464324765889755,
+      "test_mae": 17052.25807602965,
+      "test_mape_pct": 17.65310010902948,
+      "overfit_gap_r2": 0.03921683052501901
+    },
+    {
+      "name": "knn_k5_distance",
+      "k": 5,
+      "weights": "distance",
+      "cv": {
+        "r2_mean": 0.6264777735021975,
+        "r2_std": 0.03816206264672759,
+        "mae_mean": 41326.953076678,
+        "mae_std": 3096.4940671183003,
+        "r2_folds": [
+          0.6813438962072147,
+          0.5818121859169896,
+          0.6136499284113248,
+          0.6602599055364949,
+          0.5953229514389632
+        ]
+      },
+      "train_r2": 1.0,
+      "test_r2": 0.5053117822257361,
+      "test_mae": 46298.68057359565,
+      "test_mape_pct": 74.84018312473403,
+      "overfit_gap_r2": 0.37352222649780253
+    },
+    {
+      "name": "knn_k5_uniform",
+      "k": 5,
+      "weights": "uniform",
+      "cv": {
+        "r2_mean": 0.6256748821812644,
+        "r2_std": 0.039706292584814146,
+        "mae_mean": 41431.5113922078,
+        "mae_std": 3303.1922566884386,
+        "r2_folds": [
+          0.6879613795441926,
+          0.5740144669388436,
+          0.6128498561194842,
+          0.6509367539362678,
+          0.6026119543675337
+        ]
+      },
+      "train_r2": 0.7464325516883068,
+      "test_r2": 0.49999142005972286,
+      "test_mae": 46670.69210309278,
+      "test_mape_pct": 75.23344420572727,
+      "overfit_gap_r2": 0.12075766950704236
+    },
+    {
+      "name": "knn_k3_distance",
+      "k": 3,
+      "weights": "distance",
+      "cv": {
+        "r2_mean": 0.553643079566051,
+        "r2_std": 0.03927147725158796,
+        "mae_mean": 43857.13009600639,
+        "mae_std": 2532.1363623903653,
+        "r2_folds": [
+          0.5194142346927234,
+          0.5251410367897451,
+          0.5578049696448312,
+          0.6276197437530897,
+          0.5382354129498657
+        ]
+      },
+      "train_r2": 1.0,
+      "test_r2": 0.49742878186607764,
+      "test_mae": 47171.99359140394,
+      "test_mape_pct": 72.6441799079109,
+      "overfit_gap_r2": 0.44635692043394903
+    },
+    {
+      "name": "knn_k3_uniform",
+      "k": 3,
+      "weights": "uniform",
+      "cv": {
+        "r2_mean": 0.5544929088807906,
+        "r2_std": 0.03791609895879705,
+        "mae_mean": 43876.16277922078,
+        "mae_std": 2468.2044573787525,
+        "r2_folds": [
+          0.5250681053394135,
+          0.5176752070805246,
+          0.5572564031559337,
+          0.6246014204499373,
+          0.5478634083781444
+        ]
+      },
+      "train_r2": 0.7726146689587378,
+      "test_r2": 0.49255967496283715,
+      "test_mae": 47650.57628865979,
+      "test_mape_pct": 73.03625476966889,
+      "overfit_gap_r2": 0.21812176007794715
+    },
+    {
+      "name": "knn_k7_distance",
+      "k": 7,
+      "weights": "distance",
+      "cv": {
+        "r2_mean": 0.6334598904654392,
+        "r2_std": 0.037750057044599244,
+        "mae_mean": 41114.53107470828,
+        "mae_std": 3449.409253377947,
+        "r2_folds": [
+          0.6807273168091643,
+          0.5778948906698403,
+          0.6661718893383015,
+          0.6360098503217253,
+          0.6064955051881649
+        ]
+      },
+      "train_r2": 1.0,
+      "test_r2": 0.479571824175718,
+      "test_mae": 48361.96157520821,
+      "test_mape_pct": 80.74490373284476,
+      "overfit_gap_r2": 0.36654010953456084
+    },
+    {
+      "name": "knn_k7_uniform",
+      "k": 7,
+      "weights": "uniform",
+      "cv": {
+        "r2_mean": 0.6278755648166446,
+        "r2_std": 0.04166525136327425,
+        "mae_mean": 41454.32882374768,
+        "mae_std": 3577.4110133619492,
+        "r2_folds": [
+          0.6818754498123002,
+          0.5658814137933426,
+          0.6652561407048693,
+          0.6199506614269612,
+          0.6064141583457494
+        ]
+      },
+      "train_r2": 0.7283688160389146,
+      "test_r2": 0.47167949512195706,
+      "test_mae": 48660.67533136965,
+      "test_mape_pct": 81.50145407476336,
+      "overfit_gap_r2": 0.10049325122226993
+    },
+    {
+      "name": "knn_k11_distance",
+      "k": 11,
+      "weights": "distance",
+      "cv": {
+        "r2_mean": 0.6121121309397562,
+        "r2_std": 0.035756081133899394,
+        "mae_mean": 42495.999679035966,
+        "mae_std": 4548.724062673958,
+        "r2_folds": [
+          0.6668346389128912,
+          0.5803617704779359,
+          0.63240207913136,
+          0.6133104716261273,
+          0.5676516945504667
+        ]
+      },
+      "train_r2": 1.0,
+      "test_r2": 0.46327758203565317,
+      "test_mae": 48455.82108839752,
+      "test_mape_pct": 85.31677033779064,
+      "overfit_gap_r2": 0.38788786906024375
+    },
+    {
+      "name": "knn_k11_uniform",
+      "k": 11,
+      "weights": "uniform",
+      "cv": {
+        "r2_mean": 0.6020034512407182,
+        "r2_std": 0.03755329630962751,
+        "mae_mean": 43035.119362455735,
+        "mae_std": 4651.259492054032,
+        "r2_folds": [
+          0.6627548799066285,
+          0.5655893052892105,
+          0.6219197579593098,
+          0.5980243126553244,
+          0.5617290003931183
+        ]
+      },
+      "train_r2": 0.7024114479130188,
+      "test_r2": 0.45366572456031173,
+      "test_mae": 48893.13962511715,
+      "test_mape_pct": 86.23630672610047,
+      "overfit_gap_r2": 0.1004079966723006
+    }
+  ],
+  "column_reference": [
+    {
+      "column": "_match_type",
+      "dtype": "object",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "age_on_30_sep_25",
+      "dtype": "float64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "carwash_type_encoded",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "city",
+      "dtype": "object",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "client_id",
+      "dtype": "object",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "competitor_1_distance_miles",
+      "dtype": "float64",
+      "missing_n": 16,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "competitor_1_google_rating",
+      "dtype": "float64",
+      "missing_n": 66,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "competitor_1_rating_count",
+      "dtype": "float64",
+      "missing_n": 66,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "competitors_count_4miles",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "costco_enc",
+      "dtype": "float64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "count_food_joints_0_5miles (0.5 mile)",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "current_count",
+      "dtype": "float64",
+      "missing_n": 0,
+      "role": "target"
+    },
+    {
+      "column": "distance_nearest_costco(5 mile)",
+      "dtype": "float64",
+      "missing_n": 312,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "distance_nearest_target (5 mile)",
+      "dtype": "float64",
+      "missing_n": 154,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "distance_nearest_walmart(5 mile)",
+      "dtype": "float64",
+      "missing_n": 47,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "location_id",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "nearest_gas_station_distance_miles",
+      "dtype": "float64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "nearest_gas_station_rating",
+      "dtype": "float64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "nearest_gas_station_rating_count",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "official_website",
+      "dtype": "object",
+      "missing_n": 12,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "other_grocery_count_1mile",
+      "dtype": "float64",
+      "missing_n": 99,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "previous_count",
+      "dtype": "float64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "primary_carwash_type",
+      "dtype": "object",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "region",
+      "dtype": "object",
+      "missing_n": 2,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "region_enc",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "site_client_id",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "state",
+      "dtype": "object",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "state_enc",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "street",
+      "dtype": "object",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    },
+    {
+      "column": "tunnel_count",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "excluded (tunnel)"
+    },
+    {
+      "column": "weather_avg_daily_max_windspeed_ms",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "weather_days_below_freezing",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "weather_days_pleasant_temp",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "weather_rainy_days",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "weather_total_precipitation_mm",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "weather_total_snowfall_cm",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "weather_total_sunshine_hours",
+      "dtype": "float64",
+      "missing_n": 5,
+      "role": "feature (numeric)"
+    },
+    {
+      "column": "zip",
+      "dtype": "int64",
+      "missing_n": 0,
+      "role": "excluded (id/text)"
+    }
+  ]
+}

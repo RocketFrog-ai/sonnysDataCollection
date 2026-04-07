@@ -1,0 +1,1321 @@
+{
+  "n_rows": 482,
+  "tier_percentile_splits": [
+    19,
+    31,
+    31,
+    19
+  ],
+  "note_app_modelling": "app/modelling quantile predictor uses ExtraTreesClassifier on wash tiers Q1\u2013Q4 and reports exact tier match % (5-fold CV). It includes tunnel_count and effective_capacity; modelling2 policy excludes those from the primary feature set.",
+  "quantile_classification_no_tunnel": {
+    "knn_classifier": {
+      "exact_accuracy_pct": 34.02,
+      "within_1_tier_pct": 80.91,
+      "n_samples": 482
+    },
+    "random_forest_classifier": {
+      "exact_accuracy_pct": 37.55,
+      "within_1_tier_pct": 81.95,
+      "n_samples": 482
+    },
+    "extra_trees_classifier": {
+      "exact_accuracy_pct": 39.0,
+      "within_1_tier_pct": 78.63,
+      "n_samples": 482
+    }
+  },
+  "quantile_classification_no_tunnel_knn_top5_neighbors": {
+    "knn_k5_uniform": {
+      "exact_accuracy_pct": 33.61,
+      "within_1_tier_pct": 80.08,
+      "n_samples": 482
+    },
+    "knn_k5_distance": {
+      "exact_accuracy_pct": 32.99,
+      "within_1_tier_pct": 80.08,
+      "n_samples": 482
+    }
+  },
+  "quantile_classification_REFERENCE_with_tunnel_and_effective_capacity": {
+    "knn_classifier": {
+      "exact_accuracy_pct": 54.98,
+      "within_1_tier_pct": 94.19,
+      "n_samples": 482
+    },
+    "random_forest_classifier": {
+      "exact_accuracy_pct": 69.29,
+      "within_1_tier_pct": 99.38,
+      "n_samples": 482
+    },
+    "extra_trees_classifier": {
+      "exact_accuracy_pct": 68.26,
+      "within_1_tier_pct": 98.96,
+      "n_samples": 482
+    }
+  },
+  "quantile_classification_no_tunnel_plus_log1p_previous": {
+    "knn_classifier": {
+      "exact_accuracy_pct": 44.4,
+      "within_1_tier_pct": 91.08,
+      "n_samples": 482
+    },
+    "random_forest_classifier": {
+      "exact_accuracy_pct": 84.85,
+      "within_1_tier_pct": 100.0,
+      "n_samples": 482
+    },
+    "extra_trees_classifier": {
+      "exact_accuracy_pct": 65.35,
+      "within_1_tier_pct": 93.57,
+      "n_samples": 482
+    }
+  },
+  "regression_predict_current_no_tunnel": {
+    "knn_regressor": {
+      "r2_oof_pct": 1.75,
+      "mape_pct": 994.77,
+      "mape_trimmed_worst5pct_pct": 80.37,
+      "median_ape_pct": 48.34,
+      "within_10pct_of_actual_pct": 13.9,
+      "within_20pct_of_actual_pct": 23.86,
+      "n_samples": 482
+    },
+    "random_forest_regressor": {
+      "r2_oof_pct": 19.45,
+      "mape_pct": 881.23,
+      "mape_trimmed_worst5pct_pct": 70.55,
+      "median_ape_pct": 43.21,
+      "within_10pct_of_actual_pct": 10.37,
+      "within_20pct_of_actual_pct": 22.2,
+      "n_samples": 482
+    },
+    "extra_trees_regressor": {
+      "r2_oof_pct": 16.07,
+      "mape_pct": 898.34,
+      "mape_trimmed_worst5pct_pct": 68.84,
+      "median_ape_pct": 44.32,
+      "within_10pct_of_actual_pct": 9.75,
+      "within_20pct_of_actual_pct": 22.61,
+      "n_samples": 482
+    }
+  },
+  "regression_predict_current_no_tunnel_plus_log1p_previous": {
+    "knn_regressor": {
+      "r2_oof_pct": 35.23,
+      "mape_pct": 276.11,
+      "mape_trimmed_worst5pct_pct": 63.24,
+      "median_ape_pct": 42.8,
+      "within_10pct_of_actual_pct": 14.11,
+      "within_20pct_of_actual_pct": 26.76,
+      "n_samples": 482
+    },
+    "random_forest_regressor": {
+      "r2_oof_pct": 92.53,
+      "mape_pct": 119.99,
+      "mape_trimmed_worst5pct_pct": 11.54,
+      "median_ape_pct": 10.12,
+      "within_10pct_of_actual_pct": 49.59,
+      "within_20pct_of_actual_pct": 78.84,
+      "n_samples": 482
+    },
+    "extra_trees_regressor": {
+      "r2_oof_pct": 92.21,
+      "mape_pct": 159.83,
+      "mape_trimmed_worst5pct_pct": 12.95,
+      "median_ape_pct": 10.24,
+      "within_10pct_of_actual_pct": 48.96,
+      "within_20pct_of_actual_pct": 75.73,
+      "n_samples": 482
+    }
+  },
+  "regression_predict_yoy_ratio_current_over_previous": {
+    "knn_regressor": {
+      "r2_oof_pct": -4.8,
+      "mape_pct": 12.41,
+      "mape_trimmed_worst5pct_pct": 10.69,
+      "median_ape_pct": 10.03,
+      "within_10pct_of_actual_pct": 49.79,
+      "within_20pct_of_actual_pct": 82.57,
+      "n_samples": 482
+    },
+    "random_forest_regressor": {
+      "r2_oof_pct": 6.94,
+      "mape_pct": 11.15,
+      "mape_trimmed_worst5pct_pct": 9.42,
+      "median_ape_pct": 8.44,
+      "within_10pct_of_actual_pct": 57.47,
+      "within_20pct_of_actual_pct": 85.27,
+      "n_samples": 482
+    },
+    "extra_trees_regressor": {
+      "r2_oof_pct": 9.21,
+      "mape_pct": 11.08,
+      "mape_trimmed_worst5pct_pct": 9.35,
+      "median_ape_pct": 8.57,
+      "within_10pct_of_actual_pct": 55.81,
+      "within_20pct_of_actual_pct": 86.31,
+      "n_samples": 482
+    }
+  },
+  "regression_predict_yoy_delta_current_minus_previous": {
+    "knn_regressor": {
+      "r2_oof_pct": -6.15,
+      "mape_pct": 718753.39,
+      "mape_trimmed_worst5pct_pct": 491592.03,
+      "median_ape_pct": 421.07,
+      "within_10pct_of_actual_pct": 3.11,
+      "within_20pct_of_actual_pct": 6.85,
+      "n_samples": 482
+    },
+    "random_forest_regressor": {
+      "r2_oof_pct": 9.07,
+      "mape_pct": 625723.69,
+      "mape_trimmed_worst5pct_pct": 419047.24,
+      "median_ape_pct": 204.59,
+      "within_10pct_of_actual_pct": 2.9,
+      "within_20pct_of_actual_pct": 5.6,
+      "n_samples": 482
+    },
+    "extra_trees_regressor": {
+      "r2_oof_pct": 9.53,
+      "mape_pct": 598759.05,
+      "mape_trimmed_worst5pct_pct": 391328.98,
+      "median_ape_pct": 196.22,
+      "within_10pct_of_actual_pct": 2.7,
+      "within_20pct_of_actual_pct": 4.56,
+      "n_samples": 482
+    }
+  },
+  "baseline_predict_current_equals_previous": {
+    "mape_pct": 12.69,
+    "r2_pct": 91.61,
+    "within_20pct_of_actual_pct": 83.61
+  },
+  "feature_importances": {
+    "note": "RandomForest / ExtraTrees only (KNN has no importances). Trained on all rows; importances are Gini-based split contributions \u2014 useful for ranking drivers, not causal effects.",
+    "quantile_classification_with_log1p_previous": {
+      "random_forest_classifier": [
+        {
+          "feature": "log1p_previous_count",
+          "importance": 0.45929120741791946,
+          "importance_pct_of_model_total": 45.929
+        },
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.04772922749822574,
+          "importance_pct_of_model_total": 4.773
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.027603236895365885,
+          "importance_pct_of_model_total": 2.76
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.026884486091464627,
+          "importance_pct_of_model_total": 2.688
+        },
+        {
+          "feature": "is_express",
+          "importance": 0.02581602725579716,
+          "importance_pct_of_model_total": 2.582
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.025568183409153816,
+          "importance_pct_of_model_total": 2.557
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.02426261909608197,
+          "importance_pct_of_model_total": 2.426
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.023819319420199984,
+          "importance_pct_of_model_total": 2.382
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.023817160672394404,
+          "importance_pct_of_model_total": 2.382
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.020832254097408916,
+          "importance_pct_of_model_total": 2.083
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.02078226485233014,
+          "importance_pct_of_model_total": 2.078
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.02062650330789479,
+          "importance_pct_of_model_total": 2.063
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.02043501373329954,
+          "importance_pct_of_model_total": 2.044
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.02034325138434219,
+          "importance_pct_of_model_total": 2.034
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.01981798861888377,
+          "importance_pct_of_model_total": 1.982
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.018666736836488777,
+          "importance_pct_of_model_total": 1.867
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.01812629776768865,
+          "importance_pct_of_model_total": 1.813
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.01782021690989429,
+          "importance_pct_of_model_total": 1.782
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.01724059811707949,
+          "importance_pct_of_model_total": 1.724
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.016444334821530533,
+          "importance_pct_of_model_total": 1.644
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.01641072509939354,
+          "importance_pct_of_model_total": 1.641
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.016357419041982565,
+          "importance_pct_of_model_total": 1.636
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.016102775565528336,
+          "importance_pct_of_model_total": 1.61
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.01607881921210135,
+          "importance_pct_of_model_total": 1.608
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.013843253451538296,
+          "importance_pct_of_model_total": 1.384
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.01218553105849662,
+          "importance_pct_of_model_total": 1.219
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.009881890030876094,
+          "importance_pct_of_model_total": 0.988
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.0032126583366392262,
+          "importance_pct_of_model_total": 0.321
+        }
+      ],
+      "extra_trees_classifier": [
+        {
+          "feature": "log1p_previous_count",
+          "importance": 0.3570634559025533,
+          "importance_pct_of_model_total": 35.706
+        },
+        {
+          "feature": "is_express",
+          "importance": 0.1270753491135805,
+          "importance_pct_of_model_total": 12.708
+        },
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.08333204434788193,
+          "importance_pct_of_model_total": 8.333
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.028284076707509563,
+          "importance_pct_of_model_total": 2.828
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.025048871894300113,
+          "importance_pct_of_model_total": 2.505
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.023878658513267988,
+          "importance_pct_of_model_total": 2.388
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.02151514854749018,
+          "importance_pct_of_model_total": 2.152
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.02070147893159685,
+          "importance_pct_of_model_total": 2.07
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.020687198869245187,
+          "importance_pct_of_model_total": 2.069
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.020601902911365592,
+          "importance_pct_of_model_total": 2.06
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.020561693209870797,
+          "importance_pct_of_model_total": 2.056
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.02039060126467511,
+          "importance_pct_of_model_total": 2.039
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.020155955132949537,
+          "importance_pct_of_model_total": 2.016
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.019200498678584386,
+          "importance_pct_of_model_total": 1.92
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.017983931005387675,
+          "importance_pct_of_model_total": 1.798
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.017469759197725494,
+          "importance_pct_of_model_total": 1.747
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.017421731094625345,
+          "importance_pct_of_model_total": 1.742
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.016923635476879136,
+          "importance_pct_of_model_total": 1.692
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.01623867164725258,
+          "importance_pct_of_model_total": 1.624
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.014485061516721477,
+          "importance_pct_of_model_total": 1.449
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.01394145122303171,
+          "importance_pct_of_model_total": 1.394
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.012786926044788715,
+          "importance_pct_of_model_total": 1.279
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.012122173725059113,
+          "importance_pct_of_model_total": 1.212
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.011104858881339653,
+          "importance_pct_of_model_total": 1.11
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.011095366202347568,
+          "importance_pct_of_model_total": 1.11
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.010853021504399851,
+          "importance_pct_of_model_total": 1.085
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.009946713040965845,
+          "importance_pct_of_model_total": 0.995
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.009129765414604888,
+          "importance_pct_of_model_total": 0.913
+        }
+      ]
+    },
+    "quantile_classification_no_previous": {
+      "random_forest_classifier": [
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.0776586899664425,
+          "importance_pct_of_model_total": 7.766
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.04916283171001159,
+          "importance_pct_of_model_total": 4.916
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.04823304655748516,
+          "importance_pct_of_model_total": 4.823
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.048150116765534975,
+          "importance_pct_of_model_total": 4.815
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.0466277577235579,
+          "importance_pct_of_model_total": 4.663
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.04433459775618293,
+          "importance_pct_of_model_total": 4.433
+        },
+        {
+          "feature": "is_express",
+          "importance": 0.044050062601157215,
+          "importance_pct_of_model_total": 4.405
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.04002277586516868,
+          "importance_pct_of_model_total": 4.002
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.039735279919841215,
+          "importance_pct_of_model_total": 3.974
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.03917489888868811,
+          "importance_pct_of_model_total": 3.917
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.038487759970898844,
+          "importance_pct_of_model_total": 3.849
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.03822183433807053,
+          "importance_pct_of_model_total": 3.822
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.03789062726068529,
+          "importance_pct_of_model_total": 3.789
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.037304510405879024,
+          "importance_pct_of_model_total": 3.73
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.037007005728650406,
+          "importance_pct_of_model_total": 3.701
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.03615315133101629,
+          "importance_pct_of_model_total": 3.615
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.0338627447713581,
+          "importance_pct_of_model_total": 3.386
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.033548786826115944,
+          "importance_pct_of_model_total": 3.355
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.033121811928996055,
+          "importance_pct_of_model_total": 3.312
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.03243608419271641,
+          "importance_pct_of_model_total": 3.244
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.03210859610206066,
+          "importance_pct_of_model_total": 3.211
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.031496987164769195,
+          "importance_pct_of_model_total": 3.15
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.027963932856577525,
+          "importance_pct_of_model_total": 2.796
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.02789488278195428,
+          "importance_pct_of_model_total": 2.789
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.02157539303783289,
+          "importance_pct_of_model_total": 2.158
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.016675155246561636,
+          "importance_pct_of_model_total": 1.668
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.007100678301786799,
+          "importance_pct_of_model_total": 0.71
+        }
+      ],
+      "extra_trees_classifier": [
+        {
+          "feature": "is_express",
+          "importance": 0.18282815100960295,
+          "importance_pct_of_model_total": 18.283
+        },
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.13360981343687658,
+          "importance_pct_of_model_total": 13.361
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.03984724673644208,
+          "importance_pct_of_model_total": 3.985
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.03982797724902503,
+          "importance_pct_of_model_total": 3.983
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.03824773356892295,
+          "importance_pct_of_model_total": 3.825
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.03523965839878722,
+          "importance_pct_of_model_total": 3.524
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.03452314788241834,
+          "importance_pct_of_model_total": 3.452
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.03363328528332557,
+          "importance_pct_of_model_total": 3.363
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.0336215446614321,
+          "importance_pct_of_model_total": 3.362
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.03281780605822193,
+          "importance_pct_of_model_total": 3.282
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.03116049943775937,
+          "importance_pct_of_model_total": 3.116
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.03086142311077528,
+          "importance_pct_of_model_total": 3.086
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.030468559702471035,
+          "importance_pct_of_model_total": 3.047
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.028866986433792464,
+          "importance_pct_of_model_total": 2.887
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.027881841321465876,
+          "importance_pct_of_model_total": 2.788
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.026513944373792578,
+          "importance_pct_of_model_total": 2.651
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.025215459054154767,
+          "importance_pct_of_model_total": 2.522
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.024950263787612725,
+          "importance_pct_of_model_total": 2.495
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.0229872536256297,
+          "importance_pct_of_model_total": 2.299
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.021381201027360238,
+          "importance_pct_of_model_total": 2.138
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.019928072622283636,
+          "importance_pct_of_model_total": 1.993
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.019351738947013912,
+          "importance_pct_of_model_total": 1.935
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.01928128658527953,
+          "importance_pct_of_model_total": 1.928
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.01803890270674372,
+          "importance_pct_of_model_total": 1.804
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.01784467443412223,
+          "importance_pct_of_model_total": 1.784
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.01645244263370218,
+          "importance_pct_of_model_total": 1.645
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.014619085910986162,
+          "importance_pct_of_model_total": 1.462
+        }
+      ]
+    },
+    "regression_predict_current_with_log1p_previous": {
+      "random_forest_regressor": [
+        {
+          "feature": "log1p_previous_count",
+          "importance": 0.9612194395972816,
+          "importance_pct_of_model_total": 96.122
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.005107458542567698,
+          "importance_pct_of_model_total": 0.511
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.0040342648370298925,
+          "importance_pct_of_model_total": 0.403
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.003264802800946912,
+          "importance_pct_of_model_total": 0.326
+        },
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.0026942723253502846,
+          "importance_pct_of_model_total": 0.269
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.0020540869739891724,
+          "importance_pct_of_model_total": 0.205
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.002022748146513874,
+          "importance_pct_of_model_total": 0.202
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.0020045546165531787,
+          "importance_pct_of_model_total": 0.2
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.0016596237364407773,
+          "importance_pct_of_model_total": 0.166
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.0015770031876994745,
+          "importance_pct_of_model_total": 0.158
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.0013271064675116837,
+          "importance_pct_of_model_total": 0.133
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.0012333419907238814,
+          "importance_pct_of_model_total": 0.123
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.001221244355439931,
+          "importance_pct_of_model_total": 0.122
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.0012141484864638665,
+          "importance_pct_of_model_total": 0.121
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.001058479196943084,
+          "importance_pct_of_model_total": 0.106
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.0010339739825062485,
+          "importance_pct_of_model_total": 0.103
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.0010123962139763642,
+          "importance_pct_of_model_total": 0.101
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.0010055278637462594,
+          "importance_pct_of_model_total": 0.101
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.0009443006212662973,
+          "importance_pct_of_model_total": 0.094
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.0007675523245048753,
+          "importance_pct_of_model_total": 0.077
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.0007230948390014742,
+          "importance_pct_of_model_total": 0.072
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.0007117212530842016,
+          "importance_pct_of_model_total": 0.071
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.0007082734830386837,
+          "importance_pct_of_model_total": 0.071
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.0005890404492477681,
+          "importance_pct_of_model_total": 0.059
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.0005126800343101907,
+          "importance_pct_of_model_total": 0.051
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.00021115562814207235,
+          "importance_pct_of_model_total": 0.021
+        },
+        {
+          "feature": "is_express",
+          "importance": 4.5438047829340173e-05,
+          "importance_pct_of_model_total": 0.005
+        },
+        {
+          "feature": "region_enc",
+          "importance": 4.22699978909177e-05,
+          "importance_pct_of_model_total": 0.004
+        }
+      ],
+      "extra_trees_regressor": [
+        {
+          "feature": "log1p_previous_count",
+          "importance": 0.8429494351733238,
+          "importance_pct_of_model_total": 84.295
+        },
+        {
+          "feature": "is_express",
+          "importance": 0.07176392200436511,
+          "importance_pct_of_model_total": 7.176
+        },
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.02596196374052698,
+          "importance_pct_of_model_total": 2.596
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.004100741924739828,
+          "importance_pct_of_model_total": 0.41
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.00408365058507359,
+          "importance_pct_of_model_total": 0.408
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.004071478328955127,
+          "importance_pct_of_model_total": 0.407
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.0031794186891527677,
+          "importance_pct_of_model_total": 0.318
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.0030350564535900626,
+          "importance_pct_of_model_total": 0.304
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.0029964821888411766,
+          "importance_pct_of_model_total": 0.3
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.0026575874274653555,
+          "importance_pct_of_model_total": 0.266
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.002639797797203807,
+          "importance_pct_of_model_total": 0.264
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.002623430029515102,
+          "importance_pct_of_model_total": 0.262
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.002317396062687606,
+          "importance_pct_of_model_total": 0.232
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.0022913655358251833,
+          "importance_pct_of_model_total": 0.229
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.002196877266638646,
+          "importance_pct_of_model_total": 0.22
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.0021586933972386267,
+          "importance_pct_of_model_total": 0.216
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.002138864250514331,
+          "importance_pct_of_model_total": 0.214
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.002088200879424628,
+          "importance_pct_of_model_total": 0.209
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.0020347734213502964,
+          "importance_pct_of_model_total": 0.203
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.0018758829281377723,
+          "importance_pct_of_model_total": 0.188
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.0018181520227729493,
+          "importance_pct_of_model_total": 0.182
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.0017273153074964956,
+          "importance_pct_of_model_total": 0.173
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.0017122760254970394,
+          "importance_pct_of_model_total": 0.171
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.0016619674705802064,
+          "importance_pct_of_model_total": 0.166
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.0016438026575019405,
+          "importance_pct_of_model_total": 0.164
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.0015526667704049595,
+          "importance_pct_of_model_total": 0.155
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.0014955233146540742,
+          "importance_pct_of_model_total": 0.15
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.0012232783465225816,
+          "importance_pct_of_model_total": 0.122
+        }
+      ]
+    },
+    "regression_predict_current_no_previous": {
+      "random_forest_regressor": [
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.14290703800701857,
+          "importance_pct_of_model_total": 14.291
+        },
+        {
+          "feature": "is_express",
+          "importance": 0.08122367553126071,
+          "importance_pct_of_model_total": 8.122
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.06424508668662522,
+          "importance_pct_of_model_total": 6.425
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.05586143344562863,
+          "importance_pct_of_model_total": 5.586
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.0519793178587731,
+          "importance_pct_of_model_total": 5.198
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.04874424704966764,
+          "importance_pct_of_model_total": 4.874
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.0393999659292979,
+          "importance_pct_of_model_total": 3.94
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.039354137120697,
+          "importance_pct_of_model_total": 3.935
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.03898491220678555,
+          "importance_pct_of_model_total": 3.898
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.037741083329164794,
+          "importance_pct_of_model_total": 3.774
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.03690433825505081,
+          "importance_pct_of_model_total": 3.69
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.03222568504855771,
+          "importance_pct_of_model_total": 3.223
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.031221763206010954,
+          "importance_pct_of_model_total": 3.122
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.031108238527850246,
+          "importance_pct_of_model_total": 3.111
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.02992134563641943,
+          "importance_pct_of_model_total": 2.992
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.029580675578149394,
+          "importance_pct_of_model_total": 2.958
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.028678314718540047,
+          "importance_pct_of_model_total": 2.868
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.02789411843653995,
+          "importance_pct_of_model_total": 2.789
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.02635620338171972,
+          "importance_pct_of_model_total": 2.636
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.024733713254533343,
+          "importance_pct_of_model_total": 2.473
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.022837768107892367,
+          "importance_pct_of_model_total": 2.284
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.02003255829025899,
+          "importance_pct_of_model_total": 2.003
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.018616415978067843,
+          "importance_pct_of_model_total": 1.862
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.016554255704476887,
+          "importance_pct_of_model_total": 1.655
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.012141353018965191,
+          "importance_pct_of_model_total": 1.214
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.00867523586398145,
+          "importance_pct_of_model_total": 0.868
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.002077119828066593,
+          "importance_pct_of_model_total": 0.208
+        }
+      ],
+      "extra_trees_regressor": [
+        {
+          "feature": "is_express",
+          "importance": 0.16084723027928727,
+          "importance_pct_of_model_total": 16.085
+        },
+        {
+          "feature": "age_on_30_sep_25",
+          "importance": 0.1401860609682218,
+          "importance_pct_of_model_total": 14.019
+        },
+        {
+          "feature": "count_food_joints_0_5miles (0.5 mile)",
+          "importance": 0.044871549330608954,
+          "importance_pct_of_model_total": 4.487
+        },
+        {
+          "feature": "distance_nearest_target (5 mile)",
+          "importance": 0.04119120314760187,
+          "importance_pct_of_model_total": 4.119
+        },
+        {
+          "feature": "nearest_gas_station_rating",
+          "importance": 0.04053599740532715,
+          "importance_pct_of_model_total": 4.054
+        },
+        {
+          "feature": "gas_station_draw",
+          "importance": 0.04008680480145318,
+          "importance_pct_of_model_total": 4.009
+        },
+        {
+          "feature": "state_enc",
+          "importance": 0.03969797641722043,
+          "importance_pct_of_model_total": 3.97
+        },
+        {
+          "feature": "weather_total_precipitation_mm",
+          "importance": 0.036772503454953885,
+          "importance_pct_of_model_total": 3.677
+        },
+        {
+          "feature": "weather_avg_daily_max_windspeed_ms",
+          "importance": 0.03499961518914548,
+          "importance_pct_of_model_total": 3.5
+        },
+        {
+          "feature": "distance_nearest_walmart(5 mile)",
+          "importance": 0.03374625834154542,
+          "importance_pct_of_model_total": 3.375
+        },
+        {
+          "feature": "competitors_count_4miles",
+          "importance": 0.03323910822479118,
+          "importance_pct_of_model_total": 3.324
+        },
+        {
+          "feature": "nearest_gas_station_rating_count",
+          "importance": 0.02847437014901882,
+          "importance_pct_of_model_total": 2.847
+        },
+        {
+          "feature": "competition_quality",
+          "importance": 0.026476421761757844,
+          "importance_pct_of_model_total": 2.648
+        },
+        {
+          "feature": "competitor_1_google_rating",
+          "importance": 0.026326319239111242,
+          "importance_pct_of_model_total": 2.633
+        },
+        {
+          "feature": "competitor_1_distance_miles",
+          "importance": 0.025771853535904665,
+          "importance_pct_of_model_total": 2.577
+        },
+        {
+          "feature": "weather_rainy_days",
+          "importance": 0.025372141470234286,
+          "importance_pct_of_model_total": 2.537
+        },
+        {
+          "feature": "weather_days_pleasant_temp",
+          "importance": 0.02255688966606302,
+          "importance_pct_of_model_total": 2.256
+        },
+        {
+          "feature": "weather_total_sunshine_hours",
+          "importance": 0.022510767363547023,
+          "importance_pct_of_model_total": 2.251
+        },
+        {
+          "feature": "other_grocery_count_1mile",
+          "importance": 0.02153362562505427,
+          "importance_pct_of_model_total": 2.153
+        },
+        {
+          "feature": "weather_days_below_freezing",
+          "importance": 0.021072755382859593,
+          "importance_pct_of_model_total": 2.107
+        },
+        {
+          "feature": "weather_drive_score",
+          "importance": 0.021067377542467118,
+          "importance_pct_of_model_total": 2.107
+        },
+        {
+          "feature": "nearest_gas_station_distance_miles",
+          "importance": 0.020768045221708904,
+          "importance_pct_of_model_total": 2.077
+        },
+        {
+          "feature": "costco_enc",
+          "importance": 0.020209147301689073,
+          "importance_pct_of_model_total": 2.021
+        },
+        {
+          "feature": "competitor_1_rating_count",
+          "importance": 0.0192364554432936,
+          "importance_pct_of_model_total": 1.924
+        },
+        {
+          "feature": "weather_total_snowfall_cm",
+          "importance": 0.0188988541313459,
+          "importance_pct_of_model_total": 1.89
+        },
+        {
+          "feature": "retail_proximity",
+          "importance": 0.017208071471095043,
+          "importance_pct_of_model_total": 1.721
+        },
+        {
+          "feature": "region_enc",
+          "importance": 0.016342597134692965,
+          "importance_pct_of_model_total": 1.634
+        }
+      ]
+    }
+  }
+}

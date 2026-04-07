@@ -1,0 +1,45 @@
+Rows: 482
+Columns: 39
+
+current_count:
+count       482.000000
+mean     125747.432095
+std       88753.855764
+min          46.670000
+25%       57845.890000
+50%      107251.550000
+75%      174047.045000
+max      478789.420000
+
+previous_count:
+count       482.000000
+mean     119143.393402
+std       79740.602106
+min          64.530000
+25%       57712.250000
+50%      101965.000000
+75%      168475.595000
+max      395721.000000
+
+YoY ratio (current/previous):
+count    482.000000
+mean       1.045841
+std        0.205263
+min        0.482864
+25%        0.938038
+50%        1.022362
+75%        1.128046
+max        2.560275
+
+Categorical cardinalities:
+  region: 4 unique
+  state: 46 unique
+  primary_carwash_type: 8 unique
+  _match_type: 2 unique
+
+Volume tier counts:
+_wash_q
+Q1     92
+Q2    149
+Q3    149
+Q4     92
