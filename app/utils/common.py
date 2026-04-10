@@ -50,39 +50,53 @@ EXTERNAL_SERVICE_TIMEOUT = int(os.getenv("EXTERNAL_SERVICE_TIMEOUT", "30"))
 
 
 def get_lat_long(address):
-    base_url = TOMTOM_GEOCODE_API_URL
-    params = {"key" : TOMTOM_API_KEY}
-    encoded_address = quote(address)
+    """Geocode via TomTom Search v2. Address must be one URL path segment: encode `/` etc. (safe='')."""
+    if not address or not str(address).strip():
+        return None
+    base_url = (TOMTOM_GEOCODE_API_URL or "").rstrip("/")
+    if not base_url or not TOMTOM_API_KEY:
+        return None
+    params = {"key": TOMTOM_API_KEY}
+    # quote(..., safe="") so `/` in names like "RACER/ALL AMERICAN CAR WASH" does not split the path
+    # (TomTom returns 404 for a malformed multi-segment path).
+    encoded_address = quote(str(address).strip(), safe="")
     url = f"{base_url}/{encoded_address}.json"
-    max_retry=5
-    retry=1
-    while retry<=max_retry:
+    max_retry = 5
+    retry = 1
+    while retry <= max_retry:
         try:
             response = requests.get(url, params=params, timeout=60)
             response.raise_for_status()
             data = response.json()
 
-            if data.get('results') and len(data['results']) > 0:
-                result = data['results'][0]
-                position = result['position']
-                address_data = result.get('address', {})
+            if data.get("results") and len(data["results"]) > 0:
+                result = data["results"][0]
+                position = result["position"]
+                address_data = result.get("address", {})
 
                 result = {
-                    'lat': position['lat'],
-                    'lon': position['lon'],
-                    'city': address_data.get('municipality', address_data.get('municipalitySubdivision', 'Unknown')),
-                    'state': address_data.get('countrySubdivision', 'Unknown'),
-                    'formatted_address': address_data.get('freeformAddress', address)
+                    "lat": position["lat"],
+                    "lon": position["lon"],
+                    "city": address_data.get(
+                        "municipality", address_data.get("municipalitySubdivision", "Unknown")
+                    ),
+                    "state": address_data.get("countrySubdivision", "Unknown"),
+                    "formatted_address": address_data.get("freeformAddress", address),
                 }
                 return result
-            else:
+            return None
+        except requests.exceptions.HTTPError as e:
+            resp = e.response
+            code = resp.status_code if resp is not None else None
+            # TomTom: empty search results are often 404; bad path (unencoded slash) is also 404.
+            if code == 404:
                 return None
-        except requests.exceptions.RequestException as e:
-            resp = getattr(e, "response", None)
-            status = getattr(resp, "status_code", None) if resp else None
-            if status == 404:
-                # Not found – retrying won't help
+            if code in (400, 403):
                 return None
+            print(traceback.format_exc())
+            print("Retrying...Geocode...")
+            retry += 1
+        except requests.exceptions.RequestException:
             print(traceback.format_exc())
             print("Retrying...Geocode...")
             retry += 1

@@ -73,3 +73,5 @@ dmypy.json
 
 # Local geocode cache for modelling2 weather script
 modelling2/.finale_geocode_cache.json
+# Geocode cache for data_age_less_2 daily weather script
+app/modelling/ds/datasets/.data_age_less_2_geocode_cache.json
