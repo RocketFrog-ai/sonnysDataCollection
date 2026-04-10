@@ -1,4 +1,3 @@
-"""Paths to `ds/` root and sibling `datasets/`."""
 from __future__ import annotations
 
 from pathlib import Path

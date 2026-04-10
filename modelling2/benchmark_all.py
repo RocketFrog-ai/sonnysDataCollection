@@ -1,16 +1,4 @@
-"""
-Unified benchmarks for modelling2/finale.csv — plain-language "accuracy" + parity with app/modelling.
 
-- Production (`app.modelling.ds.prediction`) reports **classification accuracy**:
-  predict wash tier Q1–Q4 from site features; "exact" = predicted tier equals true tier (% of sites).
-- Earlier modelling2 regression reported **R²** and **MAPE** — that is not the same as tier accuracy.
-
-This script reports both, plus quantile classifiers (KNN / RF / ExtraTrees), regression, and
-previous→current style targets. **tunnel_count** and **effective_capacity** are excluded from the
-primary modelling2 policy; a separate labeled row uses them only as a reference to match production docs.
-
-Run:  python benchmark_all.py
-"""
 from __future__ import annotations
 
 import json
