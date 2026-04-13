@@ -1,0 +1,483 @@
+client_id,street,city,zip,site_client_id,location_id,address,table_name
+Zips Express Car Wash,160 Codella Dr,Winchester,40391,1648,15,"Zips Express Car Wash, 160 Codella Dr, Winchester, KY, 40391",q4_new_car_wash_zips_express_car_wash
+Autobahn Auto Care Center,1225 Guyer Ave,Richland,99352,43,3,"Autobahn Auto Care Center, 1225 Guyer Ave, Richland, WA, 99352",q4_new_car_wash_autobahn_auto_care_center
+Zelo Car Wash,18690 E Iliff Ave,Aurora,80013,1641,1,"Zelo Car Wash, 18690 E Iliff Ave, Aurora, CO, 80013",q4_new_car_wash_zelo_car_wash
+Havasu Express,108 N Lake Havasu Ave,Lake Havasu City,86403,618,1,"Havasu Express, 108 N Lake Havasu Ave, Lake Havasu City, AZ, 86403",q4_new_car_wash_havasu_express
+Soapies,300 E Marshall Ave,Longview,75601,1260,1,"Soapies, 300 E Marshall Ave, Longview, TX, 75601",q4_new_car_wash_soapies
+Classie Express Car Wash,510 E Broadway,Louisville,40202,310,1,"Classie Express Car Wash, 510 E Broadway, Louisville, KY, 40202",q4_new_car_wash_classie_express_car_wash
+Woodies,13825 State Road 70 E,Bradenton,34202,1626,18,"Woodies, 13825 State Road 70 E, Bradenton, FL, 34202",q4_new_car_wash_woodies
+Woodies,6612 University Pkwy,Sarasota,34240,1636,19,"Woodies, 6612 University Pkwy, Sarasota, FL, 34240",q4_new_car_wash_woodies
+Glo Car Wash,8409 Bedford Euless Rd,Hurst,76053,555,1,"Glo Car Wash, 8409 Bedford Euless Rd, Hurst, TX, 76053",q4_new_car_wash_glo_car_wash
+Chemical Guys Car Wash,21003 Bloomfield Ave,Lakewood,90715,297,1,"Chemical Guys Car Wash, 21003 Bloomfield Ave, Lakewood, CA, 90715",q4_new_car_wash_chemical_guys_car_wash
+Zips Express Car Wash,4860 Cane Run Rd,Louisville,40216,1654,5,"Zips Express Car Wash, 4860 Cane Run Rd, Louisville, KY, 40216",q4_new_car_wash_zips_express_car_wash
+Xcell Auto Spa,3510 W Boynton Beach Blvd,Boynton Beach,33436,1639,1,"Xcell Auto Spa, 3510 W Boynton Beach Blvd, Boynton Beach, FL, 33436",q4_new_car_wash_xcell_auto_spa
+Riptide,1101 N Bragg Blvd,Spring Lake,28390,1160,8,"Riptide, 1101 N Bragg Blvd, Spring Lake, NC, 28390",q4_new_car_wash_riptide
+Woodies,3011 W Gandy Blvd,Tampa,33611,1629,15,"Woodies, 3011 W Gandy Blvd, Tampa, FL, 33611",q4_new_car_wash_woodies
+Tsunami Car Wash,140 W Puetz Rd,Oak Creek,53154,1477,9,"Tsunami Car Wash, 140 W Puetz Rd, Oak Creek, WI, 53154",q4_new_car_wash_tsunami_car_wash
+Edge Express,110 Patriot Crossing Drive,Stafford,22554,447,8,"Edge Express, 110 Patriot Crossing Drive, Stafford, VA, 22554",q4_new_car_wash_edge_express
+Soapatopia,200 W Amaranth Ln,Lincoln,68523,1258,4,"Soapatopia, 200 W Amaranth Ln, Lincoln, NE, 68523",q4_new_car_wash_soapatopia
+Alton Town Center,5200 Donald Ross Rd,Palm Beach Gardens,33418,15,1,"Alton Town Center, 5200 Donald Ross Rd, Palm Beach Gardens, FL, 33418",q4_new_car_wash_alton_town_center
+Aqua Blue Car Wash,1097 Duluth Hwy,Lawrenceville,30043,24,3,"Aqua Blue Car Wash, 1097 Duluth Hwy, Lawrenceville, GA, 30043",q4_new_car_wash_aqua_blue_car_wash
+Woodies,111 N Tamiami Trail,Nokomis,34275,1622,11,"Woodies, 111 N Tamiami Trail, Nokomis, FL, 34275",q4_new_car_wash_woodies
+Tsunami Car Wash,3251 Grant St,Gary,46408,1482,6,"Tsunami Car Wash, 3251 Grant St, Gary, IN, 46408",q4_new_car_wash_tsunami_car_wash
+Scrubbles STL,297 Salt Lick Rd,St. Peters,63376,1223,4,"Scrubbles STL, 297 Salt Lick Rd, St. Peters, MO, 63376",q4_new_car_wash_scrubbles_stl
+Evanston Car Wash,2416 Dempster St,Evanston,60202,470,1,"Evanston Car Wash, 2416 Dempster St, Evanston, IL, 60202",q4_new_car_wash_evanston_car_wash
+Five Star,1200 Blowing Rock Rd,Boone,28607,501,7,"Five Star, 1200 Blowing Rock Rd, Boone, NC, 28607",q4_new_car_wash_five_star
+Drip Auto Spa,8955 Indianapolis Blvd,Highland,46322,430,1,"Drip Auto Spa, 8955 Indianapolis Blvd, Highland, IN, 46322",q4_new_car_wash_drip_auto_spa
+Tsunami Car Wash,5520 W Layton Ave,Greenfield,53220,1483,3,"Tsunami Car Wash, 5520 W Layton Ave, Greenfield, WI, 53220",q4_new_car_wash_tsunami_car_wash
+Wave Auto Wash,451 68th St SW,Grand Rapids,49548,1600,1,"Wave Auto Wash, 451 68th St SW, Grand Rapids, MI, 49548",q4_new_car_wash_wave_auto_wash
+Woodies,4927 FL-674,Wimauma,33598,1630,6,"Woodies, 4927 FL-674, Wimauma, FL, 33598",q4_new_car_wash_woodies
+Road Runner Express,7816 Timberlake Rd,Lynchburg,24502,1178,1,"Road Runner Express, 7816 Timberlake Rd, Lynchburg, VA, 24502",q4_new_car_wash_road_runner_express
+Five Star,3803 W Gate City Blvd,Greensboro,27407,503,6,"Five Star, 3803 W Gate City Blvd, Greensboro, NC, 27407",q4_new_car_wash_five_star
+Woodies,9350 Theater Dr,Gibsonton,33534,1621,10,"Woodies, 9350 Theater Dr, Gibsonton, FL, 33534",q4_new_car_wash_woodies
+Scrubbles STL,3300 Mid Rivers Mall Dr,St. Peters,63376,1218,6,"Scrubbles STL, 3300 Mid Rivers Mall Dr, St. Peters, MO, 63376",q4_new_car_wash_scrubbles_stl
+Coral Springs Classic Car Wash,10610 Wiles Rd,Coral Springs,33076,383,1,"Coral Springs Classic Car Wash, 10610 Wiles Rd, Coral Springs, FL, 33076",q4_new_car_wash_coral_springs_classic_car_wash
+FoamWorks Express,1303 16th Ave E,Cordele,31015,512,10,"FoamWorks Express, 1303 16th Ave E, Cordele, GA, 31015",q4_new_car_wash_foamworks_express
+Oasis Auto Spa,5001 Collin McKinney Pkwy,McKinney,75070,1080,1,"Oasis Auto Spa, 5001 Collin McKinney Pkwy, McKinney, TX, 75070",q4_new_car_wash_oasis_auto_spa
+Gallo Car Wash,3020 NW 13th St,Gainesville,32609,528,1,"Gallo Car Wash, 3020 NW 13th St, Gainesville, FL, 32609",q4_new_car_wash_gallo_car_wash
+Firehose Car Wash,1269 E 17th St,Idaho Falls,83404,500,1,"Firehose Car Wash, 1269 E 17th St, Idaho Falls, ID, 83404",q4_new_car_wash_firehose_car_wash
+Scrubbles STL,1125 Cave Springs Blvd,St. Peters,63376,1219,1,"Scrubbles STL, 1125 Cave Springs Blvd, St. Peters, MO, 63376",q4_new_car_wash_scrubbles_stl
+Wash Up,1224 E Ridge Rd,Griffith,46319,1579,7,"Wash Up, 1224 E Ridge Rd, Griffith, IN, 46319",q4_new_car_wash_wash_up
+Auto Brite Express,211 N Cooper Dr,Henderson,27536,38,1,"Auto Brite Express, 211 N Cooper Dr, Henderson, NC, 27536",q4_new_car_wash_auto_brite_express
+Colonial Car Wash,1405 Woodruff Rd,Greenville,29607,372,6,"Colonial Car Wash, 1405 Woodruff Rd, Greenville, SC, 29607",q4_new_car_wash_colonial_car_wash
+Edge Express,1004 Morrisville Carpenter Rd,Morrisville,27560,441,6,"Edge Express, 1004 Morrisville Carpenter Rd, Morrisville, NC, 27560",q4_new_car_wash_edge_express
+Riptide,3335 Victory Blvd,Portsmouth,23701,1167,7,"Riptide, 3335 Victory Blvd, Portsmouth, VA, 23701",q4_new_car_wash_riptide
+Riptide,1001 Dallas Cherryville Hwy,Dallas,28034,1169,6,"Riptide, 1001 Dallas Cherryville Hwy, Dallas, NC, 28034",q4_new_car_wash_riptide
+Tsunami Car Wash,821 Pine Lake Ave,La Porte,46350,1478,7,"Tsunami Car Wash, 821 Pine Lake Ave, La Porte, IN, 46350",q4_new_car_wash_tsunami_car_wash
+TruShine,1912 TN-394,Blountville,37617,1457,7,"TruShine, 1912 TN-394, Blountville, TN, 37617",q4_new_car_wash_trushine
+Woodies,8680 N. Park Blvd,Seminole,33777,1625,13,"Woodies, 8680 N. Park Blvd, Seminole, FL, 33777",q4_new_car_wash_woodies
+Happy Car Wash 2,527 NW North Albany Rd,Albany,97321,616,1,"Happy Car Wash 2, 527 NW North Albany Rd, Albany, OR, 97321",q4_new_car_wash_happy_car_wash_2
+Century Car Wash,2660 McIngvale Rd,Hernando,38632,285,8,"Century Car Wash, 2660 McIngvale Rd, Hernando, MS, 38632",q4_new_car_wash_century_car_wash
+Rogue Car Wash,819 SE Mill St,Grants Pass,97526,1199,1,"Rogue Car Wash, 819 SE Mill St, Grants Pass, OR, 97526",q4_new_car_wash_rogue_car_wash
+Road Runner Express,101 Market Center Way,Daleville,24083,1176,3,"Road Runner Express, 101 Market Center Way, Daleville, VA, 24083",q4_new_car_wash_road_runner_express
+Lakes Edge,7916 Bradley Long Dr,Sherrills Ford,28673,672,1,"Lakes Edge, 7916 Bradley Long Dr, Sherrills Ford, NC, 28673",q4_new_car_wash_lakes_edge
+Drip Car Wash,3709 Owen Rd,Fenton,48430,431,1,"Drip Car Wash, 3709 Owen Rd, Fenton, MI, 48430",q4_new_car_wash_drip_car_wash
+Kwik Car Wash,4000 Catnip Hill Rd,Nicholasville,40356,667,1,"Kwik Car Wash, 4000 Catnip Hill Rd, Nicholasville, KY, 40356",q4_new_car_wash_kwik_car_wash
+Papa Bear,1500 Pearman Dairy Rd,Anderson,29625,1093,4,"Papa Bear, 1500 Pearman Dairy Rd, Anderson, SC, 29625",q4_new_car_wash_papa_bear
+Suds Bucket Car Wash,615 landmark Point Blvd. Suite B,Gray,31032,1348,1,"Suds Bucket Car Wash, 615 landmark Point Blvd. Suite B, Gray, GA, 31032",q4_new_car_wash_suds_bucket_car_wash
+Riptide,3025 Mechanicsville Turnpike,Richmond,23223,1161,2,"Riptide, 3025 Mechanicsville Turnpike, Richmond, VA, 23223",q4_new_car_wash_riptide
+Auto Soak,18711 S Gardner Rd,Gardner,66030,40,1,"Auto Soak, 18711 S Gardner Rd, Gardner, KS, 66030",q4_new_car_wash_auto_soak
+Woodies,7601 Ulmerton Rd,Largo,33771,1631,14,"Woodies, 7601 Ulmerton Rd, Largo, FL, 33771",q4_new_car_wash_woodies
+Blue Sky Englewood,3718 S Broadway,Englewood,80113,101,1,"Blue Sky Englewood, 3718 S Broadway, Englewood, CO, 80113",q4_new_car_wash_blue_sky_englewood
+Staten Island Auto Bath Inc,1531 ARTHUR KILL RD,STATEN ISLAND,10312,1327,1,"Staten Island Auto Bath Inc, 1531 ARTHUR KILL RD, STATEN ISLAND, NY, 10312",q4_new_car_wash_staten_island_auto_bath_inc
+Scarborough Car Wash,1448 FM 66,Waxahachie,75165,1214,1,"Scarborough Car Wash, 1448 FM 66, Waxahachie, TX, 75165",q4_new_car_wash_scarborough_car_wash
+Express Wash,445 Florida Central Pkwy,Longwood,32750,483,4,"Express Wash, 445 Florida Central Pkwy, Longwood, FL, 32750",q4_new_car_wash_express_wash
+TruShine,2227 Fort Henry Dr,Kingsport,37664,1460,5,"TruShine, 2227 Fort Henry Dr, Kingsport, TN, 37664",q4_new_car_wash_trushine
+Riptide,13150 Falls of Neuse Rd,Raleigh,27614,1162,1,"Riptide, 13150 Falls of Neuse Rd, Raleigh, NC, 27614",q4_new_car_wash_riptide
+FoamWorks Express,5551 Thomaston Rd.,Macon,31220,510,9,"FoamWorks Express, 5551 Thomaston Rd., Macon, GA, 31220",q4_new_car_wash_foamworks_express
+Planet Oil,6380 Sashabaw Rd,Clarkston,48346,1109,1,"Planet Oil, 6380 Sashabaw Rd, Clarkston, MI, 48346",q4_new_car_wash_planet_oil
+Aqua Breeze Car Wash,150 E Felton Rd,Cartersville,30120,27,1,"Aqua Breeze Car Wash, 150 E Felton Rd, Cartersville, GA, 30120",q4_new_car_wash_aqua_breeze_car_wash
+Vortex Car Wash,150 Jonathans Way,Suffolk,23434,1513,1,"Vortex Car Wash, 150 Jonathans Way, Suffolk, VA, 23434",q4_new_car_wash_vortex_car_wash
+Tsunami Car Wash,3105 Willowcreek Rd,Portage,46368,1485,8,"Tsunami Car Wash, 3105 Willowcreek Rd, Portage, IN, 46368",q4_new_car_wash_tsunami_car_wash
+American Pride,3810 New Bern Ave,Raleigh,27610,20,5,"American Pride, 3810 New Bern Ave, Raleigh, NC, 27610",q4_new_car_wash_american_pride
+Mega Shine,18282 E Thirteen Mile Rd,Roseville,48066,1012,1,"Mega Shine, 18282 E Thirteen Mile Rd, Roseville, MI, 48066",q4_new_car_wash_mega_shine
+Sonic Suds,2836 Woodruff Rd,Simpsonville,29681,1271,4,"Sonic Suds, 2836 Woodruff Rd, Simpsonville, SC, 29681",q4_new_car_wash_sonic_suds
+Soapatopia,6930 S. 73rd Street,Lincoln,68516,1259,1,"Soapatopia, 6930 S. 73rd Street, Lincoln, NE, 68516",q4_new_car_wash_soapatopia
+Saratoga Honda,3402 US-9,Saratoga Springs,12866,1212,1,"Saratoga Honda, 3402 US-9, Saratoga Springs, NY, 12866",q4_new_car_wash_saratoga_honda
+Wow Car Wash,242 N Broad St,Winder,30680,1637,3,"Wow Car Wash, 242 N Broad St, Winder, GA, 30680",q4_new_car_wash_wow_car_wash
+Pelican Car Wash,13020 US-1,Sebastian,32958,1103,1,"Pelican Car Wash, 13020 US-1, Sebastian, FL, 32958",q4_new_car_wash_pelican_car_wash
+Rocket Wash 2,1207 M.L.K. Jr Blvd,Chapel Hill,27514,1196,5,"Rocket Wash 2, 1207 M.L.K. Jr Blvd, Chapel Hill, NC, 27514",q4_new_car_wash_rocket_wash_2
+Hitech Autocare,1675 Ave Victor M Labiosa,San Juan,926,629,1,"Hitech Autocare, 1675 Ave Victor M Labiosa, San Juan, FL, 926",q4_new_car_wash_hitech_autocare
+Stevens Creek Xpress,3655 Stevens Creek Blvd,Santa Clara,95051,1330,1,"Stevens Creek Xpress, 3655 Stevens Creek Blvd, Santa Clara, CA, 95051",q4_new_car_wash_stevens_creek_xpress
+Riptide,3639 Durham-Chapel Hill Blvd,Durham,27707,1153,3,"Riptide, 3639 Durham-Chapel Hill Blvd, Durham, NC, 27707",q4_new_car_wash_riptide
+Papa Bear,5260 Calhoun Memorial Hwy,Easley,29640,1094,3,"Papa Bear, 5260 Calhoun Memorial Hwy, Easley, SC, 29640",q4_new_car_wash_papa_bear
+Century Car Wash,620 W Service Rd,West Memphis,72301,278,7,"Century Car Wash, 620 W Service Rd, West Memphis, AR, 72301",q4_new_car_wash_century_car_wash
+Bubble Down,10737 Big Bend Rd,Riverview,33579,240,4,"Bubble Down, 10737 Big Bend Rd, Riverview, FL, 33579",q4_new_car_wash_bubble_down
+Mountain Express,821 Shepherd St,Hendersonville,28792,1039,1,"Mountain Express, 821 Shepherd St, Hendersonville, NC, 28792",q4_new_car_wash_mountain_express
+Jet Express Franklin,1121 Georgia Rd,Franklin,28734,645,1,"Jet Express Franklin, 1121 Georgia Rd, Franklin, NC, 28734",q4_new_car_wash_jet_express_franklin
+Riptide,3711 E Franklin Blvd,Gastonia,28056,1155,5,"Riptide, 3711 E Franklin Blvd, Gastonia, NC, 28056",q4_new_car_wash_riptide
+Heroes Car Wash,1370 NW Maynard Rd,Cary,27513,626,9,"Heroes Car Wash, 1370 NW Maynard Rd, Cary, NC, 27513",q4_new_car_wash_heroes_car_wash
+Haffners,69 Parker St,Lawrence,1843,599,1,"Haffners, 69 Parker St, Lawrence, MA, 1843",q4_new_car_wash_haffners
+V Express Car Wash,479 Lexington Rd,Versailles,40383,1495,1,"V Express Car Wash, 479 Lexington Rd, Versailles, KY, 40383",q4_new_car_wash_v_express_car_wash
+Waters Car Wash,2755 10th Ave N,Palm Springs,33461,1594,3,"Waters Car Wash, 2755 10th Ave N, Palm Springs, FL, 33461",q4_new_car_wash_waters_car_wash
+Sunny Daze Car Wash,609 N Mayo Trl,Paintsville,41240,1364,1,"Sunny Daze Car Wash, 609 N Mayo Trl, Paintsville, KY, 41240",q4_new_car_wash_sunny_daze_car_wash
+Carroll Clean Car Wash,11260 Dolfield Blvd,Owings Mills,21117,274,1,"Carroll Clean Car Wash, 11260 Dolfield Blvd, Owings Mills, MD, 21117",q4_new_car_wash_carroll_clean_car_wash
+Squeaky Clean Car Wash 2,3931 Cerrillos Rd,Santa Fe,87507,1321,1,"Squeaky Clean Car Wash 2, 3931 Cerrillos Rd, Santa Fe, NM, 87507",q4_new_car_wash_squeaky_clean_car_wash_2
+Blue Iguana,2118 E Kearney St,Springfield,65803,93,4,"Blue Iguana, 2118 E Kearney St, Springfield, MO, 65803",q4_new_car_wash_blue_iguana
+Roadrunner,811 S Rochester St,Mukwonago,53149,1181,1,"Roadrunner, 811 S Rochester St, Mukwonago, WI, 53149",q4_new_car_wash_roadrunner
+Zips Express Car Wash,2907 Eagle Dr,Woodstock,30189,1657,1,"Zips Express Car Wash, 2907 Eagle Dr, Woodstock, GA, 30189",q4_new_car_wash_zips_express_car_wash
+Blue Iguana,4304 S Fremont Ave,Springfield,65804,91,5,"Blue Iguana, 4304 S Fremont Ave, Springfield, MO, 65804",q4_new_car_wash_blue_iguana
+Woodies,3401 34th St S,St. Petersburg,33711,1623,3,"Woodies, 3401 34th St S, St. Petersburg, FL, 33711",q4_new_car_wash_woodies
+Clean,1020 Pear Drive,Huntsville,77320,316,2,"Clean, 1020 Pear Drive, Huntsville, TX, 77320",q4_new_car_wash_clean
+JJscarwash,404 FM 517 W,Dickinson,77539,651,4,"JJscarwash, 404 FM 517 W, Dickinson, TX, 77539",q4_new_car_wash_jjscarwash
+Mr Clean Car Wash,1382 Pleasant Hill Rd,Lawrenceville,30044,1060,13,"Mr Clean Car Wash, 1382 Pleasant Hill Rd, Lawrenceville, GA, 30044",q4_new_car_wash_mr_clean_car_wash
+Haffners,1150 Bridge St,Lowell,1850,603,7,"Haffners, 1150 Bridge St, Lowell, MA, 1850",q4_new_car_wash_haffners
+Seaway Car Wash,142 Heineberg Drive,Colchester,5446,1227,2,"Seaway Car Wash, 142 Heineberg Drive, Colchester, VT, 5446",q4_new_car_wash_seaway_car_wash
+FoamWorks Express,4780 Riverside Dr.,Macon,31201,513,7,"FoamWorks Express, 4780 Riverside Dr., Macon, GA, 31201",q4_new_car_wash_foamworks_express
+Elks Edge,547 CC Camp Rd,Elkin,28621,465,1,"Elks Edge, 547 CC Camp Rd, Elkin, NC, 28621",q4_new_car_wash_elks_edge
+Pirates Cove,110 Mollie Drive,Goldsboro,27534,1107,1,"Pirates Cove, 110 Mollie Drive, Goldsboro, NC, 27534",q4_new_car_wash_pirates_cove
+Papa Bear,3436 Clemson Blvd,Anderson,29621,1095,1,"Papa Bear, 3436 Clemson Blvd, Anderson, SC, 29621",q4_new_car_wash_papa_bear
+San Diego Car Care Costa Verde,12889 El Camino Real,San Diego,92130,1210,4,"San Diego Car Care Costa Verde, 12889 El Camino Real, San Diego, CA, 92130",q4_new_car_wash_san_diego_car_care_costa_verde
+Zips Express Car Wash,301 Grand Hill Pl,Holly Springs,27540,1642,3,"Zips Express Car Wash, 301 Grand Hill Pl, Holly Springs, NC, 27540",q4_new_car_wash_zips_express_car_wash
+True Clean,29002 Crossroads Ln,Evergreen,80439,1456,1,"True Clean, 29002 Crossroads Ln, Evergreen, CO, 80439",q4_new_car_wash_true_clean
+Wash Rite,75 Teletech Dr,Moundsville,26041,1560,7,"Wash Rite, 75 Teletech Dr, Moundsville, WV, 26041",q4_new_car_wash_wash_rite
+Great North Auto Wash,2701 N Lincoln Rd,Escanaba,49829,582,1,"Great North Auto Wash, 2701 N Lincoln Rd, Escanaba, MI, 49829",q4_new_car_wash_great_north_auto_wash
+Woodies,24749 FL-54,Lutz,33559,1632,5,"Woodies, 24749 FL-54, Lutz, FL, 33559",q4_new_car_wash_woodies
+Mistic Express Car Wash,750 Cincinnati Ave,Xenia,45385,1025,2,"Mistic Express Car Wash, 750 Cincinnati Ave, Xenia, OH, 45385",q4_new_car_wash_mistic_express_car_wash
+TruShine,3033 Boones Creek Rd,Johnson City,37615,1463,4,"TruShine, 3033 Boones Creek Rd, Johnson City, TN, 37615",q4_new_car_wash_trushine
+Blue Iguana,1137 W Kearney St,Springfield,65803,88,6,"Blue Iguana, 1137 W Kearney St, Springfield, MO, 65803",q4_new_car_wash_blue_iguana
+Cadillac Express Carwash,9520 Cullen Blvd,Houston,77051,257,7,"Cadillac Express Carwash, 9520 Cullen Blvd, Houston, TX, 77051",q4_new_car_wash_cadillac_express_carwash
+Rolling Thunder,800 E Main St,Palmyra,17078,1200,1,"Rolling Thunder, 800 E Main St, Palmyra, PA, 17078",q4_new_car_wash_rolling_thunder
+Woodies,5601 66th St N,St. Petersburg,33709,1628,7,"Woodies, 5601 66th St N, St. Petersburg, FL, 33709",q4_new_car_wash_woodies
+Super Scrub Car Wash,4405 Pacific Ave,Stockton,95207,1375,1,"Super Scrub Car Wash, 4405 Pacific Ave, Stockton, CA, 95207",q4_new_car_wash_super_scrub_car_wash
+Detricks,1036 Glenforest Rd,Myrtle Beach,29579,417,4,"Detricks, 1036 Glenforest Rd, Myrtle Beach, SC, 29579",q4_new_car_wash_detricks
+Rocket Wash 2,211 Fieldale Rd,Mebane,27302,1193,7,"Rocket Wash 2, 211 Fieldale Rd, Mebane, NC, 27302",q4_new_car_wash_rocket_wash_2
+Rocket Wash 2,3985 US-421,Wilkesboro,28697,1197,3,"Rocket Wash 2, 3985 US-421, Wilkesboro, NC, 28697",q4_new_car_wash_rocket_wash_2
+Rub A Dub,707 Taugenbaugh Blvd,Rifle,81650,1204,1,"Rub A Dub, 707 Taugenbaugh Blvd, Rifle, CO, 81650",q4_new_car_wash_rub_a_dub
+Aqua Blue Car Wash,85 Peachtree Industrial Blvd,Sugar Hill,30518,26,1,"Aqua Blue Car Wash, 85 Peachtree Industrial Blvd, Sugar Hill, GA, 30518",q4_new_car_wash_aqua_blue_car_wash
+Heroes Car Wash,1420 E Innes St,Salisbury,28146,620,8,"Heroes Car Wash, 1420 E Innes St, Salisbury, NC, 28146",q4_new_car_wash_heroes_car_wash
+Rocket Wash,694 Braves Blvd NE,Rome,30161,1187,5,"Rocket Wash, 694 Braves Blvd NE, Rome, GA, 30161",q4_new_car_wash_rocket_wash
+Wash N Roll,5307 Cane Ridge Rd,Nashville,37013,1550,1,"Wash N Roll, 5307 Cane Ridge Rd, Nashville, TN, 37013",q4_new_car_wash_wash_n_roll
+Zips Express Car Wash,23685 Walton Ave,New Caney,77357,1656,18,"Zips Express Car Wash, 23685 Walton Ave, New Caney, TX, 77357",q4_new_car_wash_zips_express_car_wash
+Paradise Falls Carwash,4350 Austell Rd,Austell,30106,1097,3,"Paradise Falls Carwash, 4350 Austell Rd, Austell, GA, 30106",q4_new_car_wash_paradise_falls_carwash
+Encino Car Wash,17432 Ventura Blvd,Los Angeles,91316,467,1,"Encino Car Wash, 17432 Ventura Blvd, Los Angeles, CA, 91316",q4_new_car_wash_encino_car_wash
+Edge Express,4717 Veterans Pwky,Garner,27529,445,5,"Edge Express, 4717 Veterans Pwky, Garner, NC, 27529",q4_new_car_wash_edge_express
+Mr D Car Wash,525 E Sumner St,Hartford,53027,1063,1,"Mr D Car Wash, 525 E Sumner St, Hartford, WI, 53027",q4_new_car_wash_mr_d_car_wash
+Lexington Auto Spa,1124 Winchester Rd,Lexington,40505,678,1,"Lexington Auto Spa, 1124 Winchester Rd, Lexington, KY, 40505",q4_new_car_wash_lexington_auto_spa
+Woodies,4545 W Gandy Blvd,Tampa,33611,1634,1,"Woodies, 4545 W Gandy Blvd, Tampa, FL, 33611",q4_new_car_wash_woodies
+Rocket Wash 2,1846 US-421,Wilkesboro,28697,1189,4,"Rocket Wash 2, 1846 US-421, Wilkesboro, NC, 28697",q4_new_car_wash_rocket_wash_2
+Route 66 Car Wash,1650 W Holt Ave,Pomona,91768,1202,1,"Route 66 Car Wash, 1650 W Holt Ave, Pomona, CA, 91768",q4_new_car_wash_route_66_car_wash
+Magic Brush,4550 Barranca Pkwy,Irvine,92604,864,4,"Magic Brush, 4550 Barranca Pkwy, Irvine, CA, 92604",q4_new_car_wash_magic_brush
+Mistic Express Car Wash,2650 EAST WHIPP ROAD,CENTERVILLE,45440,1026,1,"Mistic Express Car Wash, 2650 EAST WHIPP ROAD, CENTERVILLE, OH, 45440",q4_new_car_wash_mistic_express_car_wash
+Wash Up,460 Morthland Dr,Valparaiso,46383,1581,1,"Wash Up, 460 Morthland Dr, Valparaiso, IN, 46383",q4_new_car_wash_wash_up
+Mach 1 Express Wash,2210 S Harper Rd,Corinth,38834,850,12,"Mach 1 Express Wash, 2210 S Harper Rd, Corinth, MS, 38834",q4_new_car_wash_mach_1_express_wash
+Legacy Express Wash,2583 E 5th Ave,Columbus,68601,676,1,"Legacy Express Wash, 2583 E 5th Ave, Columbus, NE, 68601",q4_new_car_wash_legacy_express_wash
+Classic Touch Car Wash,2758 Reynolda Rd,Winston-Salem,27106,309,1,"Classic Touch Car Wash, 2758 Reynolda Rd, Winston-Salem, NC, 27106",q4_new_car_wash_classic_touch_car_wash
+Snappy Kedzie Express Wash,3549 S Kedzie Ave,Chicago,60632,1252,1,"Snappy Kedzie Express Wash, 3549 S Kedzie Ave, Chicago, IL, 60632",q4_new_car_wash_snappy_kedzie_express_wash
+Buff it Auto Wash,1699 Stick Ross Mountain Rd,Tahlequah,74464,248,2,"Buff it Auto Wash, 1699 Stick Ross Mountain Rd, Tahlequah, OK, 74464",q4_new_car_wash_buff_it_auto_wash
+The Auto Spa,3212 University Blvd,Durant,74701,1398,3,"The Auto Spa, 3212 University Blvd, Durant, OK, 74701",q4_new_car_wash_the_auto_spa
+Quick n Clean,470 E Kenosha St,Broken Arrow,74012,1124,1,"Quick n Clean, 470 E Kenosha St, Broken Arrow, OK, 74012",q4_new_car_wash_quick_n_clean
+Snappy Car Wash,4510 Winkler Ave,Fort Myers,33913,1250,6,"Snappy Car Wash, 4510 Winkler Ave, Fort Myers, FL, 33913",q4_new_car_wash_snappy_car_wash
+IKO Car Wash,4450 S Pine Island Rd,Davie,33328,633,1,"IKO Car Wash, 4450 S Pine Island Rd, Davie, FL, 33328",q4_new_car_wash_iko_car_wash
+Five Star,117 Turnersburg Hwy,Statesville,28625,502,5,"Five Star, 117 Turnersburg Hwy, Statesville, NC, 28625",q4_new_car_wash_five_star
+Mendham Car Wash,104 E Main St,Mendham,7945,1016,1,"Mendham Car Wash, 104 E Main St, Mendham, NJ, 7945",q4_new_car_wash_mendham_car_wash
+Vibe Car Wash,801 Spring Creek Pkwy,Plano,75023,1503,1,"Vibe Car Wash, 801 Spring Creek Pkwy, Plano, TX, 75023",q4_new_car_wash_vibe_car_wash
+Edge Express,17000 Jefferson Davis Hwy,Dumfries,22026,444,1,"Edge Express, 17000 Jefferson Davis Hwy, Dumfries, VA, 22026",q4_new_car_wash_edge_express
+Kind Car Wash,3106 N National Rd,Columbus,47201,661,1,"Kind Car Wash, 3106 N National Rd, Columbus, IN, 47201",q4_new_car_wash_kind_car_wash
+Rocks Edge,116 Carmel Dr,King,27021,1198,1,"Rocks Edge, 116 Carmel Dr, King, NC, 27021",q4_new_car_wash_rocks_edge
+U S Car Wash,845 N Adair St,Cornelius,97113,1490,1,"U S Car Wash, 845 N Adair St, Cornelius, OR, 97113",q4_new_car_wash_u_s_car_wash
+StoneWash Car Care Center,818 Paris Rd,Mayfield,42066,1331,1,"StoneWash Car Care Center, 818 Paris Rd, Mayfield, KY, 42066",q4_new_car_wash_stonewash_car_care_center
+American Pride,1203 N Brightleaf Blvd,Smithfield,27577,21,3,"American Pride, 1203 N Brightleaf Blvd, Smithfield, NC, 27577",q4_new_car_wash_american_pride
+Century Car Wash,328 E Main St,Senatobia,38668,280,6,"Century Car Wash, 328 E Main St, Senatobia, MS, 38668",q4_new_car_wash_century_car_wash
+Edge Express,925 E Dixon Blvd,Shelby,28152,438,2,"Edge Express, 925 E Dixon Blvd, Shelby, NC, 28152",q4_new_car_wash_edge_express
+Cool Clean Car Wash,1255 W Palmetto Park Rd,Boca Raton,33486,380,1,"Cool Clean Car Wash, 1255 W Palmetto Park Rd, Boca Raton, FL, 33486",q4_new_car_wash_cool_clean_car_wash
+Pelican Auto Wash,11370 US-1,North Palm Beach,33408,1102,1,"Pelican Auto Wash, 11370 US-1, North Palm Beach, FL, 33408",q4_new_car_wash_pelican_auto_wash
+Wash Rite,2504 Grand Central Ave,Vienna,26105,1557,3,"Wash Rite, 2504 Grand Central Ave, Vienna, WV, 26105",q4_new_car_wash_wash_rite
+Waters Car Wash,2375 S Kanner Hwy,Stuart,34994,1589,1,"Waters Car Wash, 2375 S Kanner Hwy, Stuart, FL, 34994",q4_new_car_wash_waters_car_wash
+David Chevrolet,10225 Niagara Falls Blvd,Niagara Falls,14304,412,1,"David Chevrolet, 10225 Niagara Falls Blvd, Niagara Falls, NY, 14304",q4_new_car_wash_david_chevrolet
+Blue Iguana,3155 S Campbell Ave,Springfield,65807,89,7,"Blue Iguana, 3155 S Campbell Ave, Springfield, MO, 65807",q4_new_car_wash_blue_iguana
+FoamWorks Express,369 Westfork Ct,Lithia Springs,30122,508,8,"FoamWorks Express, 369 Westfork Ct, Lithia Springs, GA, 30122",q4_new_car_wash_foamworks_express
+Go Clean Pensacola,6658 Mobile Hwy,Pensacola,32526,560,2,"Go Clean Pensacola, 6658 Mobile Hwy, Pensacola, FL, 32526",q4_new_car_wash_go_clean_pensacola
+JJscarwash,121 Maple Leaf Dr,League City,77573,650,3,"JJscarwash, 121 Maple Leaf Dr, League City, TX, 77573",q4_new_car_wash_jjscarwash
+Green Ocean Car Wash,187 Teaticket Hwy,Falmouth,2536,583,1,"Green Ocean Car Wash, 187 Teaticket Hwy, Falmouth, MA, 2536",q4_new_car_wash_green_ocean_car_wash
+Wash 37135,118 Henslee Dr,Dickson,37055,1517,3,"Wash 37135, 118 Henslee Dr, Dickson, TN, 37055",q4_new_car_wash_wash_37135
+Total Package Car Wash,713 NE 13th Ave,Cape Coral,33909,1451,3,"Total Package Car Wash, 713 NE 13th Ave, Cape Coral, FL, 33909",q4_new_car_wash_total_package_car_wash
+Chagrin Auto Spa,8327 E Washington St,Chagrin Falls,44023,286,1,"Chagrin Auto Spa, 8327 E Washington St, Chagrin Falls, OH, 44023",q4_new_car_wash_chagrin_auto_spa
+Haffners,469 Haverhill St,Lawrence,1841,594,2,"Haffners, 469 Haverhill St, Lawrence, MA, 1841",q4_new_car_wash_haffners
+Edge Express,1696 E Dixon Blvd,Shelby,28152,446,4,"Edge Express, 1696 E Dixon Blvd, Shelby, NC, 28152",q4_new_car_wash_edge_express
+FoamWorks Express,5200 Altama Ave,Brunswick,31525,511,6,"FoamWorks Express, 5200 Altama Ave, Brunswick, GA, 31525",q4_new_car_wash_foamworks_express
+Wash Rite,2521 Murdoch Ave,Parkersburg,26101,1556,4,"Wash Rite, 2521 Murdoch Ave, Parkersburg, WV, 26101",q4_new_car_wash_wash_rite
+Sonic Suds,703 SE Main St,Simpsonville,29681,1272,2,"Sonic Suds, 703 SE Main St, Simpsonville, SC, 29681",q4_new_car_wash_sonic_suds
+Circle K,1830 E. Hwy 80,Somerset,42503,299,3,"Circle K, 1830 E. Hwy 80, Somerset, KY, 42503",q4_new_car_wash_circle_k
+Express Wash,5430 Florida Ave S,Lakeland,33813,481,1,"Express Wash, 5430 Florida Ave S, Lakeland, FL, 33813",q4_new_car_wash_express_wash
+State Street Auto Wash,5232 N U.S. 23,Oscoda,48750,1326,2,"State Street Auto Wash, 5232 N U.S. 23, Oscoda, MI, 48750",q4_new_car_wash_state_street_auto_wash
+Big Peach Car Wash,1935 Hwy 138 SE,Conyers,30013,68,7,"Big Peach Car Wash, 1935 Hwy 138 SE, Conyers, GA, 30013",q4_new_car_wash_big_peach_car_wash
+Aloha Car Wash 2,13001 NE 177th Pl,Woodinville,98072,10,1,"Aloha Car Wash 2, 13001 NE 177th Pl, Woodinville, WA, 98072",q4_new_car_wash_aloha_car_wash_2
+Haffners,96 Pleasant Valley St,Methuen,1844,596,6,"Haffners, 96 Pleasant Valley St, Methuen, MA, 1844",q4_new_car_wash_haffners
+Wet Rabbit Express Car Wash,1219 State Ave,Marysville,98270,1609,3,"Wet Rabbit Express Car Wash, 1219 State Ave, Marysville, WA, 98270",q4_new_car_wash_wet_rabbit_express_car_wash
+Champions Car Wash,20118 Stone Oak Parkway,San Antonio,78258,294,1,"Champions Car Wash, 20118 Stone Oak Parkway, San Antonio, TX, 78258",q4_new_car_wash_champions_car_wash
+Express On Vaughn,6870 Vaughn Rd,Montgomery,36116,478,1,"Express On Vaughn, 6870 Vaughn Rd, Montgomery, AL, 36116",q4_new_car_wash_express_on_vaughn
+Extreme Express,655 W San Carlos St,San Jose,95126,486,1,"Extreme Express, 655 W San Carlos St, San Jose, CA, 95126",q4_new_car_wash_extreme_express
+Wash 37135,912 Oldham Dr,Nolensville,37135,1518,1,"Wash 37135, 912 Oldham Dr, Nolensville, TN, 37135",q4_new_car_wash_wash_37135
+Washbox Car Wash,180 W Grand Ave,Rainbow City,35906,1586,1,"Washbox Car Wash, 180 W Grand Ave, Rainbow City, AL, 35906",q4_new_car_wash_washbox_car_wash
+Roadrunner,5275 S Moorland Rd,New Berlin,53151,1179,2,"Roadrunner, 5275 S Moorland Rd, New Berlin, WI, 53151",q4_new_car_wash_roadrunner
+Snappy Car Wash,3150 S Cicero Ave,Cicero,60804,1251,3,"Snappy Car Wash, 3150 S Cicero Ave, Cicero, IL, 60804",q4_new_car_wash_snappy_car_wash
+Vics Car Wash,449 N Bolingbrook Dr,Bolingbrook,60440,1506,1,"Vics Car Wash, 449 N Bolingbrook Dr, Bolingbrook, IL, 60440",q4_new_car_wash_vics_car_wash
+Googie,8016 Santa Fe Springs Rd.,Whittier,90602,579,1,"Googie, 8016 Santa Fe Springs Rd., Whittier, CA, 90602",q4_new_car_wash_googie
+Bamboo Carwash,240 Marketplace Blvd,Dawsonville,30534,51,1,"Bamboo Carwash, 240 Marketplace Blvd, Dawsonville, GA, 30534",q4_new_car_wash_bamboo_carwash
+Riverside,1370 S State Rd,Ionia,48846,1174,3,"Riverside, 1370 S State Rd, Ionia, MI, 48846",q4_new_car_wash_riverside
+Presto Conyers Car Wash,1356 GA-138,Conyers,30013,1115,1,"Presto Conyers Car Wash, 1356 GA-138, Conyers, GA, 30013",q4_new_car_wash_presto_conyers_car_wash
+Blue Iguana,3316 W Chestnut Expy,Springfield,65802,90,1,"Blue Iguana, 3316 W Chestnut Expy, Springfield, MO, 65802",q4_new_car_wash_blue_iguana
+Champs Car Wash,775 N Mustang Rd,Tuttle,73089,295,1,"Champs Car Wash, 775 N Mustang Rd, Tuttle, OK, 73089",q4_new_car_wash_champs_car_wash
+North Port Car Wash,14164 Tamiami Trail,North Port,34287,1079,1,"North Port Car Wash, 14164 Tamiami Trail, North Port, FL, 34287",q4_new_car_wash_north_port_car_wash
+Sonic Suds,2426 Laurens Rd,Greenville,29607,1270,1,"Sonic Suds, 2426 Laurens Rd, Greenville, SC, 29607",q4_new_car_wash_sonic_suds
+TruShine,203 Linden Square Dr,Bristol,24202,1458,1,"TruShine, 203 Linden Square Dr, Bristol, VA, 24202",q4_new_car_wash_trushine
+The Washery,127 Airport Rd,Hazleton,18202,1404,1,"The Washery, 127 Airport Rd, Hazleton, PA, 18202",q4_new_car_wash_the_washery
+Snap Clean,619 E Belt Line Rd,Cedar Hill,75104,1243,2,"Snap Clean, 619 E Belt Line Rd, Cedar Hill, TX, 75104",q4_new_car_wash_snap_clean
+Paradise Falls Carwash,1122 Richard D Sailors Pkwy,Powder Springs,30127,1098,1,"Paradise Falls Carwash, 1122 Richard D Sailors Pkwy, Powder Springs, GA, 30127",q4_new_car_wash_paradise_falls_carwash
+H2O Auto Spa,2545 HYLAN BLVD,STATEN ISLAND,10306,592,1,"H2O Auto Spa, 2545 HYLAN BLVD, STATEN ISLAND, NY, 10306",q4_new_car_wash_h2o_auto_spa
+Autobahn Auto Care Center,3928 W Clearwater Ave,Kennewick,99336,44,1,"Autobahn Auto Care Center, 3928 W Clearwater Ave, Kennewick, WA, 99336",q4_new_car_wash_autobahn_auto_care_center
+Big Peach Car Wash,3479 Hwy 81,McDonough,30252,69,5,"Big Peach Car Wash, 3479 Hwy 81, McDonough, GA, 30252",q4_new_car_wash_big_peach_car_wash
+JJscarwash,2221 W Parkwood Ave,Friendswood,77546,652,1,"JJscarwash, 2221 W Parkwood Ave, Friendswood, TX, 77546",q4_new_car_wash_jjscarwash
+Autosport Car Wash,6628 Whittlesey Blvd,Columbus,31909,46,1,"Autosport Car Wash, 6628 Whittlesey Blvd, Columbus, GA, 31909",q4_new_car_wash_autosport_car_wash
+Rinse My Ride,515 E Union Hills Dr,Phoenix,85024,1151,2,"Rinse My Ride, 515 E Union Hills Dr, Phoenix, AZ, 85024",q4_new_car_wash_rinse_my_ride
+Turnpike Car Wash,217 W Jericho Turnpike,Huntington Station,11746,1487,1,"Turnpike Car Wash, 217 W Jericho Turnpike, Huntington Station, NY, 11746",q4_new_car_wash_turnpike_car_wash
+Mojo Xpress Wash,141 Hopkins Corner Dr,Waynesboro,30830,1028,2,"Mojo Xpress Wash, 141 Hopkins Corner Dr, Waynesboro, GA, 30830",q4_new_car_wash_mojo_xpress_wash
+Lonestar Suds Express,12606 Indiana Ave,Lubbock,79423,689,2,"Lonestar Suds Express, 12606 Indiana Ave, Lubbock, TX, 79423",q4_new_car_wash_lonestar_suds_express
+American Pride,8909 Six Forks Rd,Raleigh,27615,18,4,"American Pride, 8909 Six Forks Rd, Raleigh, NC, 27615",q4_new_car_wash_american_pride
+FoamWorks Express,4701 Hartley Bridge Rd,Macon,31216,509,3,"FoamWorks Express, 4701 Hartley Bridge Rd, Macon, GA, 31216",q4_new_car_wash_foamworks_express
+Clean Car Wash,3975 N Federal Hwy,Boca Raton,33431,317,1,"Clean Car Wash, 3975 N Federal Hwy, Boca Raton, FL, 33431",q4_new_car_wash_clean_car_wash
+Crystal Clean Auto Spa,75 Old HWY 96,Bonaire,31005,389,1,"Crystal Clean Auto Spa, 75 Old HWY 96, Bonaire, GA, 31005",q4_new_car_wash_crystal_clean_auto_spa
+SasqWash,4603 Churn Creek Rd,Redding,96002,1213,1,"SasqWash, 4603 Churn Creek Rd, Redding, CA, 96002",q4_new_car_wash_sasqwash
+Grime Scene,513 TX-114,Levelland,79336,588,1,"Grime Scene, 513 TX-114, Levelland, TX, 79336",q4_new_car_wash_grime_scene
+Blue Penguin Car Wash,2204 Roswell Rd,Marietta,30062,96,3,"Blue Penguin Car Wash, 2204 Roswell Rd, Marietta, GA, 30062",q4_new_car_wash_blue_penguin_car_wash
+Bubble Down,15305 N Nebraska Ave,Tampa,33613,244,1,"Bubble Down, 15305 N Nebraska Ave, Tampa, FL, 33613",q4_new_car_wash_bubble_down
+Top Wash,5784 Peachtree Industrial Blvd,Atlanta,30341,1448,1,"Top Wash, 5784 Peachtree Industrial Blvd, Atlanta, GA, 30341",q4_new_car_wash_top_wash
+Mountain Edge,200 E Commonwealth Dr,Wytheville,24382,1037,1,"Mountain Edge, 200 E Commonwealth Dr, Wytheville, VA, 24382",q4_new_car_wash_mountain_edge
+H2GLO CAR WASH,1905 Electric Rd,Cave Spring,24018,591,1,"H2GLO CAR WASH, 1905 Electric Rd, Cave Spring, VA, 24018",q4_new_car_wash_h2glo_car_wash
+Go Clean Car Wash,1 Veteran Blvd,Eufaula,36027,559,3,"Go Clean Car Wash, 1 Veteran Blvd, Eufaula, AL, 36027",q4_new_car_wash_go_clean_car_wash
+LA Xpress Car Wash,444 North Franklin Street,Lancaster,17602,669,1,"LA Xpress Car Wash, 444 North Franklin Street, Lancaster, PA, 17602",q4_new_car_wash_la_xpress_car_wash
+Flawless Auto Bath Inc,380 PORT RICHMOND AVE,STATEN ISLAND,10302,504,1,"Flawless Auto Bath Inc, 380 PORT RICHMOND AVE, STATEN ISLAND, NY, 10302",q4_new_car_wash_flawless_auto_bath_inc
+Magic City Car Wash,619 N Broadway,Minot,58703,870,1,"Magic City Car Wash, 619 N Broadway, Minot, ND, 58703",q4_new_car_wash_magic_city_car_wash
+Rock & Roll Car Wash,8320 W Judge Perez Dr,Chalmette,70043,1182,1,"Rock & Roll Car Wash, 8320 W Judge Perez Dr, Chalmette, LA, 70043",q4_new_car_wash_rock_
+Snap Clean,1060 W Kiest Blvd,Dallas,75224,1244,3,"Snap Clean, 1060 W Kiest Blvd, Dallas, TX, 75224",q4_new_car_wash_snap_clean
+Gwatzilla Car Wash,1701 T P White Dr,Jacksonville,72076,590,1,"Gwatzilla Car Wash, 1701 T P White Dr, Jacksonville, AR, 72076",q4_new_car_wash_gwatzilla_car_wash
+Mach 1 Express Wash,155 Plaza Blvd,Madison,35758,857,15,"Mach 1 Express Wash, 155 Plaza Blvd, Madison, AL, 35758",q4_new_car_wash_mach_1_express_wash
+Dino Dash Wash,575 N Dixie Dr,St. George,84770,420,1,"Dino Dash Wash, 575 N Dixie Dr, St. George, UT, 84770",q4_new_car_wash_dino_dash_wash
+Nicholasville Cw,218 Blueberry Ln,Nicholasville,40356,1077,1,"Nicholasville Cw, 218 Blueberry Ln, Nicholasville, KY, 40356",q4_new_car_wash_nicholasville_cw
+Wash N Roll,2640 8th Ave S,Nashville,37204,1549,3,"Wash N Roll, 2640 8th Ave S, Nashville, TN, 37204",q4_new_car_wash_wash_n_roll
+Heroes Car Wash,2000 Hendersonville Rd,Asheville,28803,623,3,"Heroes Car Wash, 2000 Hendersonville Rd, Asheville, NC, 28803",q4_new_car_wash_heroes_car_wash
+Haffners,73 Plaistow Rd,Haverhill,1830,602,8,"Haffners, 73 Plaistow Rd, Haverhill, MA, 1830",q4_new_car_wash_haffners
+Wash Rite,107 Crooked Run Ln,Marietta,45750,1564,2,"Wash Rite, 107 Crooked Run Ln, Marietta, OH, 45750",q4_new_car_wash_wash_rite
+Beach Bum Express,7602 El Camino Real,Carlsbad,92009,54,1,"Beach Bum Express, 7602 El Camino Real, Carlsbad, CA, 92009",q4_new_car_wash_beach_bum_express
+Seaway Car Wash,1341 Shelburne Rd,South Burlington,5403,1225,1,"Seaway Car Wash, 1341 Shelburne Rd, South Burlington, VT, 5403",q4_new_car_wash_seaway_car_wash
+Seaway Car Wash,1341 Shelburne Rd,South Burlington,5403,1226,3,"Seaway Car Wash, 1341 Shelburne Rd, South Burlington, VT, 5403",q4_new_car_wash_seaway_car_wash
+Super Suds,2563 Panola Rd,Lithonia,30058,1381,1,"Super Suds, 2563 Panola Rd, Lithonia, GA, 30058",q4_new_car_wash_super_suds
+Wash Industries,6319 W Passyunk Ave,Philadelphia,19153,1538,8,"Wash Industries, 6319 W Passyunk Ave, Philadelphia, PA, 19153",q4_new_car_wash_wash_industries
+Magic Brush,22330 Cactus Ave,Moreno Valley,92553,867,1,"Magic Brush, 22330 Cactus Ave, Moreno Valley, CA, 92553",q4_new_car_wash_magic_brush
+Quick Jet Car Wash,1217 Dolly Parton Pkwy,Sevierville,37862,1123,1,"Quick Jet Car Wash, 1217 Dolly Parton Pkwy, Sevierville, TN, 37862",q4_new_car_wash_quick_jet_car_wash
+Fast Lap Car Wash,3830 N 51st Ave,Phoenix,85031,488,1,"Fast Lap Car Wash, 3830 N 51st Ave, Phoenix, AZ, 85031",q4_new_car_wash_fast_lap_car_wash
+Kuhnsville Car Wash,5627 Tilghman St,Allentown,18104,666,1,"Kuhnsville Car Wash, 5627 Tilghman St, Allentown, PA, 18104",q4_new_car_wash_kuhnsville_car_wash
+Super Spray,1581 S Muskogee Ave,Tahlequah,74464,1380,1,"Super Spray, 1581 S Muskogee Ave, Tahlequah, OK, 74464",q4_new_car_wash_super_spray
+Haffners,330 S Broadway,Lawrence,1843,600,3,"Haffners, 330 S Broadway, Lawrence, MA, 1843",q4_new_car_wash_haffners
+Wash Rite,1101 Division Street,Parkersburg,26101,1554,1,"Wash Rite, 1101 Division Street, Parkersburg, WV, 26101",q4_new_car_wash_wash_rite
+Blue Penguin Car Wash,1475 N Expy,Griffin,30223,95,2,"Blue Penguin Car Wash, 1475 N Expy, Griffin, GA, 30223",q4_new_car_wash_blue_penguin_car_wash
+International Auto Spa,4975 Clark Rd,Sarasota,34233,637,1,"International Auto Spa, 4975 Clark Rd, Sarasota, FL, 34233",q4_new_car_wash_international_auto_spa
+Wash Industries,6135 N Broad St,Philadelphia,19141,1536,10,"Wash Industries, 6135 N Broad St, Philadelphia, PA, 19141",q4_new_car_wash_wash_industries
+Speedy Falcon Car Wash,11230 Strang Line Rd,Lenexa,66215,1287,2,"Speedy Falcon Car Wash, 11230 Strang Line Rd, Lenexa, KS, 66215",q4_new_car_wash_speedy_falcon_car_wash
+Mountain Express,226 Old Chimney Rock Rd,Hendersonville,28792,1038,2,"Mountain Express, 226 Old Chimney Rock Rd, Hendersonville, NC, 28792",q4_new_car_wash_mountain_express
+American Pride,1421 US-70,Garner,27529,19,1,"American Pride, 1421 US-70, Garner, NC, 27529",q4_new_car_wash_american_pride
+Mach 1 Express Wash,157 Plaza Dr,Forest City,28043,851,6,"Mach 1 Express Wash, 157 Plaza Dr, Forest City, NC, 28043",q4_new_car_wash_mach_1_express_wash
+Wash Industries,2622 N Broad St,Philadelphia,19132,1537,5,"Wash Industries, 2622 N Broad St, Philadelphia, PA, 19132",q4_new_car_wash_wash_industries
+Soapy Saddles,3198 Hamner Ave,Norco,92860,1263,1,"Soapy Saddles, 3198 Hamner Ave, Norco, CA, 92860",q4_new_car_wash_soapy_saddles
+Closter Car Wash,11 Endres St,Closter,7624,367,1,"Closter Car Wash, 11 Endres St, Closter, NJ, 7624",q4_new_car_wash_closter_car_wash
+Clean Wave,11031 Los Alamitos Blvd,Los Alamitos,90720,320,1,"Clean Wave, 11031 Los Alamitos Blvd, Los Alamitos, CA, 90720",q4_new_car_wash_clean_wave
+Wash Ashore Carwash,2304 State Rd,Plymouth,2360,1521,1,"Wash Ashore Carwash, 2304 State Rd, Plymouth, MA, 2360",q4_new_car_wash_wash_ashore_carwash
+Hippo Car Wash,510 W Bosanko Ave,Coeur d'Alene,83815,627,1,"Hippo Car Wash, 510 W Bosanko Ave, Coeur d'Alene, ID, 83815",q4_new_car_wash_hippo_car_wash
+Superior Shine Car Wash,28100 Harper Ave,St. Clair Shores,48081,1388,1,"Superior Shine Car Wash, 28100 Harper Ave, St. Clair Shores, MI, 48081",q4_new_car_wash_superior_shine_car_wash
+Super Duck,14533 US-231,Hazel Green,35750,1372,1,"Super Duck, 14533 US-231, Hazel Green, AL, 35750",q4_new_car_wash_super_duck
+Brickyard Car Wash,9020 Sage Ave,Naples,34120,227,1,"Brickyard Car Wash, 9020 Sage Ave, Naples, FL, 34120",q4_new_car_wash_brickyard_car_wash
+Century Car Wash,29 Robbins Rd,Covington,38019,283,1,"Century Car Wash, 29 Robbins Rd, Covington, TN, 38019",q4_new_car_wash_century_car_wash
+San Diego Car Care Costa Verde,16757 Bernardo Center Dr,San Diego,92128,1207,3,"San Diego Car Care Costa Verde, 16757 Bernardo Center Dr, San Diego, CA, 92128",q4_new_car_wash_san_diego_car_care_costa_verde
+Aloha Car Wash 2,17818 Bothell Everett Hwy,Bothell,98012,11,2,"Aloha Car Wash 2, 17818 Bothell Everett Hwy, Bothell, WA, 98012",q4_new_car_wash_aloha_car_wash_2
+Cajun Clean,2235 US-90,Gautier,39553,261,2,"Cajun Clean, 2235 US-90, Gautier, MS, 39553",q4_new_car_wash_cajun_clean
+Bella Stone Car Wash,2413 Palermo Parkway,Temple,76502,55,1,"Bella Stone Car Wash, 2413 Palermo Parkway, Temple, TX, 76502",q4_new_car_wash_bella_stone_car_wash
+Coastal Car Wash,9123 Ocean Hwy,Pawleys Island,29585,369,3,"Coastal Car Wash, 9123 Ocean Hwy, Pawleys Island, SC, 29585",q4_new_car_wash_coastal_car_wash
+Coastal Car Wash,9123 Ocean Hwy,Pawleys Island,29585,370,1,"Coastal Car Wash, 9123 Ocean Hwy, Pawleys Island, SC, 29585",q4_new_car_wash_coastal_car_wash
+Super Duck,8392 Hwy 72 W,Madison,35757,1373,2,"Super Duck, 8392 Hwy 72 W, Madison, AL, 35757",q4_new_car_wash_super_duck
+TruShine,25017 Western Loop,Abingdon,24211,1459,3,"TruShine, 25017 Western Loop, Abingdon, VA, 24211",q4_new_car_wash_trushine
+Englewood Car Wash,287 S Indiana Ave,Englewood,34223,468,1,"Englewood Car Wash, 287 S Indiana Ave, Englewood, FL, 34223",q4_new_car_wash_englewood_car_wash
+Capitol Car Wash,3125 Airport Rd,Pierre,57501,264,1,"Capitol Car Wash, 3125 Airport Rd, Pierre, SD, 57501",q4_new_car_wash_capitol_car_wash
+Blue Cow Car Wash,10 Commons Way,Kalispell,59901,87,1,"Blue Cow Car Wash, 10 Commons Way, Kalispell, MT, 59901",q4_new_car_wash_blue_cow_car_wash
+Speedy Falcon Car Wash,10150 Walker St,Lenexa,66220,1288,1,"Speedy Falcon Car Wash, 10150 Walker St, Lenexa, KS, 66220",q4_new_car_wash_speedy_falcon_car_wash
+Touch & Go Car Wash,847 Brookway Blvd,Brookhaven,39601,1452,1,"Touch & Go Car Wash, 847 Brookway Blvd, Brookhaven, MS, 39601",q4_new_car_wash_touch_
+Colonial Car Wash,11021 Colonial Blvd,Fort Myers,33913,371,1,"Colonial Car Wash, 11021 Colonial Blvd, Fort Myers, FL, 33913",q4_new_car_wash_colonial_car_wash
+Buckeye Car Wash,4521 KENNY RD,COLUMBUS,43220,246,1,"Buckeye Car Wash, 4521 KENNY RD, COLUMBUS, OH, 43220",q4_new_car_wash_buckeye_car_wash
+Pure Car Wash,330 Anna Dr,McComb,39648,1120,1,"Pure Car Wash, 330 Anna Dr, McComb, MS, 39648",q4_new_car_wash_pure_car_wash
+Sunset CW,1204 E Sunset Dr,Bellingham,98226,1366,1,"Sunset CW, 1204 E Sunset Dr, Bellingham, WA, 98226",q4_new_car_wash_sunset_cw
+Secaucus Car Wash,200 Flanagan Way,Secaucus,7094,1228,1,"Secaucus Car Wash, 200 Flanagan Way, Secaucus, NJ, 7094",q4_new_car_wash_secaucus_car_wash
+Blue Iguana,1640 E Sunshine St,Springfield,65804,92,3,"Blue Iguana, 1640 E Sunshine St, Springfield, MO, 65804",q4_new_car_wash_blue_iguana
+Riverside,1941 W Main St,Lowell,49331,1173,1,"Riverside, 1941 W Main St, Lowell, MI, 49331",q4_new_car_wash_riverside
+Aqua Shine Express,509 S Pleasantburg Dr,Greenville,29607,34,1,"Aqua Shine Express, 509 S Pleasantburg Dr, Greenville, SC, 29607",q4_new_car_wash_aqua_shine_express
+Alpine Wash,250 S Denton Tap Rd,Coppell,75019,14,1,"Alpine Wash, 250 S Denton Tap Rd, Coppell, TX, 75019",q4_new_car_wash_alpine_wash
+Glacier Express,90 24th St W,Billings,59102,552,3,"Glacier Express, 90 24th St W, Billings, MT, 59102",q4_new_car_wash_glacier_express
+Ollie Wash,3850 Frederica St,Owensboro,42301,1087,1,"Ollie Wash, 3850 Frederica St, Owensboro, KY, 42301",q4_new_car_wash_ollie_wash
+Mint Express Carwash,23040 Morton Ranch Rd,Katy,77449,1021,3,"Mint Express Carwash, 23040 Morton Ranch Rd, Katy, TX, 77449",q4_new_car_wash_mint_express_carwash
+Slash 77 Car Wash,1925 Silver City Hwy NW,Deming,88030,1240,1,"Slash 77 Car Wash, 1925 Silver City Hwy NW, Deming, NM, 88030",q4_new_car_wash_slash_77_car_wash
+Daybreak,19701 Cochran Blvd,Port Charlotte,33948,413,1,"Daybreak, 19701 Cochran Blvd, Port Charlotte, FL, 33948",q4_new_car_wash_daybreak
+Tru Car Wash,4523 Nine Mile Rd,Richmond,23223,1455,1,"Tru Car Wash, 4523 Nine Mile Rd, Richmond, VA, 23223",q4_new_car_wash_tru_car_wash
+Local Car Wash,331 W Loudon St,Chambersburg,17201,687,1,"Local Car Wash, 331 W Loudon St, Chambersburg, PA, 17201",q4_new_car_wash_local_car_wash
+Platinum Auto Spa,2303 6th Ave SE,Aberdeen,57401,1110,1,"Platinum Auto Spa, 2303 6th Ave SE, Aberdeen, SD, 57401",q4_new_car_wash_platinum_auto_spa
+PV Car Wash,12621 N Paradise Village Pkwy W,Phoenix,85032,1121,1,"PV Car Wash, 12621 N Paradise Village Pkwy W, Phoenix, AZ, 85032",q4_new_car_wash_pv_car_wash
+Wash N Roll,7128 Hwy 70 S,Nashville,37221,1551,2,"Wash N Roll, 7128 Hwy 70 S, Nashville, TN, 37221",q4_new_car_wash_wash_n_roll
+Splash Hopper Express Wash,863 Western Bypass,Andalusia,36420,1315,1,"Splash Hopper Express Wash, 863 Western Bypass, Andalusia, AL, 36420",q4_new_car_wash_splash_hopper_express_wash
+Mojo Xpress Wash,332 South Green St,Swainsboro,30401,1027,1,"Mojo Xpress Wash, 332 South Green St, Swainsboro, GA, 30401",q4_new_car_wash_mojo_xpress_wash
+Wash Industries,5801 Wayne Ave,Philadelphia,19144,1531,3,"Wash Industries, 5801 Wayne Ave, Philadelphia, PA, 19144",q4_new_car_wash_wash_industries
+Wet Rabbit Express Car Wash,9021 S Tacoma Way,Lakewood,98499,1606,1,"Wet Rabbit Express Car Wash, 9021 S Tacoma Way, Lakewood, WA, 98499",q4_new_car_wash_wet_rabbit_express_car_wash
+Kiwi Car Wash,4915 20th St,Vero Beach,32966,663,1,"Kiwi Car Wash, 4915 20th St, Vero Beach, FL, 32966",q4_new_car_wash_kiwi_car_wash
+Haffners,215 Lowell Rd,Hudson,3051,597,10,"Haffners, 215 Lowell Rd, Hudson, NH, 3051",q4_new_car_wash_haffners
+Prestige Auto  Spa,15180 Biscayne Blvd,North Miami Beach,33160,1113,1,"Prestige Auto  Spa, 15180 Biscayne Blvd, North Miami Beach, FL, 33160",q4_new_car_wash_prestige_auto_spa
+Bubbas Express Car Wash,1505 E Hammer Ln,Stockton,95210,235,1,"Bubbas Express Car Wash, 1505 E Hammer Ln, Stockton, CA, 95210",q4_new_car_wash_bubbas_express_car_wash
+Go Green N Clean1,196 Onix Dr,Kennett Square,19348,563,1,"Go Green N Clean1, 196 Onix Dr, Kennett Square, PA, 19348",q4_new_car_wash_go_green_n_clean1
+Wash Rite,910 W Main St,Bridgeport,26330,1565,5,"Wash Rite, 910 W Main St, Bridgeport, WV, 26330",q4_new_car_wash_wash_rite
+Mach 1 Express Wash,1559 Rome Hwy,Cedartown,30125,858,1,"Mach 1 Express Wash, 1559 Rome Hwy, Cedartown, GA, 30125",q4_new_car_wash_mach_1_express_wash
+Big Peach Car Wash,583 E 3rd St,Jackson,30233,64,3,"Big Peach Car Wash, 583 E 3rd St, Jackson, GA, 30233",q4_new_car_wash_big_peach_car_wash
+Champion CW,101 Ren Mar Dr,Pleasant View,37146,288,3,"Champion CW, 101 Ren Mar Dr, Pleasant View, TN, 37146",q4_new_car_wash_champion_cw
+OBXpress,4011 N Croatan Hwy,Kitty Hawk,27949,1081,1,"OBXpress, 4011 N Croatan Hwy, Kitty Hawk, NC, 27949",q4_new_car_wash_obxpress
+Riverhead Toyota Car Wash,1655 County Rd 58,Riverhead,11901,1172,1,"Riverhead Toyota Car Wash, 1655 County Rd 58, Riverhead, NY, 11901",q4_new_car_wash_riverhead_toyota_car_wash
+Rockaway Auto Bath,115-05 BEACH CHANNEL DR,ROCKAWAY PARK,11694,1186,1,"Rockaway Auto Bath, 115-05 BEACH CHANNEL DR, ROCKAWAY PARK, NY, 11694",q4_new_car_wash_rockaway_auto_bath
+Radiant Express Car Wash,7575 Gall Blvd,Zephyrhills,33541,1135,7,"Radiant Express Car Wash, 7575 Gall Blvd, Zephyrhills, FL, 33541",q4_new_car_wash_radiant_express_car_wash
+Big Kahuna Car Wash,61 Commodore St,Hazard,41701,60,1,"Big Kahuna Car Wash, 61 Commodore St, Hazard, KY, 41701",q4_new_car_wash_big_kahuna_car_wash
+BuggyBath,2525 S Virginia St,Reno,89502,251,1,"BuggyBath, 2525 S Virginia St, Reno, NV, 89502",q4_new_car_wash_buggybath
+Sonoran Express Car Wash,1523 E Southern Ave,Phoenix,85042,1273,2,"Sonoran Express Car Wash, 1523 E Southern Ave, Phoenix, AZ, 85042",q4_new_car_wash_sonoran_express_car_wash
+Car Wash Palace,4600 Coral Ridge Drive,Coral Springs,33067,269,1,"Car Wash Palace, 4600 Coral Ridge Drive, Coral Springs, FL, 33067",q4_new_car_wash_car_wash_palace
+Pastime Auto Wash,2610 OLIVE HIGHWAY,OROVILLE,95966,1099,1,"Pastime Auto Wash, 2610 OLIVE HIGHWAY, OROVILLE, CA, 95966",q4_new_car_wash_pastime_auto_wash
+Superior Tomball Carwash,27840 Tomball Pkwy,Tomball,77375,1390,1,"Superior Tomball Carwash, 27840 Tomball Pkwy, Tomball, TX, 77375",q4_new_car_wash_superior_tomball_carwash
+Foothills Car Wash,5010 E Ray Rd,Phoenix,85044,515,1,"Foothills Car Wash, 5010 E Ray Rd, Phoenix, AZ, 85044",q4_new_car_wash_foothills_car_wash
+Classic Auto Wash,289 N Comrie Ave,Johnstown,12095,306,1,"Classic Auto Wash, 289 N Comrie Ave, Johnstown, NY, 12095",q4_new_car_wash_classic_auto_wash
+Canton Auto Wash,45425 Michigan Ave,Canton,48188,263,1,"Canton Auto Wash, 45425 Michigan Ave, Canton, MI, 48188",q4_new_car_wash_canton_auto_wash
+Mach 1 Express Wash,1624 Old Monrovia Rd NW,Huntsville,35806,863,9,"Mach 1 Express Wash, 1624 Old Monrovia Rd NW, Huntsville, AL, 35806",q4_new_car_wash_mach_1_express_wash
+Evergreen Car Wash,3303 San Felipe Rd,San Jose,95135,471,1,"Evergreen Car Wash, 3303 San Felipe Rd, San Jose, CA, 95135",q4_new_car_wash_evergreen_car_wash
+Champion CW,1432 Robinson Rd,Old Hickory,37138,289,1,"Champion CW, 1432 Robinson Rd, Old Hickory, TN, 37138",q4_new_car_wash_champion_cw
+TruShine,116 Allensville Rd,Sevierville,37876,1462,6,"TruShine, 116 Allensville Rd, Sevierville, TN, 37876",q4_new_car_wash_trushine
+Prestige Car Wash,10004 Brownsboro Rd,Louisville,40241,1114,1,"Prestige Car Wash, 10004 Brownsboro Rd, Louisville, KY, 40241",q4_new_car_wash_prestige_car_wash
+Soapy Shark,2200 Okeechobee Blvd,West Palm Beach,33409,1266,1,"Soapy Shark, 2200 Okeechobee Blvd, West Palm Beach, FL, 33409",q4_new_car_wash_soapy_shark
+Monsters Express LLC,2160 NW Federal Hwy,Stuart,34994,1035,1,"Monsters Express LLC, 2160 NW Federal Hwy, Stuart, FL, 34994",q4_new_car_wash_monsters_express_llc
+Fine N Shine,1304 TX-121,Bonham,75418,498,1,"Fine N Shine, 1304 TX-121, Bonham, TX, 75418",q4_new_car_wash_fine_n_shine
+Jimmy Suds Car Wash,935 S Kipling Pkwy,Lakewood,80226,648,1,"Jimmy Suds Car Wash, 935 S Kipling Pkwy, Lakewood, CO, 80226",q4_new_car_wash_jimmy_suds_car_wash
+Car Wash Cafe,3050 N University Dr,Sunrise,33322,266,1,"Car Wash Cafe, 3050 N University Dr, Sunrise, FL, 33322",q4_new_car_wash_car_wash_cafe
+Sun Splash,914 N Stratford Rd,Moses Lake,98837,1363,1,"Sun Splash, 914 N Stratford Rd, Moses Lake, WA, 98837",q4_new_car_wash_sun_splash
+Grand Prix Car Wash,3080 San Pablo Dam Rd,San Pablo,94803,580,1,"Grand Prix Car Wash, 3080 San Pablo Dam Rd, San Pablo, CA, 94803",q4_new_car_wash_grand_prix_car_wash
+Arco Wash,4433 Lancaster Dr NE,Salem,97305,35,1,"Arco Wash, 4433 Lancaster Dr NE, Salem, OR, 97305",q4_new_car_wash_arco_wash
+Wash Industries,6025 Lancaster Ave,Philadelphia,19151,1532,2,"Wash Industries, 6025 Lancaster Ave, Philadelphia, PA, 19151",q4_new_car_wash_wash_industries
+Radiant Express Car Wash,4230 Land O' Lakes Blvd,Land O' Lakes,34639,1134,4,"Radiant Express Car Wash, 4230 Land O' Lakes Blvd, Land O' Lakes, FL, 34639",q4_new_car_wash_radiant_express_car_wash
+Wash Up,6259 Melton Rd,Portage,46368,1582,2,"Wash Up, 6259 Melton Rd, Portage, IN, 46368",q4_new_car_wash_wash_up
+Seaford Car Wash,3470 Merrick Rd,Seaford,11783,1224,1,"Seaford Car Wash, 3470 Merrick Rd, Seaford, NY, 11783",q4_new_car_wash_seaford_car_wash
+Boca Best Car Wash,6603 Jog Rd,Boca Raton,33496,226,1,"Boca Best Car Wash, 6603 Jog Rd, Boca Raton, FL, 33496",q4_new_car_wash_boca_best_car_wash
+Mint Carwash,3751 Frankford Rd,Dallas,75287,1018,1,"Mint Carwash, 3751 Frankford Rd, Dallas, TX, 75287",q4_new_car_wash_mint_carwash
+Carisma Car Wash,2407 W Dickinson Blvd,Fort Stockton,79735,270,1,"Carisma Car Wash, 2407 W Dickinson Blvd, Fort Stockton, TX, 79735",q4_new_car_wash_carisma_car_wash
+Suds Deluxe,18810 IH 35,Kyle,78640,1353,4,"Suds Deluxe, 18810 IH 35, Kyle, TX, 78640",q4_new_car_wash_suds_deluxe
+Autowash Express,1398 S Wadsworth Blvd,Lakewood,80232,47,1,"Autowash Express, 1398 S Wadsworth Blvd, Lakewood, CO, 80232",q4_new_car_wash_autowash_express
+Suds Deluxe,12119 Murphy Rd,Stafford,77477,1359,8,"Suds Deluxe, 12119 Murphy Rd, Stafford, TX, 77477",q4_new_car_wash_suds_deluxe
+Magic Brush,27503 McCall Blvd,Menifee,92585,866,2,"Magic Brush, 27503 McCall Blvd, Menifee, CA, 92585",q4_new_car_wash_magic_brush
+Century Car Wash,1101 Church Rd W,Southaven,38671,282,2,"Century Car Wash, 1101 Church Rd W, Southaven, MS, 38671",q4_new_car_wash_century_car_wash
+Express Wash,1095 Amber Pointe Blvd,Kissimmee,34744,482,3,"Express Wash, 1095 Amber Pointe Blvd, Kissimmee, FL, 34744",q4_new_car_wash_express_wash
+Moyka 441,1955 S State Rd 7,Davie,33317,1040,1,"Moyka 441, 1955 S State Rd 7, Davie, FL, 33317",q4_new_car_wash_moyka_441
+Imperial Car Wash,8795 Little Rd,New Port Richey,34654,634,1,"Imperial Car Wash, 8795 Little Rd, New Port Richey, FL, 34654",q4_new_car_wash_imperial_car_wash
+Haffners,2221 Main St,Tewksbury,1876,593,5,"Haffners, 2221 Main St, Tewksbury, MA, 1876",q4_new_car_wash_haffners
+TLC Car Wash,2925 Williamson Rd,Roanoke,24012,1445,1,"TLC Car Wash, 2925 Williamson Rd, Roanoke, VA, 24012",q4_new_car_wash_tlc_car_wash
+Mr Clean Car Wash,3950 Shallowford Rd,Marietta,30062,1049,9,"Mr Clean Car Wash, 3950 Shallowford Rd, Marietta, GA, 30062",q4_new_car_wash_mr_clean_car_wash
+Precision Express Car Wash,2106 S Main St,Lindale,75771,1112,1,"Precision Express Car Wash, 2106 S Main St, Lindale, TX, 75771",q4_new_car_wash_precision_express_car_wash
+Village Car Wash,1050 W Beta St,Green Valley,85614,1508,1,"Village Car Wash, 1050 W Beta St, Green Valley, AZ, 85614",q4_new_car_wash_village_car_wash
+Slim Olson Car Wash,2301 S Main St,Bountiful,84010,1241,1,"Slim Olson Car Wash, 2301 S Main St, Bountiful, UT, 84010",q4_new_car_wash_slim_olson_car_wash
+Lightning Fast,2045 W Oaklawn Rd,Pleasanton,78064,681,1,"Lightning Fast, 2045 W Oaklawn Rd, Pleasanton, TX, 78064",q4_new_car_wash_lightning_fast
+Zips Express Car Wash,3601 E US Hwy 377,Granbury,76049,1646,17,"Zips Express Car Wash, 3601 E US Hwy 377, Granbury, TX, 76049",q4_new_car_wash_zips_express_car_wash
+Ocean State Car Wash,2313 Post Rd,Warwick,2886,1083,1,"Ocean State Car Wash, 2313 Post Rd, Warwick, RI, 2886",q4_new_car_wash_ocean_state_car_wash
+Century Car Wash,1690 Goodman Rd,Horn Lake,38637,284,4,"Century Car Wash, 1690 Goodman Rd, Horn Lake, MS, 38637",q4_new_car_wash_century_car_wash
+Cadillac Express Carwash,235 E Little York Rd,Houston,77076,258,3,"Cadillac Express Carwash, 235 E Little York Rd, Houston, TX, 77076",q4_new_car_wash_cadillac_express_carwash
+Blue Penguin Car Wash,5897 Fairburn Rd,Douglasville,30134,97,1,"Blue Penguin Car Wash, 5897 Fairburn Rd, Douglasville, GA, 30134",q4_new_car_wash_blue_penguin_car_wash
+Zips Express Car Wash,508 N Berkeley Blvd,Goldsboro,27534,1655,4,"Zips Express Car Wash, 508 N Berkeley Blvd, Goldsboro, NC, 27534",q4_new_car_wash_zips_express_car_wash
+Radiant Express Car Wash,6576 US Hwy 41,Apollo Beach,33572,1139,6,"Radiant Express Car Wash, 6576 US Hwy 41, Apollo Beach, FL, 33572",q4_new_car_wash_radiant_express_car_wash
+Monkey Shine,2518 Bob Bullock Loop,Laredo,78045,1029,1,"Monkey Shine, 2518 Bob Bullock Loop, Laredo, TX, 78045",q4_new_car_wash_monkey_shine
+Big Peach Car Wash,126 N Lee St,Forsyth,31029,61,1,"Big Peach Car Wash, 126 N Lee St, Forsyth, GA, 31029",q4_new_car_wash_big_peach_car_wash
+Jules Car Wash,10060 US-301,Riverview,33569,656,1,"Jules Car Wash, 10060 US-301, Riverview, FL, 33569",q4_new_car_wash_jules_car_wash
+Norco AUTO Spa,996 Mountain Ave,Norco,92860,1078,1,"Norco AUTO Spa, 996 Mountain Ave, Norco, CA, 92860",q4_new_car_wash_norco_auto_spa
+Waterworks Express Car Wash,1557 Marinette Ave,Marinette,54143,1599,1,"Waterworks Express Car Wash, 1557 Marinette Ave, Marinette, WI, 54143",q4_new_car_wash_waterworks_express_car_wash
+Carmel Car Wash,9115 Garland Rd,Dallas,75218,271,4,"Carmel Car Wash, 9115 Garland Rd, Dallas, TX, 75218",q4_new_car_wash_carmel_car_wash
+Radiant Express Car Wash,7104 Mariner Blvd,Spring Hill,34609,1137,5,"Radiant Express Car Wash, 7104 Mariner Blvd, Spring Hill, FL, 34609",q4_new_car_wash_radiant_express_car_wash
+Wash Rite,151 Cadiz Rd,Wintersville,43953,1555,6,"Wash Rite, 151 Cadiz Rd, Wintersville, OH, 43953",q4_new_car_wash_wash_rite
+Atlantic City Car Wash,44 N Albany Ave,Atlantic City,8401,36,1,"Atlantic City Car Wash, 44 N Albany Ave, Atlantic City, NJ, 8401",q4_new_car_wash_atlantic_city_car_wash
+Wash Industries,1309 West Chester Pike,West Chester,19382,1534,1,"Wash Industries, 1309 West Chester Pike, West Chester, PA, 19382",q4_new_car_wash_wash_industries
+Snap Clean,110 N Elm Street,Ennis,75119,1247,1,"Snap Clean, 110 N Elm Street, Ennis, TX, 75119",q4_new_car_wash_snap_clean
+Lathrop Arco Car Wash,2050 Crestwood Ave,Manteca,95336,673,1,"Lathrop Arco Car Wash, 2050 Crestwood Ave, Manteca, CA, 95336",q4_new_car_wash_lathrop_arco_car_wash
+Superior Almeda Car Wash,10126 Almeda Genoa Rd,Houston,77075,1383,1,"Superior Almeda Car Wash, 10126 Almeda Genoa Rd, Houston, TX, 77075",q4_new_car_wash_superior_almeda_car_wash
+Champion CW,1159 W Main St,Hendersonville,37075,290,2,"Champion CW, 1159 W Main St, Hendersonville, TN, 37075",q4_new_car_wash_champion_cw
+Colonial Car Wash,6050 Wade Hampton Blvd,Taylors,29687,374,4,"Colonial Car Wash, 6050 Wade Hampton Blvd, Taylors, SC, 29687",q4_new_car_wash_colonial_car_wash
+Champion CW,3855 Dickerson Pike,Nashville,37207,293,10,"Champion CW, 3855 Dickerson Pike, Nashville, TN, 37207",q4_new_car_wash_champion_cw
+Mr Clean Car Wash,2904 Holcomb Bridge Rd,Alpharetta,30022,1058,16,"Mr Clean Car Wash, 2904 Holcomb Bridge Rd, Alpharetta, GA, 30022",q4_new_car_wash_mr_clean_car_wash
+Mint Express Carwash,8640 Barker Cypress Rd,Houston,77095,1019,1,"Mint Express Carwash, 8640 Barker Cypress Rd, Houston, TX, 77095",q4_new_car_wash_mint_express_carwash
+Brookhurst Express Car Wash,14571 Brookhurst St,Westminster,92683,233,1,"Brookhurst Express Car Wash, 14571 Brookhurst St, Westminster, CA, 92683",q4_new_car_wash_brookhurst_express_car_wash
+Radiant Express Car Wash,925 Cypress Pkwy,Kissimmee,34759,1131,3,"Radiant Express Car Wash, 925 Cypress Pkwy, Kissimmee, FL, 34759",q4_new_car_wash_radiant_express_car_wash
+Twins,2240 N Courtenay Pkwy,Merritt Island,32953,1489,1,"Twins, 2240 N Courtenay Pkwy, Merritt Island, FL, 32953",q4_new_car_wash_twins
+Bulldog Car Wash,2920 Atlanta Hwy,Athens,30606,252,1,"Bulldog Car Wash, 2920 Atlanta Hwy, Athens, GA, 30606",q4_new_car_wash_bulldog_car_wash
+Ocean Express,9640 Federal Blvd,Federal Heights,80260,1082,1,"Ocean Express, 9640 Federal Blvd, Federal Heights, CO, 80260",q4_new_car_wash_ocean_express
+Cadillac Express Carwash,2005 Bingle Rd,Houston,77055,255,6,"Cadillac Express Carwash, 2005 Bingle Rd, Houston, TX, 77055",q4_new_car_wash_cadillac_express_carwash
+Mach 1 Express Wash,20945 N Dupont Blvd,Georgetown,19947,853,13,"Mach 1 Express Wash, 20945 N Dupont Blvd, Georgetown, DE, 19947",q4_new_car_wash_mach_1_express_wash
+Wash N Roll,6303 Charlotte Pike,Nashville,37209,1547,4,"Wash N Roll, 6303 Charlotte Pike, Nashville, TN, 37209",q4_new_car_wash_wash_n_roll
+Buff it Auto Wash,1408 E Wade Watts Ave,McAlester,74501,247,1,"Buff it Auto Wash, 1408 E Wade Watts Ave, McAlester, OK, 74501",q4_new_car_wash_buff_it_auto_wash
+Mach 1 Express Wash,9 Hillview Ave NE,Cartersville,30121,861,10,"Mach 1 Express Wash, 9 Hillview Ave NE, Cartersville, GA, 30121",q4_new_car_wash_mach_1_express_wash
+The Auto Spa,2002 W Main St,Durant,74701,1397,1,"The Auto Spa, 2002 W Main St, Durant, OK, 74701",q4_new_car_wash_the_auto_spa
+Suds Deluxe,2991 FM 1460,Georgetown,78626,1350,3,"Suds Deluxe, 2991 FM 1460, Georgetown, TX, 78626",q4_new_car_wash_suds_deluxe
+Carmel Car Wash,5780 Eldorado Pkwy,Frisco,75034,273,2,"Carmel Car Wash, 5780 Eldorado Pkwy, Frisco, TX, 75034",q4_new_car_wash_carmel_car_wash
+Jammin Car Wash,21356 Walmart Way,Lutz,33548,642,1,"Jammin Car Wash, 21356 Walmart Way, Lutz, FL, 33548",q4_new_car_wash_jammin_car_wash
+Atlantic Express,7700 Atlantic Ave,Cudahy,90201,37,1,"Atlantic Express, 7700 Atlantic Ave, Cudahy, CA, 90201",q4_new_car_wash_atlantic_express
+Jules Car Wash,654 W Brandon Blvd,Brandon,33511,657,2,"Jules Car Wash, 654 W Brandon Blvd, Brandon, FL, 33511",q4_new_car_wash_jules_car_wash
+Superior Texas Car Wash,7920 Hwy 6,Houston,77083,1389,1,"Superior Texas Car Wash, 7920 Hwy 6, Houston, TX, 77083",q4_new_car_wash_superior_texas_car_wash
+Drive Thru Express,590 N Magnolia Ave,Anaheim,92801,434,1,"Drive Thru Express, 590 N Magnolia Ave, Anaheim, CA, 92801",q4_new_car_wash_drive_thru_express
+Venice Car Wash,700 S Tamiami Trail,Venice,34285,1501,1,"Venice Car Wash, 700 S Tamiami Trail, Venice, FL, 34285",q4_new_car_wash_venice_car_wash
+Wash Industries,1400 S Broad St,Philadelphia,19146,1535,4,"Wash Industries, 1400 S Broad St, Philadelphia, PA, 19146",q4_new_car_wash_wash_industries
+Sparta Car Wash,519 Lafayette Rd,Sparta Township,7871,1286,1,"Sparta Car Wash, 519 Lafayette Rd, Sparta Township, NJ, 7871",q4_new_car_wash_sparta_car_wash
+Fast Trac,550 Maxham Rd,Austell,30168,493,1,"Fast Trac, 550 Maxham Rd, Austell, GA, 30168",q4_new_car_wash_fast_trac
+Superior Fry Car Wash,2205 Fry Rd,Katy,77449,1385,1,"Superior Fry Car Wash, 2205 Fry Rd, Katy, TX, 77449",q4_new_car_wash_superior_fry_car_wash
+Wash Industries,9915 Bustleton Ave,Philadelphia,19115,1529,9,"Wash Industries, 9915 Bustleton Ave, Philadelphia, PA, 19115",q4_new_car_wash_wash_industries
+Sunrise Car Wash,1820 Sunrise Hwy,Merrick,11566,1365,1,"Sunrise Car Wash, 1820 Sunrise Hwy, Merrick, NY, 11566",q4_new_car_wash_sunrise_car_wash
+Fast Pass Car Wash,638 North H Street,Lompoc,93436,491,1,"Fast Pass Car Wash, 638 North H Street, Lompoc, CA, 93436",q4_new_car_wash_fast_pass_car_wash
+San Diego Car Care Costa Verde,11030 Rancho Carmel Dr,San Diego,92128,1209,2,"San Diego Car Care Costa Verde, 11030 Rancho Carmel Dr, San Diego, CA, 92128",q4_new_car_wash_san_diego_car_care_costa_verde
+Encinitas Car Wash,293 N El Camino Real,Encinitas,92024,466,1,"Encinitas Car Wash, 293 N El Camino Real, Encinitas, CA, 92024",q4_new_car_wash_encinitas_car_wash
+Aqua Bubble Car Wash,5860 Bethelview Rd,Cumming,30040,29,1,"Aqua Bubble Car Wash, 5860 Bethelview Rd, Cumming, GA, 30040",q4_new_car_wash_aqua_bubble_car_wash
+San Diego Car Care Costa Verde,8505 Costa Verde Blvd,San Diego,92122,1208,1,"San Diego Car Care Costa Verde, 8505 Costa Verde Blvd, San Diego, CA, 92122",q4_new_car_wash_san_diego_car_care_costa_verde
+Colonial Car Wash,2900 Wade Hampton Blvd,Taylors,29687,373,3,"Colonial Car Wash, 2900 Wade Hampton Blvd, Taylors, SC, 29687",q4_new_car_wash_colonial_car_wash
+Champion CW,271 New Shackle Island Rd,Hendersonville,37075,291,9,"Champion CW, 271 New Shackle Island Rd, Hendersonville, TN, 37075",q4_new_car_wash_champion_cw
+Dino Dash Wash,2054 E Riverside Dr,St. George,84790,421,2,"Dino Dash Wash, 2054 E Riverside Dr, St. George, UT, 84790",q4_new_car_wash_dino_dash_wash
+Jc Auto Wash,701 S Dewey St,North Platte,69101,643,1,"Jc Auto Wash, 701 S Dewey St, North Platte, NE, 69101",q4_new_car_wash_jc_auto_wash
+Suds Deluxe,233 Wonder World Dr,San Marcos,78666,1356,7,"Suds Deluxe, 233 Wonder World Dr, San Marcos, TX, 78666",q4_new_car_wash_suds_deluxe
+Soggy Dog Car Wash,714 Ritter Dr,Glen Morgan,25813,1267,1,"Soggy Dog Car Wash, 714 Ritter Dr, Glen Morgan, WV, 25813",q4_new_car_wash_soggy_dog_car_wash
+Go Clean Car Wash,3218 N Monroe St,Tallahassee,32303,557,2,"Go Clean Car Wash, 3218 N Monroe St, Tallahassee, FL, 32303",q4_new_car_wash_go_clean_car_wash
+Texas Car Wash,15 Texas Ave,Island Park,11558,1395,1,"Texas Car Wash, 15 Texas Ave, Island Park, NY, 11558",q4_new_car_wash_texas_car_wash
+Aloha Car Wash,5360 Laurel Springs Pkwy,Suwanee,30024,9,1,"Aloha Car Wash, 5360 Laurel Springs Pkwy, Suwanee, GA, 30024",q4_new_car_wash_aloha_car_wash
+Solar City,1210 Pioneer Rd,Mesquite,75149,1268,1,"Solar City, 1210 Pioneer Rd, Mesquite, TX, 75149",q4_new_car_wash_solar_city
+Suds Deluxe,24624 Kuykendahl Rd,Tomball,77375,1358,1,"Suds Deluxe, 24624 Kuykendahl Rd, Tomball, TX, 77375",q4_new_car_wash_suds_deluxe
+Rock N Roll Express Car Wash,1615 SE Decker Ave,Stuart,34994,1185,1,"Rock N Roll Express Car Wash, 1615 SE Decker Ave, Stuart, FL, 34994",q4_new_car_wash_rock_n_roll_express_car_wash
+Carmel Car Wash,2003 S Goliad St,Rockwall,75087,272,3,"Carmel Car Wash, 2003 S Goliad St, Rockwall, TX, 75087",q4_new_car_wash_carmel_car_wash
+Washworks Express,601 E King Ave,Kingsville,78363,1587,1,"Washworks Express, 601 E King Ave, Kingsville, TX, 78363",q4_new_car_wash_washworks_express
+Mach 1 Express Wash,5201 NJ-70,Pennsauken Township,8109,856,5,"Mach 1 Express Wash, 5201 NJ-70, Pennsauken Township, NJ, 8109",q4_new_car_wash_mach_1_express_wash
+Dix Hill Car Wash New,1232 E Jericho Turnpike,Huntington,11743,425,1,"Dix Hill Car Wash New, 1232 E Jericho Turnpike, Huntington, NY, 11743",q4_new_car_wash_dix_hill_car_wash_new
+Wash Industries,4601 Chestnut St,Philadelphia,19139,1530,7,"Wash Industries, 4601 Chestnut St, Philadelphia, PA, 19139",q4_new_car_wash_wash_industries
+Waterways Car Spa,1325 Semoran Blvd,Casselberry,32707,1598,1,"Waterways Car Spa, 1325 Semoran Blvd, Casselberry, FL, 32707",q4_new_car_wash_waterways_car_spa
+Super Splash Carwash,400 S Preston Rd,Prosper,75078,1378,1,"Super Splash Carwash, 400 S Preston Rd, Prosper, TX, 75078",q4_new_car_wash_super_splash_carwash
+Patriot Petroleum,2340 W Main Rd,Portsmouth,2871,1100,1,"Patriot Petroleum, 2340 W Main Rd, Portsmouth, RI, 2871",q4_new_car_wash_patriot_petroleum
+Suds Deluxe,3327 Spencer Hwy,Pasadena,77504,1357,5,"Suds Deluxe, 3327 Spencer Hwy, Pasadena, TX, 77504",q4_new_car_wash_suds_deluxe
+Koala Car Wash,1560 Lexington Rd,Athens,30605,665,1,"Koala Car Wash, 1560 Lexington Rd, Athens, GA, 30605",q4_new_car_wash_koala_car_wash
+Sonoran Express Car Wash,16843 N 43rd Ave,Phoenix,85053,1274,1,"Sonoran Express Car Wash, 16843 N 43rd Ave, Phoenix, AZ, 85053",q4_new_car_wash_sonoran_express_car_wash
+Magic Brush,2122 W Highland Ave,San Bernardino,92407,865,3,"Magic Brush, 2122 W Highland Ave, San Bernardino, CA, 92407",q4_new_car_wash_magic_brush
+Moyka 441,1080 NW 31st Ave,Fort Lauderdale,33311,1041,3,"Moyka 441, 1080 NW 31st Ave, Fort Lauderdale, FL, 33311",q4_new_car_wash_moyka_441
+Riverside,617 N Mitchell St,Cadillac,49601,1175,2,"Riverside, 617 N Mitchell St, Cadillac, MI, 49601",q4_new_car_wash_riverside
+Some Guys Car Wash,1287 Deer Park Ave,North Babylon,11703,1269,1,"Some Guys Car Wash, 1287 Deer Park Ave, North Babylon, NY, 11703",q4_new_car_wash_some_guys_car_wash
+Newport auto spa,1461 Superior Ave,Newport Beach,92663,1076,1,"Newport auto spa, 1461 Superior Ave, Newport Beach, CA, 92663",q4_new_car_wash_newport_auto_spa
+Expressway 55,800 Motor Pkwy,Brentwood,11717,485,1,"Expressway 55, 800 Motor Pkwy, Brentwood, NY, 11717",q4_new_car_wash_expressway_55
+Cadillac Express Carwash,13450 Tomball Pkwy,Houston,77086,259,1,"Cadillac Express Carwash, 13450 Tomball Pkwy, Houston, TX, 77086",q4_new_car_wash_cadillac_express_carwash
+Mr Clean Car Wash,220 Riverstone Pkwy,Canton,30114,1057,15,"Mr Clean Car Wash, 220 Riverstone Pkwy, Canton, GA, 30114",q4_new_car_wash_mr_clean_car_wash
+Blu Palm Express,8403 S Tamiami Trail,Sarasota,34238,82,1,"Blu Palm Express, 8403 S Tamiami Trail, Sarasota, FL, 34238",q4_new_car_wash_blu_palm_express
+Jet Express Car Wash,1501 S Main St,Blacksburg,24060,644,1,"Jet Express Car Wash, 1501 S Main St, Blacksburg, VA, 24060",q4_new_car_wash_jet_express_car_wash
+Go Clean Car Wash,2315 Capital Cir NE,Tallahassee,32308,558,1,"Go Clean Car Wash, 2315 Capital Cir NE, Tallahassee, FL, 32308",q4_new_car_wash_go_clean_car_wash
+Fastlane Express Car Wash,924 E 30th Ave,Hutchinson,67502,494,1,"Fastlane Express Car Wash, 924 E 30th Ave, Hutchinson, KS, 67502",q4_new_car_wash_fastlane_express_car_wash
+Clean Wheels,3919 Cheyenne Street,Cheyenne,82001,321,1,"Clean Wheels, 3919 Cheyenne Street, Cheyenne, WY, 82001",q4_new_car_wash_clean_wheels
+Wash N Roll,24925 US-72,Athens,35613,1548,6,"Wash N Roll, 24925 US-72, Athens, AL, 35613",q4_new_car_wash_wash_n_roll
+Superior Mermaid Carwash,1750 NORTH PARK DRIVE,KINGWOOD,77339,1387,1,"Superior Mermaid Carwash, 1750 NORTH PARK DRIVE, KINGWOOD, TX, 77339",q4_new_car_wash_superior_mermaid_carwash
+Circle K,1990 Oak Hill Road,Somerset,42503,301,2,"Circle K, 1990 Oak Hill Road, Somerset, KY, 42503",q4_new_car_wash_circle_k
+Finz Car Wash,801 W Yamato Rd,Boca Raton,33431,499,1,"Finz Car Wash, 801 W Yamato Rd, Boca Raton, FL, 33431",q4_new_car_wash_finz_car_wash
+Century Car Wash,7050 Winchester Rd,Memphis,38125,279,5,"Century Car Wash, 7050 Winchester Rd, Memphis, TN, 38125",q4_new_car_wash_century_car_wash
+Valvoline Express Care,6455 Prutzman Rd,Beaumont,77706,1499,1,"Valvoline Express Care, 6455 Prutzman Rd, Beaumont, TX, 77706",q4_new_car_wash_valvoline_express_care
+Mistic Express Car Wash,1052 Kauffman Ave,Fairborn,45324,1024,3,"Mistic Express Car Wash, 1052 Kauffman Ave, Fairborn, OH, 45324",q4_new_car_wash_mistic_express_car_wash
+Louisville Honda World,1 Swope Autocenter Dr,Louisville,40299,693,1,"Louisville Honda World, 1 Swope Autocenter Dr, Louisville, KY, 40299",q4_new_car_wash_louisville_honda_world
+Circle K,954 US-27,Somerset,42501,298,1,"Circle K, 954 US-27, Somerset, KY, 42501",q4_new_car_wash_circle_k
+Chandi Carwash,1801 Lander Ave,Turlock,95380,296,1,"Chandi Carwash, 1801 Lander Ave, Turlock, CA, 95380",q4_new_car_wash_chandi_carwash
+Mr Clean Car Wash,988 Duluth Hwy #120,Lawrenceville,30043,1059,11,"Mr Clean Car Wash, 988 Duluth Hwy #120, Lawrenceville, GA, 30043",q4_new_car_wash_mr_clean_car_wash
+Superfine Auto Spa,21011 Pioneer Blvd,Lakewood,90715,1382,1,"Superfine Auto Spa, 21011 Pioneer Blvd, Lakewood, CA, 90715",q4_new_car_wash_superfine_auto_spa
+Gloss Car Wash,5712 Lawrenceville Hwy,Lilburn,30047,556,1,"Gloss Car Wash, 5712 Lawrenceville Hwy, Lilburn, GA, 30047",q4_new_car_wash_gloss_car_wash
+JJ Express Car Wash,2185 US-70,Thatcher,85552,649,1,"JJ Express Car Wash, 2185 US-70, Thatcher, AZ, 85552",q4_new_car_wash_jj_express_car_wash
+Mr Clean Car Wash,890 Blanding Blvd,Orange Park,32065,1055,14,"Mr Clean Car Wash, 890 Blanding Blvd, Orange Park, FL, 32065",q4_new_car_wash_mr_clean_car_wash
+Mr Clean Car Wash,262 GA-515,Blairsville,30512,1046,4,"Mr Clean Car Wash, 262 GA-515, Blairsville, GA, 30512",q4_new_car_wash_mr_clean_car_wash
+Mr Clean Car Wash,1396 W N Blvd,Leesburg,34748,1050,3,"Mr Clean Car Wash, 1396 W N Blvd, Leesburg, FL, 34748",q4_new_car_wash_mr_clean_car_wash
+WetnJet Car Wash,516 Friendship Ln,Fredericksburg,78624,1610,1,"WetnJet Car Wash, 516 Friendship Ln, Fredericksburg, TX, 78624",q4_new_car_wash_wetnjet_car_wash
+Mr Clean Car Wash,3020 S Pine Ave,Ocala,34471,1047,6,"Mr Clean Car Wash, 3020 S Pine Ave, Ocala, FL, 34471",q4_new_car_wash_mr_clean_car_wash
+Mr Clean Car Wash,4175 Jimmy Carter Blvd,Norcross,30093,1043,12,"Mr Clean Car Wash, 4175 Jimmy Carter Blvd, Norcross, GA, 30093",q4_new_car_wash_mr_clean_car_wash
+Complete Auto Detail & Car Wash,1516 W 5th St,Austin,78703,377,1,"Complete Auto Detail & Car Wash, 1516 W 5th St, Austin, TX, 78703",q4_new_car_wash_complete_auto_detail_
+Controls Training Classroom,6501 Nob Hill Rd,Tamarac,33321,379,1,"Controls Training Classroom, 6501 Nob Hill Rd, Tamarac, FL, 33321",q4_new_car_wash_controls_training_classroom
+Zips Express Car Wash,13519 US-290,Austin,78737,1645,14,"Zips Express Car Wash, 13519 US-290, Austin, TX, 78737",q4_new_car_wash_zips_express_car_wash
+Mr Clean Car Wash,4840 Atlanta Hwy,Loganville,30052,1051,1,"Mr Clean Car Wash, 4840 Atlanta Hwy, Loganville, GA, 30052",q4_new_car_wash_mr_clean_car_wash
+Magnus Car Wash,Kendall Dr,San Bernardino,92407,1003,1,"Magnus Car Wash, Kendall Dr, San Bernardino, CA, 92407",q4_new_car_wash_magnus_car_wash
+Russell Speeders Avon,265 W Main St,Avon,6001,1206,1,"Russell Speeders Avon, 265 W Main St, Avon, CT, 6001",q4_new_car_wash_russell_speeders_avon
+Liquid Sunshine,4132 Southside Blvd,Jacksonville,32256,686,1,"Liquid Sunshine, 4132 Southside Blvd, Jacksonville, FL, 32256",q4_new_car_wash_liquid_sunshine
+Soak,420-440 Craigieburn rd,craigieburn,3064,1253,2,"Soak, 420-440 Craigieburn rd, craigieburn, VIC, 3064",q4_new_car_wash_soak
+Fusion Express,760 Benetook Ave,Mildura,3500,525,1,"Fusion Express, 760 Benetook Ave, Mildura, VIC, 3500",q4_new_car_wash_fusion_express
