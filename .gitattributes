@@ -1,1 +1,4 @@
 app/modelling/ds/datasets/data_age_less_2_with_daily_weather_merged.csv filter=lfs diff=lfs merge=lfs -text
+modelling2/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
+app/modelling/ds/datasets/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
+daily_data/daily-data-fetch/daily-data-eda/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
