@@ -1,0 +1,445 @@
+zip5,city_sample,state_sample,n_site_days,latitude,longitude,state_geocode,county_name,has_lat_lon
+00926,San Juan,FL,708,,,,,False
+01830,Haverhill,MA,728,42.7856,-71.0721,MA,Essex,True
+01841,Lawrence,MA,728,42.7115,-71.167,MA,Essex,True
+01843,Lawrence,MA,1456,42.6911,-71.1605,MA,Essex,True
+01844,Methuen,MA,728,42.728,-71.181,MA,Essex,True
+01850,Lowell,MA,728,42.656,-71.3051,MA,Middlesex,True
+01876,Tewksbury,MA,727,42.6028,-71.2232,MA,Middlesex,True
+02360,Plymouth,MA,727,41.9104,-70.642,MA,Plymouth,True
+02536,Falmouth,MA,728,41.5968,-70.5671,MA,Barnstable,True
+02871,Portsmouth,RI,727,41.5944,-71.252,RI,Newport,True
+02886,Warwick,RI,728,41.7026,-71.4476,RI,Kent,True
+03051,Hudson,NH,728,42.769,-71.4121,NH,Hillsborough,True
+03064,craigieburn,VIC,728,42.779,-71.4748,NH,Hillsborough,True
+03500,Mildura,VIC,728,,,,,False
+05403,South Burlington,VT,1455,44.4513,-73.1796,VT,Chittenden,True
+05446,Colchester,VT,727,44.536,-73.2022,VT,Chittenden,True
+06001,Avon,CT,98,41.7905,-72.8653,CT,Capitol Region,True
+07094,Secaucus,NJ,725,40.791,-74.0634,NJ,Hudson,True
+07624,Closter,NJ,727,40.9721,-73.959,NJ,Bergen,True
+07871,Sparta Township,NJ,564,41.0277,-74.6407,NJ,Sussex,True
+07945,Mendham,NJ,726,40.7789,-74.6,NJ,Morris,True
+08109,Pennsauken Township,NJ,728,39.9519,-75.0482,NJ,Camden,True
+08401,Atlantic City,NJ,728,39.3664,-74.4317,NJ,Atlantic,True
+10302,STATEN ISLAND,NY,726,40.6306,-74.1379,NY,Richmond,True
+10306,STATEN ISLAND,NY,726,40.5682,-74.1184,NY,Richmond,True
+10312,STATEN ISLAND,NY,726,40.5457,-74.1792,NY,Richmond,True
+11558,Island Park,NY,726,40.604,-73.6554,NY,Nassau,True
+11566,Merrick,NY,728,40.6685,-73.5536,NY,Nassau,True
+11694,ROCKAWAY PARK,NY,725,40.5766,-73.8428,NY,Queens,True
+11703,North Babylon,NY,716,40.7321,-73.3236,NY,Suffolk,True
+11717,Brentwood,NY,647,40.7809,-73.2503,NY,Suffolk,True
+11743,Huntington,NY,725,40.8676,-73.4102,NY,Suffolk,True
+11746,Huntington Station,NY,728,40.8143,-73.3634,NY,Suffolk,True
+11783,Seaford,NY,726,40.6795,-73.491,NY,Nassau,True
+11901,Riverhead,NY,608,40.9262,-72.652,NY,Suffolk,True
+12095,Johnstown,NY,728,43.0069,-74.3715,NY,Fulton,True
+12866,Saratoga Springs,NY,688,43.0708,-73.7408,NY,Saratoga,True
+14304,Niagara Falls,NY,727,43.0908,-78.9644,NY,Niagara,True
+17078,Palmyra,PA,727,40.3011,-76.5886,PA,Lebanon,True
+17201,Chambersburg,PA,727,39.9313,-77.6579,PA,Franklin,True
+17602,Lancaster,PA,652,40.0335,-76.2844,PA,Lancaster,True
+18104,Allentown,PA,727,40.6018,-75.5225,PA,Lehigh,True
+18202,Hazleton,PA,727,40.9506,-76.0487,PA,Luzerne,True
+19115,Philadelphia,PA,689,40.0903,-75.041,PA,Philadelphia,True
+19132,Philadelphia,PA,707,39.9954,-75.1698,PA,Philadelphia,True
+19139,Philadelphia,PA,688,39.9612,-75.2303,PA,Philadelphia,True
+19141,Philadelphia,PA,693,40.0365,-75.1451,PA,Philadelphia,True
+19144,Philadelphia,PA,690,40.0338,-75.1731,PA,Philadelphia,True
+19146,Philadelphia,PA,701,39.9379,-75.1794,PA,Philadelphia,True
+19151,Philadelphia,PA,693,39.9772,-75.2545,PA,Philadelphia,True
+19153,Philadelphia,PA,693,39.9055,-75.2444,PA,Philadelphia,True
+19348,Kennett Square,PA,728,39.855,-75.7,PA,Chester,True
+19382,West Chester,PA,673,39.9441,-75.5882,PA,Chester,True
+19947,Georgetown,DE,728,38.679,-75.3932,DE,Sussex,True
+21117,Owings Mills,MD,728,39.4269,-76.7769,MD,Baltimore,True
+22026,Dumfries,VA,728,38.5669,-77.2921,VA,Prince William,True
+22554,Stafford,VA,728,38.4586,-77.4306,VA,Stafford,True
+23223,Richmond,VA,1456,37.5477,-77.3948,VA,City of Richmond,True
+23434,Suffolk,VA,728,36.7304,-76.5931,VA,City of Suffolk,True
+23701,Portsmouth,VA,728,36.8089,-76.3671,VA,Portsmouth (city),True
+24012,Roanoke,VA,721,37.3029,-79.9322,VA,Roanoke (city),True
+24018,Cave Spring,VA,698,37.2503,-80.0525,VA,Roanoke,True
+24060,Blacksburg,VA,727,37.2563,-80.4347,VA,Montgomery,True
+24083,Daleville,VA,728,37.4125,-79.9211,VA,Botetourt,True
+24202,Bristol,VA,727,36.6609,-82.2126,VA,Bristol (city),True
+24211,Abingdon,VA,727,36.6673,-81.9648,VA,Washington,True
+24382,Wytheville,VA,728,36.9407,-81.0941,VA,Wythe,True
+24502,Lynchburg,VA,728,37.3825,-79.2181,VA,Lynchburg (city),True
+25813,Glen Morgan,WV,727,37.7516,-81.0731,WV,Raleigh,True
+26041,Moundsville,WV,728,39.9148,-80.731,WV,Marshall,True
+26101,Parkersburg,WV,1455,39.2644,-81.5354,WV,Wood,True
+26105,Vienna,WV,728,39.3251,-81.5411,WV,Wood,True
+26330,Bridgeport,WV,727,39.2954,-80.2427,WV,Harrison,True
+27021,King,NC,728,36.295,-80.356,NC,Stokes,True
+27106,Winston-Salem,NC,727,36.1428,-80.3069,NC,Forsyth,True
+27302,Mebane,NC,728,36.0979,-79.2719,NC,Alamance,True
+27407,Greensboro,NC,728,36.0334,-79.8626,NC,Guilford,True
+27513,Cary,NC,728,35.7956,-78.7941,NC,Wake,True
+27514,Chapel Hill,NC,728,35.9203,-79.0372,NC,Orange,True
+27529,Garner,NC,1455,35.6813,-78.5975,NC,Wake,True
+27534,Goldsboro,NC,1456,35.3664,-77.9221,NC,Wayne,True
+27536,Henderson,NC,728,36.3301,-78.3981,NC,Vance,True
+27540,Holly Springs,NC,728,35.6263,-78.8458,NC,Wake,True
+27560,Morrisville,NC,728,35.8344,-78.8466,NC,Wake,True
+27577,Smithfield,NC,728,35.5068,-78.3479,NC,Johnston,True
+27610,Raleigh,NC,728,35.7667,-78.6008,NC,Wake,True
+27614,Raleigh,NC,728,35.9457,-78.6433,NC,Wake,True
+27615,Raleigh,NC,728,35.8887,-78.6393,NC,Wake,True
+27707,Durham,NC,728,35.9631,-78.9315,NC,Durham,True
+27949,Kitty Hawk,NC,728,36.0646,-75.7057,NC,Dare,True
+28034,Dallas,NC,728,35.3349,-81.1862,NC,Gaston,True
+28043,Forest City,NC,728,35.325,-81.846,NC,Rutherford,True
+28056,Gastonia,NC,728,35.2172,-81.1252,NC,Gaston,True
+28146,Salisbury,NC,728,35.6187,-80.4022,NC,Rowan,True
+28152,Shelby,NC,1456,35.2689,-81.5337,NC,Cleveland,True
+28390,Spring Lake,NC,728,35.183,-78.9786,NC,Cumberland,True
+28607,Boone,NC,728,36.2142,-81.666,NC,Watauga,True
+28621,Elkin,NC,728,36.2872,-80.8554,NC,Surry,True
+28625,Statesville,NC,728,35.8651,-80.8858,NC,Iredell,True
+28673,Sherrills Ford,NC,727,35.5962,-81.0339,NC,Catawba,True
+28697,Wilkesboro,NC,1455,36.1359,-81.1573,NC,Wilkes,True
+28734,Franklin,NC,728,35.181,-83.3885,NC,Macon,True
+28792,Hendersonville,NC,1455,35.3613,-82.4264,NC,Henderson,True
+28803,Asheville,NC,728,35.5393,-82.518,NC,Buncombe,True
+29579,Myrtle Beach,SC,728,33.7377,-78.9787,SC,Horry,True
+29585,Pawleys Island,SC,803,33.4508,-79.1341,SC,Georgetown,True
+29607,Greenville,SC,2182,34.8285,-82.3516,SC,Greenville,True
+29621,Anderson,SC,728,34.5261,-82.6304,SC,Anderson,True
+29625,Anderson,SC,728,34.5271,-82.7087,SC,Anderson,True
+29640,Easley,SC,728,34.829,-82.5796,SC,Pickens,True
+29681,Simpsonville,SC,1456,34.7512,-82.255,SC,Greenville,True
+29687,Taylors,SC,1456,34.9245,-82.3197,SC,Greenville,True
+30013,Conyers,GA,1456,33.6436,-83.9684,GA,Rockdale,True
+30022,Alpharetta,GA,727,34.0268,-84.2422,GA,Fulton,True
+30024,Suwanee,GA,728,34.0425,-84.0262,GA,Gwinnett,True
+30040,Cumming,GA,728,34.2321,-84.158,GA,Forsyth,True
+30043,Lawrenceville,GA,1455,34.0031,-84.0126,GA,Gwinnett,True
+30044,Lawrenceville,GA,641,33.9418,-84.0706,GA,Gwinnett,True
+30047,Lilburn,GA,727,33.8656,-84.0725,GA,Gwinnett,True
+30052,Loganville,GA,719,33.8769,-83.8968,GA,Gwinnett,True
+30058,Lithonia,GA,728,33.7356,-84.1009,GA,DeKalb,True
+30062,Marietta,GA,1456,34.0025,-84.4633,GA,Cobb,True
+30093,Norcross,GA,634,33.906,-84.184,GA,Gwinnett,True
+30106,Austell,GA,728,33.8369,-84.6307,GA,Cobb,True
+30114,Canton,GA,727,34.2505,-84.4909,GA,Cherokee,True
+30120,Cartersville,GA,728,34.187,-84.8204,GA,Bartow,True
+30121,Cartersville,GA,728,34.2079,-84.7673,GA,Bartow,True
+30122,Lithia Springs,GA,728,33.7655,-84.6469,GA,Douglas,True
+30125,Cedartown,GA,728,34.0112,-85.2459,GA,Polk,True
+30127,Powder Springs,GA,728,33.9135,-84.6859,GA,Cobb,True
+30134,Douglasville,GA,728,33.7606,-84.7477,GA,Douglas,True
+30161,Rome,GA,728,34.2507,-85.1465,GA,Floyd,True
+30168,Austell,GA,728,33.7838,-84.5952,GA,Cobb,True
+30189,Woodstock,GA,728,34.1281,-84.5717,GA,Cherokee,True
+30223,Griffin,GA,728,33.2549,-84.2728,GA,Spalding,True
+30233,Jackson,GA,728,33.282,-83.9784,GA,Butts,True
+30252,McDonough,GA,727,33.4768,-84.055,GA,Henry,True
+30341,Atlanta,GA,728,33.8879,-84.2905,GA,DeKalb,True
+30401,Swainsboro,GA,727,32.5699,-82.3462,GA,Emanuel,True
+30512,Blairsville,GA,726,34.8763,-83.992,GA,Union,True
+30518,Sugar Hill,GA,728,34.1124,-83.9965,GA,Gwinnett,True
+30534,Dawsonville,GA,728,34.4537,-84.155,GA,Dawson,True
+30605,Athens,GA,727,33.9321,-83.3525,GA,Clarke,True
+30606,Athens,GA,726,33.9461,-83.418,GA,Clarke,True
+30680,Winder,GA,727,33.9985,-83.7115,GA,Barrow,True
+30830,Waynesboro,GA,727,33.1013,-81.9908,GA,Burke,True
+31005,Bonaire,GA,727,32.546,-83.6047,GA,Houston,True
+31015,Cordele,GA,728,31.9566,-83.7835,GA,Crisp,True
+31029,Forsyth,GA,727,33.0508,-83.9362,GA,Monroe,True
+31032,Gray,GA,728,33.0172,-83.54,GA,Jones,True
+31201,Macon,GA,728,32.8095,-83.6168,GA,Bibb,True
+31216,Macon,GA,727,32.7486,-83.7477,GA,Bibb,True
+31220,Macon,GA,727,32.8595,-83.802,GA,Bibb,True
+31525,Brunswick,GA,728,31.2804,-81.5305,GA,Glynn,True
+31909,Columbus,GA,728,32.5369,-84.9274,GA,Muscogee,True
+32065,Orange Park,FL,720,30.1382,-81.7742,FL,Clay,True
+32256,Jacksonville,FL,565,30.2214,-81.5571,FL,Duval,True
+32303,Tallahassee,FL,728,30.4874,-84.3189,FL,Leon,True
+32308,Tallahassee,FL,728,30.4771,-84.2246,FL,Leon,True
+32526,Pensacola,FL,728,30.4756,-87.3179,FL,Escambia,True
+32609,Gainesville,FL,728,29.7005,-82.308,FL,Alachua,True
+32707,Casselberry,FL,706,28.6617,-81.3122,FL,Seminole,True
+32750,Longwood,FL,728,28.712,-81.3552,FL,Seminole,True
+32953,Merritt Island,FL,728,28.3888,-80.7301,FL,Brevard,True
+32958,Sebastian,FL,728,27.7901,-80.4784,FL,Indian River,True
+32966,Vero Beach,FL,728,27.6372,-80.4794,FL,Indian River,True
+33067,Coral Springs,FL,728,26.3033,-80.2415,FL,Broward,True
+33076,Coral Springs,FL,728,26.3168,-80.2753,FL,Broward,True
+33160,North Miami Beach,FL,728,25.9449,-80.1391,FL,Miami-Dade,True
+33311,Fort Lauderdale,FL,728,26.1421,-80.1728,FL,Broward,True
+33317,Davie,FL,728,26.1122,-80.2264,FL,Broward,True
+33321,Tamarac,FL,346,26.212,-80.2696,FL,Broward,True
+33322,Sunrise,FL,727,26.1502,-80.2745,FL,Broward,True
+33328,Davie,FL,728,26.0671,-80.2723,FL,Broward,True
+33408,North Palm Beach,FL,727,26.8289,-80.0603,FL,Palm Beach,True
+33409,West Palm Beach,FL,728,26.7162,-80.0965,FL,Palm Beach,True
+33418,Palm Beach Gardens,FL,728,26.8234,-80.1387,FL,Palm Beach,True
+33431,Boca Raton,FL,1398,26.3799,-80.0975,FL,Palm Beach,True
+33436,Boynton Beach,FL,688,26.5354,-80.1124,FL,Palm Beach,True
+33461,Palm Springs,FL,728,26.6232,-80.0946,FL,Palm Beach,True
+33486,Boca Raton,FL,728,26.3481,-80.1104,FL,Palm Beach,True
+33496,Boca Raton,FL,728,26.403,-80.1813,FL,Palm Beach,True
+33511,Brandon,FL,722,27.9056,-82.2881,FL,Hillsborough,True
+33534,Gibsonton,FL,725,27.8411,-82.3698,FL,Hillsborough,True
+33541,Zephyrhills,FL,728,28.2311,-82.2057,FL,Pasco,True
+33548,Lutz,FL,728,28.1385,-82.4821,FL,Hillsborough,True
+33559,Lutz,FL,728,28.1801,-82.4169,FL,Pasco,True
+33569,Riverview,FL,727,27.845,-82.3125,FL,Hillsborough,True
+33572,Apollo Beach,FL,728,27.7716,-82.4102,FL,Hillsborough,True
+33579,Riverview,FL,728,27.8024,-82.2755,FL,Hillsborough,True
+33598,Wimauma,FL,727,27.7015,-82.3151,FL,Hillsborough,True
+33611,Tampa,FL,1452,27.8914,-82.5067,FL,Hillsborough,True
+33613,Tampa,FL,728,28.0772,-82.4455,FL,Hillsborough,True
+33709,St. Petersburg,FL,727,27.8201,-82.7308,FL,Pinellas,True
+33711,St. Petersburg,FL,728,27.7465,-82.6897,FL,Pinellas,True
+33771,Largo,FL,727,27.9085,-82.7568,FL,Pinellas,True
+33777,Seminole,FL,728,27.8688,-82.7344,FL,Pinellas,True
+33813,Lakeland,FL,728,27.9611,-81.9398,FL,Polk,True
+33909,Cape Coral,FL,728,26.6939,-81.9452,FL,Lee,True
+33913,Fort Myers,FL,1444,26.5228,-81.7065,FL,Lee,True
+33948,Port Charlotte,FL,728,26.9827,-82.1412,FL,Charlotte,True
+34120,Naples,FL,728,26.3304,-81.5871,FL,Collier,True
+34202,Bradenton,FL,720,27.4067,-82.39,FL,Manatee,True
+34223,Englewood,FL,697,26.9667,-82.3599,FL,Sarasota,True
+34233,Sarasota,FL,728,27.2866,-82.477,FL,Sarasota,True
+34238,Sarasota,FL,727,27.2427,-82.4751,FL,Sarasota,True
+34240,Sarasota,FL,720,27.339,-82.3473,FL,Sarasota,True
+34275,Nokomis,FL,723,27.1384,-82.4518,FL,Sarasota,True
+34285,Venice,FL,682,27.0933,-82.4498,FL,Sarasota,True
+34287,North Port,FL,728,27.0478,-82.2416,FL,Sarasota,True
+34471,Ocala,FL,718,29.1605,-82.1288,FL,Marion,True
+34609,Spring Hill,FL,728,28.4794,-82.5083,FL,Hernando,True
+34639,Land O' Lakes,FL,728,28.2258,-82.4547,FL,Pasco,True
+34654,New Port Richey,FL,728,28.3022,-82.6264,FL,Pasco,True
+34744,Kissimmee,FL,727,28.3078,-81.3681,FL,Osceola,True
+34748,Leesburg,FL,708,28.808,-81.8858,FL,Lake,True
+34759,Kissimmee,FL,728,28.0946,-81.499,FL,Polk,True
+34994,Stuart,FL,2184,27.1968,-80.2538,FL,Martin,True
+35613,Athens,AL,728,34.8317,-86.8867,AL,Limestone,True
+35750,Hazel Green,AL,728,34.9496,-86.5935,AL,Madison,True
+35757,Madison,AL,728,34.7782,-86.7442,AL,Madison,True
+35758,Madison,AL,728,34.7108,-86.7425,AL,Madison,True
+35806,Huntsville,AL,728,34.7448,-86.6704,AL,Madison,True
+35906,Rainbow City,AL,727,33.9318,-86.0898,AL,Etowah,True
+36027,Eufaula,AL,728,31.9051,-85.1656,AL,Barbour,True
+36116,Montgomery,AL,728,32.3129,-86.2421,AL,Montgomery,True
+36420,Andalusia,AL,727,31.2971,-86.4905,AL,Covington,True
+37013,Nashville,TN,728,36.0595,-86.6592,TN,Davidson,True
+37055,Dickson,TN,728,36.076,-87.3995,TN,Dickson,True
+37075,Hendersonville,TN,1456,36.3054,-86.6072,TN,Sumner,True
+37135,Nolensville,TN,728,35.9307,-86.6829,TN,Williamson,True
+37138,Old Hickory,TN,728,36.2416,-86.6117,TN,Davidson,True
+37146,Pleasant View,TN,728,36.3783,-87.0395,TN,Cheatham,True
+37204,Nashville,TN,728,36.1067,-86.7743,TN,Davidson,True
+37207,Nashville,TN,728,36.2195,-86.774,TN,Davidson,True
+37209,Nashville,TN,728,36.1546,-86.8602,TN,Davidson,True
+37221,Nashville,TN,728,36.0662,-86.9639,TN,Davidson,True
+37615,Johnson City,TN,728,36.3996,-82.4523,TN,Washington,True
+37617,Blountville,TN,727,36.5356,-82.3656,TN,Sullivan,True
+37664,Kingsport,TN,728,36.5208,-82.5168,TN,Sullivan,True
+37862,Sevierville,TN,728,35.8452,-83.5386,TN,Sevier,True
+37876,Sevierville,TN,728,35.866,-83.4793,TN,Sevier,True
+38019,Covington,TN,728,35.5598,-89.6501,TN,Tipton,True
+38125,Memphis,TN,728,35.0312,-89.8124,TN,Shelby,True
+38632,Hernando,MS,728,34.8096,-90.0095,MS,DeSoto,True
+38637,Horn Lake,MS,728,34.9519,-90.0507,MS,DeSoto,True
+38668,Senatobia,MS,728,34.6323,-89.8855,MS,Tate,True
+38671,Southaven,MS,728,34.9771,-89.9992,MS,DeSoto,True
+38834,Corinth,MS,728,34.8759,-88.5916,MS,Alcorn,True
+39553,Gautier,MS,728,30.398,-88.6412,MS,Jackson,True
+39601,Brookhaven,MS,728,31.5858,-90.452,MS,Lincoln,True
+39648,McComb,MS,728,31.1769,-90.4016,MS,Pike,True
+40202,Louisville,KY,727,38.2507,-85.7476,KY,Jefferson,True
+40216,Louisville,KY,728,38.1865,-85.8335,KY,Jefferson,True
+40241,Louisville,KY,728,38.3045,-85.5815,KY,Jefferson,True
+40299,Louisville,KY,663,38.1768,-85.5218,KY,Jefferson,True
+40356,Nicholasville,KY,1320,37.8808,-84.5646,KY,Jessamine,True
+40383,Versailles,KY,653,38.0413,-84.7287,KY,Woodford,True
+40391,Winchester,KY,728,37.9872,-84.1789,KY,Clark,True
+40505,Lexington,KY,723,38.0612,-84.4583,KY,Fayette,True
+41240,Paintsville,KY,727,37.8242,-82.7945,KY,Johnson,True
+41701,Hazard,KY,728,37.2983,-83.1912,KY,Perry,True
+42066,Mayfield,KY,723,36.7327,-88.6506,KY,Graves,True
+42301,Owensboro,KY,728,37.7513,-87.1554,KY,Daviess,True
+42501,Somerset,KY,726,37.1029,-84.5443,KY,Pulaski,True
+42503,Somerset,KY,1446,37.1566,-84.5248,KY,Pulaski,True
+43220,COLUMBUS,OH,717,40.0495,-83.0669,OH,Franklin,True
+43953,Wintersville,OH,728,40.3524,-80.6781,OH,Jefferson,True
+44023,Chagrin Falls,OH,727,41.3872,-81.3042,OH,Geauga,True
+45324,Fairborn,OH,682,39.8053,-84.0198,OH,Greene,True
+45385,Xenia,OH,705,39.6842,-83.9369,OH,Greene,True
+45440,CENTERVILLE,OH,710,39.6749,-84.1136,OH,Montgomery,True
+45750,Marietta,OH,727,39.4281,-81.4644,OH,Washington,True
+46319,Griffith,IN,728,41.5335,-87.4228,IN,Lake,True
+46322,Highland,IN,728,41.55,-87.4569,IN,Lake,True
+46350,La Porte,IN,728,41.5994,-86.7077,IN,LaPorte,True
+46368,Portage,IN,1456,41.5672,-87.1757,IN,Porter,True
+46383,Valparaiso,IN,728,41.4547,-87.0656,IN,Porter,True
+46408,Gary,IN,728,41.5422,-87.3588,IN,Lake,True
+47201,Columbus,IN,728,39.2055,-85.9317,IN,Bartholomew,True
+48066,Roseville,MI,728,42.5034,-82.9387,MI,Macomb,True
+48081,St. Clair Shores,MI,708,42.4941,-82.899,MI,Macomb,True
+48188,Canton,MI,728,42.291,-83.465,MI,Wayne,True
+48346,Clarkston,MI,728,42.7239,-83.4232,MI,Oakland,True
+48430,Fenton,MI,728,42.7851,-83.7294,MI,Genesee,True
+48750,Oscoda,MI,704,44.4465,-83.3619,MI,Iosco,True
+48846,Ionia,MI,727,42.9859,-85.071,MI,Ionia,True
+49331,Lowell,MI,727,42.955,-85.3653,MI,Kent,True
+49548,Grand Rapids,MI,727,42.8697,-85.6628,MI,Kent,True
+49601,Cadillac,MI,727,44.2504,-85.43,MI,Wexford,True
+49829,Escanaba,MI,726,45.7659,-87.089,MI,Delta,True
+53027,Hartford,WI,728,43.3157,-88.3707,WI,Washington,True
+53149,Mukwonago,WI,727,42.8821,-88.3451,WI,Waukesha,True
+53151,New Berlin,WI,727,42.9822,-88.0946,WI,Waukesha,True
+53154,Oak Creek,WI,728,42.8892,-87.9027,WI,Milwaukee,True
+53220,Greenfield,WI,728,42.9559,-87.9933,WI,Milwaukee,True
+54143,Marinette,WI,726,45.0874,-87.6697,WI,Marinette,True
+57401,Aberdeen,SD,728,45.4661,-98.4856,SD,Brown,True
+57501,Pierre,SD,728,44.3695,-100.3211,SD,Hughes,True
+58703,Minot,ND,728,48.3306,-101.3156,ND,Ward,True
+59102,Billings,MT,728,45.7813,-108.5727,MT,Yellowstone,True
+59901,Kalispell,MT,728,48.2028,-114.3039,MT,Flathead,True
+60202,Evanston,IL,721,42.0302,-87.6865,IL,Cook,True
+60440,Bolingbrook,IL,712,41.6976,-88.0873,IL,Will,True
+60632,Chicago,IL,728,41.8093,-87.7052,IL,Cook,True
+60804,Cicero,IL,721,41.8378,-87.7602,IL,Cook,True
+63376,St. Peters,MO,2184,38.7802,-90.6228,MO,Saint Charles,True
+65802,Springfield,MO,728,37.2117,-93.299,MO,Greene,True
+65803,Springfield,MO,1456,37.2593,-93.2912,MO,Greene,True
+65804,Springfield,MO,1456,37.1654,-93.2522,MO,Greene,True
+65807,Springfield,MO,728,37.1668,-93.3085,MO,Greene,True
+66030,Gardner,KS,728,38.8075,-94.9157,KS,Johnson,True
+66215,Lenexa,KS,726,38.9536,-94.7336,KS,Johnson,True
+66220,Lenexa,KS,728,38.9536,-94.7336,KS,Johnson,True
+67502,Hutchinson,KS,710,38.1156,-97.8937,KS,Reno,True
+68516,Lincoln,NE,728,40.7568,-96.6523,NE,Lancaster,True
+68523,Lincoln,NE,728,40.7408,-96.7583,NE,Lancaster,True
+68601,Columbus,NE,729,41.4297,-97.3684,NE,Platte,True
+69101,North Platte,NE,561,41.1326,-100.7746,NE,Lincoln,True
+70043,Chalmette,LA,728,29.9466,-89.9611,LA,St. Bernard,True
+72076,Jacksonville,AR,728,34.919,-92.1419,AR,Pulaski,True
+72301,West Memphis,AR,728,35.1484,-90.1779,AR,Crittenden,True
+73089,Tuttle,OK,726,35.2674,-97.7446,OK,Grady,True
+74012,Broken Arrow,OK,728,36.0447,-95.8079,OK,Tulsa,True
+74464,Tahlequah,OK,1417,35.9094,-94.9787,OK,Cherokee,True
+74501,McAlester,OK,728,34.9262,-95.7592,OK,Pittsburg,True
+74701,Durant,OK,1456,34.0061,-96.3847,OK,Bryan,True
+75019,Coppell,TX,727,32.9673,-96.9805,TX,Dallas,True
+75023,Plano,TX,728,33.055,-96.7365,TX,Collin,True
+75034,Frisco,TX,728,33.1499,-96.8241,TX,Collin,True
+75070,McKinney,TX,728,33.1976,-96.6153,TX,Collin,True
+75078,Prosper,TX,728,33.2362,-96.7954,TX,Collin,True
+75087,Rockwall,TX,728,32.9492,-96.4418,TX,Rockwall,True
+75104,Cedar Hill,TX,728,32.5885,-96.9438,TX,Dallas,True
+75119,Ennis,TX,728,32.3321,-96.6224,TX,Ellis,True
+75149,Mesquite,TX,728,32.7678,-96.6082,TX,Dallas,True
+75165,Waxahachie,TX,728,32.3808,-96.8374,TX,Ellis,True
+75218,Dallas,TX,728,32.8463,-96.6972,TX,Dallas,True
+75224,Dallas,TX,728,32.7114,-96.8387,TX,Dallas,True
+75287,Dallas,TX,728,33.0005,-96.8314,TX,Dallas,True
+75418,Bonham,TX,727,33.5806,-96.1836,TX,Fannin,True
+75601,Longview,TX,472,32.5178,-94.7303,TX,Gregg,True
+75771,Lindale,TX,728,32.5062,-95.4006,TX,Smith,True
+76049,Granbury,TX,728,32.4488,-97.7285,TX,Hood,True
+76053,Hurst,TX,728,32.8211,-97.1756,TX,Tarrant,True
+76502,Temple,TX,728,31.071,-97.3898,TX,Bell,True
+77051,Houston,TX,728,29.6579,-95.3688,TX,Harris,True
+77055,Houston,TX,728,29.7971,-95.4958,TX,Harris,True
+77075,Houston,TX,727,29.6223,-95.26,TX,Harris,True
+77076,Houston,TX,728,29.858,-95.3834,TX,Harris,True
+77083,Houston,TX,727,29.6947,-95.6511,TX,Harris,True
+77086,Houston,TX,728,29.9227,-95.4939,TX,Harris,True
+77095,Houston,TX,728,29.8941,-95.6481,TX,Harris,True
+77320,Huntsville,TX,728,30.847,-95.597,TX,Walker,True
+77339,KINGWOOD,TX,725,30.0569,-95.1835,TX,Harris,True
+77357,New Caney,TX,728,30.1579,-95.198,TX,Montgomery,True
+77375,Tomball,TX,1454,30.0739,-95.6201,TX,Harris,True
+77449,Katy,TX,1447,29.8323,-95.736,TX,Harris,True
+77477,Stafford,TX,728,29.6228,-95.5678,TX,Fort Bend,True
+77504,Pasadena,TX,728,29.6501,-95.1885,TX,Harris,True
+77539,Dickinson,TX,728,29.4585,-95.0345,TX,Galveston,True
+77546,Friendswood,TX,728,29.5224,-95.1879,TX,Galveston,True
+77573,League City,TX,728,29.5173,-95.0963,TX,Galveston,True
+77706,Beaumont,TX,691,30.0948,-94.1648,TX,Jefferson,True
+78045,Laredo,TX,727,27.6357,-99.5923,TX,Webb,True
+78064,Pleasanton,TX,727,28.9924,-98.4831,TX,Atascosa,True
+78258,San Antonio,TX,728,29.6562,-98.4967,TX,Bexar,True
+78363,Kingsville,TX,728,27.4229,-97.8407,TX,Kleberg,True
+78624,Fredericksburg,TX,502,30.2817,-98.8799,TX,Gillespie,True
+78626,Georgetown,TX,728,30.633,-97.6707,TX,Williamson,True
+78640,Kyle,TX,728,29.9966,-97.8335,TX,Hays,True
+78666,San Marcos,TX,728,29.8754,-97.9404,TX,Hays,True
+78703,Austin,TX,721,30.2907,-97.7648,TX,Travis,True
+78737,Austin,TX,728,30.2107,-97.9427,TX,Travis,True
+79336,Levelland,TX,727,33.5788,-102.3676,TX,Hockley,True
+79423,Lubbock,TX,728,33.5146,-101.8795,TX,Lubbock,True
+79735,Fort Stockton,TX,727,30.8908,-102.8799,TX,Pecos,True
+80013,Aurora,CO,720,39.6575,-104.7846,CO,Arapahoe,True
+80113,Englewood,CO,728,39.6405,-104.9614,CO,Arapahoe,True
+80226,Lakewood,CO,728,39.7123,-105.0918,CO,Jefferson,True
+80232,Lakewood,CO,716,39.6895,-105.0908,CO,Jefferson,True
+80260,Federal Heights,CO,728,39.8672,-105.0041,CO,Adams,True
+80439,Evergreen,CO,728,39.6374,-105.3402,CO,Jefferson,True
+81650,Rifle,CO,728,39.5491,-107.7898,CO,Garfield,True
+82001,Cheyenne,WY,728,41.1437,-104.7962,WY,Laramie,True
+83404,Idaho Falls,ID,728,43.475,-112.0124,ID,Bonneville,True
+83815,Coeur d'Alene,ID,728,47.7248,-116.789,ID,Kootenai,True
+84010,Bountiful,UT,728,40.8775,-111.8727,UT,Davis,True
+84770,St. George,UT,728,37.1041,-113.5841,UT,Washington,True
+84790,St. George,UT,728,37.0831,-113.5581,UT,Washington,True
+85024,Phoenix,AZ,721,33.6617,-112.037,AZ,Maricopa,True
+85031,Phoenix,AZ,728,33.4939,-112.1696,AZ,Maricopa,True
+85032,Phoenix,AZ,724,33.6238,-112.0044,AZ,Maricopa,True
+85042,Phoenix,AZ,728,33.3794,-112.0283,AZ,Maricopa,True
+85044,Phoenix,AZ,728,33.3291,-111.9943,AZ,Maricopa,True
+85053,Phoenix,AZ,728,33.6299,-112.1316,AZ,Maricopa,True
+85552,Thatcher,AZ,728,32.8504,-109.7461,AZ,Graham,True
+85614,Green Valley,AZ,722,31.8543,-111.0003,AZ,Pima,True
+86403,Lake Havasu City,AZ,728,34.4814,-114.3483,AZ,Mohave,True
+87507,Santa Fe,NM,686,35.6567,-106.0152,NM,Santa Fe,True
+88030,Deming,NM,728,32.2318,-107.7466,NM,Luna,True
+89502,Reno,NV,712,39.4972,-119.7764,NV,Washoe,True
+90201,Cudahy,CA,727,33.9653,-118.1515,CA,Los Angeles,True
+90602,Whittier,CA,727,33.9693,-118.0337,CA,Los Angeles,True
+90715,Lakewood,CA,1454,33.8405,-118.0767,CA,Los Angeles,True
+90720,Los Alamitos,CA,728,33.7956,-118.0648,CA,Orange,True
+91316,Los Angeles,CA,728,34.1655,-118.5175,CA,Los Angeles,True
+91768,Pomona,CA,727,34.0662,-117.7763,CA,Los Angeles,True
+92009,Carlsbad,CA,728,33.0954,-117.2619,CA,San Diego,True
+92024,Encinitas,CA,700,33.0535,-117.2689,CA,San Diego,True
+92122,San Diego,CA,727,32.8577,-117.2115,CA,San Diego,True
+92128,San Diego,CA,1449,33.0067,-117.069,CA,San Diego,True
+92130,San Diego,CA,725,32.9555,-117.2252,CA,San Diego,True
+92407,San Bernardino,CA,1443,34.2166,-117.3908,CA,San Bernardino,True
+92553,Moreno Valley,CA,727,33.9157,-117.2351,CA,Riverside,True
+92585,Menifee,CA,727,33.7467,-117.1721,CA,Riverside,True
+92604,Irvine,CA,728,33.6899,-117.7868,CA,Orange,True
+92663,Newport Beach,CA,676,33.621,-117.9321,CA,Orange,True
+92683,Westminster,CA,727,33.7524,-117.9939,CA,Orange,True
+92801,Anaheim,CA,728,33.8428,-117.9546,CA,Orange,True
+92860,Norco,CA,1453,33.9247,-117.5517,CA,Riverside,True
+93436,Lompoc,CA,691,34.6583,-120.4506,CA,Santa Barbara,True
+94803,San Pablo,CA,701,37.9693,-122.2901,CA,Contra Costa,True
+95051,Santa Clara,CA,728,37.3483,-121.9844,CA,Santa Clara,True
+95126,San Jose,CA,728,37.3249,-121.9153,CA,Santa Clara,True
+95135,San Jose,CA,546,37.2974,-121.7562,CA,Santa Clara,True
+95207,Stockton,CA,728,38.0024,-121.3238,CA,San Joaquin,True
+95210,Stockton,CA,728,38.025,-121.2972,CA,San Joaquin,True
+95336,Manteca,CA,728,37.8134,-121.2132,CA,San Joaquin,True
+95380,Turlock,CA,623,37.4888,-120.8535,CA,Stanislaus,True
+95966,OROVILLE,CA,722,39.4877,-121.4698,CA,Butte,True
+96002,Redding,CA,728,40.5486,-122.3339,CA,Shasta,True
+97113,Cornelius,OR,726,45.529,-123.0415,OR,Washington,True
+97305,Salem,OR,728,44.9961,-122.9124,OR,Marion,True
+97321,Albany,OR,727,44.652,-123.1333,OR,Linn,True
+97526,Grants Pass,OR,728,42.4638,-123.3457,OR,Josephine,True
+98012,Bothell,WA,724,47.8401,-122.1972,WA,Snohomish,True
+98072,Woodinville,WA,722,47.7684,-122.1271,WA,King,True
+98226,Bellingham,WA,725,48.7974,-122.4448,WA,Whatcom,True
+98270,Marysville,WA,728,48.0656,-122.1562,WA,Snohomish,True
+98499,Lakewood,WA,728,47.1677,-122.5024,WA,Pierce,True
+98837,Moses Lake,WA,728,47.1374,-119.2891,WA,Grant,True
+99336,Kennewick,WA,728,46.2109,-119.168,WA,Benton,True
+99352,Richland,WA,725,46.2522,-119.288,WA,Benton,True

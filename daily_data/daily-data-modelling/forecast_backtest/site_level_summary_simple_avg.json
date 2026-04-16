@@ -1,0 +1,25 @@
+{
+  "scope": "site_level_simple_avg_ensemble",
+  "site_month": {
+    "wape_pct": 18.505003358564238,
+    "mae_abs_washes": 1691.6918897873213,
+    "median_abs_washes": 839.4057675469035,
+    "median_abs_pct": 12.832925621426906
+  },
+  "site_6month": {
+    "wape_pct": 14.37835501877673,
+    "mae_abs_washes": 7875.6960336848915,
+    "median_abs_washes": 3845.0476287171023,
+    "median_abs_pct": 9.807955078306954,
+    "pct_sites_abs_err_lte_5": 26.25,
+    "pct_sites_abs_err_lte_10": 50.625,
+    "pct_sites_abs_err_lte_20": 73.75,
+    "pct_sites_abs_err_gt_20": 26.25
+  },
+  "overall_6month_total": {
+    "actual_total": 26291840.0,
+    "pred_total": 26647661.710130148,
+    "diff": 355821.71013014764,
+    "pct_diff": 1.3533541590476272
+  }
+}
