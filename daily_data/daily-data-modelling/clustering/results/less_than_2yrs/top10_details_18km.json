@@ -1,0 +1,940 @@
+{
+  "radius": "18km",
+  "ranking": "top10_elite_by_median_daily",
+  "min_sites_filter": null,
+  "clusters": [
+    {
+      "rank": 1,
+      "cluster_id": 82,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 28396.0,
+        "mean_daily_wash_count": 29200.51,
+        "total_washes_2yr": 2832449.0,
+        "min_daily": 2394.0,
+        "max_daily": 46660.0,
+        "range_daily": 44266.0,
+        "p25_daily": 23484.0,
+        "p75_daily": 34921.0,
+        "iqr_daily": 11437.0,
+        "std_daily": 8886.86,
+        "site_day_records": 97
+      },
+      "geography": {
+        "zip_codes": [
+          "90046",
+          "91303",
+          "91335",
+          "91364",
+          "91405"
+        ],
+        "cities": [
+          "Los Angeles"
+        ],
+        "states": [
+          "CA"
+        ],
+        "n_sites": 5,
+        "centroid_lat": 34.173277,
+        "centroid_lon": -118.514566
+      },
+      "sites": [
+        {
+          "location_id": "56",
+          "site_client_id": 3459.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 7326 Reseda Blvd , Los Angeles , CA , 91335",
+          "street": "7326 Reseda Blvd",
+          "city": "Los Angeles",
+          "state": "CA",
+          "zip": "91335",
+          "latitude": 34.203789,
+          "longitude": -118.535853,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "61",
+          "site_client_id": 3508.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 14537 Sherman Way , Los Angeles , CA , 91405",
+          "street": "14537 Sherman Way",
+          "city": "Los Angeles",
+          "state": "CA",
+          "zip": "91405",
+          "latitude": 34.2016944,
+          "longitude": -118.4500576,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "51",
+          "site_client_id": 3487.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 7955 W Sunset Blvd , Los Angeles , CA , 90046",
+          "street": "7955 W Sunset Blvd",
+          "city": "Los Angeles",
+          "state": "CA",
+          "zip": "90046",
+          "latitude": 34.09821,
+          "longitude": -118.36309,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "55",
+          "site_client_id": 3495.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 22517 Ventura Blvd , Los Angeles , CA , 91364",
+          "street": "22517 Ventura Blvd",
+          "city": "Los Angeles",
+          "state": "CA",
+          "zip": "91364",
+          "latitude": 34.168104,
+          "longitude": -118.617423,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "59",
+          "site_client_id": 3453.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 6829 Topanga Canyon Blvd , Los Angeles , CA , 91303",
+          "street": "6829 Topanga Canyon Blvd",
+          "city": "Los Angeles",
+          "state": "CA",
+          "zip": "91303",
+          "latitude": 34.1945855,
+          "longitude": -118.6064073,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "cluster_id": 61,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 26956.0,
+        "mean_daily_wash_count": 20865.48,
+        "total_washes_2yr": 1314525.0,
+        "min_daily": 517.0,
+        "max_daily": 33895.0,
+        "range_daily": 33378.0,
+        "p25_daily": 6701.0,
+        "p75_daily": 28988.5,
+        "iqr_daily": 22287.5,
+        "std_daily": 11165.92,
+        "site_day_records": 63
+      },
+      "geography": {
+        "zip_codes": [
+          "36117-2172",
+          "91911-6502"
+        ],
+        "cities": [
+          "CHULA VISTA",
+          "MONTGOMERY"
+        ],
+        "states": [
+          "AL",
+          "CA"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 35.356948,
+        "centroid_lon": -77.931535
+      },
+      "sites": [
+        {
+          "location_id": "8a43473c70cc64c656a5b0494a4dda42daa6a20b76476dbb7e1209281884b5dd",
+          "site_client_id": 1107.0,
+          "client_name": "SOAPY JOES",
+          "address": "SOAPY JOES , 4290 MAIN ST , CHULA VISTA , CA , 91911-6502",
+          "street": "4290 MAIN ST",
+          "city": "CHULA VISTA",
+          "state": "CA",
+          "zip": "91911-6502",
+          "latitude": 35.3392525,
+          "longitude": -77.9190192,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 4.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "36bbd421ab196548f16cdc676b706ce50ccb390ce657bfa398cd15f106617e07",
+          "site_client_id": 1655.0,
+          "client_name": "SUD STOP",
+          "address": "SUD STOP , 4150 EASTDALE CIR , MONTGOMERY , AL , 36117-2172",
+          "street": "4150 EASTDALE CIR",
+          "city": "MONTGOMERY",
+          "state": "AL",
+          "zip": "36117-2172",
+          "latitude": 35.374643,
+          "longitude": -77.944051,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 6.0,
+          "website": null,
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "cluster_id": 80,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 25710.0,
+        "mean_daily_wash_count": 24684.84,
+        "total_washes_2yr": 1357666.0,
+        "min_daily": 2798.0,
+        "max_daily": 32856.0,
+        "range_daily": 30058.0,
+        "p25_daily": 20853.5,
+        "p75_daily": 28814.0,
+        "iqr_daily": 7960.5,
+        "std_daily": 6100.8,
+        "site_day_records": 55
+      },
+      "geography": {
+        "zip_codes": [
+          "91362",
+          "93065"
+        ],
+        "cities": [
+          "Simi Valley",
+          "Thousand Oaks"
+        ],
+        "states": [
+          "CA"
+        ],
+        "n_sites": 3,
+        "centroid_lat": 34.239341,
+        "centroid_lon": -118.805115
+      },
+      "sites": [
+        {
+          "location_id": "52",
+          "site_client_id": 3494.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 2725 E Thousand Oaks Blvd , Thousand Oaks , CA , 91362",
+          "street": "2725 E Thousand Oaks Blvd",
+          "city": "Thousand Oaks",
+          "state": "CA",
+          "zip": "91362",
+          "latitude": 34.172404,
+          "longitude": -118.83919,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "58",
+          "site_client_id": 3449.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 1995 Madera Rd , Simi Valley , CA , 93065",
+          "street": "1995 Madera Rd",
+          "city": "Simi Valley",
+          "state": "CA",
+          "zip": "93065",
+          "latitude": 34.271329,
+          "longitude": -118.796781,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "57",
+          "site_client_id": 3434.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 2155 First St , Simi Valley , CA , 93065",
+          "street": "2155 First St",
+          "city": "Simi Valley",
+          "state": "CA",
+          "zip": "93065",
+          "latitude": 34.274291,
+          "longitude": -118.779373,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "cluster_id": 55,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 18416.0,
+        "mean_daily_wash_count": 17754.28,
+        "total_washes_2yr": 692417.0,
+        "min_daily": 3160.0,
+        "max_daily": 26086.0,
+        "range_daily": 22926.0,
+        "p25_daily": 15264.5,
+        "p75_daily": 20470.5,
+        "iqr_daily": 5206.0,
+        "std_daily": 5048.45,
+        "site_day_records": 39
+      },
+      "geography": {
+        "zip_codes": [
+          "75020",
+          "75020-3584"
+        ],
+        "cities": [
+          "DENISON",
+          "Denison"
+        ],
+        "states": [
+          "TX"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 33.761708,
+        "centroid_lon": -96.58242
+      },
+      "sites": [
+        {
+          "location_id": "17",
+          "site_client_id": 3424.0,
+          "client_name": "ClearWater",
+          "address": "ClearWater , 3112 Regency Ln , Denison , TX , 75020",
+          "street": "3112 Regency Ln",
+          "city": "Denison",
+          "state": "TX",
+          "zip": "75020",
+          "latitude": 33.7617077,
+          "longitude": -96.5824205,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 6.0,
+          "website": null,
+          "region": "South"
+        },
+        {
+          "location_id": "def56e9b137f843a14bcdffdbf6d52380d91bac32175b3ecef36d95ad63e87ef",
+          "site_client_id": 884.0,
+          "client_name": "BLUE WAVE EXPRESS",
+          "address": "BLUE WAVE EXPRESS , 3112 REGENCY LN , DENISON , TX , 75020-3584",
+          "street": "3112 REGENCY LN",
+          "city": "DENISON",
+          "state": "TX",
+          "zip": "75020-3584",
+          "latitude": 33.7617077,
+          "longitude": -96.5824205,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 23.0,
+          "website": null,
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "cluster_id": 83,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 17004.0,
+        "mean_daily_wash_count": 18411.6,
+        "total_washes_2yr": 865345.0,
+        "min_daily": 7754.0,
+        "max_daily": 27300.0,
+        "range_daily": 19546.0,
+        "p25_daily": 13699.5,
+        "p75_daily": 24029.5,
+        "iqr_daily": 10330.0,
+        "std_daily": 5934.24,
+        "site_day_records": 47
+      },
+      "geography": {
+        "zip_codes": [
+          "95401",
+          "95403",
+          "95404"
+        ],
+        "cities": [
+          "Santa Rosa"
+        ],
+        "states": [
+          "CA"
+        ],
+        "n_sites": 3,
+        "centroid_lat": 38.448648,
+        "centroid_lon": -122.726158
+      },
+      "sites": [
+        {
+          "location_id": "67",
+          "site_client_id": 3477.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 458 W College Ave , Santa Rosa , CA , 95401",
+          "street": "458 W College Ave",
+          "city": "Santa Rosa",
+          "state": "CA",
+          "zip": "95401",
+          "latitude": 38.4452886,
+          "longitude": -122.7323316,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "66",
+          "site_client_id": 3467.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 3333 Cleveland Ave , Santa Rosa , CA , 95403",
+          "street": "3333 Cleveland Ave",
+          "city": "Santa Rosa",
+          "state": "CA",
+          "zip": "95403",
+          "latitude": 38.4739594,
+          "longitude": -122.7318486,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "68",
+          "site_client_id": 3499.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 1245 Santa Rosa Ave , Santa Rosa , CA , 95404",
+          "street": "1245 Santa Rosa Ave",
+          "city": "Santa Rosa",
+          "state": "CA",
+          "zip": "95404",
+          "latitude": 38.4266968,
+          "longitude": -122.7142944,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "West"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "cluster_id": 42,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 15447.0,
+        "mean_daily_wash_count": 15579.36,
+        "total_washes_2yr": 685492.0,
+        "min_daily": 5786.0,
+        "max_daily": 25428.0,
+        "range_daily": 19642.0,
+        "p25_daily": 11521.5,
+        "p75_daily": 19394.5,
+        "iqr_daily": 7873.0,
+        "std_daily": 5082.29,
+        "site_day_records": 44
+      },
+      "geography": {
+        "zip_codes": [
+          "32097",
+          "32218"
+        ],
+        "cities": [
+          "Jacksonville",
+          "Yulee"
+        ],
+        "states": [
+          "FL"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 30.559904,
+        "centroid_lon": -81.605947
+      },
+      "sites": [
+        {
+          "location_id": "18",
+          "site_client_id": 547.0,
+          "client_name": "Gate Express",
+          "address": "Gate Express , 85887 Miner Rd , Yulee , FL , 32097",
+          "street": "85887 Miner Rd",
+          "city": "Yulee",
+          "state": "FL",
+          "zip": "32097",
+          "latitude": 30.629671,
+          "longitude": -81.585767,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 18.0,
+          "website": null,
+          "region": "South"
+        },
+        {
+          "location_id": "17",
+          "site_client_id": 541.0,
+          "client_name": "Gate Express",
+          "address": "Gate Express , 15765 Max Leggett Pkwy , Jacksonville , FL , 32218",
+          "street": "15765 Max Leggett Pkwy",
+          "city": "Jacksonville",
+          "state": "FL",
+          "zip": "32218",
+          "latitude": 30.490137,
+          "longitude": -81.626126,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 18.0,
+          "website": null,
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "cluster_id": 16,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 14911.5,
+        "mean_daily_wash_count": 15346.89,
+        "total_washes_2yr": 1350526.0,
+        "min_daily": 7448.0,
+        "max_daily": 23776.0,
+        "range_daily": 16328.0,
+        "p25_daily": 11649.25,
+        "p75_daily": 18606.25,
+        "iqr_daily": 6957.0,
+        "std_daily": 4469.02,
+        "site_day_records": 88
+      },
+      "geography": {
+        "zip_codes": [
+          "87301-4932",
+          "87507-4838"
+        ],
+        "cities": [
+          "GALLUP",
+          "SANTA FE"
+        ],
+        "states": [
+          "NM"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 35.640283,
+        "centroid_lon": -106.012863
+      },
+      "sites": [
+        {
+          "location_id": "95bc6dd66bb2d0e21ddf249710bb10f2c361d2f1af39172db11a288f11ac3842",
+          "site_client_id": 1321.0,
+          "client_name": "CHAMPION XPRESS",
+          "address": "CHAMPION XPRESS , 1300 E HISTORIC HWY 66 , GALLUP , NM , 87301-4932",
+          "street": "1300 E HISTORIC HWY 66",
+          "city": "GALLUP",
+          "state": "NM",
+          "zip": "87301-4932",
+          "latitude": 35.642658,
+          "longitude": -106.013367,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 42.0,
+          "website": null,
+          "region": "West"
+        },
+        {
+          "location_id": "5a3788a78948efd58445072e4bacb8f94ce5eb1c4e435b651554521cee916633",
+          "site_client_id": 183.0,
+          "client_name": "CHAMPION XPRESS",
+          "address": "CHAMPION XPRESS , 4410 RODEO RD , SANTA FE , NM , 87507-4838",
+          "street": "4410 RODEO RD",
+          "city": "SANTA FE",
+          "state": "NM",
+          "zip": "87507-4838",
+          "latitude": 35.637909,
+          "longitude": -106.0123587,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 42.0,
+          "website": null,
+          "region": "West"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "cluster_id": 81,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 14445.0,
+        "mean_daily_wash_count": 14134.63,
+        "total_washes_2yr": 494712.0,
+        "min_daily": 5.0,
+        "max_daily": 24131.0,
+        "range_daily": 24126.0,
+        "p25_daily": 10159.5,
+        "p75_daily": 18282.5,
+        "iqr_daily": 8123.0,
+        "std_daily": 5801.61,
+        "site_day_records": 35
+      },
+      "geography": {
+        "zip_codes": [
+          "18936",
+          "18974"
+        ],
+        "cities": [
+          "Montgomeryville",
+          "Warminster"
+        ],
+        "states": [
+          "PA"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 40.224248,
+        "centroid_lon": -75.167915
+      },
+      "sites": [
+        {
+          "location_id": "47",
+          "site_client_id": 3491.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 739 Bethlehem Pike , Montgomeryville , PA , 18936",
+          "street": "739 Bethlehem Pike",
+          "city": "Montgomeryville",
+          "state": "PA",
+          "zip": "18936",
+          "latitude": 40.2460378,
+          "longitude": -75.2428014,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "Northeast"
+        },
+        {
+          "location_id": "72",
+          "site_client_id": 3446.0,
+          "client_name": "Luv Car Wash",
+          "address": "Luv Car Wash , 440 W Street Rd , Warminster , PA , 18974",
+          "street": "440 W Street Rd",
+          "city": "Warminster",
+          "state": "PA",
+          "zip": "18974",
+          "latitude": 40.202459,
+          "longitude": -75.093028,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 29.0,
+          "website": null,
+          "region": "Northeast"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "cluster_id": 10,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 13895.0,
+        "mean_daily_wash_count": 14278.58,
+        "total_washes_2yr": 856715.0,
+        "min_daily": 15.0,
+        "max_daily": 26170.0,
+        "range_daily": 26155.0,
+        "p25_daily": 12026.5,
+        "p75_daily": 16734.5,
+        "iqr_daily": 4708.0,
+        "std_daily": 4992.06,
+        "site_day_records": 60
+      },
+      "geography": {
+        "zip_codes": [
+          "75032",
+          "75088-4505"
+        ],
+        "cities": [
+          "ROWLETT",
+          "Rockwall"
+        ],
+        "states": [
+          "TX"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 32.904553,
+        "centroid_lon": -96.491909
+      },
+      "sites": [
+        {
+          "location_id": "1",
+          "site_client_id": 80.0,
+          "client_name": "Blast Car Wash",
+          "address": "Blast Car Wash , 2525 Horizon Rd , Rockwall , TX , 75032",
+          "street": "2525 Horizon Rd",
+          "city": "Rockwall",
+          "state": "TX",
+          "zip": "75032",
+          "latitude": 32.8908534,
+          "longitude": -96.4693111,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 1.0,
+          "website": null,
+          "region": "South"
+        },
+        {
+          "location_id": "ad03ba50edfa621b329d1e60235ca227db721295110a20f506bf92a444c65da6",
+          "site_client_id": 944.0,
+          "client_name": "ROWLETT CAR WASH",
+          "address": "ROWLETT CAR WASH , 8900 LAKEVIEW PKWY , ROWLETT , TX , 75088-4505",
+          "street": "8900 LAKEVIEW PKWY",
+          "city": "ROWLETT",
+          "state": "TX",
+          "zip": "75088-4505",
+          "latitude": 32.9182523,
+          "longitude": -96.5145077,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 1.0,
+          "website": null,
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "cluster_id": 52,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 13644.0,
+        "mean_daily_wash_count": 16800.08,
+        "total_washes_2yr": 3040815.0,
+        "min_daily": 199.0,
+        "max_daily": 53736.0,
+        "range_daily": 53537.0,
+        "p25_daily": 4453.0,
+        "p75_daily": 30795.0,
+        "iqr_daily": 26342.0,
+        "std_daily": 14154.22,
+        "site_day_records": 181
+      },
+      "geography": {
+        "zip_codes": [
+          "48150-2338",
+          "60137",
+          "60148-4628",
+          "60490-1549",
+          "60505-1611",
+          "60563"
+        ],
+        "cities": [
+          "AURORA",
+          "BOLINGBROOK",
+          "GLEN ELLYN",
+          "LIVONIA",
+          "LOMBARD",
+          "Naperville"
+        ],
+        "states": [
+          "IL",
+          "MI"
+        ],
+        "n_sites": 6,
+        "centroid_lat": 41.78264,
+        "centroid_lon": -88.11601
+      },
+      "sites": [
+        {
+          "location_id": "3ea8ab4c526e0e0b3fe379c51c98614a876289c906415fa29a1e4360b520cf26",
+          "site_client_id": 1867.0,
+          "client_name": "ZIPS",
+          "address": "ZIPS , 375 ROOSEVELT RD , GLEN ELLYN , IL , 60137",
+          "street": "375 ROOSEVELT RD",
+          "city": "GLEN ELLYN",
+          "state": "IL",
+          "zip": "60137",
+          "latitude": 41.858836,
+          "longitude": -88.0735209,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 3.0,
+          "website": null,
+          "region": "Midwest"
+        },
+        {
+          "location_id": "67f77e3f8462935edd1dd99772fd39e808b3ee24f2bba98d13be64bae120d1c6",
+          "site_client_id": 1762.0,
+          "client_name": "TIDAL WAVE",
+          "address": "TIDAL WAVE , 352 E ROOSEVELT , LOMBARD , IL , 60148-4628",
+          "street": "352 E ROOSEVELT",
+          "city": "LOMBARD",
+          "state": "IL",
+          "zip": "60148-4628",
+          "latitude": 41.860828,
+          "longitude": -88.007947,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 63.0,
+          "website": null,
+          "region": "Midwest"
+        },
+        {
+          "location_id": "3293b70884454cc42b961d781687440138be4bb87d5a13671c844ce7f21b9473",
+          "site_client_id": 1506.0,
+          "client_name": "MICHIGAN WASH CO LLC",
+          "address": "MICHIGAN WASH CO LLC , 29067 PLYMOUTH RD , LIVONIA , MI , 48150-2338",
+          "street": "29067 PLYMOUTH RD",
+          "city": "LIVONIA",
+          "state": "MI",
+          "zip": "48150-2338",
+          "latitude": 41.710426,
+          "longitude": -88.069189,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 14.0,
+          "website": null,
+          "region": "Midwest"
+        },
+        {
+          "location_id": "5837dadb32ee372b9272f3cd9499b3830cf530476da8c255fb0656cdc0905025",
+          "site_client_id": 986.0,
+          "client_name": "ZIPS",
+          "address": "ZIPS , 1427 N FARNSWORTH AVE , AURORA , IL , 60505-1611",
+          "street": "1427 N FARNSWORTH AVE",
+          "city": "AURORA",
+          "state": "IL",
+          "zip": "60505-1611",
+          "latitude": 41.786924,
+          "longitude": -88.281289,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 3.0,
+          "website": null,
+          "region": "Midwest"
+        },
+        {
+          "location_id": "c079d9e0602e58d1bf28bcf085957357d0a360b9c939b1cf75c68ff8ddd570b1",
+          "site_client_id": 794.0,
+          "client_name": "ZIPS",
+          "address": "ZIPS , 246 S WEBER RD , BOLINGBROOK , IL , 60490-1549",
+          "street": "246 S WEBER RD",
+          "city": "BOLINGBROOK",
+          "state": "IL",
+          "zip": "60490-1549",
+          "latitude": 41.6927453,
+          "longitude": -88.1217497,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 3.0,
+          "website": null,
+          "region": "Midwest"
+        },
+        {
+          "location_id": "7",
+          "site_client_id": 1578.0,
+          "client_name": "Wash U",
+          "address": "Wash U , 311 E Ogden Ave , Naperville , IL , 60563",
+          "street": "311 E Ogden Ave",
+          "city": "Naperville",
+          "state": "IL",
+          "zip": "60563",
+          "latitude": 41.7860811,
+          "longitude": -88.1423655,
+          "carwash_type": null,
+          "tunnel_count": null,
+          "age_years": null,
+          "competitors_4mi": null,
+          "current_membership": 2.0,
+          "website": null,
+          "region": "Midwest"
+        }
+      ]
+    }
+  ]
+}

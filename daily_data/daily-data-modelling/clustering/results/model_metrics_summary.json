@@ -1,0 +1,30 @@
+[
+  {
+    "radius":"12km",
+    "cluster_col":"dbscan_cluster_12km",
+    "n_rows_train":138348,
+    "n_rows_test":34588,
+    "mae":127.4740535584,
+    "rmse":195.0875965795,
+    "mape":144845610068548.1875,
+    "r2":0.6201815699,
+    "actual_in_train_minmax_rate":0.983896149,
+    "actual_in_train_p10_p90_rate":0.7939169654,
+    "actual_in_train_iqr_rate":0.494304383,
+    "saved_model_path":"\/Users\/dhruvsood\/sonnysDataCollection\/daily_data\/daily-data-modelling\/clustering\/models\/wash_count_model_12km.portable.json"
+  },
+  {
+    "radius":"18km",
+    "cluster_col":"dbscan_cluster_18km",
+    "n_rows_train":167272,
+    "n_rows_test":41818,
+    "mae":127.3506843982,
+    "rmse":191.9690462935,
+    "mape":128193572328674.015625,
+    "r2":0.6009075175,
+    "actual_in_train_minmax_rate":0.9891673442,
+    "actual_in_train_p10_p90_rate":0.7942512794,
+    "actual_in_train_iqr_rate":0.4996652159,
+    "saved_model_path":"\/Users\/dhruvsood\/sonnysDataCollection\/daily_data\/daily-data-modelling\/clustering\/models\/wash_count_model_18km.portable.json"
+  }
+]

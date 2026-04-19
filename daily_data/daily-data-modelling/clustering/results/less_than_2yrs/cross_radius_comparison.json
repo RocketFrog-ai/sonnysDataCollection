@@ -1,0 +1,18 @@
+[
+  {
+    "radius":"12km",
+    "n_clusters":77,
+    "best_cluster_id":75,
+    "best_median_daily":29492.5,
+    "best_total":2346084.0,
+    "avg_median_across_clusters":9507.1493506493
+  },
+  {
+    "radius":"18km",
+    "n_clusters":84,
+    "best_cluster_id":82,
+    "best_median_daily":28396.0,
+    "best_total":2832449.0,
+    "avg_median_across_clusters":8766.9285714286
+  }
+]

@@ -1,0 +1,24 @@
+[
+  {
+    "radius":"12km",
+    "cluster_col":"dbscan_cluster_12km",
+    "test_start_date":"2026-04-01",
+    "coverage_rate_assigned_not_noise":0.8927659574,
+    "exact_match_rate_all_test_rows":0.8927659574,
+    "exact_match_rate_assigned_rows_only":1.0,
+    "avg_assignment_distance_km_assigned":4.3154686116,
+    "in_p10_p90_rate_on_assigned_cluster":0.8207816969,
+    "avg_off_abs_when_outside_p10_p90_on_assigned_cluster":2705.6303191489
+  },
+  {
+    "radius":"18km",
+    "cluster_col":"dbscan_cluster_18km",
+    "test_start_date":"2026-04-01",
+    "coverage_rate_assigned_not_noise":0.8643617021,
+    "exact_match_rate_all_test_rows":0.8643617021,
+    "exact_match_rate_assigned_rows_only":1.0,
+    "avg_assignment_distance_km_assigned":6.1174932366,
+    "in_p10_p90_rate_on_assigned_cluster":0.8184615385,
+    "avg_off_abs_when_outside_p10_p90_on_assigned_cluster":2581.9474576271
+  }
+]
