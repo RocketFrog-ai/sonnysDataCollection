@@ -1,0 +1,1060 @@
+{
+  "radius": "18km",
+  "ranking": "top10_elite_by_median_daily",
+  "min_sites_filter": null,
+  "clusters": [
+    {
+      "rank": 1,
+      "cluster_id": 52,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 817.5,
+        "mean_daily_wash_count": 798.52,
+        "total_washes_2yr": 1162652.0,
+        "min_daily": 67.0,
+        "max_daily": 1978.0,
+        "range_daily": 1911.0,
+        "p25_daily": 643.75,
+        "p75_daily": 966.0,
+        "iqr_daily": 322.25,
+        "std_daily": 269.53,
+        "site_day_records": 1456
+      },
+      "geography": {
+        "zip_codes": [
+          29621,
+          29625
+        ],
+        "cities": [
+          "Anderson"
+        ],
+        "states": [
+          "SC"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 34.540615,
+        "centroid_lon": -82.684797
+      },
+      "sites": [
+        {
+          "location_id": 4,
+          "site_client_id": 1093,
+          "client_name": "Papa Bear",
+          "address": "Papa Bear, 1500 Pearman Dairy Rd, Anderson, SC, 29625",
+          "street": "1500 Pearman Dairy Rd",
+          "city": "Anderson",
+          "state": "SC",
+          "zip": 29625,
+          "latitude": 34.531945,
+          "longitude": -82.696336,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 3,
+          "age_years": 2.0,
+          "competitors_4mi": 14.0,
+          "current_membership": 375730.91,
+          "website": "https://www.papabearcarwash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 1095,
+          "client_name": "Papa Bear",
+          "address": "Papa Bear, 3436 Clemson Blvd, Anderson, SC, 29621",
+          "street": "3436 Clemson Blvd",
+          "city": "Anderson",
+          "state": "SC",
+          "zip": 29621,
+          "latitude": 34.549285,
+          "longitude": -82.673258,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 3.0,
+          "competitors_4mi": 12.0,
+          "current_membership": 324972.43,
+          "website": "https://papasbear.com/collections/all-products",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "cluster_id": 34,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 764.5,
+        "mean_daily_wash_count": 687.9,
+        "total_washes_2yr": 1377184.0,
+        "min_daily": 19.0,
+        "max_daily": 1527.0,
+        "range_daily": 1508.0,
+        "p25_daily": 346.25,
+        "p75_daily": 975.75,
+        "iqr_daily": 629.5,
+        "std_daily": 341.72,
+        "site_day_records": 2002
+      },
+      "geography": {
+        "zip_codes": [
+          95051,
+          95126,
+          95135
+        ],
+        "cities": [
+          "San Jose",
+          "Santa Clara"
+        ],
+        "states": [
+          "CA"
+        ],
+        "n_sites": 3,
+        "centroid_lat": 37.32068,
+        "centroid_lon": -121.885818
+      },
+      "sites": [
+        {
+          "location_id": 1,
+          "site_client_id": 1330,
+          "client_name": "Stevens Creek Xpress",
+          "address": "Stevens Creek Xpress, 3655 Stevens Creek Blvd, Santa Clara, CA, 95051",
+          "street": "3655 Stevens Creek Blvd",
+          "city": "Santa Clara",
+          "state": "CA",
+          "zip": 95051,
+          "latitude": 37.3239942,
+          "longitude": -121.964776,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 2.0,
+          "competitors_4mi": 12.0,
+          "current_membership": 344533.0,
+          "website": "https://stevenscreekxpress.mywashaccount.com/",
+          "region": "West"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 471,
+          "client_name": "Evergreen Car Wash",
+          "address": "Evergreen Car Wash, 3303 San Felipe Rd, San Jose, CA, 95135",
+          "street": "3303 San Felipe Rd",
+          "city": "San Jose",
+          "state": "CA",
+          "zip": 95135,
+          "latitude": 37.313525,
+          "longitude": -121.791816,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 0,
+          "age_years": 5.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 40652.6,
+          "website": "https://evergreencarwash.com/",
+          "region": "West"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 486,
+          "client_name": "Extreme Express",
+          "address": "Extreme Express, 655 W San Carlos St, San Jose, CA, 95126",
+          "street": "655 W San Carlos St",
+          "city": "San Jose",
+          "state": "CA",
+          "zip": 95126,
+          "latitude": 37.3245209,
+          "longitude": -121.9008608,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 7.0,
+          "competitors_4mi": 11.0,
+          "current_membership": 308670.99,
+          "website": "https://www.extremeexpresscarwash.com/",
+          "region": "West"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "cluster_id": 72,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 742.5,
+        "mean_daily_wash_count": 826.99,
+        "total_washes_2yr": 2406532.0,
+        "min_daily": 1.0,
+        "max_daily": 2854.0,
+        "range_daily": 2853.0,
+        "p25_daily": 545.0,
+        "p75_daily": 1036.75,
+        "iqr_daily": 491.75,
+        "std_daily": 437.07,
+        "site_day_records": 2910
+      },
+      "geography": {
+        "zip_codes": [
+          33709,
+          33711,
+          33771,
+          33777
+        ],
+        "cities": [
+          "Largo",
+          "Seminole",
+          "St. Petersburg"
+        ],
+        "states": [
+          "FL"
+        ],
+        "n_sites": 4,
+        "centroid_lat": 27.823333,
+        "centroid_lon": -82.727584
+      },
+      "sites": [
+        {
+          "location_id": 7,
+          "site_client_id": 1628,
+          "client_name": "Woodies",
+          "address": "Woodies, 5601 66th St N, St. Petersburg, FL, 33709",
+          "street": "5601 66th St N",
+          "city": "St. Petersburg",
+          "state": "FL",
+          "zip": 33709,
+          "latitude": 27.823254,
+          "longitude": -82.727867,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 3.0,
+          "competitors_4mi": 13.0,
+          "current_membership": 257589.66,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 14,
+          "site_client_id": 1631,
+          "client_name": "Woodies",
+          "address": "Woodies, 7601 Ulmerton Rd, Largo, FL, 33771",
+          "street": "7601 Ulmerton Rd",
+          "city": "Largo",
+          "state": "FL",
+          "zip": 33771,
+          "latitude": 27.8948321,
+          "longitude": -82.7431977,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 2.0,
+          "competitors_4mi": 11.0,
+          "current_membership": 204701.95,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 13,
+          "site_client_id": 1625,
+          "client_name": "Woodies",
+          "address": "Woodies, 8680 N. Park Blvd, Seminole, FL, 33777",
+          "street": "8680 N. Park Blvd",
+          "city": "Seminole",
+          "state": "FL",
+          "zip": 33777,
+          "latitude": 27.8384124,
+          "longitude": -82.7592529,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 2.0,
+          "competitors_4mi": 13.0,
+          "current_membership": 245515.44,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 3,
+          "site_client_id": 1623,
+          "client_name": "Woodies",
+          "address": "Woodies, 3401 34th St S, St. Petersburg, FL, 33711",
+          "street": "3401 34th St S",
+          "city": "St. Petersburg",
+          "state": "FL",
+          "zip": 33711,
+          "latitude": 27.7368325,
+          "longitude": -82.6800166,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 3,
+          "age_years": 4.0,
+          "competitors_4mi": 12.0,
+          "current_membership": 387263.58,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "cluster_id": 31,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 675.0,
+        "mean_daily_wash_count": 687.28,
+        "total_washes_2yr": 1000678.0,
+        "min_daily": 4.0,
+        "max_daily": 1658.0,
+        "range_daily": 1654.0,
+        "p25_daily": 470.0,
+        "p75_daily": 893.0,
+        "iqr_daily": 423.0,
+        "std_daily": 302.62,
+        "site_day_records": 1456
+      },
+      "geography": {
+        "zip_codes": [
+          22026,
+          22554
+        ],
+        "cities": [
+          "Dumfries",
+          "Stafford"
+        ],
+        "states": [
+          "VA"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 38.526261,
+        "centroid_lon": -77.382023
+      },
+      "sites": [
+        {
+          "location_id": 8,
+          "site_client_id": 447,
+          "client_name": "Edge Express",
+          "address": "Edge Express, 110 Patriot Crossing Drive, Stafford, VA, 22554",
+          "street": "110 Patriot Crossing Drive",
+          "city": "Stafford",
+          "state": "VA",
+          "zip": 22554,
+          "latitude": 38.4700052,
+          "longitude": -77.4534223,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 2.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 219886.33,
+          "website": "https://www.edgeexpresscarwash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 444,
+          "client_name": "Edge Express",
+          "address": "Edge Express, 17000 Jefferson Davis Hwy, Dumfries, VA, 22026",
+          "street": "17000 Jefferson Davis Hwy",
+          "city": "Dumfries",
+          "state": "VA",
+          "zip": 22026,
+          "latitude": 38.582517,
+          "longitude": -77.3106235,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 3.0,
+          "competitors_4mi": 6.0,
+          "current_membership": 283951.79,
+          "website": "https://www.edgeexpresscarwash.com/",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "cluster_id": 28,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 580.5,
+        "mean_daily_wash_count": 619.21,
+        "total_washes_2yr": 901569.0,
+        "min_daily": 2.0,
+        "max_daily": 1376.0,
+        "range_daily": 1374.0,
+        "p25_daily": 442.0,
+        "p75_daily": 819.0,
+        "iqr_daily": 377.0,
+        "std_daily": 249.67,
+        "site_day_records": 1456
+      },
+      "geography": {
+        "zip_codes": [
+          84770,
+          84790
+        ],
+        "cities": [
+          "St. George"
+        ],
+        "states": [
+          "UT"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 37.108672,
+        "centroid_lon": -113.581283
+      },
+      "sites": [
+        {
+          "location_id": 2,
+          "site_client_id": 421,
+          "client_name": "Dino Dash Wash",
+          "address": "Dino Dash Wash, 2054 E Riverside Dr, St. George, UT, 84790",
+          "street": "2054 E Riverside Dr",
+          "city": "St. George",
+          "state": "UT",
+          "zip": 84790,
+          "latitude": 37.098934,
+          "longitude": -113.538413,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 2.0,
+          "competitors_4mi": 14.0,
+          "current_membership": 211804.19,
+          "website": "https://www.dinodashcarwash.com/locations/",
+          "region": "West"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 420,
+          "client_name": "Dino Dash Wash",
+          "address": "Dino Dash Wash, 575 N Dixie Dr, St. George, UT, 84770",
+          "street": "575 N Dixie Dr",
+          "city": "St. George",
+          "state": "UT",
+          "zip": 84770,
+          "latitude": 37.11841,
+          "longitude": -113.624152,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 2.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 124202.2,
+          "website": "https://www.dinodashcarwash.com/locations/",
+          "region": "West"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "cluster_id": 15,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 512.0,
+        "mean_daily_wash_count": 553.62,
+        "total_washes_2yr": 3215985.0,
+        "min_daily": -8.0,
+        "max_daily": 2714.0,
+        "range_daily": 2722.0,
+        "p25_daily": 257.0,
+        "p75_daily": 756.0,
+        "iqr_daily": 499.0,
+        "std_daily": 374.64,
+        "site_day_records": 5809
+      },
+      "geography": {
+        "zip_codes": [
+          33511,
+          33534,
+          33569,
+          33572,
+          33579,
+          33598,
+          33611
+        ],
+        "cities": [
+          "Apollo Beach",
+          "Brandon",
+          "Gibsonton",
+          "Riverview",
+          "Tampa",
+          "Wimauma"
+        ],
+        "states": [
+          "FL"
+        ],
+        "n_sites": 8,
+        "centroid_lat": 27.841559,
+        "centroid_lon": -82.379941
+      },
+      "sites": [
+        {
+          "location_id": 1,
+          "site_client_id": 1634,
+          "client_name": "Woodies",
+          "address": "Woodies, 4545 W Gandy Blvd, Tampa, FL, 33611",
+          "street": "4545 W Gandy Blvd",
+          "city": "Tampa",
+          "state": "FL",
+          "zip": 33611,
+          "latitude": 27.893635,
+          "longitude": -82.522547,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 4.0,
+          "competitors_4mi": 13.0,
+          "current_membership": 258165.99,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 15,
+          "site_client_id": 1629,
+          "client_name": "Woodies",
+          "address": "Woodies, 3011 W Gandy Blvd, Tampa, FL, 33611",
+          "street": "3011 W Gandy Blvd",
+          "city": "Tampa",
+          "state": "FL",
+          "zip": 33611,
+          "latitude": 27.893964,
+          "longitude": -82.492682,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 3,
+          "age_years": 2.0,
+          "competitors_4mi": 14.0,
+          "current_membership": 374554.23,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 6,
+          "site_client_id": 1630,
+          "client_name": "Woodies",
+          "address": "Woodies, 4927 FL-674, Wimauma, FL, 33598",
+          "street": "4927 FL-674",
+          "city": "Wimauma",
+          "state": "FL",
+          "zip": 33598,
+          "latitude": 27.7117577,
+          "longitude": -82.3330877,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 3.0,
+          "competitors_4mi": 1.0,
+          "current_membership": 245494.32,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 656,
+          "client_name": "Jules Car Wash",
+          "address": "Jules Car Wash, 10060 US-301, Riverview, FL, 33569",
+          "street": "10060 US-301",
+          "city": "Riverview",
+          "state": "FL",
+          "zip": 33569,
+          "latitude": 27.8810228,
+          "longitude": -82.327289,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 9.0,
+          "competitors_4mi": 12.0,
+          "current_membership": 156139.65,
+          "website": "https://julescarwash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 2,
+          "site_client_id": 657,
+          "client_name": "Jules Car Wash",
+          "address": "Jules Car Wash, 654 W Brandon Blvd, Brandon, FL, 33511",
+          "street": "654 W Brandon Blvd",
+          "city": "Brandon",
+          "state": "FL",
+          "zip": 33511,
+          "latitude": 27.9378376,
+          "longitude": -82.2932848,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 0,
+          "age_years": 6.0,
+          "competitors_4mi": 14.0,
+          "current_membership": 49224.97,
+          "website": "https://julescarwash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 10,
+          "site_client_id": 1621,
+          "client_name": "Woodies",
+          "address": "Woodies, 9350 Theater Dr, Gibsonton, FL, 33534",
+          "street": "9350 Theater Dr",
+          "city": "Gibsonton",
+          "state": "FL",
+          "zip": 33534,
+          "latitude": 27.849161,
+          "longitude": -82.350817,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 0,
+          "age_years": 3.0,
+          "competitors_4mi": 10.0,
+          "current_membership": 114556.98,
+          "website": "https://www.woodieswash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 6,
+          "site_client_id": 1139,
+          "client_name": "Radiant Express Car Wash",
+          "address": "Radiant Express Car Wash, 6576 US Hwy 41, Apollo Beach, FL, 33572",
+          "street": "6576 US Hwy 41",
+          "city": "Apollo Beach",
+          "state": "FL",
+          "zip": 33572,
+          "latitude": 27.7731511,
+          "longitude": -82.3900834,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 2.0,
+          "competitors_4mi": 3.0,
+          "current_membership": 188674.4,
+          "website": "https://www.radiantexpresscarwash.com/contact-us/",
+          "region": "South"
+        },
+        {
+          "location_id": 4,
+          "site_client_id": 240,
+          "client_name": "Bubble Down",
+          "address": "Bubble Down, 10737 Big Bend Rd, Riverview, FL, 33579",
+          "street": "10737 Big Bend Rd",
+          "city": "Riverview",
+          "state": "FL",
+          "zip": 33579,
+          "latitude": 27.7919407,
+          "longitude": -82.3297342,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 2.0,
+          "competitors_4mi": 10.0,
+          "current_membership": 273078.72,
+          "website": "https://bubbledown.com/",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "cluster_id": 55,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 502.5,
+        "mean_daily_wash_count": 583.18,
+        "total_washes_2yr": 849116.0,
+        "min_daily": 40.0,
+        "max_daily": 1878.0,
+        "range_daily": 1838.0,
+        "p25_daily": 348.0,
+        "p75_daily": 814.25,
+        "iqr_daily": 466.25,
+        "std_daily": 314.35,
+        "site_day_records": 1456
+      },
+      "geography": {
+        "zip_codes": [
+          28034,
+          28056
+        ],
+        "cities": [
+          "Dallas",
+          "Gastonia"
+        ],
+        "states": [
+          "NC"
+        ],
+        "n_sites": 2,
+        "centroid_lat": 35.286132,
+        "centroid_lon": -81.152275
+      },
+      "sites": [
+        {
+          "location_id": 6,
+          "site_client_id": 1169,
+          "client_name": "Riptide",
+          "address": "Riptide, 1001 Dallas Cherryville Hwy, Dallas, NC, 28034",
+          "street": "1001 Dallas Cherryville Hwy",
+          "city": "Dallas",
+          "state": "NC",
+          "zip": 28034,
+          "latitude": 35.315321,
+          "longitude": -81.189858,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 4.0,
+          "current_membership": 150964.0,
+          "website": "https://www.riptidecarwash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 5,
+          "site_client_id": 1155,
+          "client_name": "Riptide",
+          "address": "Riptide, 3711 E Franklin Blvd, Gastonia, NC, 28056",
+          "street": "3711 E Franklin Blvd",
+          "city": "Gastonia",
+          "state": "NC",
+          "zip": 28056,
+          "latitude": 35.2569432,
+          "longitude": -81.1146928,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 3.0,
+          "competitors_4mi": 13.0,
+          "current_membership": 315885.22,
+          "website": "https://www.riptidecarwash.com/",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "cluster_id": 4,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 493.0,
+        "mean_daily_wash_count": 529.26,
+        "total_washes_2yr": 1925982.0,
+        "min_daily": 6.0,
+        "max_daily": 1857.0,
+        "range_daily": 1851.0,
+        "p25_daily": 360.0,
+        "p75_daily": 670.0,
+        "iqr_daily": 310.0,
+        "std_daily": 249.92,
+        "site_day_records": 3639
+      },
+      "geography": {
+        "zip_codes": [
+          27529,
+          27610,
+          27614,
+          27615
+        ],
+        "cities": [
+          "Garner",
+          "Raleigh"
+        ],
+        "states": [
+          "NC"
+        ],
+        "n_sites": 5,
+        "centroid_lat": 35.786727,
+        "centroid_lon": -78.573535
+      },
+      "sites": [
+        {
+          "location_id": 4,
+          "site_client_id": 18,
+          "client_name": "American Pride",
+          "address": "American Pride, 8909 Six Forks Rd, Raleigh, NC, 27615",
+          "street": "8909 Six Forks Rd",
+          "city": "Raleigh",
+          "state": "NC",
+          "zip": 27615,
+          "latitude": 35.902101,
+          "longitude": -78.653225,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 4.0,
+          "competitors_4mi": 10.0,
+          "current_membership": 291222.24,
+          "website": "https://americanpridexpress.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 5,
+          "site_client_id": 20,
+          "client_name": "American Pride",
+          "address": "American Pride, 3810 New Bern Ave, Raleigh, NC, 27610",
+          "street": "3810 New Bern Ave",
+          "city": "Raleigh",
+          "state": "NC",
+          "zip": 27610,
+          "latitude": 35.7978173,
+          "longitude": -78.5746952,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 2.0,
+          "competitors_4mi": 11.0,
+          "current_membership": 162939.22,
+          "website": "https://americanpridexpress.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 5,
+          "site_client_id": 445,
+          "client_name": "Edge Express",
+          "address": "Edge Express, 4717 Veterans Pwky, Garner, NC, 27529",
+          "street": "4717 Veterans Pwky",
+          "city": "Garner",
+          "state": "NC",
+          "zip": 27529,
+          "latitude": 35.6092787,
+          "longitude": -78.5489487,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 3,
+          "age_years": 2.0,
+          "competitors_4mi": 5.0,
+          "current_membership": 365383.69,
+          "website": "https://www.edgeexpresscarwash.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 19,
+          "client_name": "American Pride",
+          "address": "American Pride, 1421 US-70, Garner, NC, 27529",
+          "street": "1421 US-70",
+          "city": "Garner",
+          "state": "NC",
+          "zip": 27529,
+          "latitude": 35.68325647936693,
+          "longitude": -78.52959606447831,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 5.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 218702.0,
+          "website": "https://americanpridexpress.com/",
+          "region": "South"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 1162,
+          "client_name": "Riptide",
+          "address": "Riptide, 13150 Falls of Neuse Rd, Raleigh, NC, 27614",
+          "street": "13150 Falls of Neuse Rd",
+          "city": "Raleigh",
+          "state": "NC",
+          "zip": 27614,
+          "latitude": 35.941183,
+          "longitude": -78.561212,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 160146.79,
+          "website": "https://www.riptidecarwash.com/",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "cluster_id": 71,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 493.0,
+        "mean_daily_wash_count": 490.2,
+        "total_washes_2yr": 1426492.0,
+        "min_daily": 2.0,
+        "max_daily": 1404.0,
+        "range_daily": 1402.0,
+        "p25_daily": 360.5,
+        "p75_daily": 612.75,
+        "iqr_daily": 252.25,
+        "std_daily": 193.45,
+        "site_day_records": 2910
+      },
+      "geography": {
+        "zip_codes": [
+          26101,
+          26105,
+          45750
+        ],
+        "cities": [
+          "Marietta",
+          "Parkersburg",
+          "Vienna"
+        ],
+        "states": [
+          "OH",
+          "WV"
+        ],
+        "n_sites": 4,
+        "centroid_lat": 39.312425,
+        "centroid_lon": -81.538426
+      },
+      "sites": [
+        {
+          "location_id": 4,
+          "site_client_id": 1556,
+          "client_name": "Wash Rite",
+          "address": "Wash Rite, 2521 Murdoch Ave, Parkersburg, WV, 26101",
+          "street": "2521 Murdoch Ave",
+          "city": "Parkersburg",
+          "state": "WV",
+          "zip": 26101,
+          "latitude": 39.2835083,
+          "longitude": -81.5479125,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 11.0,
+          "current_membership": 182706.77,
+          "website": "https://www.wash-riteunlimited.com/car-wash-services/",
+          "region": "South"
+        },
+        {
+          "location_id": 2,
+          "site_client_id": 1564,
+          "client_name": "Wash Rite",
+          "address": "Wash Rite, 107 Crooked Run Ln, Marietta, OH, 45750",
+          "street": "107 Crooked Run Ln",
+          "city": "Marietta",
+          "state": "OH",
+          "zip": 45750,
+          "latitude": 39.3952576,
+          "longitude": -81.5000379,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 0.0,
+          "current_membership": 226852.0,
+          "website": "https://www.wash-riteunlimited.com/car-wash-services/",
+          "region": "Midwest"
+        },
+        {
+          "location_id": 1,
+          "site_client_id": 1554,
+          "client_name": "Wash Rite",
+          "address": "Wash Rite, 1101 Division Street, Parkersburg, WV, 26101",
+          "street": "1101 Division Street",
+          "city": "Parkersburg",
+          "state": "WV",
+          "zip": 26101,
+          "latitude": 39.2479462,
+          "longitude": -81.5549239,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 12.0,
+          "current_membership": 182527.44,
+          "website": "https://www.wash-riteunlimited.com/car-wash-services/",
+          "region": "South"
+        },
+        {
+          "location_id": 3,
+          "site_client_id": 1557,
+          "client_name": "Wash Rite",
+          "address": "Wash Rite, 2504 Grand Central Ave, Vienna, WV, 26105",
+          "street": "2504 Grand Central Ave",
+          "city": "Vienna",
+          "state": "WV",
+          "zip": 26105,
+          "latitude": 39.322989,
+          "longitude": -81.550831,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 145447.32,
+          "website": "https://www.wash-riteunlimited.com/car-wash-services/",
+          "region": "South"
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "cluster_id": 58,
+      "radius": "18km",
+      "ranking": "top10_elite_by_median_daily",
+      "performance": {
+        "median_daily_wash_count": 483.0,
+        "mean_daily_wash_count": 521.32,
+        "total_washes_2yr": 1138043.0,
+        "min_daily": 11.0,
+        "max_daily": 2548.0,
+        "range_daily": 2537.0,
+        "p25_daily": 200.5,
+        "p75_daily": 723.5,
+        "iqr_daily": 523.0,
+        "std_daily": 377.32,
+        "site_day_records": 2183
+      },
+      "geography": {
+        "zip_codes": [
+          53151,
+          53154,
+          53220
+        ],
+        "cities": [
+          "Greenfield",
+          "New Berlin",
+          "Oak Creek"
+        ],
+        "states": [
+          "WI"
+        ],
+        "n_sites": 3,
+        "centroid_lat": 42.931875,
+        "centroid_lon": -88.002761
+      },
+      "sites": [
+        {
+          "location_id": 2,
+          "site_client_id": 1179,
+          "client_name": "Roadrunner",
+          "address": "Roadrunner, 5275 S Moorland Rd, New Berlin, WI, 53151",
+          "street": "5275 S Moorland Rd",
+          "city": "New Berlin",
+          "state": "WI",
+          "zip": 53151,
+          "latitude": 42.948622,
+          "longitude": -88.1102559,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 1,
+          "age_years": 3.0,
+          "competitors_4mi": 7.0,
+          "current_membership": 124305.77,
+          "website": "https://roadrunnercarwash.com/",
+          "region": "Midwest"
+        },
+        {
+          "location_id": 9,
+          "site_client_id": 1477,
+          "client_name": "Tsunami Car Wash",
+          "address": "Tsunami Car Wash, 140 W Puetz Rd, Oak Creek, WI, 53154",
+          "street": "140 W Puetz Rd",
+          "city": "Oak Creek",
+          "state": "WI",
+          "zip": 53154,
+          "latitude": 42.88706,
+          "longitude": -87.913636,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 2.0,
+          "competitors_4mi": 9.0,
+          "current_membership": 292243.47,
+          "website": "http://tsunamicarwash.mywashaccount.com/",
+          "region": "Midwest"
+        },
+        {
+          "location_id": 3,
+          "site_client_id": 1483,
+          "client_name": "Tsunami Car Wash",
+          "address": "Tsunami Car Wash, 5520 W Layton Ave, Greenfield, WI, 53220",
+          "street": "5520 W Layton Ave",
+          "city": "Greenfield",
+          "state": "WI",
+          "zip": 53220,
+          "latitude": 42.959942,
+          "longitude": -87.984392,
+          "carwash_type": "Express Tunnel",
+          "tunnel_count": 2,
+          "age_years": 4.0,
+          "competitors_4mi": 11.0,
+          "current_membership": 300854.09,
+          "website": "http://tsunamicarwash.mywashaccount.com/",
+          "region": "Midwest"
+        }
+      ]
+    }
+  ]
+}

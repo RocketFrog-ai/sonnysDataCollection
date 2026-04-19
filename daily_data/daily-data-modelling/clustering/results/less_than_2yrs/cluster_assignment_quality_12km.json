@@ -1,0 +1,23 @@
+{
+  "radius": "12km",
+  "cluster_col": "dbscan_cluster_12km",
+  "assign_method": "nearest_train_centroid_haversine_with_radius_gate",
+  "radius_gate_km": 12.0,
+  "split": {
+    "type": "time_based_80_20",
+    "test_start_date": "2026-04-01",
+    "n_rows_total": 5871,
+    "n_rows_train": 4696,
+    "n_rows_test": 1175
+  },
+  "assignment_quality": {
+    "coverage_rate_assigned_not_noise": 0.8927659574468085,
+    "exact_match_rate_all_test_rows": 0.8927659574468085,
+    "exact_match_rate_assigned_rows_only": 1.0,
+    "avg_assignment_distance_km_assigned": 4.315468611631064
+  },
+  "range_compatibility_on_assigned_cluster": {
+    "in_p10_p90_rate": 0.8207816968541468,
+    "avg_off_abs_when_outside_p10_p90": 2705.630319148935
+  }
+}

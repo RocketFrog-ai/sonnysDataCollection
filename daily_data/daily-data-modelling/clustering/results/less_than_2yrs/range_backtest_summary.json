@@ -1,0 +1,24 @@
+[
+  {
+    "radius":"12km",
+    "cluster_col":"dbscan_cluster_12km",
+    "test_start_date":"2026-04-01",
+    "daily_in_p10_p90_rate":0.8289361702,
+    "daily_avg_off_when_outside":2600.4303482587,
+    "monthly_in_p10_p90_rate":0.4768041237,
+    "monthly_avg_off_when_outside":12816.7123152709,
+    "halfyear_in_p10_p90_rate":0.1186440678,
+    "halfyear_avg_off_when_outside":74330.2865384615
+  },
+  {
+    "radius":"18km",
+    "cluster_col":"dbscan_cluster_18km",
+    "test_start_date":"2026-04-01",
+    "daily_in_p10_p90_rate":0.8224734043,
+    "daily_avg_off_when_outside":2461.9071161049,
+    "monthly_in_p10_p90_rate":0.4578833693,
+    "monthly_avg_off_when_outside":13801.2685258964,
+    "halfyear_in_p10_p90_rate":0.1079136691,
+    "halfyear_avg_off_when_outside":85947.6870967742
+  }
+]

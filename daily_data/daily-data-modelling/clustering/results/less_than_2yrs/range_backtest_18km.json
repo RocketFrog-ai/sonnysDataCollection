@@ -1,0 +1,44 @@
+{
+  "radius": "18km",
+  "cluster_col": "dbscan_cluster_18km",
+  "split": {
+    "type": "time_based_80_20",
+    "test_start_date": "2026-04-01",
+    "n_rows_total": 7518,
+    "n_rows_train": 6014,
+    "n_rows_test": 1504
+  },
+  "daily": {
+    "rows_test": 1504,
+    "in_minmax_rate": 0.9787234042553191,
+    "in_p10_p90_rate": 0.8224734042553191,
+    "in_iqr_rate": 0.5246010638297872,
+    "outside_p10_p90_rate": 0.17752659574468085,
+    "avg_off_abs_p10_p90_all_rows": 437.0539893617021,
+    "avg_off_abs_p10_p90_when_outside": 2461.9071161048687,
+    "median_off_abs_p10_p90_when_outside": 1116.8999999999996,
+    "avg_off_pct_of_range_when_outside": 0.2937758024757855
+  },
+  "monthly": {
+    "rows_test": 463,
+    "in_minmax_rate": 0.7667386609071274,
+    "in_p10_p90_rate": 0.45788336933045354,
+    "in_iqr_rate": 0.23758099352051837,
+    "outside_p10_p90_rate": 0.5421166306695464,
+    "avg_off_abs_p10_p90_all_rows": 7481.897192224622,
+    "avg_off_abs_p10_p90_when_outside": 13801.268525896416,
+    "median_off_abs_p10_p90_when_outside": 5568.5,
+    "avg_off_pct_of_range_when_outside": 0.4935821973292166
+  },
+  "halfyear": {
+    "rows_test": 139,
+    "in_minmax_rate": 0.2158273381294964,
+    "in_p10_p90_rate": 0.1079136690647482,
+    "in_iqr_rate": 0.03597122302158273,
+    "outside_p10_p90_rate": 0.8920863309352518,
+    "avg_off_abs_p10_p90_all_rows": 76672.75683453235,
+    "avg_off_abs_p10_p90_when_outside": 85947.68709677417,
+    "median_off_abs_p10_p90_when_outside": 48513.3,
+    "avg_off_pct_of_range_when_outside": 0.780340532853262
+  }
+}

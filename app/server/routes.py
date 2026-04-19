@@ -1,8 +1,14 @@
 import json
 import logging
+import warnings
 import requests
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
+import pandas as pd
+from statsmodels.tsa.api import ExponentialSmoothing
+from statsmodels.tsa.arima.model import ARIMA
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 
@@ -29,6 +35,8 @@ from app.server.config import (
 from app.server.site_verdict import build_overall_site_analysis_verdict
 from app.server.models import (
     AnalyseRequest,
+    ClusterProjectionRequest,
+    ClusterRangeCheckRequest,
     TaskResponse,
     TaskStatus,
     TaskStatusResponse,
@@ -53,7 +61,9 @@ from app.modelling.ds.dimension_summary import (
 )
 from app.modelling.ds.prediction import get_category_for_quantile
 from app.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
+from app.server.cluster_portable_model import load_portable, predict_wash_count, range_stats_dataframe
 
+warnings.filterwarnings("ignore")
 
 # -----------------------------------------------------------------------------
 # Router
@@ -62,6 +72,22 @@ from app.features.active.nearbyCompetitors.classify_competitor_types import clas
 logger = logging.getLogger(__name__)
 router = APIRouter()
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+_CLUSTER_RUNTIME_CACHE: Dict[str, Dict[str, Any]] = {}
+_CLUSTER_CONFIG = {
+    "12km": {"cluster_col": "dbscan_cluster_12km", "radius_km": 12.0},
+    "18km": {"cluster_col": "dbscan_cluster_18km", "radius_km": 18.0},
+}
+_CLUSTER_SEGMENT_CONFIG = {
+    "more_than_2yrs": {
+        "data_path": ROOT_DIR / "daily_data" / "daily-data-modelling" / "more_than-2yrs.csv",
+        "model_dir": ROOT_DIR / "daily_data" / "daily-data-modelling" / "clustering" / "models",
+    },
+    "less_than_2yrs": {
+        "data_path": ROOT_DIR / "daily_data" / "daily-data-modelling" / "less_than-2yrs-clustering-ready.csv",
+        "model_dir": ROOT_DIR / "daily_data" / "daily-data-modelling" / "clustering" / "models" / "less_than_2yrs",
+    },
+}
 
 
 # -----------------------------------------------------------------------------
@@ -90,6 +116,288 @@ def _lat_lon_from_address_or_400(address: str) -> Tuple[float, float]:
         return calib.resolve_lat_lon(address)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+def _haversine_km_scalar_to_many(lat: float, lon: float, lat_arr: np.ndarray, lon_arr: np.ndarray) -> np.ndarray:
+    r = 6371.0
+    lat1 = np.radians(lat)
+    lon1 = np.radians(lon)
+    lat2 = np.radians(lat_arr)
+    lon2 = np.radians(lon_arr)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2.0) ** 2
+    return r * (2 * np.arcsin(np.sqrt(a)))
+
+
+def _load_cluster_runtime_assets(radius: str, segment: str) -> Dict[str, Any]:
+    cache_key = f"{segment}:{radius}"
+    if cache_key in _CLUSTER_RUNTIME_CACHE:
+        return _CLUSTER_RUNTIME_CACHE[cache_key]
+
+    if radius not in _CLUSTER_CONFIG:
+        raise HTTPException(status_code=400, detail="radius must be one of: 12km, 18km")
+    if segment not in _CLUSTER_SEGMENT_CONFIG:
+        raise HTTPException(status_code=400, detail=f"Unsupported segment: {segment}")
+
+    cfg = _CLUSTER_CONFIG[radius]
+    seg_cfg = _CLUSTER_SEGMENT_CONFIG[segment]
+    cluster_col = cfg["cluster_col"]
+    radius_km = cfg["radius_km"]
+    data_path = seg_cfg["data_path"]
+    model_dir = seg_cfg["model_dir"]
+    portable_path = model_dir / f"wash_count_model_{radius}.portable.json"
+    if not portable_path.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Portable model missing: {portable_path}. "
+                "Generate it with: python daily_data/daily-data-modelling/clustering/cluster_model_eval.py"
+            ),
+        )
+    try:
+        portable = load_portable(portable_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load portable model: {str(e)}")
+
+    required = [
+        "features",
+        "cluster_col",
+        "imputer_statistics",
+        "scaler_mean",
+        "scaler_scale",
+        "ridge_coef",
+        "ridge_intercept",
+        "train_range_stats",
+    ]
+    missing = [k for k in required if k not in portable]
+    if missing:
+        raise HTTPException(status_code=500, detail=f"Portable model invalid; missing keys: {missing}")
+
+    if portable["cluster_col"] != cluster_col:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Portable model cluster_col mismatch: expected {cluster_col}, got {portable['cluster_col']}",
+        )
+
+    try:
+        range_stats = range_stats_dataframe(portable)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Invalid train_range_stats in portable model: {str(e)}")
+
+    if not data_path.exists():
+        raise HTTPException(status_code=500, detail=f"Cluster source data missing: {data_path}")
+
+    try:
+        df = pd.read_csv(data_path, low_memory=False)
+        df["calendar_day"] = pd.to_datetime(df["calendar_day"])
+        sub = df[
+            (df[cluster_col] != -1)
+            & df["latitude"].notna()
+            & df["longitude"].notna()
+            & df["wash_count_total"].notna()
+        ].copy()
+        sub = sub.sort_values("calendar_day").reset_index(drop=True)
+        train = sub.iloc[: int(len(sub) * 0.80)].copy()
+        centroids = (
+            train.groupby(cluster_col)
+            .agg(centroid_lat=("latitude", "mean"), centroid_lon=("longitude", "mean"))
+            .reset_index()
+            .rename(columns={cluster_col: "cluster_id"})
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed loading cluster centroids: {str(e)}")
+
+    assets = {
+        "segment": segment,
+        "portable": portable,
+        "range_stats": range_stats,
+        "centroids": centroids,
+        "history_df": sub[[cluster_col, "calendar_day", "site_client_id", "wash_count_total"]].copy(),
+        "cluster_col": cluster_col,
+        "radius_km": radius_km,
+        "portable_path": str(portable_path),
+    }
+    _CLUSTER_RUNTIME_CACHE[cache_key] = assets
+    return assets
+
+
+def _assign_cluster_from_latlon(lat: float, lon: float, centroids: pd.DataFrame, radius_km: float) -> Tuple[int, float]:
+    if centroids.empty:
+        return -1, float("nan")
+    dists = _haversine_km_scalar_to_many(
+        lat, lon, centroids["centroid_lat"].to_numpy(), centroids["centroid_lon"].to_numpy()
+    )
+    best_idx = int(np.argmin(dists))
+    best_dist = float(dists[best_idx])
+    best_cluster = int(centroids.iloc[best_idx]["cluster_id"])
+    if best_dist > radius_km:
+        return -1, best_dist
+    return best_cluster, best_dist
+
+
+def _monthly_cluster_series(df: pd.DataFrame, cluster_col: str, cluster_id: int) -> pd.DataFrame:
+    """Monthly cluster profile from site-month totals."""
+    sub = df[df[cluster_col].astype(int) == int(cluster_id)].copy()
+    if sub.empty:
+        return pd.DataFrame(columns=["month", "cluster_monthly_mean_site", "cluster_monthly_median_site"])
+    sub["month"] = pd.to_datetime(sub["calendar_day"]).dt.to_period("M").dt.to_timestamp()
+    site_month = (
+        sub.groupby(["month", "site_client_id"], as_index=False)["wash_count_total"]
+        .sum()
+        .rename(columns={"wash_count_total": "site_month_total"})
+    )
+    monthly_profile = (
+        site_month.groupby("month")["site_month_total"]
+        .agg(cluster_monthly_mean_site="mean", cluster_monthly_median_site="median")
+        .reset_index()
+        .sort_values("month")
+    )
+    return monthly_profile
+
+
+def _naive_monthly(series: pd.Series, horizon: int) -> np.ndarray:
+    vals = series.dropna().astype(float).values
+    if len(vals) == 0:
+        return np.zeros(horizon, dtype=float)
+    if len(vals) < 3:
+        return np.repeat(max(vals.mean(), 0.0), horizon)
+    return np.repeat(max(vals[-3:].mean(), 0.0), horizon)
+
+
+def _forecast_monthly(series: pd.Series, horizon: int, method: str) -> np.ndarray:
+    y = series.dropna().astype(float)
+    if len(y) < 6:
+        return _naive_monthly(y, horizon)
+
+    forecasts: Dict[str, np.ndarray] = {}
+    try:
+        if len(y) >= 24:
+            hw = ExponentialSmoothing(
+                y,
+                trend="add",
+                seasonal="add",
+                seasonal_periods=12,
+                initialization_method="estimated",
+            ).fit(optimized=True, use_brute=False)
+        else:
+            hw = ExponentialSmoothing(
+                y, trend="add", seasonal=None, initialization_method="estimated"
+            ).fit(optimized=True, use_brute=False)
+        forecasts["holt_winters"] = np.clip(hw.forecast(horizon).values.astype(float), 0.0, None)
+    except Exception:
+        forecasts["holt_winters"] = _naive_monthly(y, horizon)
+
+    try:
+        ar = ARIMA(
+            y,
+            order=(1, 1, 1),
+            enforce_stationarity=False,
+            enforce_invertibility=False,
+        ).fit(method_kwargs={"maxiter": 80})
+        forecasts["arima"] = np.clip(ar.forecast(horizon).values.astype(float), 0.0, None)
+    except Exception:
+        forecasts["arima"] = _naive_monthly(y, horizon)
+
+    m = (method or "blend").strip().lower()
+    if m == "holt_winters":
+        return forecasts["holt_winters"]
+    if m == "arima":
+        return forecasts["arima"]
+    # default blend
+    return (forecasts["holt_winters"] + forecasts["arima"]) / 2.0
+
+
+def _projection_payload_for_segment(
+    *,
+    segment: str,
+    radius: str,
+    lat: float,
+    lon: float,
+    method: str,
+) -> Dict[str, Any]:
+    assets = _load_cluster_runtime_assets(radius, segment)
+    assigned_cluster, assign_distance_km = _assign_cluster_from_latlon(
+        lat, lon, assets["centroids"], assets["radius_km"]
+    )
+    if assigned_cluster == -1:
+        return {
+            "assigned_cluster_id": None,
+            "distance_to_cluster_km": assign_distance_km,
+            "predicted_wash_count_ridge": None,
+            "historical_daily_wash_count": None,
+            "projection": {
+                "method": method,
+                "horizons_months": [6, 12, 18, 24],
+                "cumulative_wash_count": {"6": None, "12": None, "18": None, "24": None},
+                "avg_monthly_wash_count": {"6": None, "12": None, "18": None, "24": None},
+                "bar_graph_data": [],
+            },
+            "message": "No cluster within radius gate (unassigned).",
+        }
+
+    rs = assets["range_stats"]
+    cc = assets["cluster_col"]
+    row = rs[rs[cc].astype(int) == int(assigned_cluster)]
+    if row.empty:
+        raise HTTPException(
+            status_code=500,
+            detail=f"No train range stats found for assigned cluster {assigned_cluster} ({segment})",
+        )
+    r = row.iloc[0]
+
+    feature_map: Dict[str, Any] = {
+        "latitude": float(lat),
+        "longitude": float(lon),
+        cc: int(assigned_cluster),
+    }
+    try:
+        predicted = predict_wash_count(assets["portable"], feature_map)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction failed ({segment}): {str(e)}")
+
+    monthly_profile = _monthly_cluster_series(assets["history_df"], cc, int(assigned_cluster))
+    if monthly_profile.empty:
+        raise HTTPException(
+            status_code=500,
+            detail=f"No monthly history found for cluster {assigned_cluster} ({segment})",
+        )
+
+    base_series = monthly_profile["cluster_monthly_median_site"]
+    fc = _forecast_monthly(base_series, horizon=24, method=method)
+
+    # Anchor forecast to site-specific model projection while preserving cluster trend shape.
+    ridge_monthly_anchor = predicted * 30.4 if segment == "more_than_2yrs" else predicted
+    last_cluster_median = float(base_series.iloc[-1]) if len(base_series) else 0.0
+    if ridge_monthly_anchor and last_cluster_median > 0:
+        scale = float(np.clip(ridge_monthly_anchor / last_cluster_median, 0.7, 1.3))
+        fc = fc * scale
+
+    horizons = [6, 12, 18, 24]
+    cumulative = {str(h): float(np.sum(fc[:h])) for h in horizons}
+    avg_monthly = {str(h): float(np.mean(fc[:h])) for h in horizons}
+    bars = [{"horizon_months": h, "wash_count": cumulative[str(h)]} for h in horizons]
+
+    return {
+        "assigned_cluster_id": int(assigned_cluster),
+        "distance_to_cluster_km": assign_distance_km,
+        "predicted_wash_count_ridge": predicted,
+        "historical_daily_wash_count": {
+            "min": float(r["train_min"]),
+            "p10": float(r["train_p10"]),
+            "median": float(r["train_median"]),
+            "p90": float(r["train_p90"]),
+            "max": float(r["train_max"]),
+        },
+        "projection": {
+            "method": method,
+            "horizons_months": horizons,
+            "cumulative_wash_count": cumulative,
+            "avg_monthly_wash_count": avg_monthly,
+            "bar_graph_data": bars,
+            "monthly_forecast_next_24": [float(x) for x in fc.tolist()],
+        },
+    }
 
 
 def _get_task_result_or_raise(task_id: str):
@@ -179,8 +487,123 @@ def _resolve_marker_coordinates(raw: Dict[str, Any]) -> Tuple[Optional[float], O
 
 
 # -----------------------------------------------------------------------------
-# Analysis (single-fetch + quantile via app.modelling.site_analysis)
+# Standalone Cluster API (independent of /analyze-site task flow)
 # -----------------------------------------------------------------------------
+
+@router.post("/cluster/standalone/range-check")
+def cluster_range_check(req: ClusterRangeCheckRequest):
+    """
+    New-site / site-selection: address OR lat/lon + radius.
+    Returns Ridge prediction, train-time historical min/p10/median/p90/max for the assigned cluster, and distance to cluster centroid (km).
+    """
+    radius = (req.radius or "12km").strip().lower()
+
+    lat, lon = req.latitude, req.longitude
+    if lat is None or lon is None:
+        if not req.address:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either latitude/longitude or address for cluster assignment.",
+            )
+        lat, lon = _lat_lon_from_address_or_400(req.address)
+
+    def _single_segment_payload(segment: str) -> Dict[str, Any]:
+        assets = _load_cluster_runtime_assets(radius, segment)
+        assigned_cluster, assign_distance_km = _assign_cluster_from_latlon(
+            float(lat), float(lon), assets["centroids"], assets["radius_km"]
+        )
+
+        if assigned_cluster == -1:
+            return {
+                "assigned_cluster_id": None,
+                "distance_to_cluster_km": assign_distance_km,
+                "predicted_wash_count_ridge": None,
+                "historical_daily_wash_count": None,
+                "message": "No cluster within radius gate (unassigned).",
+            }
+
+        rs = assets["range_stats"]
+        cc = assets["cluster_col"]
+        row = rs[rs[cc].astype(int) == int(assigned_cluster)]
+        if row.empty:
+            raise HTTPException(
+                status_code=500,
+                detail=f"No train range stats found for assigned cluster {assigned_cluster} ({segment})",
+            )
+        r = row.iloc[0]
+
+        feature_map: Dict[str, Any] = {
+            "latitude": float(lat),
+            "longitude": float(lon),
+            cc: int(assigned_cluster),
+        }
+        try:
+            predicted = predict_wash_count(assets["portable"], feature_map)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Prediction failed ({segment}): {str(e)}")
+
+        return {
+            "assigned_cluster_id": int(assigned_cluster),
+            "distance_to_cluster_km": assign_distance_km,
+            "predicted_wash_count_ridge": predicted,
+            "historical_daily_wash_count": {
+                "min": float(r["train_min"]),
+                "p10": float(r["train_p10"]),
+                "median": float(r["train_median"]),
+                "p90": float(r["train_p90"]),
+                "max": float(r["train_max"]),
+            },
+        }
+
+    return {
+        "radius": radius,
+        "more_than_2yrs": _single_segment_payload("more_than_2yrs"),
+        "less_than_2yrs": _single_segment_payload("less_than_2yrs"),
+    }
+
+
+@router.post("/cluster/standalone/projection")
+def cluster_projection(req: ClusterProjectionRequest):
+    """
+    New-site projection for 6/12/18/24 months.
+    Uses cluster assignment + cluster monthly history + time-series forecast
+    (holt-winters/arima/blend), and returns both >2y and <2y cohorts.
+    """
+    radius = (req.radius or "12km").strip().lower()
+    method = (req.method or "blend").strip().lower()
+    if method not in {"holt_winters", "arima", "blend"}:
+        raise HTTPException(status_code=400, detail="method must be one of: holt_winters, arima, blend")
+
+    lat, lon = req.latitude, req.longitude
+    if lat is None or lon is None:
+        if not req.address:
+            raise HTTPException(
+                status_code=400,
+                detail="Provide either latitude/longitude or address for projection.",
+            )
+        lat, lon = _lat_lon_from_address_or_400(req.address)
+
+    lat = float(lat)
+    lon = float(lon)
+    return {
+        "radius": radius,
+        "method": method,
+        "more_than_2yrs": _projection_payload_for_segment(
+            segment="more_than_2yrs",
+            radius=radius,
+            lat=lat,
+            lon=lon,
+            method=method,
+        ),
+        "less_than_2yrs": _projection_payload_for_segment(
+            segment="less_than_2yrs",
+            radius=radius,
+            lat=lat,
+            lon=lon,
+            method=method,
+        ),
+    }
+
 
 @router.post("/analyze-site")
 def analyze_site_endpoint(features: AnalyseRequest):

@@ -11,6 +11,26 @@ class AnalyseRequest(BaseModel):
     tier_strategy: Optional[str] = Field("4-class-wide-middle", description="Tiering strategy to use (e.g. '4-class-wide-middle', '3-class-bottom-heavy').")
 
 
+class ClusterRangeCheckRequest(BaseModel):
+    """Request for cluster assignment + historical range check."""
+    address: Optional[str] = Field(None, description="Site address. Optional if latitude/longitude provided.")
+    latitude: Optional[float] = Field(None, description="Latitude of site.")
+    longitude: Optional[float] = Field(None, description="Longitude of site.")
+    radius: str = Field("12km", description="Cluster radius to use: 12km or 18km.")
+
+
+class ClusterProjectionRequest(BaseModel):
+    """Request for multi-horizon cluster projection."""
+    address: Optional[str] = Field(None, description="Site address. Optional if latitude/longitude provided.")
+    latitude: Optional[float] = Field(None, description="Latitude of site.")
+    longitude: Optional[float] = Field(None, description="Longitude of site.")
+    radius: str = Field("12km", description="Cluster radius to use: 12km or 18km.")
+    method: str = Field(
+        "blend",
+        description="Projection method: 'holt_winters', 'arima', or 'blend'.",
+    )
+
+
 class WeatherRequest(BaseModel):
     address: str = None
     start_date: Optional[str] = Field(None)
