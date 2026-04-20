@@ -1,0 +1,77 @@
+{
+  "split_more_than_2yrs": "train<2025-07-01, test>=2025-07-01",
+  "split_less_than_2yrs": "train period_index<=12, test period_index>=25",
+  "quantiles": {
+    "q10": 0.1,
+    "q50": 0.5,
+    "q90": 0.9
+  },
+  "model_pipeline": {
+    "imputer": "SimpleImputer(strategy='median')",
+    "regressor": "HistGradientBoostingRegressor(loss='quantile', quantile=q, max_iter=350, learning_rate=0.05, max_depth=6, min_samples_leaf=40, random_state=42)"
+  },
+  "more_than_2yrs": {
+    "q50_metrics": {
+      "mae": 69.58067152797825,
+      "rmse": 128.52777167118424,
+      "r2": 0.7844688097157636,
+      "wape": 0.22672871558910074
+    },
+    "ridge_baseline_metrics": {
+      "mae": 118.23728419341865,
+      "rmse": 171.38970317452808,
+      "r2": 0.616746945868125,
+      "wape": 0.3852763560802647
+    },
+    "pinball_loss": {
+      "q10": 16.233436802270493,
+      "q50": 34.79033576398913,
+      "q90": 21.220776610118442
+    },
+    "interval_coverage_q10_q90": 0.7592930643567235,
+    "interval_mean_width_q90_minus_q10": 204.12034477482842,
+    "cohort": "more_than_2yrs",
+    "split": "train<2025-07-01, test>=2025-07-01",
+    "n_train": 259799,
+    "n_test": 86005,
+    "n_features": 59,
+    "feature_order_path": "models_quantile/more_than/feature_order.json",
+    "model_paths": {
+      "q10": "models_quantile/more_than/q10.joblib",
+      "q50": "models_quantile/more_than/q50.joblib",
+      "q90": "models_quantile/more_than/q90.joblib"
+    }
+  },
+  "less_than_2yrs": {
+    "q50_metrics": {
+      "mae": 1185.6795763967407,
+      "rmse": 2837.610069762444,
+      "r2": 0.7770746700809905,
+      "wape": 0.12199293866153592
+    },
+    "ridge_baseline_metrics": {
+      "mae": 1278.1057259626864,
+      "rmse": 2802.325687337822,
+      "r2": 0.7825841507338345,
+      "wape": 0.13150253789827565
+    },
+    "pinball_loss": {
+      "q10": 330.70664055180123,
+      "q50": 592.8397881983703,
+      "q90": 440.9208384338248
+    },
+    "interval_coverage_q10_q90": 0.6956707187033483,
+    "interval_mean_width_q90_minus_q10": 3240.1616328153714,
+    "cohort": "less_than_2yrs",
+    "split": "train period_index<=12, test period_index>=25",
+    "n_train": 8218,
+    "n_test": 4689,
+    "n_features": 12,
+    "feature_order_path": "models_quantile/less_than/feature_order.json",
+    "model_paths": {
+      "q10": "models_quantile/less_than/q10.joblib",
+      "q50": "models_quantile/less_than/q50.joblib",
+      "q90": "models_quantile/less_than/q90.joblib"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "more_than_2yrs": {
+    "cohort": "more_than_2yrs",
+    "metrics": {
+      "n_train": 259799,
+      "n_test": 86005,
+      "train_mae": 114.15257458727159,
+      "test_mae": 118.23728419341865,
+      "train_rmse": 152.07676581827516,
+      "test_rmse": 171.38970317452808,
+      "train_r2": 0.6268435782003245,
+      "test_r2": 0.616746945868125,
+      "train_wape": 0.3736067295086305,
+      "test_wape": 0.3852763560802647
+    },
+    "features": 59,
+    "clusters": 85
+  },
+  "less_than_2yrs": {
+    "cohort": "less_than_2yrs",
+    "metrics": {
+      "n_train": 8218,
+      "n_test": 4689,
+      "train_mae": 1815.0715483698525,
+      "test_mae": 1278.1057259626864,
+      "train_rmse": 3262.9788291067807,
+      "test_rmse": 2802.325687337822,
+      "train_r2": 0.7282798944402084,
+      "test_r2": 0.7825841507338345,
+      "train_wape": 0.21800614531833468,
+      "test_wape": 0.13150253789827565
+    },
+    "features": 12,
+    "clusters": 77
+  }
+}

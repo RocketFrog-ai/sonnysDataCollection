@@ -78,6 +78,8 @@ _CLUSTER_CONFIG = {
     "12km": {"cluster_col": "dbscan_cluster_12km", "radius_km": 12.0},
     "18km": {"cluster_col": "dbscan_cluster_18km", "radius_km": 18.0},
 }
+# Hide Ridge + projection outputs when nearest train centroid is farther than this (km).
+MAX_NEAREST_CLUSTER_DISPLAY_KM = 20.0
 _CLUSTER_SEGMENT_CONFIG = {
     "more_than_2yrs": {
         "data_path": ROOT_DIR / "daily_data" / "daily-data-modelling" / "more_than-2yrs.csv",
@@ -222,18 +224,124 @@ def _load_cluster_runtime_assets(radius: str, segment: str) -> Dict[str, Any]:
     return assets
 
 
-def _assign_cluster_from_latlon(lat: float, lon: float, centroids: pd.DataFrame, radius_km: float) -> Tuple[int, float]:
+def _assign_cluster_from_latlon(
+    lat: float, lon: float, centroids: pd.DataFrame, radius_km: float
+) -> Tuple[int, float, bool]:
+    """Nearest train centroid by haversine km. Always assigns that cluster (V2-style).
+
+    ``within_gate`` is True iff distance <= ``radius_km`` (legacy DBSCAN gate for disclosure).
+    """
     if centroids.empty:
-        return -1, float("nan")
+        return -1, float("nan"), False
     dists = _haversine_km_scalar_to_many(
         lat, lon, centroids["centroid_lat"].to_numpy(), centroids["centroid_lon"].to_numpy()
     )
     best_idx = int(np.argmin(dists))
     best_dist = float(dists[best_idx])
     best_cluster = int(centroids.iloc[best_idx]["cluster_id"])
-    if best_dist > radius_km:
-        return -1, best_dist
-    return best_cluster, best_dist
+    within_gate = bool(best_dist <= radius_km)
+    return best_cluster, best_dist, within_gate
+
+
+def _peer_coverage_message(within_gate: bool, dist_km: float, radius_km: float) -> Optional[str]:
+    if within_gate or not np.isfinite(dist_km):
+        return None
+    return (
+        f"Nearest cluster assigned; {dist_km:.1f} km to centroid exceeds {radius_km:.0f} km peer gate "
+        "(weak local coverage — interpret with caution)."
+    )
+
+
+def _v1_cumulative_from_bars(segment: Dict[str, Any], horizon_months: int) -> Optional[float]:
+    bars = (segment.get("projection") or {}).get("bar_graph_data") or []
+    for b in bars:
+        if int(b.get("horizon_months", -1)) == int(horizon_months) and b.get("wash_count") is not None:
+            return float(b["wash_count"])
+    return None
+
+
+def _bridge_v1_more_forecast_to_opening_last_month(more: Dict[str, Any], less: Dict[str, Any]) -> None:
+    """Scale >2y monthly_forecast_next_24 so month 25 matches <2y month 24 before mature remap."""
+    if more.get("assigned_cluster_id") is None or less.get("assigned_cluster_id") is None:
+        return
+    mp = more.get("projection") or {}
+    lp = less.get("projection") or {}
+    fc = mp.get("monthly_forecast_next_24")
+    fc_less = lp.get("monthly_forecast_next_24")
+    if not isinstance(fc, list) or len(fc) < 24 or not isinstance(fc_less, list) or len(fc_less) < 24:
+        return
+    lt_last = float(fc_less[23])
+    gt_first = float(fc[0])
+    if not np.isfinite(gt_first) or gt_first <= 1e-12 or not np.isfinite(lt_last):
+        return
+    factor = float(lt_last / gt_first)
+    mp["monthly_forecast_next_24"] = [float(max(float(v) * factor, 0.0)) for v in fc]
+    mp["opening_to_mature_bridge"] = {
+        "method": "scale_entire_mature_monthly_track",
+        "scale_factor": factor,
+        "aligned_operational_month_24_lt_to_month_25_gt": True,
+    }
+
+
+def _remap_v1_more_than_projection(more: Dict[str, Any], less: Dict[str, Any]) -> None:
+    """>2y bars: four disjoint 6-month mature sums (months 25–30 … 43–48), not running cumulative."""
+    if more.get("assigned_cluster_id") is None:
+        return
+    mp = more.get("projection") or {}
+    fc = mp.get("monthly_forecast_next_24")
+    if not isinstance(fc, list) or len(fc) < 24:
+        return
+    w = [float(x) for x in fc]
+    bars = []
+    periodv: Dict[str, float] = {}
+    avgv: Dict[str, float] = {}
+    for end_m, lo, hi in ((30, 0, 6), (36, 6, 12), (42, 12, 18), (48, 18, 24)):
+        inc = float(np.sum(np.maximum(np.array(w[lo:hi], dtype=float), 0.0)))
+        bars.append({"horizon_months": end_m, "wash_count": inc})
+        periodv[str(end_m)] = inc
+        avgv[str(end_m)] = inc / float(hi - lo) if hi > lo else 0.0
+    mp["bar_graph_data"] = bars
+    mp["horizons_months"] = [30, 36, 42, 48]
+    mp["six_month_period_wash_count"] = periodv
+    mp["avg_monthly_wash_in_period"] = avgv
+    mp["monthly_forecast_next_24"] = [float(x) for x in w[5:]]
+    mp["monthly_forecast_operational_indices"] = list(range(30, 49))
+    mp["operational_phase"] = "mature_phase_months_30_48"
+    mp["operational_calendar_months"] = (
+        "Months 30–48 after site open (>2y: each bar is washes in that 6-month window only)"
+    )
+
+
+def _brand_new_site_continuation_v1(
+    more_seg: Dict[str, Any], less_seg: Dict[str, Any]
+) -> Optional[Dict[str, Any]]:
+    """Independent 6-month period sums plus optional running total through each horizon."""
+    opening: Dict[str, float] = {}
+    for hm in (6, 12, 18, 24):
+        v = _v1_cumulative_from_bars(less_seg, hm)
+        if v is None:
+            return None
+        opening[str(hm)] = v
+    mature: Dict[str, float] = {}
+    for hm in (30, 36, 42, 48):
+        v = _v1_cumulative_from_bars(more_seg, hm)
+        if v is None:
+            return None
+        mature[str(hm)] = v
+    run = 0.0
+    running: Dict[str, float] = {}
+    for hm in (6, 12, 18, 24, 30, 36, 42, 48):
+        run += opening[str(hm)] if hm <= 24 else mature[str(hm)]
+        running[str(hm)] = run
+    return {
+        "narrative": (
+            "Each bar is washes in a single 6-month window. running_total_through_operational_month sums "
+            "those windows in calendar order through month 48."
+        ),
+        "six_month_period_wash_count_by_label": {f"opening_{k}": v for k, v in opening.items()},
+        "six_month_period_wash_count_mature": mature,
+        "running_total_through_operational_month": running,
+    }
 
 
 def _monthly_cluster_series(df: pd.DataFrame, cluster_col: str, cluster_id: int) -> pd.DataFrame:
@@ -317,23 +425,44 @@ def _projection_payload_for_segment(
     method: str,
 ) -> Dict[str, Any]:
     assets = _load_cluster_runtime_assets(radius, segment)
-    assigned_cluster, assign_distance_km = _assign_cluster_from_latlon(
+    assigned_cluster, assign_distance_km, within_gate = _assign_cluster_from_latlon(
         lat, lon, assets["centroids"], assets["radius_km"]
     )
     if assigned_cluster == -1:
         return {
             "assigned_cluster_id": None,
             "distance_to_cluster_km": assign_distance_km,
+            "within_radius_gate_km": False,
             "predicted_wash_count_ridge": None,
             "historical_daily_wash_count": None,
             "projection": {
                 "method": method,
                 "horizons_months": [6, 12, 18, 24],
-                "cumulative_wash_count": {"6": None, "12": None, "18": None, "24": None},
-                "avg_monthly_wash_count": {"6": None, "12": None, "18": None, "24": None},
+                "six_month_period_wash_count": {"6": None, "12": None, "18": None, "24": None},
+                "avg_monthly_wash_in_period": {"6": None, "12": None, "18": None, "24": None},
                 "bar_graph_data": [],
             },
-            "message": "No cluster within radius gate (unassigned).",
+            "message": "No cluster centroids available (unassigned).",
+        }
+
+    if np.isfinite(assign_distance_km) and float(assign_distance_km) > MAX_NEAREST_CLUSTER_DISPLAY_KM:
+        return {
+            "assigned_cluster_id": None,
+            "distance_to_cluster_km": assign_distance_km,
+            "within_radius_gate_km": within_gate,
+            "predicted_wash_count_ridge": None,
+            "historical_daily_wash_count": None,
+            "projection": {
+                "method": method,
+                "horizons_months": [6, 12, 18, 24],
+                "six_month_period_wash_count": {"6": None, "12": None, "18": None, "24": None},
+                "avg_monthly_wash_in_period": {"6": None, "12": None, "18": None, "24": None},
+                "bar_graph_data": [],
+            },
+            "message": (
+                f"Nearest cluster centroid is {assign_distance_km:.1f} km away; "
+                f"projections are suppressed beyond {MAX_NEAREST_CLUSTER_DISPLAY_KM:.0f} km."
+            ),
         }
 
     rs = assets["range_stats"]
@@ -374,13 +503,25 @@ def _projection_payload_for_segment(
         fc = fc * scale
 
     horizons = [6, 12, 18, 24]
-    cumulative = {str(h): float(np.sum(fc[:h])) for h in horizons}
-    avg_monthly = {str(h): float(np.mean(fc[:h])) for h in horizons}
-    bars = [{"horizon_months": h, "wash_count": cumulative[str(h)]} for h in horizons]
+    period_sums: Dict[str, float] = {}
+    avg_in_period: Dict[str, float] = {}
+    for hi in horizons:
+        lo = hi - 6
+        period_sums[str(hi)] = float(np.sum(fc[lo:hi]))
+        avg_in_period[str(hi)] = float(np.mean(fc[lo:hi])) if hi > lo else 0.0
+    bars = [{"horizon_months": h, "wash_count": period_sums[str(h)]} for h in horizons]
 
-    return {
+    if segment == "less_than_2yrs":
+        phase_label = "opening_phase_years_1_2"
+        cal_label = "Months 1–24 after site open (<2y cohort model)"
+    else:
+        phase_label = "mature_phase_years_3_4"
+        cal_label = "Months 25–48 after site open (>2y cohort model, mature-site dynamics)"
+
+    out: Dict[str, Any] = {
         "assigned_cluster_id": int(assigned_cluster),
         "distance_to_cluster_km": assign_distance_km,
+        "within_radius_gate_km": within_gate,
         "predicted_wash_count_ridge": predicted,
         "historical_daily_wash_count": {
             "min": float(r["train_min"]),
@@ -392,12 +533,21 @@ def _projection_payload_for_segment(
         "projection": {
             "method": method,
             "horizons_months": horizons,
-            "cumulative_wash_count": cumulative,
-            "avg_monthly_wash_count": avg_monthly,
+            "six_month_period_wash_count": period_sums,
+            "avg_monthly_wash_in_period": avg_in_period,
             "bar_graph_data": bars,
             "monthly_forecast_next_24": [float(x) for x in fc.tolist()],
+            "monthly_forecast_operational_indices": (
+                list(range(1, 25)) if segment == "less_than_2yrs" else list(range(25, 49))
+            ),
+            "operational_phase": phase_label,
+            "operational_calendar_months": cal_label,
         },
     }
+    msg = _peer_coverage_message(within_gate, assign_distance_km, float(assets["radius_km"]))
+    if msg:
+        out["message"] = msg
+    return out
 
 
 def _get_task_result_or_raise(task_id: str):
@@ -509,7 +659,7 @@ def cluster_range_check(req: ClusterRangeCheckRequest):
 
     def _single_segment_payload(segment: str) -> Dict[str, Any]:
         assets = _load_cluster_runtime_assets(radius, segment)
-        assigned_cluster, assign_distance_km = _assign_cluster_from_latlon(
+        assigned_cluster, assign_distance_km, within_gate = _assign_cluster_from_latlon(
             float(lat), float(lon), assets["centroids"], assets["radius_km"]
         )
 
@@ -517,9 +667,23 @@ def cluster_range_check(req: ClusterRangeCheckRequest):
             return {
                 "assigned_cluster_id": None,
                 "distance_to_cluster_km": assign_distance_km,
+                "within_radius_gate_km": False,
                 "predicted_wash_count_ridge": None,
                 "historical_daily_wash_count": None,
-                "message": "No cluster within radius gate (unassigned).",
+                "message": "No cluster centroids available (unassigned).",
+            }
+
+        if np.isfinite(assign_distance_km) and float(assign_distance_km) > MAX_NEAREST_CLUSTER_DISPLAY_KM:
+            return {
+                "assigned_cluster_id": None,
+                "distance_to_cluster_km": assign_distance_km,
+                "within_radius_gate_km": within_gate,
+                "predicted_wash_count_ridge": None,
+                "historical_daily_wash_count": None,
+                "message": (
+                    f"Nearest cluster centroid is {assign_distance_km:.1f} km away; "
+                    f"range check suppressed beyond {MAX_NEAREST_CLUSTER_DISPLAY_KM:.0f} km."
+                ),
             }
 
         rs = assets["range_stats"]
@@ -542,9 +706,10 @@ def cluster_range_check(req: ClusterRangeCheckRequest):
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Prediction failed ({segment}): {str(e)}")
 
-        return {
+        seg_out: Dict[str, Any] = {
             "assigned_cluster_id": int(assigned_cluster),
             "distance_to_cluster_km": assign_distance_km,
+            "within_radius_gate_km": within_gate,
             "predicted_wash_count_ridge": predicted,
             "historical_daily_wash_count": {
                 "min": float(r["train_min"]),
@@ -554,6 +719,10 @@ def cluster_range_check(req: ClusterRangeCheckRequest):
                 "max": float(r["train_max"]),
             },
         }
+        msg = _peer_coverage_message(within_gate, assign_distance_km, float(assets["radius_km"]))
+        if msg:
+            seg_out["message"] = msg
+        return seg_out
 
     return {
         "radius": radius,
@@ -585,24 +754,32 @@ def cluster_projection(req: ClusterProjectionRequest):
 
     lat = float(lat)
     lon = float(lon)
-    return {
+    more = _projection_payload_for_segment(
+        segment="more_than_2yrs",
+        radius=radius,
+        lat=lat,
+        lon=lon,
+        method=method,
+    )
+    less = _projection_payload_for_segment(
+        segment="less_than_2yrs",
+        radius=radius,
+        lat=lat,
+        lon=lon,
+        method=method,
+    )
+    _bridge_v1_more_forecast_to_opening_last_month(more, less)
+    _remap_v1_more_than_projection(more, less)
+    out: Dict[str, Any] = {
         "radius": radius,
         "method": method,
-        "more_than_2yrs": _projection_payload_for_segment(
-            segment="more_than_2yrs",
-            radius=radius,
-            lat=lat,
-            lon=lon,
-            method=method,
-        ),
-        "less_than_2yrs": _projection_payload_for_segment(
-            segment="less_than_2yrs",
-            radius=radius,
-            lat=lat,
-            lon=lon,
-            method=method,
-        ),
+        "more_than_2yrs": more,
+        "less_than_2yrs": less,
     }
+    stitched = _brand_new_site_continuation_v1(more, less)
+    if stitched is not None:
+        out["brand_new_site_continuation"] = stitched
+    return out
 
 
 @router.post("/analyze-site")

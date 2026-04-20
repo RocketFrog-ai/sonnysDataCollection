@@ -1,0 +1,580 @@
+{
+  "generated_at": "2026-04-20T10:34:33.942904Z",
+  "input": {
+    "address": "6000 Universal Blvd, Orlando, FL 32819",
+    "lat": 28.4740501,
+    "lon": -81.4651846
+  },
+  "radius": "12km",
+  "method": "blend",
+  "v1_projection_api": {
+    "radius": "12km",
+    "method": "blend",
+    "more_than_2yrs": {
+      "assigned_cluster_id": null,
+      "distance_to_cluster_km": 25.471708866340474,
+      "within_radius_gate_km": false,
+      "predicted_wash_count_ridge": null,
+      "historical_daily_wash_count": null,
+      "projection": {
+        "method": "blend",
+        "horizons_months": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "cumulative_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "avg_monthly_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "bar_graph_data": []
+      },
+      "message": "Nearest cluster centroid is 25.5 km away; projections are suppressed beyond 20 km."
+    },
+    "less_than_2yrs": {
+      "assigned_cluster_id": 12,
+      "distance_to_cluster_km": 14.73160712840493,
+      "within_radius_gate_km": false,
+      "predicted_wash_count_ridge": 7736.024488200991,
+      "historical_daily_wash_count": {
+        "min": 2.0,
+        "p10": 5552.6,
+        "median": 10431.0,
+        "p90": 14176.6,
+        "max": 19574.0
+      },
+      "projection": {
+        "method": "blend",
+        "horizons_months": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "cumulative_wash_count": {
+          "6": 71231.71363199822,
+          "12": 147728.84876803297,
+          "18": 223351.76214499376,
+          "24": 303646.3216239001
+        },
+        "avg_monthly_wash_count": {
+          "6": 11871.952271999704,
+          "12": 12310.73739733608,
+          "18": 12408.43123027743,
+          "24": 12651.930067662504
+        },
+        "bar_graph_data": [
+          {
+            "horizon_months": 6,
+            "wash_count": 71231.71363199822
+          },
+          {
+            "horizon_months": 12,
+            "wash_count": 147728.84876803297
+          },
+          {
+            "horizon_months": 18,
+            "wash_count": 223351.76214499376
+          },
+          {
+            "horizon_months": 24,
+            "wash_count": 303646.3216239001
+          }
+        ],
+        "monthly_forecast_next_24": [
+          10189.759922700832,
+          11196.104343425648,
+          13266.62596627326,
+          12104.151585585736,
+          11520.06927838906,
+          12955.00253562368,
+          12998.024149457537,
+          11864.101264690204,
+          13389.728749541633,
+          13347.417076392105,
+          13278.743322044102,
+          11619.120573909158,
+          11277.15852893551,
+          11935.709576986877,
+          13924.57042808794,
+          12742.922359325274,
+          12154.338131481269,
+          13588.214352143923,
+          13630.987777170822,
+          12497.006618465262,
+          14022.62042078234,
+          13980.305535017502,
+          13911.631026357696,
+          12252.008101112755
+        ],
+        "monthly_forecast_operational_indices": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        "operational_phase": "opening_phase_years_1_2",
+        "operational_calendar_months": "Months 1\u201324 after site open (<2y cohort model)"
+      },
+      "message": "Nearest cluster assigned; 14.7 km to centroid exceeds 12 km peer gate (weak local coverage \u2014 interpret with caution)."
+    }
+  },
+  "v2_ridge_local": {
+    "generated_at": "2026-04-20T10:34:33.416842Z",
+    "radius_km": 12.0,
+    "method": "blend",
+    "input": {
+      "address": "6000 Universal Blvd, Orlando, FL 32819",
+      "lat": 28.4740501,
+      "lon": -81.4651846
+    },
+    "more_than_2yrs": {
+      "error": "Nearest cluster is 25.4 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cohort": "more_than_2yrs",
+      "cluster": {
+        "cluster_id": 37,
+        "distance_km": 25.44915927609099,
+        "size": 2
+      }
+    },
+    "less_than_2yrs": {
+      "cohort": "less_than_2yrs",
+      "cluster": {
+        "cluster_id": 12,
+        "distance_km": 15.91461555295708,
+        "size": 6,
+        "centroid_lat": 28.53246815,
+        "centroid_lon": -81.31650461666666,
+        "cluster_monthly_level_last_6mo": 12838.0
+      },
+      "ridge_prediction": {
+        "raw_level": 7100.185088288537,
+        "monthly_level": 7100.185088288537,
+        "anchor_scale": 0.5530600629606276,
+        "cluster_context_used": true
+      },
+      "method": "blend",
+      "horizons": {
+        "6m": {
+          "cumulative_wash_count": 47193.468864380746,
+          "monthly_avg": 7865.578144063457,
+          "first_month": "2025-01-01",
+          "last_month": "2025-06-01"
+        },
+        "12m": {
+          "cumulative_wash_count": 101040.2402567915,
+          "monthly_avg": 8420.020021399292,
+          "first_month": "2025-01-01",
+          "last_month": "2025-12-01"
+        },
+        "18m": {
+          "cumulative_wash_count": 161422.79122354015,
+          "monthly_avg": 8967.93284575223,
+          "first_month": "2025-01-01",
+          "last_month": "2026-06-01"
+        },
+        "24m": {
+          "cumulative_wash_count": 228340.78974439684,
+          "monthly_avg": 9514.199572683201,
+          "first_month": "2025-01-01",
+          "last_month": "2026-12-01"
+        }
+      },
+      "monthly_projection": [
+        {
+          "month": "2025-01-01",
+          "wash_count": 7357.465136964731,
+          "operational_month_index": 1
+        },
+        {
+          "month": "2025-02-01",
+          "wash_count": 7585.157801164236,
+          "operational_month_index": 2
+        },
+        {
+          "month": "2025-03-01",
+          "wash_count": 7784.050750003819,
+          "operational_month_index": 3
+        },
+        {
+          "month": "2025-04-01",
+          "wash_count": 7972.115360015295,
+          "operational_month_index": 4
+        },
+        {
+          "month": "2025-05-01",
+          "wash_count": 8156.108647782401,
+          "operational_month_index": 5
+        },
+        {
+          "month": "2025-06-01",
+          "wash_count": 8338.57116845027,
+          "operational_month_index": 6
+        },
+        {
+          "month": "2025-07-01",
+          "wash_count": 8520.45813951251,
+          "operational_month_index": 7
+        },
+        {
+          "month": "2025-08-01",
+          "wash_count": 8702.128711000514,
+          "operational_month_index": 8
+        },
+        {
+          "month": "2025-09-01",
+          "wash_count": 8883.71791890965,
+          "operational_month_index": 9
+        },
+        {
+          "month": "2025-10-01",
+          "wash_count": 9065.276535113646,
+          "operational_month_index": 10
+        },
+        {
+          "month": "2025-11-01",
+          "wash_count": 9246.823649212698,
+          "operational_month_index": 11
+        },
+        {
+          "month": "2025-12-01",
+          "wash_count": 9428.366438661727,
+          "operational_month_index": 12
+        },
+        {
+          "month": "2026-01-01",
+          "wash_count": 9609.90760209553,
+          "operational_month_index": 13
+        },
+        {
+          "month": "2026-02-01",
+          "wash_count": 9791.448154167605,
+          "operational_month_index": 14
+        },
+        {
+          "month": "2026-03-01",
+          "wash_count": 9972.988476375183,
+          "operational_month_index": 15
+        },
+        {
+          "month": "2026-04-01",
+          "wash_count": 10154.528712156542,
+          "operational_month_index": 16
+        },
+        {
+          "month": "2026-05-01",
+          "wash_count": 10336.0689154427,
+          "operational_month_index": 17
+        },
+        {
+          "month": "2026-06-01",
+          "wash_count": 10517.609106511067,
+          "operational_month_index": 18
+        },
+        {
+          "month": "2026-07-01",
+          "wash_count": 10699.149292985689,
+          "operational_month_index": 19
+        },
+        {
+          "month": "2026-08-01",
+          "wash_count": 10880.689477733127,
+          "operational_month_index": 20
+        },
+        {
+          "month": "2026-09-01",
+          "wash_count": 11062.229661831158,
+          "operational_month_index": 21
+        },
+        {
+          "month": "2026-10-01",
+          "wash_count": 11243.769845685023,
+          "operational_month_index": 22
+        },
+        {
+          "month": "2026-11-01",
+          "wash_count": 11425.310029447086,
+          "operational_month_index": 23
+        },
+        {
+          "month": "2026-12-01",
+          "wash_count": 11606.85021317463,
+          "operational_month_index": 24
+        }
+      ],
+      "operational_phase": "opening_phase_years_1_2",
+      "operational_calendar_months": "Months 1\u201324 after site open"
+    }
+  },
+  "v2_quantile_local": {
+    "generated_at": "2026-04-20T10:34:33.464231Z",
+    "radius_km": 12.0,
+    "method": "blend",
+    "input": {
+      "address": "6000 Universal Blvd, Orlando, FL 32819",
+      "lat": 28.4740501,
+      "lon": -81.4651846
+    },
+    "more_than_2yrs": {
+      "error": "Nearest cluster is 25.4 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cluster": {
+        "cluster_id": 37,
+        "distance_km": 25.44915927609099,
+        "size": 2
+      }
+    },
+    "less_than_2yrs": {
+      "cluster": {
+        "cluster_id": 12,
+        "distance_km": 15.91461555295708,
+        "size": 6,
+        "cluster_monthly_level_last_6mo": 12838.0
+      },
+      "quantile_prediction": {
+        "raw": {
+          "q10": 5142.658519992683,
+          "q50": 6717.474327978617,
+          "q90": 9729.487018482074
+        },
+        "monthly": {
+          "q10": 5142.658519992683,
+          "q50": 6717.474327978617,
+          "q90": 9729.487018482074
+        },
+        "anchor_scale": {
+          "q10": 0.4005809721134665,
+          "q50": 0.5232492855568326,
+          "q90": 0.7578662578658727
+        }
+      },
+      "method": "blend",
+      "horizons": {
+        "6m": {
+          "cumulative_q10": 34182.19267885573,
+          "cumulative_q50": 44649.66921322217,
+          "cumulative_q90": 64669.897610205895,
+          "monthly_avg_q50": 7441.611535537028
+        },
+        "12m": {
+          "cumulative_q10": 73183.36718795977,
+          "cumulative_q50": 95594.01784290586,
+          "cumulative_q90": 138456.91255912406,
+          "monthly_avg_q50": 7966.168153575488
+        },
+        "18m": {
+          "cumulative_q10": 116918.40174364246,
+          "cumulative_q50": 152721.85760106158,
+          "cumulative_q90": 221200.00143195578,
+          "monthly_avg_q50": 8484.547644503422
+        },
+        "24m": {
+          "cumulative_q10": 165387.05586391044,
+          "cumulative_q50": 216032.87436385424,
+          "cumulative_q90": 312898.70925654535,
+          "monthly_avg_q50": 9001.369765160593
+        }
+      },
+      "monthly_projection": [
+        {
+          "month": "2025-01-01",
+          "q10": 5329.006258522931,
+          "q50": 6960.886591263716,
+          "q90": 10082.041615662702,
+          "operational_month_index": 1
+        },
+        {
+          "month": "2025-02-01",
+          "q10": 5493.9238775603335,
+          "q50": 7176.306275033947,
+          "q90": 10394.05218904716,
+          "operational_month_index": 2
+        },
+        {
+          "month": "2025-03-01",
+          "q10": 5637.981885231638,
+          "q50": 7364.478591844341,
+          "q90": 10666.59809309609,
+          "operational_month_index": 3
+        },
+        {
+          "month": "2025-04-01",
+          "q10": 5774.196935537847,
+          "q50": 7542.406233735986,
+          "q90": 10924.30576676796,
+          "operational_month_index": 4
+        },
+        {
+          "month": "2025-05-01",
+          "q10": 5907.463130318842,
+          "q50": 7716.482003835923,
+          "q90": 11176.43444828229,
+          "operational_month_index": 5
+        },
+        {
+          "month": "2025-06-01",
+          "q10": 6039.620591684139,
+          "q50": 7889.109517508262,
+          "q90": 11426.465497349698,
+          "operational_month_index": 6
+        },
+        {
+          "month": "2025-07-01",
+          "q10": 6171.361182919116,
+          "q50": 8061.192504572887,
+          "q90": 11675.707862411433,
+          "operational_month_index": 7
+        },
+        {
+          "month": "2025-08-01",
+          "q10": 6302.945036111304,
+          "q50": 8233.070756329002,
+          "q90": 11924.653691985408,
+          "operational_month_index": 8
+        },
+        {
+          "month": "2025-09-01",
+          "q10": 6434.469957726797,
+          "q50": 8404.872030126728,
+          "q90": 12173.488027862451,
+          "operational_month_index": 9
+        },
+        {
+          "month": "2025-10-01",
+          "q10": 6565.9727217941245,
+          "q50": 8576.644361158686,
+          "q90": 12422.280443480473,
+          "operational_month_index": 10
+        },
+        {
+          "month": "2025-11-01",
+          "q10": 6697.467154895814,
+          "q50": 8748.405810066624,
+          "q90": 12671.057097596595,
+          "operational_month_index": 11
+        },
+        {
+          "month": "2025-12-01",
+          "q10": 6828.958455656867,
+          "q50": 8920.163167429748,
+          "q90": 12919.827825581819,
+          "operational_month_index": 12
+        },
+        {
+          "month": "2026-01-01",
+          "q10": 6960.44857869636,
+          "q50": 9091.918986422334,
+          "q90": 13168.596325414697,
+          "operational_month_index": 13
+        },
+        {
+          "month": "2026-02-01",
+          "q10": 7091.938258927029,
+          "q50": 9263.674227006515,
+          "q90": 13417.363987489696,
+          "operational_month_index": 14
+        },
+        {
+          "month": "2026-03-01",
+          "q10": 7223.427772667023,
+          "q50": 9435.429250116247,
+          "q90": 13666.13133457803,
+          "operational_month_index": 15
+        },
+        {
+          "month": "2026-04-01",
+          "q10": 7354.917223808574,
+          "q50": 9607.184191458264,
+          "q90": 13914.898563235256,
+          "operational_month_index": 16
+        },
+        {
+          "month": "2026-05-01",
+          "q10": 7486.406651413877,
+          "q50": 9778.939102056622,
+          "q90": 14163.665747363837,
+          "operational_month_index": 17
+        },
+        {
+          "month": "2026-06-01",
+          "q10": 7617.8960701698425,
+          "q50": 9950.694001095744,
+          "q90": 14412.4329147502,
+          "operational_month_index": 18
+        },
+        {
+          "month": "2026-07-01",
+          "q10": 7749.385485598563,
+          "q50": 10122.448895788733,
+          "q90": 14661.200075841687,
+          "operational_month_index": 19
+        },
+        {
+          "month": "2026-08-01",
+          "q10": 7880.874899776285,
+          "q50": 10294.203788847635,
+          "q90": 14909.967234566388,
+          "operational_month_index": 20
+        },
+        {
+          "month": "2026-09-01",
+          "q10": 8012.364313483643,
+          "q50": 10465.958681292135,
+          "q90": 15158.7343924012,
+          "operational_month_index": 21
+        },
+        {
+          "month": "2026-10-01",
+          "q10": 8143.8537270141505,
+          "q50": 10637.713573505629,
+          "q90": 15407.501549901426,
+          "operational_month_index": 22
+        },
+        {
+          "month": "2026-11-01",
+          "q10": 8275.343140478166,
+          "q50": 10809.46846563227,
+          "q90": 15656.268707275853,
+          "operational_month_index": 23
+        },
+        {
+          "month": "2026-12-01",
+          "q10": 8406.83255391718,
+          "q50": 10981.223357726252,
+          "q90": 15905.03586460298,
+          "operational_month_index": 24
+        }
+      ],
+      "operational_phase": "opening_phase_years_1_2",
+      "operational_calendar_months": "Months 1\u201324 after site open"
+    }
+  }
+}

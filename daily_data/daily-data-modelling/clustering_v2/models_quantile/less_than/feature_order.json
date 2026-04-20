@@ -1,0 +1,14 @@
+[
+  "latitude",
+  "longitude",
+  "region_enc",
+  "state_enc",
+  "period_index",
+  "month_number",
+  "year_number",
+  "day_of_week_feature",
+  "prev_wash_count",
+  "last_week_same_day",
+  "running_avg_7_days",
+  "dbscan_cluster_12km"
+]

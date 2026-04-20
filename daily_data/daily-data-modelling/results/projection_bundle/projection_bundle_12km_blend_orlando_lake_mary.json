@@ -1,0 +1,579 @@
+{
+  "generated_at": "2026-04-20T10:40:16.973041Z",
+  "input": {
+    "address": "655 W Lake Mary Blvd, Lake Mary, FL 32746",
+    "lat": 28.7585535,
+    "lon": -81.3462689
+  },
+  "radius": "12km",
+  "method": "blend",
+  "v1_projection_api": {
+    "radius": "12km",
+    "method": "blend",
+    "more_than_2yrs": {
+      "assigned_cluster_id": 36,
+      "distance_to_cluster_km": 9.157465321222409,
+      "within_radius_gate_km": true,
+      "predicted_wash_count_ridge": 283.34845087177536,
+      "historical_daily_wash_count": {
+        "min": 1.0,
+        "p10": 39.0,
+        "median": 155.0,
+        "p90": 540.3,
+        "max": 947.0
+      },
+      "projection": {
+        "method": "blend",
+        "horizons_months": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "cumulative_wash_count": {
+          "6": 55983.69619813044,
+          "12": 109978.24037444787,
+          "18": 169579.04783677796,
+          "24": 227230.31350274407
+        },
+        "avg_monthly_wash_count": {
+          "6": 9330.61603302174,
+          "12": 9164.853364537323,
+          "18": 9421.05821315433,
+          "24": 9467.929729281002
+        },
+        "bar_graph_data": [
+          {
+            "horizon_months": 6,
+            "wash_count": 55983.69619813044
+          },
+          {
+            "horizon_months": 12,
+            "wash_count": 109978.24037444787
+          },
+          {
+            "horizon_months": 18,
+            "wash_count": 169579.04783677796
+          },
+          {
+            "horizon_months": 24,
+            "wash_count": 227230.31350274407
+          }
+        ],
+        "monthly_forecast_next_24": [
+          8544.313868675377,
+          9339.69106293836,
+          10205.219560128433,
+          9696.574637974456,
+          9324.714175862922,
+          8873.182892550887,
+          8867.708508311018,
+          8646.544436002803,
+          8693.791959848024,
+          9153.8771873871,
+          9258.662936077691,
+          9373.959148690785,
+          9085.286522287532,
+          9990.098978195478,
+          10790.929529797715,
+          10320.533926011218,
+          9926.060530176917,
+          9487.89797586124,
+          9474.520021161688,
+          9258.028526630178,
+          9302.513630226129,
+          9764.231996045239,
+          9868.05223608724,
+          9983.919255815632
+        ],
+        "monthly_forecast_operational_indices": [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ],
+        "operational_phase": "mature_phase_years_3_4",
+        "operational_calendar_months": "Months 25\u201348 after site open (>2y cohort model, mature-site dynamics)"
+      }
+    },
+    "less_than_2yrs": {
+      "assigned_cluster_id": null,
+      "distance_to_cluster_km": 27.301825197252175,
+      "within_radius_gate_km": false,
+      "predicted_wash_count_ridge": null,
+      "historical_daily_wash_count": null,
+      "projection": {
+        "method": "blend",
+        "horizons_months": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "cumulative_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "avg_monthly_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "bar_graph_data": []
+      },
+      "message": "Nearest cluster centroid is 27.3 km away; projections are suppressed beyond 20 km."
+    }
+  },
+  "v2_ridge_local": {
+    "generated_at": "2026-04-20T10:40:16.435548Z",
+    "radius_km": 12.0,
+    "method": "blend",
+    "input": {
+      "address": "655 W Lake Mary Blvd, Lake Mary, FL 32746",
+      "lat": 28.7585535,
+      "lon": -81.3462689
+    },
+    "more_than_2yrs": {
+      "cohort": "more_than_2yrs",
+      "cluster": {
+        "cluster_id": 37,
+        "distance_km": 9.19086093519911,
+        "size": 2,
+        "centroid_lat": 28.675965,
+        "centroid_lon": -81.34248099999999,
+        "cluster_monthly_level_last_6mo": 5140.0
+      },
+      "ridge_prediction": {
+        "raw_level": 250.7675853889895,
+        "monthly_level": 7523.0275616696845,
+        "anchor_scale": 1.4636240392353472,
+        "cluster_context_used": true
+      },
+      "method": "blend",
+      "horizons": {
+        "6m": {
+          "cumulative_wash_count": 44431.369211878744,
+          "monthly_avg": 7405.22820197979,
+          "first_month": "2025-07-01",
+          "last_month": "2025-12-01"
+        },
+        "12m": {
+          "cumulative_wash_count": 89375.03569697356,
+          "monthly_avg": 7447.9196414144635,
+          "first_month": "2025-07-01",
+          "last_month": "2026-06-01"
+        },
+        "18m": {
+          "cumulative_wash_count": 134834.9230109643,
+          "monthly_avg": 7490.829056164683,
+          "first_month": "2025-07-01",
+          "last_month": "2026-12-01"
+        },
+        "24m": {
+          "cumulative_wash_count": 180811.03118606843,
+          "monthly_avg": 7533.792966086185,
+          "first_month": "2025-07-01",
+          "last_month": "2027-06-01"
+        }
+      },
+      "monthly_projection": [
+        {
+          "month": "2025-07-01",
+          "wash_count": 7372.091942149431,
+          "operational_month_index": 25
+        },
+        {
+          "month": "2025-08-01",
+          "wash_count": 7383.543209338195,
+          "operational_month_index": 26
+        },
+        {
+          "month": "2025-09-01",
+          "wash_count": 7397.47244571178,
+          "operational_month_index": 27
+        },
+        {
+          "month": "2025-10-01",
+          "wash_count": 7411.753645875202,
+          "operational_month_index": 28
+        },
+        {
+          "month": "2025-11-01",
+          "wash_count": 7426.084837987724,
+          "operational_month_index": 29
+        },
+        {
+          "month": "2025-12-01",
+          "wash_count": 7440.423130816418,
+          "operational_month_index": 30
+        },
+        {
+          "month": "2026-01-01",
+          "wash_count": 7454.762432210914,
+          "operational_month_index": 31
+        },
+        {
+          "month": "2026-02-01",
+          "wash_count": 7469.101876859265,
+          "operational_month_index": 32
+        },
+        {
+          "month": "2026-03-01",
+          "wash_count": 7483.441341854991,
+          "operational_month_index": 33
+        },
+        {
+          "month": "2026-04-01",
+          "wash_count": 7497.780809740803,
+          "operational_month_index": 34
+        },
+        {
+          "month": "2026-05-01",
+          "wash_count": 7512.120278037113,
+          "operational_month_index": 35
+        },
+        {
+          "month": "2026-06-01",
+          "wash_count": 7526.45974639173,
+          "operational_month_index": 36
+        },
+        {
+          "month": "2026-07-01",
+          "wash_count": 7540.799214754627,
+          "operational_month_index": 37
+        },
+        {
+          "month": "2026-08-01",
+          "wash_count": 7555.138683118703,
+          "operational_month_index": 38
+        },
+        {
+          "month": "2026-09-01",
+          "wash_count": 7569.478151482945,
+          "operational_month_index": 39
+        },
+        {
+          "month": "2026-10-01",
+          "wash_count": 7583.817619847208,
+          "operational_month_index": 40
+        },
+        {
+          "month": "2026-11-01",
+          "wash_count": 7598.1570882114775,
+          "operational_month_index": 41
+        },
+        {
+          "month": "2026-12-01",
+          "wash_count": 7612.496556575748,
+          "operational_month_index": 42
+        },
+        {
+          "month": "2027-01-01",
+          "wash_count": 7626.8360249400175,
+          "operational_month_index": 43
+        },
+        {
+          "month": "2027-02-01",
+          "wash_count": 7641.175493304288,
+          "operational_month_index": 44
+        },
+        {
+          "month": "2027-03-01",
+          "wash_count": 7655.514961668557,
+          "operational_month_index": 45
+        },
+        {
+          "month": "2027-04-01",
+          "wash_count": 7669.854430032826,
+          "operational_month_index": 46
+        },
+        {
+          "month": "2027-05-01",
+          "wash_count": 7684.193898397095,
+          "operational_month_index": 47
+        },
+        {
+          "month": "2027-06-01",
+          "wash_count": 7698.533366761365,
+          "operational_month_index": 48
+        }
+      ],
+      "operational_phase": "mature_phase_years_3_4",
+      "operational_calendar_months": "Months 25\u201348 after site open"
+    },
+    "less_than_2yrs": {
+      "error": "Nearest cluster is 25.3 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cohort": "less_than_2yrs",
+      "cluster": {
+        "cluster_id": 12,
+        "distance_km": 25.306813371370197,
+        "size": 6
+      }
+    }
+  },
+  "v2_quantile_local": {
+    "generated_at": "2026-04-20T10:40:16.483561Z",
+    "radius_km": 12.0,
+    "method": "blend",
+    "input": {
+      "address": "655 W Lake Mary Blvd, Lake Mary, FL 32746",
+      "lat": 28.7585535,
+      "lon": -81.3462689
+    },
+    "more_than_2yrs": {
+      "cluster": {
+        "cluster_id": 37,
+        "distance_km": 9.19086093519911,
+        "size": 2,
+        "cluster_monthly_level_last_6mo": 5140.0
+      },
+      "quantile_prediction": {
+        "raw": {
+          "q10": 188.90743995089383,
+          "q50": 234.57554936162708,
+          "q90": 265.14339272376395
+        },
+        "monthly": {
+          "q10": 5667.223198526815,
+          "q50": 7037.2664808488125,
+          "q90": 7954.3017817129185
+        },
+        "anchor_scale": {
+          "q10": 1.1025726067172792,
+          "q50": 1.3691179923830374,
+          "q90": 1.547529529516132
+        }
+      },
+      "method": "blend",
+      "horizons": {
+        "6m": {
+          "cumulative_q10": 33470.89775701732,
+          "cumulative_q50": 41562.44047889359,
+          "cumulative_q90": 46978.49587667234,
+          "monthly_avg_q50": 6927.073413148933
+        },
+        "12m": {
+          "cumulative_q10": 67327.71766672019,
+          "cumulative_q50": 83604.09925115117,
+          "cumulative_q90": 94498.65760259285,
+          "monthly_avg_q50": 6967.008270929265
+        },
+        "18m": {
+          "cumulative_q10": 101573.41540959585,
+          "cumulative_q50": 126128.64652888417,
+          "cumulative_q90": 142564.63365996222,
+          "monthly_avg_q50": 7007.147029382454
+        },
+        "24m": {
+          "cumulative_q10": 136207.99100991437,
+          "cumulative_q50": 169136.08234222987,
+          "cumulative_q90": 191176.42408284487,
+          "monthly_avg_q50": 7047.336764259578
+        }
+      },
+      "monthly_projection": [
+        {
+          "month": "2025-07-01",
+          "q10": 5553.520857625202,
+          "q50": 6896.076758053182,
+          "q90": 7794.71344344988,
+          "operational_month_index": 25
+        },
+        {
+          "month": "2025-08-01",
+          "q10": 5562.147289807286,
+          "q50": 6906.788618150747,
+          "q90": 7806.821179897179,
+          "operational_month_index": 26
+        },
+        {
+          "month": "2025-09-01",
+          "q10": 5572.640417855407,
+          "q50": 6919.818445229287,
+          "q90": 7821.548940602035,
+          "operational_month_index": 27
+        },
+        {
+          "month": "2025-10-01",
+          "q10": 5583.398686146396,
+          "q50": 6933.177509833597,
+          "q90": 7836.648842200653,
+          "operational_month_index": 28
+        },
+        {
+          "month": "2025-11-01",
+          "q10": 5594.194614213501,
+          "q50": 6946.583338412227,
+          "q90": 7851.801601647597,
+          "operational_month_index": 29
+        },
+        {
+          "month": "2025-12-01",
+          "q10": 5604.99589136953,
+          "q50": 6959.99580921455,
+          "q90": 7866.961868874995,
+          "operational_month_index": 30
+        },
+        {
+          "month": "2026-01-01",
+          "q10": 5615.797928295143,
+          "q50": 6973.409223459688,
+          "q90": 7882.123202486466,
+          "operational_month_index": 31
+        },
+        {
+          "month": "2026-02-01",
+          "q10": 5626.600073136294,
+          "q50": 6986.8227717087975,
+          "q90": 7897.284687564135,
+          "operational_month_index": 32
+        },
+        {
+          "month": "2026-03-01",
+          "q10": 5637.4022333054645,
+          "q50": 7000.236338991453,
+          "q90": 7912.446194155638,
+          "operational_month_index": 33
+        },
+        {
+          "month": "2026-04-01",
+          "q10": 5648.2043956517855,
+          "q50": 7013.649908977582,
+          "q90": 7927.607703802908,
+          "operational_month_index": 34
+        },
+        {
+          "month": "2026-05-01",
+          "q10": 5659.006558307342,
+          "q50": 7027.063479347702,
+          "q90": 7942.769213884208,
+          "operational_month_index": 35
+        },
+        {
+          "month": "2026-06-01",
+          "q10": 5669.8087210068215,
+          "q50": 7040.477049772366,
+          "q90": 7957.930724027157,
+          "operational_month_index": 36
+        },
+        {
+          "month": "2026-07-01",
+          "q10": 5680.610883712539,
+          "q50": 7053.890620204775,
+          "q90": 7973.092234178863,
+          "operational_month_index": 37
+        },
+        {
+          "month": "2026-08-01",
+          "q10": 5691.413046419144,
+          "q50": 7067.304190638285,
+          "q90": 7988.253744331812,
+          "operational_month_index": 38
+        },
+        {
+          "month": "2026-09-01",
+          "q10": 5702.215209125874,
+          "q50": 7080.717761071952,
+          "q90": 8003.41525448494,
+          "operational_month_index": 39
+        },
+        {
+          "month": "2026-10-01",
+          "q10": 5713.017371832621,
+          "q50": 7094.1313315056395,
+          "q90": 8018.576764638089,
+          "operational_month_index": 40
+        },
+        {
+          "month": "2026-11-01",
+          "q10": 5723.819534539372,
+          "q50": 7107.544901939331,
+          "q90": 8033.738274791244,
+          "operational_month_index": 41
+        },
+        {
+          "month": "2026-12-01",
+          "q10": 5734.621697246124,
+          "q50": 7120.958472373024,
+          "q90": 8048.899784944401,
+          "operational_month_index": 42
+        },
+        {
+          "month": "2027-01-01",
+          "q10": 5745.423859952874,
+          "q50": 7134.372042806716,
+          "q90": 8064.0612950975565,
+          "operational_month_index": 43
+        },
+        {
+          "month": "2027-02-01",
+          "q10": 5756.226022659626,
+          "q50": 7147.7856132404095,
+          "q90": 8079.2228052507135,
+          "operational_month_index": 44
+        },
+        {
+          "month": "2027-03-01",
+          "q10": 5767.028185366377,
+          "q50": 7161.199183674102,
+          "q90": 8094.384315403869,
+          "operational_month_index": 45
+        },
+        {
+          "month": "2027-04-01",
+          "q10": 5777.830348073128,
+          "q50": 7174.612754107794,
+          "q90": 8109.545825557024,
+          "operational_month_index": 46
+        },
+        {
+          "month": "2027-05-01",
+          "q10": 5788.632510779879,
+          "q50": 7188.026324541485,
+          "q90": 8124.707335710179,
+          "operational_month_index": 47
+        },
+        {
+          "month": "2027-06-01",
+          "q10": 5799.434673486631,
+          "q50": 7201.439894975179,
+          "q90": 8139.868845863335,
+          "operational_month_index": 48
+        }
+      ],
+      "operational_phase": "mature_phase_years_3_4",
+      "operational_calendar_months": "Months 25\u201348 after site open"
+    },
+    "less_than_2yrs": {
+      "error": "Nearest cluster is 25.3 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cluster": {
+        "cluster_id": 12,
+        "distance_km": 25.306813371370197,
+        "size": 6
+      }
+    }
+  }
+}

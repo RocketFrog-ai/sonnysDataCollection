@@ -14,13 +14,13 @@ import requests
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Call projection endpoint for a sample site and plot 6-month period wash bars."
+        description="Call V1 projection endpoint and save JSON + bar chart."
     )
     parser.add_argument(
         "--address",
         type=str,
         default="5360 Laurel Springs Pkwy, Suwanee, GA 30024",
-        help="Sample input site address.",
+        help="Input site address.",
     )
     parser.add_argument(
         "--radius",
@@ -65,28 +65,52 @@ def _extract_bars(payload: Dict[str, Any], key: str) -> List[Dict[str, float]]:
     return out
 
 
+def _segment_status(payload: Dict[str, Any], key: str) -> str:
+    seg = payload.get(key) or {}
+    if seg.get("message"):
+        return str(seg["message"])
+    proj = seg.get("projection") or {}
+    if not proj.get("bar_graph_data"):
+        if seg.get("assigned_cluster_id") is None:
+            return "Unassigned or no projection (no centroids / missing train data)."
+        return "No bar_graph_data in response."
+    return ""
+
+
 def _plot_bars(payload: Dict[str, Any], out_path: Path) -> None:
     bars_more = _extract_bars(payload, "more_than_2yrs")
     bars_less = _extract_bars(payload, "less_than_2yrs")
 
-    if not bars_more and not bars_less:
-        raise ValueError("No bar_graph_data present in projection response.")
-
-    fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5), sharey=bool(bars_more and bars_less))
     segments = [
-        ("more_than_2yrs", bars_more, "#2563eb"),
         ("less_than_2yrs", bars_less, "#16a34a"),
+        ("more_than_2yrs", bars_more, "#2563eb"),
     ]
 
     for ax, (name, bars, color) in zip(axes, segments):
         if not bars:
-            ax.set_title(f"{name} (no projection data)")
-            ax.axis("off")
+            ax.set_title(name, fontsize=11)
+            msg = _segment_status(payload, name)
+            ax.text(
+                0.5,
+                0.5,
+                msg or "No projection bars (unassigned or empty).",
+                ha="center",
+                va="center",
+                wrap=True,
+                fontsize=10,
+                transform=ax.transAxes,
+            )
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.grid(False)
             continue
         x = [str(b["horizon_months"]) for b in bars]
         y = [b["wash_count"] for b in bars]
         rects = ax.bar(x, y, color=color, alpha=0.9)
-        ax.set_title(name)
+        seg = payload.get(name) or {}
+        oc = (seg.get("projection") or {}).get("operational_calendar_months")
+        ax.set_title(f"{name}\n{oc}" if oc else name, fontsize=10)
         ax.set_xlabel("Period end (month)")
         ax.set_ylabel("Washes in 6-month period")
         ax.grid(axis="y", linestyle="--", alpha=0.3)
@@ -100,9 +124,9 @@ def _plot_bars(payload: Dict[str, Any], out_path: Path) -> None:
                 fontsize=9,
             )
 
-    title = (
-        f"Projection Bars | radius={payload.get('radius')} | method={payload.get('method')}"
-    )
+    title = f"V1 Projection | radius={payload.get('radius')} | method={payload.get('method')}"
+    if not bars_more and not bars_less:
+        title += " (no bars — see panel text / JSON)"
     fig.suptitle(title)
     plt.tight_layout()
     fig.savefig(out_path, dpi=180)
@@ -118,7 +142,8 @@ def main() -> None:
     body = {"address": args.address, "radius": args.radius, "method": args.method}
 
     resp = requests.post(endpoint, json=body, timeout=60)
-    resp.raise_for_status()
+    if resp.status_code >= 400:
+        raise RuntimeError(f"Projection API failed ({resp.status_code}): {resp.text}")
     payload = resp.json()
 
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -134,6 +159,11 @@ def main() -> None:
     print(f"Address:  {args.address}")
     print(f"Saved JSON: {json_path}")
     print(f"Saved plot: {png_path}")
+    if not _extract_bars(payload, "more_than_2yrs") and not _extract_bars(payload, "less_than_2yrs"):
+        print(
+            "Note: API returned no bar_graph_data for either cohort (e.g. no centroids / server error). "
+            "JSON still saved."
+        )
 
 
 if __name__ == "__main__":

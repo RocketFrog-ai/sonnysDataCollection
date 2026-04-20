@@ -1,0 +1,33 @@
+{
+  "site_features_static": [
+    "latitude",
+    "longitude",
+    "region_enc",
+    "state_enc"
+  ],
+  "time_lag_features": [
+    "period_index",
+    "month_number",
+    "year_number",
+    "day_of_week_feature",
+    "prev_wash_count",
+    "last_week_same_day",
+    "running_avg_7_days"
+  ],
+  "cluster_context_features": [],
+  "final_feature_order": [
+    "latitude",
+    "longitude",
+    "region_enc",
+    "state_enc",
+    "period_index",
+    "month_number",
+    "year_number",
+    "day_of_week_feature",
+    "prev_wash_count",
+    "last_week_same_day",
+    "running_avg_7_days",
+    "dbscan_cluster_12km"
+  ],
+  "cluster_col": "dbscan_cluster_12km"
+}
