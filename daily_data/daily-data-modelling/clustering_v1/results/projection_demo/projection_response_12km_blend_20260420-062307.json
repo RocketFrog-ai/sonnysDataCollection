@@ -1,0 +1,110 @@
+{
+  "radius": "12km",
+  "method": "blend",
+  "more_than_2yrs": {
+    "assigned_cluster_id": null,
+    "distance_to_cluster_km": 52.980704487310256,
+    "predicted_wash_count_ridge": null,
+    "historical_daily_wash_count": null,
+    "projection": {
+      "method": "blend",
+      "horizons_months": [
+        6,
+        12,
+        18,
+        24
+      ],
+      "cumulative_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "avg_monthly_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "bar_graph_data": []
+    },
+    "message": "No cluster within radius gate (unassigned)."
+  },
+  "less_than_2yrs": {
+    "assigned_cluster_id": 0,
+    "distance_to_cluster_km": 4.530045912891739,
+    "predicted_wash_count_ridge": 7872.737425641348,
+    "historical_daily_wash_count": {
+      "min": 48.0,
+      "p10": 6738.0,
+      "median": 9430.0,
+      "p90": 16635.0,
+      "max": 22303.0
+    },
+    "projection": {
+      "method": "blend",
+      "horizons_months": [
+        6,
+        12,
+        18,
+        24
+      ],
+      "cumulative_wash_count": {
+        "6": 67911.34806381904,
+        "12": 140223.3942715602,
+        "18": 218319.20283841915,
+        "24": 302479.3908753521
+      },
+      "avg_monthly_wash_count": {
+        "6": 11318.558010636507,
+        "12": 11685.282855963349,
+        "18": 12128.844602134397,
+        "24": 12603.30795313967
+      },
+      "bar_graph_data": [
+        {
+          "horizon_months": 6,
+          "wash_count": 67911.34806381904
+        },
+        {
+          "horizon_months": 12,
+          "wash_count": 140223.3942715602
+        },
+        {
+          "horizon_months": 18,
+          "wash_count": 218319.20283841915
+        },
+        {
+          "horizon_months": 24,
+          "wash_count": 302479.3908753521
+        }
+      ],
+      "monthly_forecast_next_24": [
+        11167.15727333091,
+        11188.77948183899,
+        11245.141730839683,
+        11328.134252989055,
+        11431.540437238908,
+        11550.59488758149,
+        11681.644649226064,
+        11821.88951864673,
+        11969.182976043598,
+        12121.879588429838,
+        12278.718035171807,
+        12438.731440223139,
+        12601.17863653709,
+        12765.491476217927,
+        12931.234440669888,
+        13098.073679413747,
+        13265.753276528674,
+        13434.077057491606,
+        13602.894643055422,
+        13772.090758730814,
+        13941.577039878763,
+        14111.285749834593,
+        14281.164964482587,
+        14451.17488095076
+      ]
+    }
+  }
+}

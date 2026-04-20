@@ -1,0 +1,62 @@
+{
+  "radius": "12km",
+  "method": "blend",
+  "more_than_2yrs": {
+    "assigned_cluster_id": null,
+    "distance_to_cluster_km": 45.359437334916095,
+    "predicted_wash_count_ridge": null,
+    "historical_daily_wash_count": null,
+    "projection": {
+      "method": "blend",
+      "horizons_months": [
+        6,
+        12,
+        18,
+        24
+      ],
+      "cumulative_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "avg_monthly_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "bar_graph_data": []
+    },
+    "message": "No cluster within radius gate (unassigned)."
+  },
+  "less_than_2yrs": {
+    "assigned_cluster_id": null,
+    "distance_to_cluster_km": 88.05896014698686,
+    "predicted_wash_count_ridge": null,
+    "historical_daily_wash_count": null,
+    "projection": {
+      "method": "blend",
+      "horizons_months": [
+        6,
+        12,
+        18,
+        24
+      ],
+      "cumulative_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "avg_monthly_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "bar_graph_data": []
+    },
+    "message": "No cluster within radius gate (unassigned)."
+  }
+}

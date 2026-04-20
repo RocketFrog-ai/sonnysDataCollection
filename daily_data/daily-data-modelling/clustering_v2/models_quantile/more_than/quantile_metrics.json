@@ -1,0 +1,32 @@
+{
+  "q50_metrics": {
+    "mae": 69.58067152797825,
+    "rmse": 128.52777167118424,
+    "r2": 0.7844688097157636,
+    "wape": 0.22672871558910074
+  },
+  "ridge_baseline_metrics": {
+    "mae": 118.23728419341865,
+    "rmse": 171.38970317452808,
+    "r2": 0.616746945868125,
+    "wape": 0.3852763560802647
+  },
+  "pinball_loss": {
+    "q10": 16.233436802270493,
+    "q50": 34.79033576398913,
+    "q90": 21.220776610118442
+  },
+  "interval_coverage_q10_q90": 0.7592930643567235,
+  "interval_mean_width_q90_minus_q10": 204.12034477482842,
+  "cohort": "more_than_2yrs",
+  "split": "train<2025-07-01, test>=2025-07-01",
+  "n_train": 259799,
+  "n_test": 86005,
+  "n_features": 59,
+  "feature_order_path": "models_quantile/more_than/feature_order.json",
+  "model_paths": {
+    "q10": "models_quantile/more_than/q10.joblib",
+    "q50": "models_quantile/more_than/q50.joblib",
+    "q90": "models_quantile/more_than/q90.joblib"
+  }
+}

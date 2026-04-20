@@ -1,0 +1,294 @@
+{
+  "generated_at": "2026-04-20T00:58:58.842732Z",
+  "radius_km": 12.0,
+  "method": "blend",
+  "input": {
+    "address": "GATE EXPRESS , 4065 US 1 N , SAINT AUGUSTINE , FL , 32084",
+    "lat": 29.9311001,
+    "lon": -81.3301191
+  },
+  "more_than_2yrs": {
+    "cohort": "more_than_2yrs",
+    "cluster": {
+      "cluster_id": 37,
+      "distance_km": 139.5699952848232,
+      "size": 2,
+      "centroid_lat": 28.675965,
+      "centroid_lon": -81.34248099999999,
+      "cluster_monthly_level_last_6mo": 5140.0
+    },
+    "ridge_prediction": {
+      "raw_level": 244.9383624296019,
+      "monthly_level": 7348.150872888057,
+      "anchor_scale": 1.4296013371377543,
+      "cluster_context_used": true
+    },
+    "method": "blend",
+    "horizons": {
+      "6m": {
+        "cumulative_wash_count": 43398.54005363151,
+        "monthly_avg": 7233.090008938584,
+        "first_month": "2025-07-01",
+        "last_month": "2025-12-01"
+      },
+      "12m": {
+        "cumulative_wash_count": 87297.47179499005,
+        "monthly_avg": 7274.789316249171,
+        "first_month": "2025-07-01",
+        "last_month": "2026-06-01"
+      },
+      "18m": {
+        "cumulative_wash_count": 131700.6275740013,
+        "monthly_avg": 7316.701531888961,
+        "first_month": "2025-07-01",
+        "last_month": "2026-12-01"
+      },
+      "24m": {
+        "cumulative_wash_count": 176608.00742213396,
+        "monthly_avg": 7358.666975922249,
+        "first_month": "2025-07-01",
+        "last_month": "2027-06-01"
+      }
+    },
+    "monthly_projection": [
+      {
+        "month": "2025-07-01",
+        "wash_count": 7200.723807590684
+      },
+      {
+        "month": "2025-08-01",
+        "wash_count": 7211.908969141426
+      },
+      {
+        "month": "2025-09-01",
+        "wash_count": 7225.5144973152765
+      },
+      {
+        "month": "2025-10-01",
+        "wash_count": 7239.463807704697
+      },
+      {
+        "month": "2025-11-01",
+        "wash_count": 7253.461947974107
+      },
+      {
+        "month": "2025-12-01",
+        "wash_count": 7267.467023905316
+      },
+      {
+        "month": "2026-01-01",
+        "wash_count": 7281.473084958846
+      },
+      {
+        "month": "2026-02-01",
+        "wash_count": 7295.479285936439
+      },
+      {
+        "month": "2026-03-01",
+        "wash_count": 7309.48550678846
+      },
+      {
+        "month": "2026-04-01",
+        "wash_count": 7323.491730463391
+      },
+      {
+        "month": "2026-05-01",
+        "wash_count": 7337.49795453928
+      },
+      {
+        "month": "2026-06-01",
+        "wash_count": 7351.50417867212
+      },
+      {
+        "month": "2026-07-01",
+        "wash_count": 7365.510402813051
+      },
+      {
+        "month": "2026-08-01",
+        "wash_count": 7379.516626955127
+      },
+      {
+        "month": "2026-09-01",
+        "wash_count": 7393.522851097368
+      },
+      {
+        "month": "2026-10-01",
+        "wash_count": 7407.529075239633
+      },
+      {
+        "month": "2026-11-01",
+        "wash_count": 7421.535299381901
+      },
+      {
+        "month": "2026-12-01",
+        "wash_count": 7435.54152352417
+      },
+      {
+        "month": "2027-01-01",
+        "wash_count": 7449.547747666438
+      },
+      {
+        "month": "2027-02-01",
+        "wash_count": 7463.553971808707
+      },
+      {
+        "month": "2027-03-01",
+        "wash_count": 7477.560195950975
+      },
+      {
+        "month": "2027-04-01",
+        "wash_count": 7491.566420093243
+      },
+      {
+        "month": "2027-05-01",
+        "wash_count": 7505.572644235512
+      },
+      {
+        "month": "2027-06-01",
+        "wash_count": 7519.578868377782
+      }
+    ]
+  },
+  "less_than_2yrs": {
+    "cohort": "less_than_2yrs",
+    "cluster": {
+      "cluster_id": 10,
+      "distance_km": 38.18521942074835,
+      "size": 27,
+      "centroid_lat": 30.2014785,
+      "centroid_lon": -81.5747532148148,
+      "cluster_monthly_level_last_6mo": 9943.833333333334
+    },
+    "ridge_prediction": {
+      "raw_level": 7073.460160079485,
+      "monthly_level": 7073.460160079485,
+      "anchor_scale": 0.7113413834449643,
+      "cluster_context_used": true
+    },
+    "method": "blend",
+    "horizons": {
+      "6m": {
+        "cumulative_wash_count": 50382.08403677983,
+        "monthly_avg": 8397.014006129972,
+        "first_month": "2025-01-01",
+        "last_month": "2025-06-01"
+      },
+      "12m": {
+        "cumulative_wash_count": 105093.71806525622,
+        "monthly_avg": 8757.809838771353,
+        "first_month": "2025-01-01",
+        "last_month": "2025-12-01"
+      },
+      "18m": {
+        "cumulative_wash_count": 164110.92670705635,
+        "monthly_avg": 9117.273705947575,
+        "first_month": "2025-01-01",
+        "last_month": "2026-06-01"
+      },
+      "24m": {
+        "cumulative_wash_count": 227432.9971443295,
+        "monthly_avg": 9476.37488101373,
+        "first_month": "2025-01-01",
+        "last_month": "2026-12-01"
+      }
+    },
+    "monthly_projection": [
+      {
+        "month": "2025-01-01",
+        "wash_count": 8061.454591825652
+      },
+      {
+        "month": "2025-02-01",
+        "wash_count": 8244.630663530452
+      },
+      {
+        "month": "2025-03-01",
+        "wash_count": 8328.811984880473
+      },
+      {
+        "month": "2025-04-01",
+        "wash_count": 8468.092809161506
+      },
+      {
+        "month": "2025-05-01",
+        "wash_count": 8576.705792851351
+      },
+      {
+        "month": "2025-06-01",
+        "wash_count": 8702.388194530397
+      },
+      {
+        "month": "2025-07-01",
+        "wash_count": 8818.569926293552
+      },
+      {
+        "month": "2025-08-01",
+        "wash_count": 8940.03963734855
+      },
+      {
+        "month": "2025-09-01",
+        "wash_count": 9058.566111217275
+      },
+      {
+        "month": "2025-10-01",
+        "wash_count": 9178.730761912451
+      },
+      {
+        "month": "2025-11-01",
+        "wash_count": 9297.983619522367
+      },
+      {
+        "month": "2025-12-01",
+        "wash_count": 9417.74397218221
+      },
+      {
+        "month": "2026-01-01",
+        "wash_count": 9537.221858096183
+      },
+      {
+        "month": "2026-02-01",
+        "wash_count": 9656.85696221856
+      },
+      {
+        "month": "2026-03-01",
+        "wash_count": 9776.404560234769
+      },
+      {
+        "month": "2026-04-01",
+        "wash_count": 9896.000863287718
+      },
+      {
+        "month": "2026-05-01",
+        "wash_count": 10015.57005759697
+      },
+      {
+        "month": "2026-06-01",
+        "wash_count": 10135.154340365936
+      },
+      {
+        "month": "2026-07-01",
+        "wash_count": 10254.730225046851
+      },
+      {
+        "month": "2026-08-01",
+        "wash_count": 10374.310784020852
+      },
+      {
+        "month": "2026-09-01",
+        "wash_count": 10493.888741329365
+      },
+      {
+        "month": "2026-10-01",
+        "wash_count": 10613.468146699262
+      },
+      {
+        "month": "2026-11-01",
+        "wash_count": 10733.046746092456
+      },
+      {
+        "month": "2026-12-01",
+        "wash_count": 10852.625794084346
+      }
+    ]
+  }
+}

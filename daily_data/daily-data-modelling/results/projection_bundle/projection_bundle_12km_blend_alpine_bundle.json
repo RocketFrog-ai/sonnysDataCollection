@@ -1,0 +1,128 @@
+{
+  "generated_at": "2026-04-20T10:31:09.025437Z",
+  "input": {
+    "address": "Alpine Shell , 2235 Alpine Blvd , Alpine , CA , 91901",
+    "lat": 32.835188,
+    "lon": -116.765481
+  },
+  "radius": "12km",
+  "method": "blend",
+  "v1_projection_api": {
+    "radius": "12km",
+    "method": "blend",
+    "more_than_2yrs": {
+      "assigned_cluster_id": null,
+      "distance_to_cluster_km": 34.40134575329733,
+      "within_radius_gate_km": false,
+      "predicted_wash_count_ridge": null,
+      "historical_daily_wash_count": null,
+      "projection": {
+        "method": "blend",
+        "horizons_months": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "cumulative_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "avg_monthly_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "bar_graph_data": []
+      },
+      "message": "Nearest cluster centroid is 34.4 km away; projections are suppressed beyond 20 km."
+    },
+    "less_than_2yrs": {
+      "assigned_cluster_id": null,
+      "distance_to_cluster_km": 45.02921168175855,
+      "within_radius_gate_km": false,
+      "predicted_wash_count_ridge": null,
+      "historical_daily_wash_count": null,
+      "projection": {
+        "method": "blend",
+        "horizons_months": [
+          6,
+          12,
+          18,
+          24
+        ],
+        "cumulative_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "avg_monthly_wash_count": {
+          "6": null,
+          "12": null,
+          "18": null,
+          "24": null
+        },
+        "bar_graph_data": []
+      },
+      "message": "Nearest cluster centroid is 45.0 km away; projections are suppressed beyond 20 km."
+    }
+  },
+  "v2_ridge_local": {
+    "generated_at": "2026-04-20T10:31:08.590497Z",
+    "radius_km": 12.0,
+    "method": "blend",
+    "input": {
+      "address": "Alpine Shell , 2235 Alpine Blvd , Alpine , CA , 91901",
+      "lat": 32.835188,
+      "lon": -116.765481
+    },
+    "more_than_2yrs": {
+      "error": "Nearest cluster is 34.4 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cohort": "more_than_2yrs",
+      "cluster": {
+        "cluster_id": 65,
+        "distance_km": 34.40139327045901,
+        "size": 2
+      }
+    },
+    "less_than_2yrs": {
+      "error": "Nearest cluster is 46.1 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cohort": "less_than_2yrs",
+      "cluster": {
+        "cluster_id": 32,
+        "distance_km": 46.05810280434944,
+        "size": 3
+      }
+    }
+  },
+  "v2_quantile_local": {
+    "generated_at": "2026-04-20T10:31:08.591106Z",
+    "radius_km": 12.0,
+    "method": "blend",
+    "input": {
+      "address": "Alpine Shell , 2235 Alpine Blvd , Alpine , CA , 91901",
+      "lat": 32.835188,
+      "lon": -116.765481
+    },
+    "more_than_2yrs": {
+      "error": "Nearest cluster is 34.4 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cluster": {
+        "cluster_id": 65,
+        "distance_km": 34.40139327045901,
+        "size": 2
+      }
+    },
+    "less_than_2yrs": {
+      "error": "Nearest cluster is 46.1 km away; projections hidden when centroid distance exceeds 20 km.",
+      "cluster": {
+        "cluster_id": 32,
+        "distance_km": 46.05810280434944,
+        "size": 3
+      }
+    }
+  }
+}

@@ -1,0 +1,110 @@
+{
+  "radius": "12km",
+  "method": "blend",
+  "more_than_2yrs": {
+    "assigned_cluster_id": null,
+    "distance_to_cluster_km": 37.31268136233114,
+    "predicted_wash_count_ridge": null,
+    "historical_daily_wash_count": null,
+    "projection": {
+      "method": "blend",
+      "horizons_months": [
+        6,
+        12,
+        18,
+        24
+      ],
+      "cumulative_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "avg_monthly_wash_count": {
+        "6": null,
+        "12": null,
+        "18": null,
+        "24": null
+      },
+      "bar_graph_data": []
+    },
+    "message": "No cluster within radius gate (unassigned)."
+  },
+  "less_than_2yrs": {
+    "assigned_cluster_id": 37,
+    "distance_to_cluster_km": 3.867237578032714,
+    "predicted_wash_count_ridge": 8147.066259692626,
+    "historical_daily_wash_count": {
+      "min": 3.0,
+      "p10": 5035.8,
+      "median": 17437.0,
+      "p90": 39200.6,
+      "max": 40447.0
+    },
+    "projection": {
+      "method": "blend",
+      "horizons_months": [
+        6,
+        12,
+        18,
+        24
+      ],
+      "cumulative_wash_count": {
+        "6": 62852.689533460994,
+        "12": 130780.77086700319,
+        "18": 202549.77387215575,
+        "24": 277942.4775962144
+      },
+      "avg_monthly_wash_count": {
+        "6": 10475.448255576832,
+        "12": 10898.397572250266,
+        "18": 11252.765215119764,
+        "24": 11580.936566508934
+      },
+      "bar_graph_data": [
+        {
+          "horizon_months": 6,
+          "wash_count": 62852.689533460994
+        },
+        {
+          "horizon_months": 12,
+          "wash_count": 130780.77086700319
+        },
+        {
+          "horizon_months": 18,
+          "wash_count": 202549.77387215575
+        },
+        {
+          "horizon_months": 24,
+          "wash_count": 277942.4775962144
+        }
+      ],
+      "monthly_forecast_next_24": [
+        9975.336639615665,
+        10214.16601552059,
+        10417.932158221478,
+        10595.450748306885,
+        10753.321007210352,
+        10896.482964586025,
+        11028.634616209554,
+        11152.544199058073,
+        11270.283953454844,
+        11383.405112185512,
+        11493.068893439031,
+        11600.144559195185,
+        11705.282819541615,
+        11808.970781504733,
+        11911.573082516326,
+        12013.362682007155,
+        12114.543911305685,
+        12215.269728277031,
+        12315.654633759981,
+        12415.784340523043,
+        12515.7230112288,
+        12615.518676612244,
+        12715.207291407976,
+        12814.815770526626
+      ]
+    }
+  }
+}
