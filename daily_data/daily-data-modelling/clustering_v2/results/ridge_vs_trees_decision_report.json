@@ -1,0 +1,237 @@
+{
+  "generated_at": "2026-04-21T09:42:55.479212+00:00",
+  "reference": {
+    "ridge_backtest_v2_daily_wape_more_than": 0.385,
+    "note": "backtest_summary.json V2_final wape for >2y daily rows (~0.385). Compare to daily_test_rows.wape below."
+  },
+  "xgboost_included": true,
+  "splits": {
+    "more_than": "train calendar_day < 2025-07-01; test >= 2025-07-01 (Jul\u2013Dec 2025 in data)",
+    "less_than": "train period_index<=12; test period_index>=25"
+  },
+  "results": [
+    {
+      "estimator": "ridge",
+      "cohort": "more_than_2yrs",
+      "daily_test_rows": {
+        "n": 86005,
+        "mae": 118.106,
+        "rmse": 170.6241,
+        "r2": 0.6202,
+        "wape": 0.3848
+      },
+      "daily_subset_actual_ge_p80_of_test_y": {
+        "threshold": 472.0,
+        "definition": "Top 20% busiest test days by actual wash_count_total.",
+        "n": 17213,
+        "mae": 197.2654,
+        "rmse": 282.5845,
+        "r2": 0.1456,
+        "wape": 0.2694
+      },
+      "daily_subset_actual_ge_200": {
+        "n": 48969,
+        "mae": 127.9315,
+        "rmse": 191.8835,
+        "r2": 0.5166,
+        "wape": 0.2768
+      },
+      "monthly_aggregate_site_month": {
+        "n": 2888,
+        "mae": 3003.7292,
+        "rmse": 4273.0299,
+        "r2": 0.6792,
+        "wape": 0.3287
+      },
+      "n_site_months": 2888,
+      "daily_by_test_window": {
+        "2025_q3_jul_sep": {
+          "n": 43326,
+          "mae": 106.6425,
+          "rmse": 139.3112,
+          "r2": 0.6441,
+          "wape": 0.351
+        },
+        "2025_q4_oct_dec": {
+          "n": 42679,
+          "mae": 129.7434,
+          "rmse": 197.3947,
+          "r2": 0.6067,
+          "wape": 0.4186
+        }
+      }
+    },
+    {
+      "estimator": "ridge",
+      "cohort": "less_than_2yrs",
+      "monthly_all_test_rows": {
+        "n": 4689,
+        "mae": 1356.6178,
+        "rmse": 2834.5704,
+        "r2": 0.7776,
+        "wape": 0.1396
+      },
+      "n_test_rows": 4689,
+      "monthly_subset_actual_ge_2000": {
+        "n": 4603,
+        "mae": 1357.2881,
+        "rmse": 2853.149,
+        "r2": 0.7704,
+        "wape": 0.1374
+      }
+    },
+    {
+      "estimator": "random_forest",
+      "cohort": "more_than_2yrs",
+      "daily_test_rows": {
+        "n": 86005,
+        "mae": 66.7671,
+        "rmse": 118.0856,
+        "r2": 0.8181,
+        "wape": 0.2176
+      },
+      "daily_subset_actual_ge_p80_of_test_y": {
+        "threshold": 472.0,
+        "definition": "Top 20% busiest test days by actual wash_count_total.",
+        "n": 17213,
+        "mae": 129.2391,
+        "rmse": 211.641,
+        "r2": 0.5207,
+        "wape": 0.1765
+      },
+      "daily_subset_actual_ge_200": {
+        "n": 48969,
+        "mae": 82.626,
+        "rmse": 140.1241,
+        "r2": 0.7422,
+        "wape": 0.1788
+      },
+      "monthly_aggregate_site_month": {
+        "n": 2888,
+        "mae": 1293.0862,
+        "rmse": 2567.9183,
+        "r2": 0.8841,
+        "wape": 0.1415
+      },
+      "n_site_months": 2888,
+      "daily_by_test_window": {
+        "2025_q3_jul_sep": {
+          "n": 43326,
+          "mae": 52.2356,
+          "rmse": 76.4517,
+          "r2": 0.8928,
+          "wape": 0.1719
+        },
+        "2025_q4_oct_dec": {
+          "n": 42679,
+          "mae": 81.5189,
+          "rmse": 148.8836,
+          "r2": 0.7763,
+          "wape": 0.263
+        }
+      }
+    },
+    {
+      "estimator": "random_forest",
+      "cohort": "less_than_2yrs",
+      "monthly_all_test_rows": {
+        "n": 4689,
+        "mae": 1333.4874,
+        "rmse": 2864.9859,
+        "r2": 0.7728,
+        "wape": 0.1372
+      },
+      "n_test_rows": 4689,
+      "monthly_subset_actual_ge_2000": {
+        "n": 4603,
+        "mae": 1344.7626,
+        "rmse": 2886.6302,
+        "r2": 0.765,
+        "wape": 0.1362
+      }
+    },
+    {
+      "estimator": "xgboost",
+      "cohort": "more_than_2yrs",
+      "daily_test_rows": {
+        "n": 86005,
+        "mae": 67.1977,
+        "rmse": 122.583,
+        "r2": 0.8039,
+        "wape": 0.219
+      },
+      "daily_subset_actual_ge_p80_of_test_y": {
+        "threshold": 472.0,
+        "definition": "Top 20% busiest test days by actual wash_count_total.",
+        "n": 17213,
+        "mae": 134.5053,
+        "rmse": 228.5863,
+        "r2": 0.4409,
+        "wape": 0.1837
+      },
+      "daily_subset_actual_ge_200": {
+        "n": 48969,
+        "mae": 84.5042,
+        "rmse": 148.7332,
+        "r2": 0.7096,
+        "wape": 0.1829
+      },
+      "monthly_aggregate_site_month": {
+        "n": 2888,
+        "mae": 1321.4433,
+        "rmse": 2762.1539,
+        "r2": 0.8659,
+        "wape": 0.1446
+      },
+      "n_site_months": 2888,
+      "daily_by_test_window": {
+        "2025_q3_jul_sep": {
+          "n": 43326,
+          "mae": 52.0523,
+          "rmse": 75.3075,
+          "r2": 0.896,
+          "wape": 0.1713
+        },
+        "2025_q4_oct_dec": {
+          "n": 42679,
+          "mae": 82.5727,
+          "rmse": 156.6007,
+          "r2": 0.7525,
+          "wape": 0.2664
+        }
+      }
+    },
+    {
+      "estimator": "xgboost",
+      "cohort": "less_than_2yrs",
+      "monthly_all_test_rows": {
+        "n": 4689,
+        "mae": 1396.3174,
+        "rmse": 2921.8007,
+        "r2": 0.7637,
+        "wape": 0.1437
+      },
+      "n_test_rows": 4689,
+      "monthly_subset_actual_ge_2000": {
+        "n": 4603,
+        "mae": 1408.9446,
+        "rmse": 2944.1202,
+        "r2": 0.7555,
+        "wape": 0.1427
+      }
+    }
+  ],
+  "decision_summary": {
+    "bullets": [
+      ">2y daily row WAPE \u2014 best: random_forest (same grain as backtest_v2).",
+      ">2y monthly aggregate WAPE \u2014 best: random_forest (accuracy-report grain).",
+      "<2y monthly WAPE \u2014 best: random_forest.",
+      "Trees beat Ridge on **daily** >2y by a clear margin \u2014 uplift is not only from monthly summation."
+    ],
+    "best_by_slice": {
+      "more_daily_wape": "random_forest",
+      "more_monthly_wape": "random_forest",
+      "less_monthly_wape": "random_forest"
+    }
+  }
+}

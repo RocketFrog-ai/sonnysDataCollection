@@ -1,240 +1,1463 @@
 {
   "cluster_label": "dbscan_cluster_12km",
-  "feature_cols": [],
+  "feature_cols": [
+    "ctx_wash_count_total_median",
+    "ctx_wash_count_total_mean",
+    "ctx_wash_count_total_std",
+    "ctx_wash_count_total_min",
+    "ctx_wash_count_total_max"
+  ],
   "records": [
     {
-      "cluster_id": 0
-    },
-    {
-      "cluster_id": -1
-    },
-    {
-      "cluster_id": 1
-    },
-    {
-      "cluster_id": 2
-    },
-    {
-      "cluster_id": 3
-    },
-    {
-      "cluster_id": 4
-    },
-    {
-      "cluster_id": 5
-    },
-    {
-      "cluster_id": 6
-    },
-    {
-      "cluster_id": 7
-    },
-    {
-      "cluster_id": 8
-    },
-    {
-      "cluster_id": 9
-    },
-    {
-      "cluster_id": 10
-    },
-    {
-      "cluster_id": 11
-    },
-    {
-      "cluster_id": 12
-    },
-    {
-      "cluster_id": 13
-    },
-    {
-      "cluster_id": 14
-    },
-    {
-      "cluster_id": 15
-    },
-    {
-      "cluster_id": 16
-    },
-    {
-      "cluster_id": 17
-    },
-    {
-      "cluster_id": 18
-    },
-    {
-      "cluster_id": 19
-    },
-    {
-      "cluster_id": 20
-    },
-    {
-      "cluster_id": 21
-    },
-    {
-      "cluster_id": 22
-    },
-    {
-      "cluster_id": 23
-    },
-    {
-      "cluster_id": 24
-    },
-    {
-      "cluster_id": 25
-    },
-    {
-      "cluster_id": 26
-    },
-    {
-      "cluster_id": 27
-    },
-    {
-      "cluster_id": 28
-    },
-    {
-      "cluster_id": 29
-    },
-    {
-      "cluster_id": 30
-    },
-    {
-      "cluster_id": 31
-    },
-    {
-      "cluster_id": 32
-    },
-    {
-      "cluster_id": 33
-    },
-    {
-      "cluster_id": 34
-    },
-    {
-      "cluster_id": 35
-    },
-    {
-      "cluster_id": 36
-    },
-    {
-      "cluster_id": 37
-    },
-    {
-      "cluster_id": 38
-    },
-    {
-      "cluster_id": 39
-    },
-    {
-      "cluster_id": 40
-    },
-    {
-      "cluster_id": 41
-    },
-    {
-      "cluster_id": 42
-    },
-    {
-      "cluster_id": 43
-    },
-    {
-      "cluster_id": 44
-    },
-    {
-      "cluster_id": 45
-    },
-    {
-      "cluster_id": 46
-    },
-    {
-      "cluster_id": 47
-    },
-    {
-      "cluster_id": 48
-    },
-    {
-      "cluster_id": 49
-    },
-    {
-      "cluster_id": 50
-    },
-    {
-      "cluster_id": 51
-    },
-    {
-      "cluster_id": 52
-    },
-    {
-      "cluster_id": 53
-    },
-    {
-      "cluster_id": 54
-    },
-    {
-      "cluster_id": 55
-    },
-    {
-      "cluster_id": 56
-    },
-    {
-      "cluster_id": 57
-    },
-    {
-      "cluster_id": 58
-    },
-    {
-      "cluster_id": 59
-    },
-    {
-      "cluster_id": 60
-    },
-    {
-      "cluster_id": 61
-    },
-    {
-      "cluster_id": 62
-    },
-    {
-      "cluster_id": 63
-    },
-    {
-      "cluster_id": 64
-    },
-    {
-      "cluster_id": 65
-    },
-    {
-      "cluster_id": 66
-    },
-    {
-      "cluster_id": 67
-    },
-    {
-      "cluster_id": 68
-    },
-    {
-      "cluster_id": 69
-    },
-    {
-      "cluster_id": 70
-    },
-    {
-      "cluster_id": 71
-    },
-    {
-      "cluster_id": 72
-    },
-    {
-      "cluster_id": 73
-    },
-    {
-      "cluster_id": 74
-    },
-    {
-      "cluster_id": 75
-    },
-    {
-      "cluster_id": 76
+      "cluster_id": -1,
+      "ctx_wash_count_total_median": 6619.0,
+      "ctx_wash_count_total_mean": 7412.662086055418,
+      "ctx_wash_count_total_std": 5016.036853656885,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 56016.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 19.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 6601.0,
+        "last_week_same_day": 6020.0,
+        "running_avg_7_days": 6582.333333333333
+      }
+    },
+    {
+      "cluster_id": 0,
+      "ctx_wash_count_total_median": 8735.0,
+      "ctx_wash_count_total_mean": 9603.25,
+      "ctx_wash_count_total_std": 4252.585517888679,
+      "ctx_wash_count_total_min": 48.0,
+      "ctx_wash_count_total_max": 18425.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 8735.0,
+        "running_avg_7_days": 8286.0
+      }
+    },
+    {
+      "cluster_id": 1,
+      "ctx_wash_count_total_median": 2586.5,
+      "ctx_wash_count_total_mean": 2625.472222222222,
+      "ctx_wash_count_total_std": 1418.7932797398357,
+      "ctx_wash_count_total_min": 559.0,
+      "ctx_wash_count_total_max": 6689.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 11.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 2586.5,
+        "last_week_same_day": 2872.5,
+        "running_avg_7_days": 2451.916666666667
+      }
+    },
+    {
+      "cluster_id": 2,
+      "ctx_wash_count_total_median": 3889.0,
+      "ctx_wash_count_total_mean": 4180.773584905661,
+      "ctx_wash_count_total_std": 2521.417211697158,
+      "ctx_wash_count_total_min": 2.0,
+      "ctx_wash_count_total_max": 14992.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.0,
+        "month_number": 6.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.0,
+        "prev_wash_count": 3785.0,
+        "last_week_same_day": 3918.0,
+        "running_avg_7_days": 3930.6666666666665
+      }
+    },
+    {
+      "cluster_id": 3,
+      "ctx_wash_count_total_median": 8668.0,
+      "ctx_wash_count_total_mean": 8564.963636363636,
+      "ctx_wash_count_total_std": 4572.590006661822,
+      "ctx_wash_count_total_min": 11.0,
+      "ctx_wash_count_total_max": 19806.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 8398.0,
+        "last_week_same_day": 4444.5,
+        "running_avg_7_days": 9205.0
+      }
+    },
+    {
+      "cluster_id": 4,
+      "ctx_wash_count_total_median": 5391.5,
+      "ctx_wash_count_total_mean": 6219.408333333334,
+      "ctx_wash_count_total_std": 2419.2132629525954,
+      "ctx_wash_count_total_min": 2410.0,
+      "ctx_wash_count_total_max": 13536.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 22.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 5391.5,
+        "last_week_same_day": 5629.5,
+        "running_avg_7_days": 5784.166666666666
+      }
+    },
+    {
+      "cluster_id": 5,
+      "ctx_wash_count_total_median": 2353.0,
+      "ctx_wash_count_total_mean": 4794.861111111111,
+      "ctx_wash_count_total_std": 4579.103038511101,
+      "ctx_wash_count_total_min": 1064.0,
+      "ctx_wash_count_total_max": 14185.0,
+      "local_feature_medians": {
+        "region_enc": 0.0,
+        "state_enc": 14.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 2353.0,
+        "last_week_same_day": 1212.5,
+        "running_avg_7_days": 2447.333333333333
+      }
+    },
+    {
+      "cluster_id": 6,
+      "ctx_wash_count_total_median": 5029.0,
+      "ctx_wash_count_total_mean": 4799.9375,
+      "ctx_wash_count_total_std": 2524.9793545079706,
+      "ctx_wash_count_total_min": 50.0,
+      "ctx_wash_count_total_max": 10532.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 0.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 5020.0,
+        "last_week_same_day": 5729.5,
+        "running_avg_7_days": 5477.333333333334
+      }
+    },
+    {
+      "cluster_id": 7,
+      "ctx_wash_count_total_median": 12855.0,
+      "ctx_wash_count_total_mean": 13845.666666666666,
+      "ctx_wash_count_total_std": 5782.951589432017,
+      "ctx_wash_count_total_min": 15.0,
+      "ctx_wash_count_total_max": 26170.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 12855.0,
+        "last_week_same_day": 12028.0,
+        "running_avg_7_days": 13790.5
+      }
+    },
+    {
+      "cluster_id": 8,
+      "ctx_wash_count_total_median": 3352.0,
+      "ctx_wash_count_total_mean": 5164.625,
+      "ctx_wash_count_total_std": 3464.1963220361363,
+      "ctx_wash_count_total_min": 519.0,
+      "ctx_wash_count_total_max": 11257.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 23.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3352.0,
+        "running_avg_7_days": 3222.1666666666665
+      }
+    },
+    {
+      "cluster_id": 9,
+      "ctx_wash_count_total_median": 11211.5,
+      "ctx_wash_count_total_mean": 12756.958333333334,
+      "ctx_wash_count_total_std": 8116.371637093662,
+      "ctx_wash_count_total_min": 183.0,
+      "ctx_wash_count_total_max": 30530.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 11211.5,
+        "last_week_same_day": 12395.5,
+        "running_avg_7_days": 11229.333333333334
+      }
+    },
+    {
+      "cluster_id": 10,
+      "ctx_wash_count_total_median": 7587.5,
+      "ctx_wash_count_total_mean": 9851.793103448275,
+      "ctx_wash_count_total_std": 6593.056456043338,
+      "ctx_wash_count_total_min": 2.0,
+      "ctx_wash_count_total_max": 24952.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 7088.0,
+        "last_week_same_day": 4705.0,
+        "running_avg_7_days": 8016.666666666667
+      }
+    },
+    {
+      "cluster_id": 11,
+      "ctx_wash_count_total_median": 9675.5,
+      "ctx_wash_count_total_mean": 11347.25,
+      "ctx_wash_count_total_std": 5856.263046716774,
+      "ctx_wash_count_total_min": 5522.0,
+      "ctx_wash_count_total_max": 31806.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 22.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 9529.0,
+        "last_week_same_day": 9525.5,
+        "running_avg_7_days": 9745.833333333332
+      }
+    },
+    {
+      "cluster_id": 12,
+      "ctx_wash_count_total_median": 9686.0,
+      "ctx_wash_count_total_mean": 9621.736842105263,
+      "ctx_wash_count_total_std": 3758.9030292364137,
+      "ctx_wash_count_total_min": 2.0,
+      "ctx_wash_count_total_max": 16976.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.0,
+        "month_number": 6.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.0,
+        "prev_wash_count": 9669.0,
+        "last_week_same_day": 10934.0,
+        "running_avg_7_days": 9509.0
+      }
+    },
+    {
+      "cluster_id": 13,
+      "ctx_wash_count_total_median": 7837.5,
+      "ctx_wash_count_total_mean": 7441.791666666667,
+      "ctx_wash_count_total_std": 2551.4195961608816,
+      "ctx_wash_count_total_min": 2700.0,
+      "ctx_wash_count_total_max": 12473.0,
+      "local_feature_medians": {
+        "region_enc": 0.0,
+        "state_enc": 8.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 7837.5,
+        "last_week_same_day": 7345.5,
+        "running_avg_7_days": 7345.5
+      }
+    },
+    {
+      "cluster_id": 14,
+      "ctx_wash_count_total_median": 14911.5,
+      "ctx_wash_count_total_mean": 14675.583333333334,
+      "ctx_wash_count_total_std": 4032.4253291860264,
+      "ctx_wash_count_total_min": 7448.0,
+      "ctx_wash_count_total_max": 20697.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 22.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 14911.5,
+        "last_week_same_day": 15503.5,
+        "running_avg_7_days": 13645.666666666666
+      }
+    },
+    {
+      "cluster_id": 15,
+      "ctx_wash_count_total_median": 6751.0,
+      "ctx_wash_count_total_mean": 7142.638888888889,
+      "ctx_wash_count_total_std": 3317.931768417609,
+      "ctx_wash_count_total_min": 2127.0,
+      "ctx_wash_count_total_max": 19360.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 6874.0,
+        "last_week_same_day": 6575.5,
+        "running_avg_7_days": 6905.333333333334
+      }
+    },
+    {
+      "cluster_id": 16,
+      "ctx_wash_count_total_median": 10234.0,
+      "ctx_wash_count_total_mean": 10003.7,
+      "ctx_wash_count_total_std": 3406.804278154995,
+      "ctx_wash_count_total_min": 81.0,
+      "ctx_wash_count_total_max": 15500.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 10031.5,
+        "last_week_same_day": 9130.0,
+        "running_avg_7_days": 9528.0
+      }
+    },
+    {
+      "cluster_id": 17,
+      "ctx_wash_count_total_median": 10183.5,
+      "ctx_wash_count_total_mean": 9764.583333333334,
+      "ctx_wash_count_total_std": 3672.219751839084,
+      "ctx_wash_count_total_min": 2435.0,
+      "ctx_wash_count_total_max": 16805.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 10183.5,
+        "running_avg_7_days": 9937.333333333332
+      }
+    },
+    {
+      "cluster_id": 18,
+      "ctx_wash_count_total_median": 9547.0,
+      "ctx_wash_count_total_mean": 9229.235294117647,
+      "ctx_wash_count_total_std": 5389.67627666091,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 19166.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 8594.0,
+        "running_avg_7_days": 10688.5
+      }
+    },
+    {
+      "cluster_id": 19,
+      "ctx_wash_count_total_median": 3670.5,
+      "ctx_wash_count_total_mean": 4603.5,
+      "ctx_wash_count_total_std": 2818.8786060674347,
+      "ctx_wash_count_total_min": 31.0,
+      "ctx_wash_count_total_max": 9654.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 10.5,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3670.5,
+        "last_week_same_day": 3670.5,
+        "running_avg_7_days": 4335.0
+      }
+    },
+    {
+      "cluster_id": 20,
+      "ctx_wash_count_total_median": 10802.0,
+      "ctx_wash_count_total_mean": 11470.92,
+      "ctx_wash_count_total_std": 4370.685049774729,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 24329.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 10828.5,
+        "last_week_same_day": 10459.0,
+        "running_avg_7_days": 10454.666666666666
+      }
+    },
+    {
+      "cluster_id": 21,
+      "ctx_wash_count_total_median": 4510.0,
+      "ctx_wash_count_total_mean": 4790.75,
+      "ctx_wash_count_total_std": 1473.1840225463054,
+      "ctx_wash_count_total_min": 5.0,
+      "ctx_wash_count_total_max": 8376.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 4345.0,
+        "last_week_same_day": 4218.5,
+        "running_avg_7_days": 4772.0
+      }
+    },
+    {
+      "cluster_id": 22,
+      "ctx_wash_count_total_median": 7001.5,
+      "ctx_wash_count_total_mean": 8336.0,
+      "ctx_wash_count_total_std": 7522.508415225791,
+      "ctx_wash_count_total_min": 96.0,
+      "ctx_wash_count_total_max": 26442.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 7001.5,
+        "last_week_same_day": 9944.0,
+        "running_avg_7_days": 9336.416666666668
+      }
+    },
+    {
+      "cluster_id": 23,
+      "ctx_wash_count_total_median": 6853.5,
+      "ctx_wash_count_total_mean": 6706.458333333333,
+      "ctx_wash_count_total_std": 1892.5422970212562,
+      "ctx_wash_count_total_min": 880.0,
+      "ctx_wash_count_total_max": 10434.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 6520.0,
+        "running_avg_7_days": 6538.0
+      }
+    },
+    {
+      "cluster_id": 24,
+      "ctx_wash_count_total_median": 3012.5,
+      "ctx_wash_count_total_mean": 6164.416666666667,
+      "ctx_wash_count_total_std": 5305.601542886919,
+      "ctx_wash_count_total_min": 308.0,
+      "ctx_wash_count_total_max": 13903.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3012.5,
+        "running_avg_7_days": 6493.75
+      }
+    },
+    {
+      "cluster_id": 25,
+      "ctx_wash_count_total_median": 9748.0,
+      "ctx_wash_count_total_mean": 10687.291666666666,
+      "ctx_wash_count_total_std": 5372.6661139606895,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 20033.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 9748.0,
+        "running_avg_7_days": 9436.583333333332
+      }
+    },
+    {
+      "cluster_id": 26,
+      "ctx_wash_count_total_median": 5972.0,
+      "ctx_wash_count_total_mean": 7443.527777777777,
+      "ctx_wash_count_total_std": 5597.131747529833,
+      "ctx_wash_count_total_min": 1868.0,
+      "ctx_wash_count_total_max": 23870.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 29.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 5676.0,
+        "last_week_same_day": 2854.0,
+        "running_avg_7_days": 6018.0
+      }
+    },
+    {
+      "cluster_id": 27,
+      "ctx_wash_count_total_median": 7144.5,
+      "ctx_wash_count_total_mean": 8252.333333333334,
+      "ctx_wash_count_total_std": 5836.587848233326,
+      "ctx_wash_count_total_min": 4.0,
+      "ctx_wash_count_total_max": 16768.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 7144.5,
+        "running_avg_7_days": 11284.75
+      }
+    },
+    {
+      "cluster_id": 28,
+      "ctx_wash_count_total_median": 5915.0,
+      "ctx_wash_count_total_mean": 6020.8125,
+      "ctx_wash_count_total_std": 2211.2158555510646,
+      "ctx_wash_count_total_min": 20.0,
+      "ctx_wash_count_total_max": 12062.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 31.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 5911.0,
+        "last_week_same_day": 5561.0,
+        "running_avg_7_days": 6003.166666666667
+      }
+    },
+    {
+      "cluster_id": 29,
+      "ctx_wash_count_total_median": 12627.0,
+      "ctx_wash_count_total_mean": 12651.510638297872,
+      "ctx_wash_count_total_std": 5154.551129077649,
+      "ctx_wash_count_total_min": 19.0,
+      "ctx_wash_count_total_max": 27562.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 11873.0,
+        "running_avg_7_days": 11244.333333333334
+      }
+    },
+    {
+      "cluster_id": 30,
+      "ctx_wash_count_total_median": 4830.0,
+      "ctx_wash_count_total_mean": 5346.283333333334,
+      "ctx_wash_count_total_std": 2419.5099314100967,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 14002.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 4830.0,
+        "last_week_same_day": 4993.0,
+        "running_avg_7_days": 4856.333333333334
+      }
+    },
+    {
+      "cluster_id": 31,
+      "ctx_wash_count_total_median": 3674.5,
+      "ctx_wash_count_total_mean": 3422.2083333333335,
+      "ctx_wash_count_total_std": 1570.1377668485202,
+      "ctx_wash_count_total_min": 416.0,
+      "ctx_wash_count_total_max": 6102.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3674.5,
+        "running_avg_7_days": 3571.0
+      }
+    },
+    {
+      "cluster_id": 32,
+      "ctx_wash_count_total_median": 6827.0,
+      "ctx_wash_count_total_mean": 7163.733333333334,
+      "ctx_wash_count_total_std": 3057.558840525696,
+      "ctx_wash_count_total_min": 196.0,
+      "ctx_wash_count_total_max": 11981.0,
+      "local_feature_medians": {
+        "region_enc": 0.0,
+        "state_enc": 14.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 6799.0,
+        "last_week_same_day": 6337.0,
+        "running_avg_7_days": 5960.5
+      }
+    },
+    {
+      "cluster_id": 33,
+      "ctx_wash_count_total_median": 11404.0,
+      "ctx_wash_count_total_mean": 15372.181818181818,
+      "ctx_wash_count_total_std": 8000.836210084923,
+      "ctx_wash_count_total_min": 225.0,
+      "ctx_wash_count_total_max": 35454.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 11404.0,
+        "running_avg_7_days": 11508.333333333334
+      }
+    },
+    {
+      "cluster_id": 34,
+      "ctx_wash_count_total_median": 10636.0,
+      "ctx_wash_count_total_mean": 11484.949152542373,
+      "ctx_wash_count_total_std": 3366.4688107574507,
+      "ctx_wash_count_total_min": 4652.0,
+      "ctx_wash_count_total_max": 20018.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.0,
+        "month_number": 6.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.0,
+        "prev_wash_count": 10543.0,
+        "last_week_same_day": 11460.0,
+        "running_avg_7_days": 10794.166666666668
+      }
+    },
+    {
+      "cluster_id": 35,
+      "ctx_wash_count_total_median": 9841.0,
+      "ctx_wash_count_total_mean": 11693.628571428571,
+      "ctx_wash_count_total_std": 6063.2765898515645,
+      "ctx_wash_count_total_min": 19.0,
+      "ctx_wash_count_total_max": 23712.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 9624.0,
+        "running_avg_7_days": 9090.333333333334
+      }
+    },
+    {
+      "cluster_id": 36,
+      "ctx_wash_count_total_median": 6734.0,
+      "ctx_wash_count_total_mean": 7699.5,
+      "ctx_wash_count_total_std": 3085.7090487168966,
+      "ctx_wash_count_total_min": 4621.0,
+      "ctx_wash_count_total_max": 17496.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 26.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 6816.0,
+        "last_week_same_day": 6571.0,
+        "running_avg_7_days": 7232.5
+      }
+    },
+    {
+      "cluster_id": 37,
+      "ctx_wash_count_total_median": 16561.0,
+      "ctx_wash_count_total_mean": 19606.916666666668,
+      "ctx_wash_count_total_std": 12461.386388430117,
+      "ctx_wash_count_total_min": 3.0,
+      "ctx_wash_count_total_max": 39604.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 16561.0,
+        "last_week_same_day": 33369.0,
+        "running_avg_7_days": 15689.0
+      }
+    },
+    {
+      "cluster_id": 38,
+      "ctx_wash_count_total_median": 5857.0,
+      "ctx_wash_count_total_mean": 6935.333333333333,
+      "ctx_wash_count_total_std": 3574.1153436843424,
+      "ctx_wash_count_total_min": 1323.0,
+      "ctx_wash_count_total_max": 17948.0,
+      "local_feature_medians": {
+        "region_enc": 0.0,
+        "state_enc": 14.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 5637.0,
+        "last_week_same_day": 4965.0,
+        "running_avg_7_days": 5415.0
+      }
+    },
+    {
+      "cluster_id": 39,
+      "ctx_wash_count_total_median": 10522.5,
+      "ctx_wash_count_total_mean": 10847.458333333334,
+      "ctx_wash_count_total_std": 5172.779194395564,
+      "ctx_wash_count_total_min": 16.0,
+      "ctx_wash_count_total_max": 21034.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 28.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 9764.0,
+        "running_avg_7_days": 8743.833333333334
+      }
+    },
+    {
+      "cluster_id": 40,
+      "ctx_wash_count_total_median": 6727.5,
+      "ctx_wash_count_total_mean": 6441.916666666667,
+      "ctx_wash_count_total_std": 3207.9809025326967,
+      "ctx_wash_count_total_min": 8.0,
+      "ctx_wash_count_total_max": 14582.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 6358.0,
+        "running_avg_7_days": 6276.166666666666
+      }
+    },
+    {
+      "cluster_id": 41,
+      "ctx_wash_count_total_median": 15611.0,
+      "ctx_wash_count_total_mean": 14908.583333333334,
+      "ctx_wash_count_total_std": 4132.5823689591325,
+      "ctx_wash_count_total_min": 3904.0,
+      "ctx_wash_count_total_max": 20695.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 17.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 15534.5,
+        "running_avg_7_days": 14232.833333333332
+      }
+    },
+    {
+      "cluster_id": 42,
+      "ctx_wash_count_total_median": 16939.5,
+      "ctx_wash_count_total_mean": 15554.541666666666,
+      "ctx_wash_count_total_std": 4376.330257182098,
+      "ctx_wash_count_total_min": 4357.0,
+      "ctx_wash_count_total_max": 21352.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 28.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 17013.5,
+        "running_avg_7_days": 15763.166666666668
+      }
+    },
+    {
+      "cluster_id": 43,
+      "ctx_wash_count_total_median": 5955.0,
+      "ctx_wash_count_total_mean": 6428.541666666667,
+      "ctx_wash_count_total_std": 3034.1231125412064,
+      "ctx_wash_count_total_min": 70.0,
+      "ctx_wash_count_total_max": 12124.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 23.5,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 5955.0,
+        "last_week_same_day": 5168.0,
+        "running_avg_7_days": 5677.333333333333
+      }
+    },
+    {
+      "cluster_id": 44,
+      "ctx_wash_count_total_median": 3697.5,
+      "ctx_wash_count_total_mean": 4103.111111111111,
+      "ctx_wash_count_total_std": 2143.9836057179405,
+      "ctx_wash_count_total_min": 268.0,
+      "ctx_wash_count_total_max": 9422.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3555.0,
+        "last_week_same_day": 2737.5,
+        "running_avg_7_days": 3601.833333333333
+      }
+    },
+    {
+      "cluster_id": 45,
+      "ctx_wash_count_total_median": 6414.0,
+      "ctx_wash_count_total_mean": 6448.75,
+      "ctx_wash_count_total_std": 2190.268481656787,
+      "ctx_wash_count_total_min": 1076.0,
+      "ctx_wash_count_total_max": 10243.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 6202.0,
+        "running_avg_7_days": 5263.0
+      }
+    },
+    {
+      "cluster_id": 46,
+      "ctx_wash_count_total_median": 9061.0,
+      "ctx_wash_count_total_mean": 7533.705882352941,
+      "ctx_wash_count_total_std": 4103.971554108782,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 14002.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 8.0,
+        "month_number": 8.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 7.0,
+        "prev_wash_count": 9061.0,
+        "last_week_same_day": 9480.0,
+        "running_avg_7_days": 7939.166666666666
+      }
+    },
+    {
+      "cluster_id": 47,
+      "ctx_wash_count_total_median": 6391.5,
+      "ctx_wash_count_total_mean": 7535.7,
+      "ctx_wash_count_total_std": 4018.743126644041,
+      "ctx_wash_count_total_min": 2633.0,
+      "ctx_wash_count_total_max": 16512.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 11.0,
+        "period_index": 7.5,
+        "month_number": 7.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.5,
+        "prev_wash_count": 6462.0,
+        "last_week_same_day": 5962.0,
+        "running_avg_7_days": 6722.5
+      }
+    },
+    {
+      "cluster_id": 48,
+      "ctx_wash_count_total_median": 7155.5,
+      "ctx_wash_count_total_mean": 7632.625,
+      "ctx_wash_count_total_std": 3474.038900460801,
+      "ctx_wash_count_total_min": 161.0,
+      "ctx_wash_count_total_max": 14142.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 21.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 7155.5,
+        "last_week_same_day": 7708.5,
+        "running_avg_7_days": 7206.583333333334
+      }
+    },
+    {
+      "cluster_id": 49,
+      "ctx_wash_count_total_median": 14455.5,
+      "ctx_wash_count_total_mean": 18854.659090909092,
+      "ctx_wash_count_total_std": 15239.910387641783,
+      "ctx_wash_count_total_min": 199.0,
+      "ctx_wash_count_total_max": 53736.0,
+      "local_feature_medians": {
+        "region_enc": 0.0,
+        "state_enc": 8.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 14455.5,
+        "last_week_same_day": 14935.0,
+        "running_avg_7_days": 14314.083333333332
+      }
+    },
+    {
+      "cluster_id": 50,
+      "ctx_wash_count_total_median": 11276.5,
+      "ctx_wash_count_total_mean": 11813.9,
+      "ctx_wash_count_total_std": 3329.0987425925105,
+      "ctx_wash_count_total_min": 4708.0,
+      "ctx_wash_count_total_max": 21242.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 11360.0,
+        "running_avg_7_days": 11465.333333333332
+      }
+    },
+    {
+      "cluster_id": 51,
+      "ctx_wash_count_total_median": 8924.0,
+      "ctx_wash_count_total_mean": 7140.771428571428,
+      "ctx_wash_count_total_std": 4664.3053520118865,
+      "ctx_wash_count_total_min": 4.0,
+      "ctx_wash_count_total_max": 14062.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 0.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 8924.0,
+        "last_week_same_day": 5469.0,
+        "running_avg_7_days": 5246.0
+      }
+    },
+    {
+      "cluster_id": 52,
+      "ctx_wash_count_total_median": 3384.0,
+      "ctx_wash_count_total_mean": 3669.5,
+      "ctx_wash_count_total_std": 1580.2926742126638,
+      "ctx_wash_count_total_min": 102.0,
+      "ctx_wash_count_total_max": 6622.0,
+      "local_feature_medians": {
+        "region_enc": 2.5,
+        "state_enc": 13.5,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3384.0,
+        "last_week_same_day": 3350.5,
+        "running_avg_7_days": 3372.166666666667
+      }
+    },
+    {
+      "cluster_id": 53,
+      "ctx_wash_count_total_median": 15275.0,
+      "ctx_wash_count_total_mean": 15514.666666666666,
+      "ctx_wash_count_total_std": 5593.541332048359,
+      "ctx_wash_count_total_min": 3160.0,
+      "ctx_wash_count_total_max": 26086.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 15275.0,
+        "running_avg_7_days": 15227.333333333334
+      }
+    },
+    {
+      "cluster_id": 54,
+      "ctx_wash_count_total_median": 3490.0,
+      "ctx_wash_count_total_mean": 4184.521739130435,
+      "ctx_wash_count_total_std": 1482.9376212119637,
+      "ctx_wash_count_total_min": 2708.0,
+      "ctx_wash_count_total_max": 8319.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.0,
+        "month_number": 6.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.0,
+        "prev_wash_count": 3426.5,
+        "last_week_same_day": 3134.0,
+        "running_avg_7_days": 3799.6666666666665
+      }
+    },
+    {
+      "cluster_id": 55,
+      "ctx_wash_count_total_median": 6984.0,
+      "ctx_wash_count_total_mean": 7965.153846153846,
+      "ctx_wash_count_total_std": 7157.174095153765,
+      "ctx_wash_count_total_min": 2.0,
+      "ctx_wash_count_total_max": 32654.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 26.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 7657.0,
+        "last_week_same_day": 10396.0,
+        "running_avg_7_days": 8173.666666666667
+      }
+    },
+    {
+      "cluster_id": 56,
+      "ctx_wash_count_total_median": 4293.0,
+      "ctx_wash_count_total_mean": 4269.125,
+      "ctx_wash_count_total_std": 1195.4955215747407,
+      "ctx_wash_count_total_min": 1941.0,
+      "ctx_wash_count_total_max": 7025.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 4312.5,
+        "last_week_same_day": 4650.5,
+        "running_avg_7_days": 4539.333333333333
+      }
+    },
+    {
+      "cluster_id": 57,
+      "ctx_wash_count_total_median": 6887.5,
+      "ctx_wash_count_total_mean": 6387.916666666667,
+      "ctx_wash_count_total_std": 2282.954491474792,
+      "ctx_wash_count_total_min": 219.0,
+      "ctx_wash_count_total_max": 9844.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 28.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 6887.5,
+        "running_avg_7_days": 6906.5
+      }
+    },
+    {
+      "cluster_id": 58,
+      "ctx_wash_count_total_median": 12955.5,
+      "ctx_wash_count_total_mean": 12994.379310344828,
+      "ctx_wash_count_total_std": 6300.431176633411,
+      "ctx_wash_count_total_min": 8.0,
+      "ctx_wash_count_total_max": 29602.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 12856.0,
+        "last_week_same_day": 14066.0,
+        "running_avg_7_days": 12946.833333333332
+      }
+    },
+    {
+      "cluster_id": 59,
+      "ctx_wash_count_total_median": 5583.5,
+      "ctx_wash_count_total_mean": 4876.0,
+      "ctx_wash_count_total_std": 1907.2905478826642,
+      "ctx_wash_count_total_min": 11.0,
+      "ctx_wash_count_total_max": 7328.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 5606.0,
+        "last_week_same_day": 5616.5,
+        "running_avg_7_days": 5395.5
+      }
+    },
+    {
+      "cluster_id": 60,
+      "ctx_wash_count_total_median": 19582.0,
+      "ctx_wash_count_total_mean": 18177.764705882353,
+      "ctx_wash_count_total_std": 12550.134626970352,
+      "ctx_wash_count_total_min": 517.0,
+      "ctx_wash_count_total_max": 33895.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 19582.0,
+        "last_week_same_day": 19582.0,
+        "running_avg_7_days": 15934.166666666666
+      }
+    },
+    {
+      "cluster_id": 61,
+      "ctx_wash_count_total_median": 10138.0,
+      "ctx_wash_count_total_mean": 10996.083333333334,
+      "ctx_wash_count_total_std": 5431.854860121778,
+      "ctx_wash_count_total_min": 2.0,
+      "ctx_wash_count_total_max": 20695.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 31.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 9899.0,
+        "running_avg_7_days": 9573.5
+      }
+    },
+    {
+      "cluster_id": 62,
+      "ctx_wash_count_total_median": 6942.0,
+      "ctx_wash_count_total_mean": 7603.176470588235,
+      "ctx_wash_count_total_std": 4526.058379292397,
+      "ctx_wash_count_total_min": 1166.0,
+      "ctx_wash_count_total_max": 18402.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 34.0,
+        "period_index": 6.0,
+        "month_number": 6.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.0,
+        "prev_wash_count": 6593.0,
+        "running_avg_7_days": 5997.833333333334
+      }
+    },
+    {
+      "cluster_id": 63,
+      "ctx_wash_count_total_median": 11520.0,
+      "ctx_wash_count_total_mean": 11368.722222222223,
+      "ctx_wash_count_total_std": 4444.827026112882,
+      "ctx_wash_count_total_min": 2705.0,
+      "ctx_wash_count_total_max": 19920.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 19.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 11491.0,
+        "running_avg_7_days": 11930.833333333332
+      }
+    },
+    {
+      "cluster_id": 64,
+      "ctx_wash_count_total_median": 4707.5,
+      "ctx_wash_count_total_mean": 4887.75,
+      "ctx_wash_count_total_std": 1795.8158434199927,
+      "ctx_wash_count_total_min": 11.0,
+      "ctx_wash_count_total_max": 8396.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 5.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 4604.0,
+        "running_avg_7_days": 4782.166666666667
+      }
+    },
+    {
+      "cluster_id": 65,
+      "ctx_wash_count_total_median": 3884.5,
+      "ctx_wash_count_total_mean": 5216.888888888889,
+      "ctx_wash_count_total_std": 3314.4857026416444,
+      "ctx_wash_count_total_min": 112.0,
+      "ctx_wash_count_total_max": 13464.0,
+      "local_feature_medians": {
+        "region_enc": 0.0,
+        "state_enc": 16.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 3884.5,
+        "last_week_same_day": 3854.0,
+        "running_avg_7_days": 3912.0
+      }
+    },
+    {
+      "cluster_id": 66,
+      "ctx_wash_count_total_median": 4163.0,
+      "ctx_wash_count_total_mean": 4905.228571428572,
+      "ctx_wash_count_total_std": 2977.482375961218,
+      "ctx_wash_count_total_min": 1.0,
+      "ctx_wash_count_total_max": 11947.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 4163.0,
+        "last_week_same_day": 4734.0,
+        "running_avg_7_days": 3993.3333333333335
+      }
+    },
+    {
+      "cluster_id": 67,
+      "ctx_wash_count_total_median": 4173.0,
+      "ctx_wash_count_total_mean": 4531.375,
+      "ctx_wash_count_total_std": 1223.8858176647245,
+      "ctx_wash_count_total_min": 2647.0,
+      "ctx_wash_count_total_max": 7286.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 4.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 4173.0,
+        "last_week_same_day": 4760.5,
+        "running_avg_7_days": 4470.666666666666
+      }
+    },
+    {
+      "cluster_id": 68,
+      "ctx_wash_count_total_median": 10344.0,
+      "ctx_wash_count_total_mean": 10269.416666666666,
+      "ctx_wash_count_total_std": 3166.9434299345794,
+      "ctx_wash_count_total_min": 2402.0,
+      "ctx_wash_count_total_max": 16320.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 36.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 9858.5,
+        "running_avg_7_days": 9386.0
+      }
+    },
+    {
+      "cluster_id": 69,
+      "ctx_wash_count_total_median": 8171.0,
+      "ctx_wash_count_total_mean": 7475.472222222223,
+      "ctx_wash_count_total_std": 4019.9880062799843,
+      "ctx_wash_count_total_min": 740.0,
+      "ctx_wash_count_total_max": 14896.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 8171.0,
+        "last_week_same_day": 10943.0,
+        "running_avg_7_days": 7550.333333333334
+      }
+    },
+    {
+      "cluster_id": 70,
+      "ctx_wash_count_total_median": 10494.0,
+      "ctx_wash_count_total_mean": 10617.457142857143,
+      "ctx_wash_count_total_std": 7665.761998664457,
+      "ctx_wash_count_total_min": 562.0,
+      "ctx_wash_count_total_max": 32580.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 32.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 9565.0,
+        "running_avg_7_days": 7797.0
+      }
+    },
+    {
+      "cluster_id": 71,
+      "ctx_wash_count_total_median": 9196.0,
+      "ctx_wash_count_total_mean": 8815.217391304348,
+      "ctx_wash_count_total_std": 3967.6345480961795,
+      "ctx_wash_count_total_min": 1131.0,
+      "ctx_wash_count_total_max": 21107.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 22.0,
+        "period_index": 7.0,
+        "month_number": 7.0,
+        "year_number": 1.0,
+        "day_of_week_feature": 6.0,
+        "prev_wash_count": 9149.0,
+        "last_week_same_day": 6340.0,
+        "running_avg_7_days": 8805.0
+      }
+    },
+    {
+      "cluster_id": 72,
+      "ctx_wash_count_total_median": 24177.5,
+      "ctx_wash_count_total_mean": 23789.86111111111,
+      "ctx_wash_count_total_std": 6423.9683425335315,
+      "ctx_wash_count_total_min": 2798.0,
+      "ctx_wash_count_total_max": 31618.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 23700.0,
+        "running_avg_7_days": 22120.416666666664
+      }
+    },
+    {
+      "cluster_id": 73,
+      "ctx_wash_count_total_median": 9019.0,
+      "ctx_wash_count_total_mean": 10000.583333333334,
+      "ctx_wash_count_total_std": 4015.3822051733996,
+      "ctx_wash_count_total_min": 3940.0,
+      "ctx_wash_count_total_max": 16659.0,
+      "local_feature_medians": {
+        "region_enc": 2.0,
+        "state_enc": 6.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 9019.0,
+        "running_avg_7_days": 10182.583333333332
+      }
+    },
+    {
+      "cluster_id": 74,
+      "ctx_wash_count_total_median": 7154.5,
+      "ctx_wash_count_total_mean": 10625.5,
+      "ctx_wash_count_total_std": 7419.466000941742,
+      "ctx_wash_count_total_min": 246.0,
+      "ctx_wash_count_total_max": 21055.0,
+      "local_feature_medians": {
+        "region_enc": 1.0,
+        "state_enc": 28.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 7154.5,
+        "running_avg_7_days": 10664.25
+      }
+    },
+    {
+      "cluster_id": 75,
+      "ctx_wash_count_total_median": 29186.0,
+      "ctx_wash_count_total_mean": 28972.416666666668,
+      "ctx_wash_count_total_std": 9931.596091720507,
+      "ctx_wash_count_total_min": 2394.0,
+      "ctx_wash_count_total_max": 42936.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 28815.0,
+        "running_avg_7_days": 27072.5
+      }
+    },
+    {
+      "cluster_id": 76,
+      "ctx_wash_count_total_median": 18745.0,
+      "ctx_wash_count_total_mean": 18803.083333333332,
+      "ctx_wash_count_total_std": 6507.089910792909,
+      "ctx_wash_count_total_min": 7754.0,
+      "ctx_wash_count_total_max": 27300.0,
+      "local_feature_medians": {
+        "region_enc": 3.0,
+        "state_enc": 3.0,
+        "period_index": 6.5,
+        "month_number": 6.5,
+        "year_number": 1.0,
+        "day_of_week_feature": 5.5,
+        "prev_wash_count": 16433.0,
+        "running_avg_7_days": 15006.75
+      }
     }
   ]
 }

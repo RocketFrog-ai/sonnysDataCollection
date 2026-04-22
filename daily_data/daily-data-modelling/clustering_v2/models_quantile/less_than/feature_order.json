@@ -10,5 +10,10 @@
   "prev_wash_count",
   "last_week_same_day",
   "running_avg_7_days",
-  "dbscan_cluster_12km"
+  "dbscan_cluster_12km",
+  "ctx_wash_count_total_median",
+  "ctx_wash_count_total_mean",
+  "ctx_wash_count_total_std",
+  "ctx_wash_count_total_min",
+  "ctx_wash_count_total_max"
 ]

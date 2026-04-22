@@ -72,7 +72,9 @@
     "ctx_daily_weather_wind_speed_10m_max_median",
     "ctx_wash_count_total_median",
     "ctx_wash_count_total_mean",
-    "ctx_wash_count_total_std"
+    "ctx_wash_count_total_std",
+    "ctx_wash_count_total_min",
+    "ctx_wash_count_total_max"
   ],
   "final_feature_order": [
     "latitude",
@@ -133,7 +135,9 @@
     "ctx_daily_weather_wind_speed_10m_max_median",
     "ctx_wash_count_total_median",
     "ctx_wash_count_total_mean",
-    "ctx_wash_count_total_std"
+    "ctx_wash_count_total_std",
+    "ctx_wash_count_total_min",
+    "ctx_wash_count_total_max"
   ],
   "cluster_col": "dbscan_cluster_12km"
 }

@@ -262,9 +262,11 @@ def _v1_cumulative_from_bars(segment: Dict[str, Any], horizon_months: int) -> Op
 
 def _bridge_v1_more_forecast_to_opening_last_month(more: Dict[str, Any], less: Dict[str, Any]) -> None:
     """Scale >2y monthly_forecast_next_24 so month 25 matches <2y month 24 before mature remap."""
+    mp = more.get("projection") or {}
+    if mp.get("used_lt2y_prefix_for_mature_forecast"):
+        return
     if more.get("assigned_cluster_id") is None or less.get("assigned_cluster_id") is None:
         return
-    mp = more.get("projection") or {}
     lp = less.get("projection") or {}
     fc = mp.get("monthly_forecast_next_24")
     fc_less = lp.get("monthly_forecast_next_24")
@@ -304,6 +306,8 @@ def _remap_v1_more_than_projection(more: Dict[str, Any], less: Dict[str, Any]) -
     mp["horizons_months"] = [30, 36, 42, 48]
     mp["six_month_period_wash_count"] = periodv
     mp["avg_monthly_wash_in_period"] = avgv
+    # Full mature operational months 25–48 (before trimming published view to 30–48).
+    mp["monthly_forecast_mature_operational_25_48"] = [float(x) for x in w]
     mp["monthly_forecast_next_24"] = [float(x) for x in w[5:]]
     mp["monthly_forecast_operational_indices"] = list(range(30, 49))
     mp["operational_phase"] = "mature_phase_months_30_48"
@@ -423,6 +427,8 @@ def _projection_payload_for_segment(
     lat: float,
     lon: float,
     method: str,
+    opening_less_forecast_monthly: Optional[List[float]] = None,
+    use_opening_forecast_prefix_for_mature: bool = True,
 ) -> Dict[str, Any]:
     assets = _load_cluster_runtime_assets(radius, segment)
     assigned_cluster, assign_distance_km, within_gate = _assign_cluster_from_latlon(
@@ -493,11 +499,31 @@ def _projection_payload_for_segment(
         )
 
     base_series = monthly_profile["cluster_monthly_median_site"]
-    fc = _forecast_monthly(base_series, horizon=24, method=method)
+    used_lt_prefix = (
+        use_opening_forecast_prefix_for_mature
+        and segment == "more_than_2yrs"
+        and opening_less_forecast_monthly is not None
+        and len(opening_less_forecast_monthly) >= 24
+    )
+    if used_lt_prefix:
+        y_hist = base_series.dropna().astype(float)
+        if len(y_hist) == 0:
+            fc = _forecast_monthly(base_series, horizon=24, method=method)
+            used_lt_prefix = False
+        else:
+            tail = y_hist.tail(min(72, len(y_hist)))
+            o = np.maximum(
+                np.array(opening_less_forecast_monthly[:24], dtype=float), 0.0
+            )
+            combined_series = pd.Series(np.concatenate([tail.to_numpy(), o]))
+            fc = _forecast_monthly(combined_series, horizon=24, method=method)
+    else:
+        fc = _forecast_monthly(base_series, horizon=24, method=method)
 
     # Anchor forecast to site-specific model projection while preserving cluster trend shape.
     ridge_monthly_anchor = predicted * 30.4 if segment == "more_than_2yrs" else predicted
-    last_cluster_median = float(base_series.iloc[-1]) if len(base_series) else 0.0
+    bs_clean = base_series.dropna().astype(float)
+    last_cluster_median = float(bs_clean.iloc[-1]) if len(bs_clean) else 0.0
     if ridge_monthly_anchor and last_cluster_median > 0:
         scale = float(np.clip(ridge_monthly_anchor / last_cluster_median, 0.7, 1.3))
         fc = fc * scale
@@ -544,6 +570,11 @@ def _projection_payload_for_segment(
             "operational_calendar_months": cal_label,
         },
     }
+    if segment == "more_than_2yrs" and used_lt_prefix:
+        out["projection"]["used_lt2y_prefix_for_mature_forecast"] = True
+        out["projection"]["mature_forecast_series_mode"] = (
+            "cluster_median_tail_up_to_72m_plus_lt2y_monthly_24_then_forecast_25_48"
+        )
     msg = _peer_coverage_message(within_gate, assign_distance_km, float(assets["radius_km"]))
     if msg:
         out["message"] = msg
@@ -754,19 +785,28 @@ def cluster_projection(req: ClusterProjectionRequest):
 
     lat = float(lat)
     lon = float(lon)
-    more = _projection_payload_for_segment(
-        segment="more_than_2yrs",
-        radius=radius,
-        lat=lat,
-        lon=lon,
-        method=method,
-    )
     less = _projection_payload_for_segment(
         segment="less_than_2yrs",
         radius=radius,
         lat=lat,
         lon=lon,
         method=method,
+    )
+    opening_fc: Optional[List[float]] = None
+    if less.get("assigned_cluster_id") is not None:
+        mp_less = less.get("projection") or {}
+        mf_less = mp_less.get("monthly_forecast_next_24")
+        if isinstance(mf_less, list) and len(mf_less) >= 24:
+            opening_fc = [float(x) for x in mf_less[:24]]
+    use_pfx = bool(req.use_opening_forecast_prefix_for_mature)
+    more = _projection_payload_for_segment(
+        segment="more_than_2yrs",
+        radius=radius,
+        lat=lat,
+        lon=lon,
+        method=method,
+        opening_less_forecast_monthly=opening_fc if use_pfx else None,
+        use_opening_forecast_prefix_for_mature=use_pfx,
     )
     _bridge_v1_more_forecast_to_opening_last_month(more, less)
     _remap_v1_more_than_projection(more, less)
@@ -779,6 +819,7 @@ def cluster_projection(req: ClusterProjectionRequest):
     stitched = _brand_new_site_continuation_v1(more, less)
     if stitched is not None:
         out["brand_new_site_continuation"] = stitched
+    out["use_opening_forecast_prefix_for_mature"] = use_pfx
     return out
 
 

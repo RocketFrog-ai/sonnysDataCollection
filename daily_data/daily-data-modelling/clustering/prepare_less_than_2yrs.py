@@ -1,12 +1,15 @@
 """
-Prepare <2-year dataset for clustering/modeling parity with master pipeline.
+Prepare <2-year dataset for clustering-ready CSV (input to **clustering_v2**, not train code here).
+
+Production train/project lives in **../clustering_v2/**. Run this only to (re)build
+`less_than-2yrs-clustering-ready.csv` beside the modelling CSVs.
 
 Steps:
 1) Load less_than-2yrs.csv
-2) Build calendar_day and lag/time features
+2) Build calendar_day and lag/time features (wash-based lags only; no weather/gas placeholders)
 3) Add latitude/longitude (map from existing datasets, then geocode unresolved addresses)
 4) Fit site-level DBSCAN clusters (12km, 18km) and merge onto all rows
-5) Save clustering-ready CSV for downstream scripts
+5) Drop all-null columns and save clustering-ready CSV
 """
 
 from __future__ import annotations
@@ -111,8 +114,12 @@ def main() -> None:
     df = df[df["month_number"].notna() & df["year_number"].notna()].copy()
     df["month_number"] = df["month_number"].astype(int)
     df["year_number"] = df["year_number"].astype(int)
+    # Cumulative month label from the source panel: 1-12 = first operational year,
+    # 13-24 = second year (not calendar Jan-Dec alone). Then:
+    #   period_index = (year_number - 1) * 12 + month_number
+    # yields 1-12 for year 1 and 25-36 for year 2 — values 13-24 never occur by construction.
     df["period_index"] = (df["year_number"] - 1) * 12 + df["month_number"]
-    # Build a stable pseudo-date for monthly panels from continuous period index.
+    # Synthetic month-start dates for modeling (not necessarily literal transaction dates).
     base_period = pd.Period("2024-01", freq="M")
     df["calendar_day"] = (
         (df["period_index"] - 1)
@@ -130,39 +137,6 @@ def main() -> None:
     df["day_of_week"] = "monthly_panel"
     # Reuse model feature slot with month-of-year seasonality signal.
     df["day_of_week_feature"] = (df["period_index"] - 1) % 12
-    df["wash_count_voucher"] = 0.0
-    df["current_count"] = pd.to_numeric(df.get("site_count"), errors="coerce")
-    df["previous_count"] = pd.to_numeric(df.get("site_count"), errors="coerce")
-
-    # Fill missing numeric feature columns used by model scripts.
-    numeric_defaults = {
-        "weather_total_precipitation_mm": np.nan,
-        "weather_rainy_days": np.nan,
-        "weather_total_snowfall_cm": np.nan,
-        "weather_days_below_freezing": np.nan,
-        "weather_total_sunshine_hours": np.nan,
-        "weather_days_pleasant_temp": np.nan,
-        "weather_avg_daily_max_windspeed_ms": np.nan,
-        "nearest_gas_station_distance_miles": np.nan,
-        "nearest_gas_station_rating": np.nan,
-        "nearest_gas_station_rating_count": np.nan,
-        "competitors_count_4miles": np.nan,
-        "competitor_1_google_rating": np.nan,
-        "competitor_1_distance_miles": np.nan,
-        "competitor_1_rating_count": np.nan,
-        "distance_nearest_costco(5 mile)": np.nan,
-        "distance_nearest_walmart(5 mile)": np.nan,
-        "distance_nearest_target (5 mile)": np.nan,
-        "other_grocery_count_1mile": np.nan,
-        "count_food_joints_0_5miles (0.5 mile)": np.nan,
-        "age_on_30_sep_25": np.nan,
-        "costco_enc": np.nan,
-        "tunnel_count": np.nan,
-        "carwash_type_encoded": np.nan,
-    }
-    for col, val in numeric_defaults.items():
-        if col not in df.columns:
-            df[col] = val
 
     # Encodings used by model inputs.
     if "region_enc" not in df.columns:
@@ -253,6 +227,13 @@ def main() -> None:
     )
     df["dbscan_cluster_12km"] = df["dbscan_cluster_12km"].fillna(-1).astype(int)
     df["dbscan_cluster_18km"] = df["dbscan_cluster_18km"].fillna(-1).astype(int)
+
+    # Drop columns with no usable values (no NaN-only placeholders for weather/gas/etc.).
+    keep = [c for c in df.columns if df[c].notna().any()]
+    dropped = sorted(set(df.columns) - set(keep))
+    if dropped:
+        print(f"Dropping {len(dropped)} all-null / empty columns: {dropped[:20]}{'...' if len(dropped) > 20 else ''}")
+    df = df[keep]
 
     print(f"Saving: {OUTPUT_PATH}")
     df.to_csv(OUTPUT_PATH, index=False)

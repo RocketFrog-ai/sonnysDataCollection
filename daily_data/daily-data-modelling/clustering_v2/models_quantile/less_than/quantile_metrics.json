@@ -1,28 +1,28 @@
 {
   "q50_metrics": {
-    "mae": 1185.6795763967407,
-    "rmse": 2837.610069762444,
-    "r2": 0.7770746700809905,
-    "wape": 0.12199293866153592
+    "mae": 1183.8455469205373,
+    "rmse": 2840.6377480662186,
+    "r2": 0.7765987017514432,
+    "wape": 0.12180423789461044
   },
   "ridge_baseline_metrics": {
-    "mae": 1278.1057259626864,
-    "rmse": 2802.325687337822,
-    "r2": 0.7825841507338345,
-    "wape": 0.13150253789827565
+    "mae": 1356.6178371843298,
+    "rmse": 2834.570374446664,
+    "r2": 0.7775520169488257,
+    "wape": 0.13958054089260638
   },
   "pinball_loss": {
-    "q10": 330.70664055180123,
-    "q50": 592.8397881983703,
-    "q90": 440.9208384338248
+    "q10": 313.213351845761,
+    "q50": 591.9227734602687,
+    "q90": 440.1217320240453
   },
-  "interval_coverage_q10_q90": 0.6956707187033483,
-  "interval_mean_width_q90_minus_q10": 3240.1616328153714,
+  "interval_coverage_q10_q90": 0.7193431435274046,
+  "interval_mean_width_q90_minus_q10": 3480.4309676385283,
   "cohort": "less_than_2yrs",
-  "split": "train period_index<=12, test period_index>=25",
+  "split": "train period_index<=12 (year1); test period_index>=25 (year2); period_index skips 13-24 by construction \u2014 see APPROACH.md",
   "n_train": 8218,
   "n_test": 4689,
-  "n_features": 12,
+  "n_features": 17,
   "feature_order_path": "models_quantile/less_than/feature_order.json",
   "model_paths": {
     "q10": "models_quantile/less_than/q10.joblib",

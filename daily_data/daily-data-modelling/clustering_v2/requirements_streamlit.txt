@@ -1,0 +1,5 @@
+# Optional extras for clustering_v2/streamlit_app.py (install on top of modelling2 env or project deps).
+streamlit>=1.28
+plotly>=5.18
+pandas>=2.0
+matplotlib>=3.7

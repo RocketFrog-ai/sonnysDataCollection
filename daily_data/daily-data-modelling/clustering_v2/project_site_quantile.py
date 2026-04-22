@@ -1,3 +1,5 @@
+"""Quantile projection (q10/q50/q90). Reuses project_site helpers. See APPROACH.md."""
+
 from __future__ import annotations
 
 import argparse
@@ -11,8 +13,8 @@ import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.figure import Figure
 
-# reuse robust helpers from ridge projection flow
 import project_site as base
 
 REPO_ROOT = base.REPO_ROOT
@@ -41,11 +43,12 @@ def _project_cohort_quantile(
     method: str,
     days_per_month: int,
     is_daily_model: bool,
+    opening_lt_q50_monthly: list[float] | None = None,
+    *,
+    allow_nearest_cluster_beyond_distance_cap: bool = False,
 ) -> dict[str, Any]:
-    # Supporting artifacts from portable V2 folder (centroids/context/series)
     support = base._load_cohort(cohort_key)
 
-    # Quantile model artifacts
     q_dir = QMODELS_DIR / cohort_key
     feature_order = _load_feature_order(q_dir)
     models = {
@@ -58,11 +61,15 @@ def _project_cohort_quantile(
     nearest = base._nearest_cluster(centroids, lat, lon)
     cluster_id = int(nearest["cluster_id"])
     d_km = float(nearest["distance_km"])
-    if np.isfinite(d_km) and d_km > base.MAX_NEAREST_CLUSTER_DISPLAY_KM:
+    if (
+        not allow_nearest_cluster_beyond_distance_cap
+        and np.isfinite(d_km)
+        and d_km > base.MAX_NEAREST_CLUSTER_DISTANCE_KM
+    ):
         return {
             "error": (
                 f"Nearest cluster is {d_km:.1f} km away; projections hidden when centroid distance "
-                f"exceeds {base.MAX_NEAREST_CLUSTER_DISPLAY_KM:.0f} km."
+                f"exceeds {base.MAX_NEAREST_CLUSTER_DISTANCE_KM:.0f} km (use --allow-distant-nearest-cluster to force)."
             ),
             "cluster": {
                 "cluster_id": cluster_id,
@@ -78,6 +85,7 @@ def _project_cohort_quantile(
             break
 
     vec = base._feature_vector(support["spec"], ctx_row, lat, lon, cluster_id)
+    vec = base._apply_local_feature_medians(vec, feature_order, ctx_row)
     q_raw = _predict_quantiles(models, feature_order, vec)
 
     if is_daily_model:
@@ -85,14 +93,23 @@ def _project_cohort_quantile(
     else:
         q_monthly = dict(q_raw)
 
-    # keep quantiles ordered
     q_monthly["q10"] = min(q_monthly["q10"], q_monthly["q50"])
     q_monthly["q90"] = max(q_monthly["q90"], q_monthly["q50"])
 
     series = base._series_to_df(support["series"]["series"].get(str(cluster_id), []))
     cluster_level = float(series.tail(6).mean()) if len(series) else float("nan")
 
-    fc_base = base._forecast(series, 24, method)
+    used_lt_prefix = (
+        cohort_key == "more_than"
+        and opening_lt_q50_monthly is not None
+        and len(opening_lt_q50_monthly) == 24
+    )
+    forecast_series = (
+        base._series_for_mature_forecast_with_opening_context(series, opening_lt_q50_monthly)
+        if used_lt_prefix
+        else series
+    )
+    fc_base = base._forecast(forecast_series, 24, method)
 
     def _scale(target: float) -> float:
         if len(series) >= 6 and np.isfinite(target) and cluster_level > 0:
@@ -107,7 +124,6 @@ def _project_cohort_quantile(
     fc50 = np.maximum(fc_base * s50, 0)
     fc90 = np.maximum(fc_base * s90, 0)
 
-    # monotonic bounds
     fc10 = np.minimum(fc10, fc50)
     fc90 = np.maximum(fc90, fc50)
 
@@ -132,7 +148,15 @@ def _project_cohort_quantile(
             "distance_km": nearest["distance_km"],
             "size": nearest["size"],
             "cluster_monthly_level_last_6mo": cluster_level if np.isfinite(cluster_level) else None,
+            "nearest_cluster_max_distance_km": base.MAX_NEAREST_CLUSTER_DISTANCE_KM,
+            "distance_cap_relaxed": bool(allow_nearest_cluster_beyond_distance_cap),
         },
+        "mature_forecast_series_mode": (
+            "cluster_tail_72m_plus_lt2y_q50_monthly_24m_prefix_then_forecast_25_48"
+            if used_lt_prefix
+            else "cluster_monthly_only"
+        ),
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": bool(used_lt_prefix),
         "quantile_prediction": {
             "raw": q_raw,
             "monthly": q_monthly,
@@ -152,10 +176,19 @@ def _project_cohort_quantile(
     }
 
 
-def _bridge_quantile_mature_to_opening_last_month(resp: dict[str, Any]) -> None:
-    """Scale >2y q10/q50/q90 monthlies so operational month 25 matches <2y month 24 (q50 handoff)."""
+def _bridge_quantile_mature_to_opening_last_month(
+    resp: dict[str, Any],
+    *,
+    skip_bridge_when_prefix: bool = False,
+) -> None:
     lt = resp.get("less_than_2yrs")
     gt = resp.get("more_than_2yrs")
+    if (
+        skip_bridge_when_prefix
+        and gt
+        and gt.get("used_lt2y_monthly_forecast_as_mature_forecast_context")
+    ):
+        return
     if not lt or not gt or "error" in lt or "error" in gt:
         return
     lp = lt.get("monthly_projection") or []
@@ -211,6 +244,7 @@ def _enrich_brand_new_site_timeline_quantile(resp: dict[str, Any]) -> None:
     rows = gt["monthly_projection"]
     if len(rows) < 24:
         return
+    gt["monthly_projection_mature_25_48"] = [dict(r) for r in rows]
     q10s = [float(r["q10"]) for r in rows]
     q50s = [float(r["q50"]) for r in rows]
     q90s = [float(r["q90"]) for r in rows]
@@ -282,44 +316,191 @@ def _enrich_brand_new_site_timeline_quantile(resp: dict[str, Any]) -> None:
     }
 
 
-def _plot(resp: dict[str, Any], out_path: Path) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-    for ax, key, title in [
-        (axes[0], "less_than_2yrs", "<2y quantile | years 1–2 (mo 1–24)"),
-        (axes[1], "more_than_2yrs", ">2y quantile | continuation mo 30–48"),
-    ]:
-        b = resp[key]
-        if "error" in b or "horizons" not in b:
-            ax.text(0.5, 0.5, b.get("error", "no data"), ha="center", fontsize=9, transform=ax.transAxes)
-            ax.set_title(title)
-            continue
-        hz = b["horizons"]
-        if key == "more_than_2yrs" and "30m" in hz:
-            labels = ["30m", "36m", "42m", "48m"]
-        else:
-            labels = ["6m", "12m", "18m", "24m"]
-        mids = [hz[k]["six_month_period_q50"] for k in labels]
-        lows = [hz[k]["six_month_period_q10"] for k in labels]
-        highs = [hz[k]["six_month_period_q90"] for k in labels]
-        yerr = np.array([np.array(mids) - np.array(lows), np.array(highs) - np.array(mids)])
+def _append_calendar_year_washes_quantile(resp: dict[str, Any]) -> None:
+    lt = resp.get("less_than_2yrs") or {}
+    gt = resp.get("more_than_2yrs") or {}
+    if "error" in lt or "error" in gt:
+        return
+    lm = lt.get("monthly_projection") or []
+    mature = gt.get("monthly_projection_mature_25_48") or []
+    if len(lm) < 24 or len(mature) < 24:
+        return
 
-        bars = ax.bar(labels, mids, color="#16a34a", alpha=0.85)
-        ax.errorbar(labels, mids, yerr=yerr, fmt='none', ecolor='black', elinewidth=1.5, capsize=4)
-        ax.set_title(f"{title}\ncluster {b['cluster']['cluster_id']} ({b['cluster']['size']} sites, {b['cluster']['distance_km']:.1f}km)")
-        ax.set_ylabel("Washes in 6-month period")
+    def _ysum(rows: list[dict[str, Any]], lo: int, hi: int, qk: str) -> float:
+        return float(sum(max(float(r.get(qk, 0) or 0), 0.0) for r in rows[lo:hi]))
+
+    resp["calendar_year_washes"] = {
+        "year_1": {
+            "q10": _ysum(lm, 0, 12, "q10"),
+            "q50": _ysum(lm, 0, 12, "q50"),
+            "q90": _ysum(lm, 0, 12, "q90"),
+        },
+        "year_2": {
+            "q10": _ysum(lm, 12, 24, "q10"),
+            "q50": _ysum(lm, 12, 24, "q50"),
+            "q90": _ysum(lm, 12, 24, "q90"),
+        },
+        "year_3": {
+            "q10": _ysum(mature, 0, 12, "q10"),
+            "q50": _ysum(mature, 0, 12, "q50"),
+            "q90": _ysum(mature, 0, 12, "q90"),
+        },
+        "year_4": {
+            "q10": _ysum(mature, 12, 24, "q10"),
+            "q50": _ysum(mature, 12, 24, "q50"),
+            "q90": _ysum(mature, 12, 24, "q90"),
+        },
+        "definition": (
+            "Per-year sums of monthly quantile tracks (years 1–2 from <2y; years 3–4 from >2y, months 25–48)."
+        ),
+    }
+
+
+def build_quantile_projection_response(
+    lat: float,
+    lon: float,
+    method: str,
+    addr: str | None,
+    *,
+    use_opening_prefix_for_mature_forecast: bool = True,
+    bridge_opening_to_mature_when_prefix: bool = True,
+    allow_nearest_cluster_beyond_distance_cap: bool = False,
+) -> dict[str, Any]:
+    lt_block = _project_cohort_quantile(
+        "less_than",
+        lat,
+        lon,
+        method,
+        30,
+        False,
+        None,
+        allow_nearest_cluster_beyond_distance_cap=allow_nearest_cluster_beyond_distance_cap,
+    )
+    pfx: list[float] | None = None
+    if use_opening_prefix_for_mature_forecast and "error" not in lt_block:
+        mp = lt_block.get("monthly_projection") or []
+        if len(mp) >= 24:
+            pfx = [float(r["q50"]) for r in mp[:24]]
+    gt_block = _project_cohort_quantile(
+        "more_than",
+        lat,
+        lon,
+        method,
+        30,
+        True,
+        pfx,
+        allow_nearest_cluster_beyond_distance_cap=allow_nearest_cluster_beyond_distance_cap,
+    )
+    resp = {
+        "generated_at": datetime.utcnow().isoformat() + "Z",
+        "radius_km": 12.0,
+        "method": method,
+        "input": {"address": addr, "lat": lat, "lon": lon},
+        "nearest_cluster_max_distance_km": base.MAX_NEAREST_CLUSTER_DISTANCE_KM,
+        "allow_nearest_cluster_beyond_distance_cap": bool(allow_nearest_cluster_beyond_distance_cap),
+        "less_than_2yrs": lt_block,
+        "more_than_2yrs": gt_block,
+    }
+    _bridge_quantile_mature_to_opening_last_month(
+        resp,
+        skip_bridge_when_prefix=bool(
+            use_opening_prefix_for_mature_forecast and not bridge_opening_to_mature_when_prefix
+        ),
+    )
+    _enrich_brand_new_site_timeline_quantile(resp)
+    _append_calendar_year_washes_quantile(resp)
+    resp["use_opening_prefix_for_mature_forecast"] = bool(use_opening_prefix_for_mature_forecast)
+    resp["bridge_opening_to_mature_when_prefix"] = bool(bridge_opening_to_mature_when_prefix)
+    return resp
+
+
+def _plot_quantile_compare_panels(
+    resps: tuple[tuple[str, dict[str, Any]], ...],
+    out_path: Path | None,
+    loc_title: str,
+    method: str,
+    *,
+    return_figure: bool = False,
+) -> Figure | None:
+    labels = ["Year 1", "Year 2", "Year 3", "Year 4"]
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5.5), sharey=True)
+    cluster_line = base._nearest_cluster_caption(resps[0][1])
+    for ax, (subtitle, resp) in zip(axes, resps):
+        cy = resp.get("calendar_year_washes") or {}
+        ok = all(f"year_{i}" in cy for i in (1, 2, 3, 4))
+        if ok and all(isinstance(cy.get(f"year_{i}"), dict) for i in (1, 2, 3, 4)):
+            mids = [float(cy[f"year_{i}"]["q50"]) for i in (1, 2, 3, 4)]
+            lows = [float(cy[f"year_{i}"]["q10"]) for i in (1, 2, 3, 4)]
+            highs = [float(cy[f"year_{i}"]["q90"]) for i in (1, 2, 3, 4)]
+            yerr = np.array([np.array(mids) - np.array(lows), np.array(highs) - np.array(mids)])
+            ax.bar(labels, mids, color="#16a34a", alpha=0.85)
+            ax.errorbar(labels, mids, yerr=yerr, fmt="none", ecolor="black", elinewidth=1.5, capsize=4)
+            ax.set_title(subtitle, fontsize=10)
+            ax.grid(axis="y", alpha=0.3)
+            for i, v in enumerate(mids):
+                ax.text(i, v, f"{int(v):,}", ha="center", va="bottom", fontsize=8)
+        else:
+            ax.text(0.5, 0.5, "N/A", ha="center", transform=ax.transAxes)
+            ax.set_title(subtitle, fontsize=10)
+        ax.tick_params(axis="x", rotation=15)
+    axes[0].set_ylabel("Washes in calendar year (12-mo sum)")
+    fig.suptitle(
+        f"V2 Quantile compare (method={method})  |  {loc_title}\nNearest train centroids: {cluster_line}",
+        fontsize=10,
+        y=1.03,
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
+    if return_figure:
+        return fig
+    if out_path is None:
+        raise ValueError("out_path is required when return_figure is False")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return None
+
+
+def _plot(resp: dict[str, Any], out_path: Path | None, *, return_figure: bool = False) -> Figure | None:
+    fig, ax = plt.subplots(1, 1, figsize=(10, 5))
+    cy = resp.get("calendar_year_washes") or {}
+    if all(f"year_{i}" in cy for i in (1, 2, 3, 4)):
+        labels = ["Year 1", "Year 2", "Year 3", "Year 4"]
+        mids = [float(cy[f"year_{i}"]["q50"]) for i in (1, 2, 3, 4)]
+        lows = [float(cy[f"year_{i}"]["q10"]) for i in (1, 2, 3, 4)]
+        highs = [float(cy[f"year_{i}"]["q90"]) for i in (1, 2, 3, 4)]
+        yerr = np.array([np.array(mids) - np.array(lows), np.array(highs) - np.array(mids)])
+        ax.bar(labels, mids, color="#16a34a", alpha=0.85)
+        ax.errorbar(labels, mids, yerr=yerr, fmt="none", ecolor="black", elinewidth=1.5, capsize=4)
+        lt = resp.get("less_than_2yrs") or {}
+        gt = resp.get("more_than_2yrs") or {}
+        pfx = ""
+        if gt.get("used_lt2y_monthly_forecast_as_mature_forecast_context"):
+            pfx = " | >2y used <2y q50 as TS context"
+        ax.set_title(f"V2 quantile | calendar years 1–4{pfx}", fontsize=10)
+        ax.set_ylabel("Washes in calendar year (12-mo sum)")
         ax.grid(axis="y", alpha=0.3)
-        for bar, v in zip(bars, mids):
-            ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f"{int(v):,}", ha='center', va='bottom', fontsize=9)
+        for i, v in enumerate(mids):
+            ax.text(i, v, f"{int(v):,}", ha="center", va="bottom", fontsize=9)
+    else:
+        ax.text(0.5, 0.5, "Insufficient data for calendar-year plot", ha="center", transform=ax.transAxes)
 
     inp = resp["input"]
     if inp.get("address"):
         loc = inp["address"]
     else:
         loc = f"{inp['lat']:.4f}, {inp['lon']:.4f}"
-    fig.suptitle(f"Quantile projection for {loc} (method={resp['method']})")
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150, bbox_inches='tight')
+    fig.suptitle(
+        f"Quantile projection for {loc} (method={resp['method']})\nNearest train centroids: {base._nearest_cluster_caption(resp)}",
+        fontsize=10,
+        y=1.02,
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    if return_figure:
+        return fig
+    if out_path is None:
+        raise ValueError("out_path is required when return_figure is False")
+    fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
+    return None
 
 
 def main() -> None:
@@ -327,25 +508,105 @@ def main() -> None:
     ap.add_argument("--address", type=str, default=None)
     ap.add_argument("--lat", type=float, default=None)
     ap.add_argument("--lon", type=float, default=None)
-    ap.add_argument("--method", type=str, default="blend", choices=["holt_winters", "arima", "blend"])
+    ap.add_argument(
+        "--method",
+        type=str,
+        default="arima",
+        choices=["holt_winters", "arima", "blend"],
+        help="TS on cluster monthly track (default arima; see results/ts_arima_vs_holt_pick.json).",
+    )
     ap.add_argument("--out-name", type=str, default=None)
+    ap.add_argument(
+        "--no-opening-prefix",
+        action="store_true",
+        help="Do not append <2y q50 monthly series as context before >2y TS extrapolation.",
+    )
+    ap.add_argument(
+        "--legacy-prefix-no-bridge",
+        action="store_true",
+        help="With prefix: skip q50 month-24→25 scale on >2y track (old behavior).",
+    )
+    ap.add_argument(
+        "--allow-distant-nearest-cluster",
+        action="store_true",
+        help=(
+            "Always assign nearest train centroid even if >20 km. "
+            "Default: refuse when distance exceeds 20 km."
+        ),
+    )
+    ap.add_argument(
+        "--plot-two-way",
+        action="store_true",
+        help="Two panels: no <2y q50 prefix vs prefix + 24→25 bridge. Writes projection_quantile_*_two_way.png/json.",
+    )
+    ap.add_argument("--plot-three-way", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
 
     lat, lon, addr = base._resolve_latlon(args.address, args.lat, args.lon)
-
-    resp = {
-        "generated_at": datetime.utcnow().isoformat() + "Z",
-        "radius_km": 12.0,
-        "method": args.method,
-        "input": {"address": addr, "lat": lat, "lon": lon},
-        "more_than_2yrs": _project_cohort_quantile("more_than", lat, lon, args.method, 30, True),
-        "less_than_2yrs": _project_cohort_quantile("less_than", lat, lon, args.method, 30, False),
-    }
-    _bridge_quantile_mature_to_opening_last_month(resp)
-    _enrich_brand_new_site_timeline_quantile(resp)
-
     DEMO_OUT.mkdir(parents=True, exist_ok=True)
     tag = args.out_name or datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    cap_kw = {"allow_nearest_cluster_beyond_distance_cap": args.allow_distant_nearest_cluster}
+
+    plot_compare = args.plot_two_way or args.plot_three_way
+    if args.plot_three_way and not args.plot_two_way:
+        print(
+            "[quantile] --plot-three-way is deprecated (same as --plot-two-way).",
+            file=sys.stderr,
+        )
+    if plot_compare:
+        loc_title = addr or f"{lat:.4f},{lon:.4f}"
+        r_no = build_quantile_projection_response(
+            lat,
+            lon,
+            args.method,
+            addr,
+            use_opening_prefix_for_mature_forecast=False,
+            bridge_opening_to_mature_when_prefix=True,
+            **cap_kw,
+        )
+        r_prefix = build_quantile_projection_response(
+            lat,
+            lon,
+            args.method,
+            addr,
+            use_opening_prefix_for_mature_forecast=True,
+            bridge_opening_to_mature_when_prefix=True,
+            **cap_kw,
+        )
+        combined = {
+            "generated_at": datetime.utcnow().isoformat() + "Z",
+            "method": args.method,
+            "input": {"address": addr, "lat": lat, "lon": lon},
+            "compare": "no_prefix vs opening_prefix_with_month24_to_25_bridge",
+            "no_prefix": r_no,
+            "with_opening_prefix_and_bridge": r_prefix,
+        }
+        json_path = DEMO_OUT / f"projection_quantile_{args.method}_{tag}_two_way.json"
+        png_path = DEMO_OUT / f"projection_quantile_{args.method}_{tag}_two_way.png"
+        json_path.write_text(json.dumps(combined, indent=2, default=str))
+        _plot_quantile_compare_panels(
+            (
+                ("No <2y q50 TS prefix", r_no),
+                ("<2y q50 prefix + 24→25 bridge (default)", r_prefix),
+            ),
+            png_path,
+            loc_title,
+            args.method,
+        )
+        print(f"wrote {json_path.relative_to(REPO_ROOT)}")
+        print(f"wrote {png_path.relative_to(REPO_ROOT)}")
+        return
+
+    resp = build_quantile_projection_response(
+        lat,
+        lon,
+        args.method,
+        addr,
+        use_opening_prefix_for_mature_forecast=not args.no_opening_prefix,
+        bridge_opening_to_mature_when_prefix=not args.legacy_prefix_no_bridge,
+        **cap_kw,
+    )
+
     json_path = DEMO_OUT / f"projection_quantile_{args.method}_{tag}.json"
     png_path = DEMO_OUT / f"projection_quantile_{args.method}_{tag}.png"
     json_path.write_text(json.dumps(resp, indent=2, default=str))

@@ -29,6 +29,13 @@ class ClusterProjectionRequest(BaseModel):
         "blend",
         description="Projection method: 'holt_winters', 'arima', or 'blend'.",
     )
+    use_opening_forecast_prefix_for_mature: bool = Field(
+        True,
+        description=(
+            "If true, the >2y segment fits the time-series model on mature cluster history "
+            "followed by the <2y monthly forecast as context before extrapolating months 25–48."
+        ),
+    )
 
 
 class WeatherRequest(BaseModel):

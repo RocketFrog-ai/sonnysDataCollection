@@ -1,14 +1,4 @@
-"""
-Validate V2 vs V1 with a strict time-based backtest.
-
-For each cohort we compare three models on the SAME train/test split:
-  V1-baseline : wash-only features (no daily weather, no cluster context).
-  V1-plus     : V1-baseline + daily weather (for >2y only).
-  V2-final    : V1-plus + train-only cluster-context aggregates (what we ship).
-
-Reports MAE / RMSE / R2 / WAPE for each. WAPE is the headline metric
-for volume forecasting.
-"""
+"""Ridge backtest: >2y V1 / V1+daily / V2; <2y V1 vs V2 (wash-only ctx). Writes results/backtest_summary.json."""
 
 from __future__ import annotations
 
@@ -67,6 +57,13 @@ def backtest_more_than() -> dict[str, dict[str, float]]:
     train = df[df["calendar_day"] < pd.Timestamp("2025-07-01")].copy().dropna(subset=[TARGET])
     test = df[df["calendar_day"] >= pd.Timestamp("2025-07-01")].copy().dropna(subset=[TARGET])
 
+    st = (
+        train.dropna(subset=["latitude", "longitude"])
+        .drop_duplicates("site_client_id")[["site_client_id", "latitude", "longitude"]]
+    )
+    st = st.merge(bv._fit_dbscan(st, "cluster_id_train"), on="site_client_id", how="left")
+    train, test = bv.align_train_test_clusters_to_train_refit(train, test, st)
+
     ctx = bv._build_cluster_context(train, "dbscan_cluster_12km", bv.CONTEXT_BASE_FEATURES)
     train_ctx = train.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     test_ctx = test.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
@@ -89,10 +86,20 @@ def backtest_less_than() -> dict[str, dict[str, float]]:
     print("[<2y backtest] loading...")
     df = pd.read_csv(REPO_ROOT / "daily_data/daily-data-modelling/less_than-2yrs-clustering-ready.csv", low_memory=False)
     df["calendar_day"] = pd.to_datetime(df["calendar_day"], errors="coerce")
+    # period_index encoding: year1 -> 1-12, year2 -> 25-36 (month_number 13-24); see APPROACH.md.
     train = df[df["period_index"] <= 12].copy().dropna(subset=[TARGET])
     test = df[df["period_index"] >= 25].copy().dropna(subset=[TARGET])
 
-    ctx = bv._build_cluster_context(train, "dbscan_cluster_12km", bv.CONTEXT_BASE_FEATURES_MONTHLY)
+    st = (
+        train.dropna(subset=["latitude", "longitude"])
+        .drop_duplicates("site_client_id")[["site_client_id", "latitude", "longitude"]]
+    )
+    st = st.merge(bv._fit_dbscan(st, "cluster_id_train"), on="site_client_id", how="left")
+    train, test = bv.align_train_test_clusters_to_train_refit(train, test, st)
+
+    ctx = bv._build_cluster_context(
+        train, "dbscan_cluster_12km", bv.CONTEXT_BASE_FEATURES_MONTHLY, include_target_aggs=True
+    )
     train_ctx = train.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     test_ctx = test.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     ctx_cols = [c for c in train_ctx.columns if c.startswith("ctx_")]
@@ -110,7 +117,10 @@ def backtest_less_than() -> dict[str, dict[str, float]]:
 def main() -> None:
     out = {
         "split_more_than_2yrs": "train<2025-07-01, test>=2025-07-01",
-        "split_less_than_2yrs": "train period_index<=12, test period_index>=25",
+        "split_less_than_2yrs": (
+            "train period_index<=12 (year_number=1, month_number 1-12); "
+            "test period_index>=25 (year_number=2, month_number 13-24); see APPROACH.md"
+        ),
         "more_than_2yrs": backtest_more_than(),
         "less_than_2yrs": backtest_less_than(),
     }
