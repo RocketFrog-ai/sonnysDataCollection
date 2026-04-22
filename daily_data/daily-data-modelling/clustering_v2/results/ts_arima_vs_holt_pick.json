@@ -1,0 +1,18 @@
+{
+  "less_than_2yrs": {
+    "n_one_step_forecasts": 462,
+    "mae_holt_winters": 2683.7665148369315,
+    "mae_arima": 2266.3676908323923,
+    "wape_holt_winters": 0.2115677012912577,
+    "wape_arima": 0.17866315865384416
+  },
+  "more_than_2yrs": {
+    "n_one_step_forecasts": 1020,
+    "mae_holt_winters": 1830.2526825818459,
+    "mae_arima": 1696.1771302519242,
+    "wape_holt_winters": 0.19642098700213512,
+    "wape_arima": 0.18203212552299233
+  },
+  "recommendation": "arima",
+  "rule": "Pick method with lower (mae_lt + mae_mt) on one-step cluster-median monthly tracks."
+}

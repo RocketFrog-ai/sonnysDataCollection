@@ -1,3 +1,5 @@
+"""Quantile GBMs (q10/q50/q90) mirroring build_v2 cohorts. See APPROACH.md."""
+
 from __future__ import annotations
 
 import json
@@ -94,13 +96,18 @@ def _prepare_more_than() -> tuple[pd.DataFrame, pd.DataFrame, list[str], str]:
     train = df[df["calendar_day"] < pd.Timestamp("2025-07-01")].copy().dropna(subset=[TARGET])
     test = df[df["calendar_day"] >= pd.Timestamp("2025-07-01")].copy().dropna(subset=[TARGET])
 
-    # Train-only cluster context (strict no-leakage)
+    st = (
+        train.dropna(subset=["latitude", "longitude"])
+        .drop_duplicates("site_client_id")[["site_client_id", "latitude", "longitude"]]
+    )
+    st = st.merge(bv._fit_dbscan(st, "cluster_id_train"), on="site_client_id", how="left")
+    train, test = bv.align_train_test_clusters_to_train_refit(train, test, st)
+
     ctx = bv._build_cluster_context(train, "dbscan_cluster_12km", bv.CONTEXT_BASE_FEATURES)
     train_ctx = train.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     test_ctx = test.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     ctx_cols = [c for c in train_ctx.columns if c.startswith("ctx_")]
 
-    # V2-final feature set for >2y: baseline + daily weather + train-only ctx
     feature_candidates = (
         bv.SITE_FEATURES_STATIC
         + bv.ANNUAL_WEATHER_FEATURES
@@ -120,14 +127,39 @@ def _prepare_less_than() -> tuple[pd.DataFrame, pd.DataFrame, list[str], str]:
     )
     df["calendar_day"] = pd.to_datetime(df["calendar_day"], errors="coerce")
 
-    split_desc = "train period_index<=12, test period_index>=25"
+    split_desc = (
+        "train period_index<=12 (year1); test period_index>=25 (year2); "
+        "period_index skips 13-24 by construction — see APPROACH.md"
+    )
     train = df[df["period_index"] <= 12].copy().dropna(subset=[TARGET])
     test = df[df["period_index"] >= 25].copy().dropna(subset=[TARGET])
 
-    # Best baseline for <2y (no cluster context), aligned with build_v2 final.
-    feature_candidates = bv.SITE_FEATURES_MONTHLY + bv.TIME_LAG_FEATURES_MONTHLY + ["dbscan_cluster_12km"]
-    feature_cols = _feature_filter(train, feature_candidates)
-    return train, test, feature_cols, split_desc
+    st = (
+        train.dropna(subset=["latitude", "longitude"])
+        .drop_duplicates("site_client_id")[["site_client_id", "latitude", "longitude"]]
+    )
+    st = st.merge(bv._fit_dbscan(st, "cluster_id_train"), on="site_client_id", how="left")
+    train, test = bv.align_train_test_clusters_to_train_refit(train, test, st)
+
+    ctx = bv._build_cluster_context(
+        train,
+        "dbscan_cluster_12km",
+        [],
+        include_target_aggs=True,
+    )
+    train_ctx = train.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
+    test_ctx = test.merge(ctx, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
+    ctx_cols = [c for c in train_ctx.columns if c.startswith("ctx_")]
+
+    feature_candidates = (
+        bv.SITE_FEATURES_MONTHLY
+        + bv.TIME_LAG_FEATURES_MONTHLY
+        + ["dbscan_cluster_12km"]
+        + ctx_cols
+    )
+    feature_cols = _feature_filter(train_ctx, feature_candidates)
+    bv.assert_less_than_no_weather_columns(feature_cols)
+    return train_ctx, test_ctx, feature_cols, split_desc
 
 
 def _train_quantile_pipelines(
@@ -239,7 +271,6 @@ def _run_cohort(
     out_dir = OUT_MODELS_DIR / cohort_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # Persist feature order used by all models in this cohort.
     _save_json(out_dir / "feature_order.json", feature_cols)
 
     q_preds = _train_quantile_pipelines(train_df, test_df, feature_cols, out_dir)

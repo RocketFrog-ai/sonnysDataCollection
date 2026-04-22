@@ -1,0 +1,138 @@
+{
+  "generated_at": "2026-04-21T10:38:36.121715+00:00",
+  "evaluation": "V2 holdout \u2014 Ridge + RandomForest level models (monthly figures)",
+  "more_than_2yrs": {
+    "ridge": {
+      "cohort": "more_than_2yrs",
+      "level_model": "ridge",
+      "grain": "monthly_aggregate_from_daily_predictions",
+      "definition": "Each row = one site \u00d7 one calendar month in test window; actual = sum(daily washes); pred = sum(daily level-model preds).",
+      "split": "train calendar_day < 2025-07-01; test calendar_day >= 2025-07-01",
+      "peer_band_definition": "Train-only, per cluster: min and max of peer **monthly** wash totals (each total = sum of TARGET over calendar month for one site). Compared to eval rows at the same monthly grain.",
+      "n_site_months": 2888,
+      "mae_total_washes_per_month": 3003.73,
+      "rmse_total_washes_per_month": 4273.03,
+      "r2": 0.6792,
+      "wape": 0.3287,
+      "pred_inside_cluster_train_min_max_pct": 88.23,
+      "actual_inside_cluster_train_min_max_pct": 94.97,
+      "pct_error_vs_actual_month_total": {
+        "n": 2888,
+        "pct_error_within_10pct": 18.04,
+        "pct_error_within_15pct": 27.74,
+        "pct_error_within_20pct": 35.8,
+        "pct_error_within_30pct": 51.0,
+        "median_abs_pct_error": 29.28,
+        "mean_abs_pct_error": 207.79
+      },
+      "pct_error_subset_heavy_months_actual_ge_3000": {
+        "n": 2405,
+        "note": "actual_month_total >= 3000",
+        "pct_error_within_10pct": 20.83,
+        "pct_error_within_15pct": 32.1,
+        "pct_error_within_20pct": 41.08,
+        "pct_error_within_30pct": 58.3,
+        "median_abs_pct_error": 24.6
+      }
+    },
+    "random_forest": {
+      "cohort": "more_than_2yrs",
+      "level_model": "random_forest",
+      "grain": "monthly_aggregate_from_daily_predictions",
+      "definition": "Each row = one site \u00d7 one calendar month in test window; actual = sum(daily washes); pred = sum(daily level-model preds).",
+      "split": "train calendar_day < 2025-07-01; test calendar_day >= 2025-07-01",
+      "peer_band_definition": "Train-only, per cluster: min and max of peer **monthly** wash totals (each total = sum of TARGET over calendar month for one site). Compared to eval rows at the same monthly grain.",
+      "n_site_months": 2888,
+      "mae_total_washes_per_month": 1293.09,
+      "rmse_total_washes_per_month": 2567.92,
+      "r2": 0.8841,
+      "wape": 0.1415,
+      "pred_inside_cluster_train_min_max_pct": 99.52,
+      "actual_inside_cluster_train_min_max_pct": 94.97,
+      "pct_error_vs_actual_month_total": {
+        "n": 2888,
+        "pct_error_within_10pct": 45.84,
+        "pct_error_within_15pct": 61.91,
+        "pct_error_within_20pct": 71.99,
+        "pct_error_within_30pct": 84.14,
+        "median_abs_pct_error": 11.14,
+        "mean_abs_pct_error": 84.5
+      },
+      "pct_error_subset_heavy_months_actual_ge_3000": {
+        "n": 2405,
+        "note": "actual_month_total >= 3000",
+        "pct_error_within_10pct": 50.4,
+        "pct_error_within_15pct": 68.07,
+        "pct_error_within_20pct": 78.21,
+        "pct_error_within_30pct": 89.9,
+        "median_abs_pct_error": 9.87
+      }
+    }
+  },
+  "less_than_2yrs": {
+    "ridge": {
+      "cohort": "less_than_2yrs",
+      "level_model": "ridge",
+      "grain": "monthly_panel_one_row_per_site_month",
+      "definition": "Each test row is already monthly wash_count_total; model predicts that value.",
+      "split": "train period_index<=12; test period_index>=25 (see APPROACH.md)",
+      "n_test_rows": 4689,
+      "mae_washes_per_month": 1356.62,
+      "rmse_washes_per_month": 2834.57,
+      "r2": 0.7776,
+      "wape": 0.1396,
+      "pred_inside_cluster_train_min_max_pct": 97.82,
+      "actual_inside_cluster_train_min_max_pct": 96.95,
+      "pct_error_vs_actual_month_total": {
+        "n": 4689,
+        "pct_error_within_10pct": 49.61,
+        "pct_error_within_15pct": 64.28,
+        "pct_error_within_20pct": 73.94,
+        "pct_error_within_30pct": 86.16,
+        "median_abs_pct_error": 10.19,
+        "mean_abs_pct_error": 18.85
+      },
+      "pct_error_subset_actual_ge_2000": {
+        "n": 4603,
+        "note": "actual_month_total >= 2000",
+        "pct_error_within_10pct": 50.4,
+        "pct_error_within_15pct": 65.28,
+        "pct_error_within_20pct": 75.12,
+        "pct_error_within_30pct": 87.49,
+        "median_abs_pct_error": 9.87
+      }
+    },
+    "random_forest": {
+      "cohort": "less_than_2yrs",
+      "level_model": "random_forest",
+      "grain": "monthly_panel_one_row_per_site_month",
+      "definition": "Each test row is already monthly wash_count_total; model predicts that value.",
+      "split": "train period_index<=12; test period_index>=25 (see APPROACH.md)",
+      "n_test_rows": 4689,
+      "mae_washes_per_month": 1333.49,
+      "rmse_washes_per_month": 2864.99,
+      "r2": 0.7728,
+      "wape": 0.1372,
+      "pred_inside_cluster_train_min_max_pct": 98.59,
+      "actual_inside_cluster_train_min_max_pct": 96.95,
+      "pct_error_vs_actual_month_total": {
+        "n": 4689,
+        "pct_error_within_10pct": 52.12,
+        "pct_error_within_15pct": 67.8,
+        "pct_error_within_20pct": 77.91,
+        "pct_error_within_30pct": 88.87,
+        "median_abs_pct_error": 9.4,
+        "mean_abs_pct_error": 17.11
+      },
+      "pct_error_subset_actual_ge_2000": {
+        "n": 4603,
+        "note": "actual_month_total >= 2000",
+        "pct_error_within_10pct": 52.75,
+        "pct_error_within_15pct": 68.5,
+        "pct_error_within_20pct": 78.69,
+        "pct_error_within_30pct": 89.55,
+        "median_abs_pct_error": 9.21
+      }
+    }
+  }
+}

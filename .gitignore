@@ -75,3 +75,6 @@ dmypy.json
 modelling2/.finale_geocode_cache.json
 # Geocode cache for data_age_less_2 daily weather script
 app/modelling/ds/datasets/.data_age_less_2_geocode_cache.json
+
+# clustering_v2 RandomForest level heads (GitHub file limit 100 MB; >2y RF is ~450 MB)
+daily_data/daily-data-modelling/clustering_v2/models/**/wash_count_model_12km.rf.joblib

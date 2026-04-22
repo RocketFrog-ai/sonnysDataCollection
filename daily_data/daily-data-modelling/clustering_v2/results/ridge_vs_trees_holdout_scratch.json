@@ -1,0 +1,79 @@
+{
+  "generated_at": "2026-04-21T09:29:00.134194+00:00",
+  "note": "Same splits/features as eval_accuracy_report.py; final step only swapped.",
+  "xgboost_included": true,
+  "results": [
+    {
+      "estimator": "ridge",
+      "cohort": "more_than_2yrs",
+      "grain": "monthly_aggregate_from_daily_predictions",
+      "n_site_months": 2888,
+      "metrics": {
+        "mae": 3003.7292,
+        "rmse": 4273.0299,
+        "r2": 0.6792,
+        "wape": 0.3287
+      }
+    },
+    {
+      "estimator": "ridge",
+      "cohort": "less_than_2yrs",
+      "grain": "monthly_panel_one_row_per_site_month",
+      "n_test_rows": 4689,
+      "metrics": {
+        "mae": 1356.6178,
+        "rmse": 2834.5704,
+        "r2": 0.7776,
+        "wape": 0.1396
+      }
+    },
+    {
+      "estimator": "random_forest",
+      "cohort": "more_than_2yrs",
+      "grain": "monthly_aggregate_from_daily_predictions",
+      "n_site_months": 2888,
+      "metrics": {
+        "mae": 1293.0862,
+        "rmse": 2567.9183,
+        "r2": 0.8841,
+        "wape": 0.1415
+      }
+    },
+    {
+      "estimator": "random_forest",
+      "cohort": "less_than_2yrs",
+      "grain": "monthly_panel_one_row_per_site_month",
+      "n_test_rows": 4689,
+      "metrics": {
+        "mae": 1333.4874,
+        "rmse": 2864.9859,
+        "r2": 0.7728,
+        "wape": 0.1372
+      }
+    },
+    {
+      "estimator": "xgboost",
+      "cohort": "more_than_2yrs",
+      "grain": "monthly_aggregate_from_daily_predictions",
+      "n_site_months": 2888,
+      "metrics": {
+        "mae": 1321.4433,
+        "rmse": 2762.1539,
+        "r2": 0.8659,
+        "wape": 0.1446
+      }
+    },
+    {
+      "estimator": "xgboost",
+      "cohort": "less_than_2yrs",
+      "grain": "monthly_panel_one_row_per_site_month",
+      "n_test_rows": 4689,
+      "metrics": {
+        "mae": 1396.3174,
+        "rmse": 2921.8007,
+        "r2": 0.7637,
+        "wape": 0.1437
+      }
+    }
+  ]
+}

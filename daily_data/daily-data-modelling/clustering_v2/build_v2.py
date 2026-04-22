@@ -1,37 +1,4 @@
-"""
-Build the V2 clustering + Ridge pipeline for BOTH cohorts.
-
-For each cohort (more_than_2yrs = daily, less_than_2yrs = monthly) we produce:
-  - cluster_centroids_12km.json   (train-only DBSCAN centroids for serving)
-  - cluster_context_12km.json     (train-only per-cluster feature aggregates,
-                                   this is the "localisation" signal that gives
-                                   Ridge information about OTHER sites in the
-                                   cluster, which V1 was missing)
-  - cluster_monthly_series_12km.json (train-only monthly median wash-count
-                                   series per cluster, used as the source
-                                   for the 24-month projection)
-  - wash_count_model_12km.portable.json (portable Ridge: imputer means,
-                                   scaler mean/scale, coefs, intercept,
-                                   feature_order)
-  - feature_spec_12km.json        (what the serving layer must feed)
-  - training_metrics_12km.json    (train vs hold-out metrics for that cohort)
-
-Splits:
-  - >2y (daily):      train = calendar_day <= 2025-06-30, test = rest of 2025
-  - <2y (monthly):    train = period_index <= 12 (site-year 1)
-                      test  = period_index >= 25 (site-year 2)
-
-V2 improvements vs V1:
-  1. Adds daily_weather_* features for the >2y cohort (V1 used only
-     annual aggregates).
-  2. Adds a `ctx_*` block of train-only cluster-aggregate features
-     (median/mean/std of wash_count + medians of key site features),
-     giving Ridge access to the local-market structure of the cluster.
-  3. Hardens feature selection: drops columns with no observed values
-     in the train split (the UserWarning fix).
-  4. Persists centroids, monthly series and context as portable JSON so
-     the serving layer no longer has to re-read full CSVs or joblib-pickle.
-"""
+"""V2 level models: Ridge (portable JSON) + RandomForest (joblib), >2y daily, <2y monthly. Writes models/<cohort>/. See APPROACH.md."""
 
 from __future__ import annotations
 
@@ -40,9 +7,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.cluster import DBSCAN
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_error, r2_score
@@ -55,14 +24,13 @@ V2_DIR = Path(__file__).resolve().parent
 MODELS_DIR = V2_DIR / "models"
 
 TARGET = "wash_count_total"
+COHORT_MORE_THAN = "more_than_2yrs"
+COHORT_LESS_THAN = "less_than_2yrs"
+
 RADIUS_KM = 12.0
 DBSCAN_EPS_RAD = RADIUS_KM / 6371.0088
 DBSCAN_MIN = 2
 
-
-# ---------------------------------------------------------------------------
-# Shared helpers
-# ---------------------------------------------------------------------------
 
 def _wape(y_true: np.ndarray, y_pred: np.ndarray) -> float:
     denom = float(np.abs(y_true).sum())
@@ -76,7 +44,6 @@ def _rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 
 
 def _fit_dbscan(site_df: pd.DataFrame, cluster_label: str) -> pd.DataFrame:
-    """Fit DBSCAN on site-level lat/lon and return site -> cluster mapping."""
     sites = (
         site_df[["site_client_id", "latitude", "longitude"]]
         .dropna(subset=["latitude", "longitude"])
@@ -93,8 +60,38 @@ def _fit_dbscan(site_df: pd.DataFrame, cluster_label: str) -> pd.DataFrame:
     return sites[["site_client_id", cluster_label]]
 
 
+def align_train_test_clusters_to_train_refit(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    site_train_labeled: pd.DataFrame,
+    label_col: str = "cluster_id_train",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Use train-only refit DBSCAN labels on all rows; fall back to CSV cluster if site not in refit map."""
+    m = site_train_labeled[["site_client_id", label_col]].rename(columns={label_col: "_refit_cl"})
+    train = train.copy()
+    test = test.copy()
+    train["_dc_csv"] = pd.to_numeric(train["dbscan_cluster_12km"], errors="coerce")
+    train = train.merge(m, on="site_client_id", how="left")
+    train["dbscan_cluster_12km"] = (
+        pd.to_numeric(train["_refit_cl"], errors="coerce")
+        .combine_first(train["_dc_csv"])
+        .fillna(-1)
+        .astype(int)
+    )
+    train = train.drop(columns=["_refit_cl", "_dc_csv"])
+    test["_dc_csv"] = pd.to_numeric(test["dbscan_cluster_12km"], errors="coerce")
+    test = test.merge(m, on="site_client_id", how="left")
+    test["dbscan_cluster_12km"] = (
+        pd.to_numeric(test["_refit_cl"], errors="coerce")
+        .combine_first(test["_dc_csv"])
+        .fillna(-1)
+        .astype(int)
+    )
+    test = test.drop(columns=["_refit_cl", "_dc_csv"])
+    return train, test
+
+
 def _cluster_centroids(site_clusters: pd.DataFrame, cluster_label: str) -> dict[str, Any]:
-    """Return serving-time centroids for every non-noise cluster."""
     centroids: list[dict[str, Any]] = []
     for cid, grp in site_clusters.groupby(cluster_label):
         if int(cid) == -1:
@@ -115,21 +112,15 @@ def _build_cluster_context(
     context_cols: list[str],
     include_target_aggs: bool = True,
 ) -> pd.DataFrame:
-    """Per-cluster train-only aggregates (the 'localisation' features).
-
-    If `context_cols` is empty and `include_target_aggs` is False, we
-    only return the cluster id column (useful when a cohort does not
-    benefit from cluster-context features).
-    """
     usable = [c for c in context_cols if c in train.columns]
     agg_spec: dict[str, Any] = {c: "median" for c in usable}
     if include_target_aggs:
-        agg_spec[TARGET] = ["median", "mean", "std"]
+        agg_spec[TARGET] = ["median", "mean", "std", "min", "max"]
     if not agg_spec:
         return train[[cluster_col]].drop_duplicates().rename(columns={cluster_col: "cluster_id"}).reset_index(drop=True)
     grp = train.groupby(cluster_col).agg(agg_spec)
     grp.columns = [
-        "ctx_" + ("_".join(col) if isinstance(col, tuple) else col)
+        "ctx_" + ("_".join(str(x) for x in col) if isinstance(col, tuple) else str(col))
         for col in grp.columns
     ]
     grp = grp.reset_index().rename(columns={cluster_col: "cluster_id"})
@@ -137,11 +128,6 @@ def _build_cluster_context(
 
 
 def _cluster_monthly_series(train: pd.DataFrame, cluster_col: str, date_col: str, freq: str) -> dict[int, list[dict[str, Any]]]:
-    """Monthly median wash-count series per cluster, from train only.
-
-    For >2y the underlying data is daily so we resample. For <2y the
-    `calendar_day` is already a monthly pseudo-date.
-    """
     df = train[["site_client_id", cluster_col, date_col, TARGET]].copy()
     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
     df = df.dropna(subset=[date_col])
@@ -150,7 +136,7 @@ def _cluster_monthly_series(train: pd.DataFrame, cluster_col: str, date_col: str
     for cid, grp in df.groupby(cluster_col):
         per_site_month = (
             grp.groupby(["site_client_id", pd.Grouper(key=date_col, freq=freq)])[TARGET]
-            .sum()  # wash-count per site-month
+            .sum()
             .reset_index()
         )
         monthly = (
@@ -166,12 +152,50 @@ def _cluster_monthly_series(train: pd.DataFrame, cluster_col: str, date_col: str
     return out
 
 
+def _cluster_local_feature_medians(
+    train: pd.DataFrame,
+    cluster_col: str,
+    feature_cols: list[str],
+) -> dict[int, dict[str, float]]:
+    skip = {cluster_col, TARGET, "latitude", "longitude"}
+    cols = [
+        c
+        for c in feature_cols
+        if c not in skip and not str(c).startswith("ctx_") and c in train.columns
+    ]
+    if not cols:
+        return {}
+    out: dict[int, dict[str, float]] = {}
+    for cid, grp in train.groupby(cluster_col, sort=False):
+        try:
+            cid_int = int(cid)
+        except (TypeError, ValueError):
+            continue
+        med = grp[cols].median(numeric_only=True)
+        d = {str(k): float(v) for k, v in med.items() if pd.notna(v) and np.isfinite(float(v))}
+        if d:
+            out[cid_int] = d
+    return out
+
+
+def _context_records_with_local_medians(
+    context_df: pd.DataFrame,
+    local_by_cluster: dict[int, dict[str, float]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for rec in context_df.to_dict(orient="records"):
+        r = dict(rec)
+        cid = int(r["cluster_id"])
+        r["local_feature_medians"] = dict(local_by_cluster.get(cid, {}))
+        rows.append(r)
+    return rows
+
+
 def _train_ridge_portable(
     train: pd.DataFrame,
     test: pd.DataFrame,
     feature_cols: list[str],
 ) -> tuple[dict[str, Any], dict[str, float]]:
-    """Train the Ridge pipeline and return (portable_dict, metrics)."""
     X_tr, y_tr = train[feature_cols].to_numpy(dtype=float), train[TARGET].to_numpy(dtype=float)
     X_te, y_te = test[feature_cols].to_numpy(dtype=float), test[TARGET].to_numpy(dtype=float)
 
@@ -214,31 +238,67 @@ def _train_ridge_portable(
     return portable, metrics
 
 
+def _rf_estimator() -> RandomForestRegressor:
+    return RandomForestRegressor(
+        n_estimators=300,
+        max_depth=16,
+        min_samples_leaf=4,
+        random_state=0,
+        n_jobs=-1,
+    )
+
+
+def _train_rf_joblib(
+    train: pd.DataFrame,
+    test: pd.DataFrame,
+    feature_cols: list[str],
+) -> tuple[dict[str, Any], dict[str, float]]:
+    """Same preprocessing as Ridge; tree model saved for sklearn inference in project_site."""
+    X_tr, y_tr = train[feature_cols].to_numpy(dtype=float), train[TARGET].to_numpy(dtype=float)
+    X_te, y_te = test[feature_cols].to_numpy(dtype=float), test[TARGET].to_numpy(dtype=float)
+    pipe = Pipeline(
+        [
+            ("imp", SimpleImputer(strategy="median")),
+            ("sc", StandardScaler()),
+            ("m", _rf_estimator()),
+        ]
+    )
+    pipe.fit(X_tr, y_tr)
+    tr_pred = pipe.predict(X_tr)
+    te_pred = pipe.predict(X_te)
+    bundle = {"pipeline": pipe, "feature_order": list(feature_cols)}
+    metrics = {
+        "n_train": int(len(y_tr)),
+        "n_test": int(len(y_te)),
+        "train_mae": float(mean_absolute_error(y_tr, tr_pred)),
+        "test_mae": float(mean_absolute_error(y_te, te_pred)),
+        "train_rmse": _rmse(y_tr, tr_pred),
+        "test_rmse": _rmse(y_te, te_pred),
+        "train_r2": float(r2_score(y_tr, tr_pred)),
+        "test_r2": float(r2_score(y_te, te_pred)),
+        "train_wape": _wape(y_tr, tr_pred),
+        "test_wape": _wape(y_te, te_pred),
+    }
+    return bundle, metrics
+
+
 def _save_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(obj, indent=2, default=str))
 
 
-# ---------------------------------------------------------------------------
-# >2y (daily) cohort
-# ---------------------------------------------------------------------------
-
-# Site/competition/retail/gas fields (stable per site).
 SITE_FEATURES_STATIC = [
     "latitude", "longitude", "region_enc", "state_enc",
     "tunnel_count", "age", "carwash_type_encoded",
     "costco_enc",
     "current_site_count", "previous_site_count",
-    # gas
     "nearest_gas_station_distance_miles",
     "nearest_gas_station_rating",
     "nearest_gas_station_rating_count",
-    # competitors
     "competitors_count_4miles",
     "competitor_1_google_rating",
     "competitor_1_distance_miles",
     "competitor_1_rating_count",
-    # retail
     "distance_nearest_costco(5 mile)",
     "distance_nearest_walmart(5 mile)",
     "distance_nearest_target (5 mile)",
@@ -246,7 +306,6 @@ SITE_FEATURES_STATIC = [
     "count_food_joints_0_5miles (0.5 mile)",
 ]
 
-# Annual climate (one value per site).
 ANNUAL_WEATHER_FEATURES = [
     "weather_total_precipitation_mm",
     "weather_rainy_days",
@@ -258,7 +317,6 @@ ANNUAL_WEATHER_FEATURES = [
     "weather_days_pleasant_temp",
 ]
 
-# Daily weather (varies with date).
 DAILY_WEATHER_FEATURES = [
     "daily_weather_temperature_2m_mean",
     "daily_weather_temperature_2m_max",
@@ -272,13 +330,21 @@ DAILY_WEATHER_FEATURES = [
     "daily_weather_sunshine_duration",
 ]
 
-# Time + lag features.
+
+def assert_less_than_no_weather_columns(feature_cols: list[str]) -> None:
+    bad = set(feature_cols) & (set(DAILY_WEATHER_FEATURES) | set(ANNUAL_WEATHER_FEATURES))
+    if bad:
+        raise RuntimeError(
+            "<2y build: weather columns in feature list (reserved for daily >2y cohort): "
+            + str(sorted(bad))
+        )
+
+
 TIME_LAG_FEATURES_DAILY = [
     "day_number", "month_number", "year_number", "day_of_week_feature",
     "prev_wash_count", "last_week_same_day", "running_avg_7_days",
 ]
 
-# Columns we'll aggregate per cluster (median) as part of ctx_*.
 CONTEXT_BASE_FEATURES = [
     "nearest_gas_station_distance_miles",
     "nearest_gas_station_rating",
@@ -299,15 +365,11 @@ CONTEXT_BASE_FEATURES = [
 
 
 def build_more_than() -> dict[str, Any]:
-    """Build V2 artifacts for the >2y cohort (daily panel)."""
     print("[>2y] loading raw frames...")
     master = pd.read_csv(
         REPO_ROOT / "daily_data/daily-data-modelling/master_more_than-2yrs.csv",
         low_memory=False,
     )
-    # `more_than-2yrs.csv` already has DBSCAN clusters, lag features and
-    # annual weather - we keep its cluster assignment to stay consistent
-    # with the V1 model and only RE-fit centroids from the train slice.
     more = pd.read_csv(
         REPO_ROOT / "daily_data/daily-data-modelling/more_than-2yrs.csv",
         low_memory=False,
@@ -316,7 +378,6 @@ def build_more_than() -> dict[str, Any]:
     master["calendar_day"] = pd.to_datetime(master["calendar_day"], errors="coerce")
     more["calendar_day"] = pd.to_datetime(more["calendar_day"], errors="coerce")
 
-    # Columns to import from `more` to enrich `master`.
     extra_from_more = [
         c for c in (
             ["dbscan_cluster_12km"]
@@ -333,45 +394,39 @@ def build_more_than() -> dict[str, Any]:
         how="left",
     )
 
-    # Ensure cluster column exists even if merge failed for some row.
     if "dbscan_cluster_12km" not in df.columns:
         raise RuntimeError(">2y: dbscan_cluster_12km missing after merge")
 
     print(f"[>2y] merged rows={len(df):,} sites={df['site_client_id'].nunique():,}")
 
-    # --- train/test split -------------------------------------------------
     split_date = pd.Timestamp("2025-07-01")
     train = df[df["calendar_day"] < split_date].copy()
     test = df[df["calendar_day"] >= split_date].copy()
     print(f"[>2y] train={len(train):,}  test={len(test):,}  split={split_date.date()}")
 
-    # --- train-only DBSCAN centroids -------------------------------------
     site_train = (
         train.dropna(subset=["latitude", "longitude"])
         .drop_duplicates("site_client_id")[["site_client_id", "latitude", "longitude"]]
     )
     site_clusters = _fit_dbscan(site_train, "cluster_id_train")
     site_train = site_train.merge(site_clusters, on="site_client_id", how="left")
+    train, test = align_train_test_clusters_to_train_refit(train, test, site_train)
     centroids = _cluster_centroids(
         site_train.rename(columns={"cluster_id_train": "dbscan_cluster_12km"}),
         "dbscan_cluster_12km",
     )
     print(f"[>2y] train centroids: {len(centroids['centroids'])} clusters")
 
-    # --- train-only cluster context aggregates ---------------------------
     context_df = _build_cluster_context(
         train, "dbscan_cluster_12km", CONTEXT_BASE_FEATURES
     )
-    # merge back into train & test (leakage-free: ctx computed from train only)
     train = train.merge(context_df, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     test = test.merge(context_df, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
 
-    # --- train-only cluster monthly series (for projection) --------------
     monthly_series = _cluster_monthly_series(
         train, "dbscan_cluster_12km", "calendar_day", freq="MS"
     )
 
-    # --- final feature set ------------------------------------------------
     feature_candidates = (
         SITE_FEATURES_STATIC
         + ANNUAL_WEATHER_FEATURES
@@ -386,20 +441,27 @@ def build_more_than() -> dict[str, Any]:
     ]
     print(f"[>2y] using {len(feature_cols)} features (dropped {len(feature_candidates)-len(feature_cols)} all-null columns)")
 
-    # target must be present and finite
     train = train.dropna(subset=[TARGET])
     test = test.dropna(subset=[TARGET])
 
     portable, metrics = _train_ridge_portable(train, test, feature_cols)
     print(f"[>2y] metrics: {metrics}")
 
+    rf_bundle, rf_metrics = _train_rf_joblib(train, test, feature_cols)
+    print(f"[>2y] RF metrics: {rf_metrics}")
+
+    local_med = _cluster_local_feature_medians(train, "dbscan_cluster_12km", feature_cols)
+    context_records = _context_records_with_local_medians(context_df, local_med)
+
     out_dir = MODELS_DIR / "more_than"
     _save_json(out_dir / "wash_count_model_12km.portable.json", portable)
+    joblib.dump(rf_bundle, out_dir / "wash_count_model_12km.rf.joblib")
+    _save_json(out_dir / "training_metrics_rf_12km.json", rf_metrics)
     _save_json(out_dir / "cluster_centroids_12km.json", centroids)
     _save_json(out_dir / "cluster_context_12km.json", {
         "cluster_label": "dbscan_cluster_12km",
         "feature_cols": [c for c in context_df.columns if c != "cluster_id"],
-        "records": context_df.to_dict(orient="records"),
+        "records": context_records,
     })
     _save_json(out_dir / "cluster_monthly_series_12km.json", {
         "frequency": "MS",
@@ -415,12 +477,14 @@ def build_more_than() -> dict[str, Any]:
         "cluster_col": "dbscan_cluster_12km",
     })
     _save_json(out_dir / "training_metrics_12km.json", metrics)
-    return {"cohort": "more_than_2yrs", "metrics": metrics, "features": len(feature_cols), "clusters": len(centroids["centroids"])}
+    return {
+        "cohort": COHORT_MORE_THAN,
+        "metrics": metrics,
+        "metrics_rf": rf_metrics,
+        "features": len(feature_cols),
+        "clusters": len(centroids["centroids"]),
+    }
 
-
-# ---------------------------------------------------------------------------
-# <2y (monthly) cohort
-# ---------------------------------------------------------------------------
 
 SITE_FEATURES_MONTHLY = [
     "latitude", "longitude", "region_enc", "state_enc",
@@ -429,15 +493,10 @@ TIME_LAG_FEATURES_MONTHLY = [
     "period_index", "month_number", "year_number", "day_of_week_feature",
     "prev_wash_count", "last_week_same_day", "running_avg_7_days",
 ]
-# <2y has a thin static-feature schema, so the only reliable
-# cluster-context signal is the wash-count itself. We intentionally do
-# NOT aggregate lat/lon here (they're already per-row features and would
-# just add collinearity to Ridge).
 CONTEXT_BASE_FEATURES_MONTHLY: list[str] = []
 
 
 def build_less_than() -> dict[str, Any]:
-    """Build V2 artifacts for the <2y cohort (monthly panel)."""
     print("[<2y] loading clustering-ready frame...")
     df = pd.read_csv(
         REPO_ROOT / "daily_data/daily-data-modelling/less_than-2yrs-clustering-ready.csv",
@@ -447,40 +506,34 @@ def build_less_than() -> dict[str, Any]:
     if "dbscan_cluster_12km" not in df.columns:
         raise RuntimeError("<2y: dbscan_cluster_12km missing")
 
-    # --- train/test split: site-year-1 vs site-year-2 --------------------
+    # period_index 1-12 = year_number 1 & month_number 1-12;
+    # period_index 25-36 = year_number 2 & month_number 13-24. No rows with period_index 13-24.
     train = df[df["period_index"] <= 12].copy()
     test = df[df["period_index"] >= 25].copy()
-    print(f"[<2y] train={len(train):,}  test={len(test):,}  (train=site-year1, test=site-year2)")
+    print(f"[<2y] train={len(train):,}  test={len(test):,}  (train=year1 idx<=12, test=year2 idx>=25)")
 
-    # --- train-only centroids --------------------------------------------
     site_train = (
         train.dropna(subset=["latitude", "longitude"])
         .drop_duplicates("site_client_id")[["site_client_id", "latitude", "longitude"]]
     )
     site_clusters = _fit_dbscan(site_train, "cluster_id_train")
     site_train = site_train.merge(site_clusters, on="site_client_id", how="left")
+    train, test = align_train_test_clusters_to_train_refit(train, test, site_train)
     centroids = _cluster_centroids(
         site_train.rename(columns={"cluster_id_train": "dbscan_cluster_12km"}),
         "dbscan_cluster_12km",
     )
     print(f"[<2y] train centroids: {len(centroids['centroids'])} clusters")
 
-    # --- train-only cluster context --------------------------------------
-    # The <2y backtest shows V1-baseline (no ctx) outperforms any ctx
-    # variant for this cohort: the feature schema is thin and the test
-    # split is site-year-2 of the SAME sites, so ctx_wash_* becomes a
-    # near-duplicate of the target signal and adds collinearity. Keep
-    # the artifact for API consistency but with no aggregate columns.
     context_df = _build_cluster_context(
         train,
         "dbscan_cluster_12km",
         CONTEXT_BASE_FEATURES_MONTHLY,
-        include_target_aggs=False,
+        include_target_aggs=True,
     )
     train = train.merge(context_df, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
     test = test.merge(context_df, left_on="dbscan_cluster_12km", right_on="cluster_id", how="left").drop(columns=["cluster_id"])
 
-    # --- monthly series (calendar_day is already a monthly pseudo-date) ---
     monthly_series = _cluster_monthly_series(
         train, "dbscan_cluster_12km", "calendar_day", freq="MS"
     )
@@ -495,6 +548,7 @@ def build_less_than() -> dict[str, Any]:
         c for c in feature_candidates
         if c in train.columns and train[c].notna().any()
     ]
+    assert_less_than_no_weather_columns(feature_cols)
     print(f"[<2y] using {len(feature_cols)} features")
 
     train = train.dropna(subset=[TARGET])
@@ -503,13 +557,21 @@ def build_less_than() -> dict[str, Any]:
     portable, metrics = _train_ridge_portable(train, test, feature_cols)
     print(f"[<2y] metrics: {metrics}")
 
+    rf_bundle, rf_metrics = _train_rf_joblib(train, test, feature_cols)
+    print(f"[<2y] RF metrics: {rf_metrics}")
+
+    local_med = _cluster_local_feature_medians(train, "dbscan_cluster_12km", feature_cols)
+    context_records = _context_records_with_local_medians(context_df, local_med)
+
     out_dir = MODELS_DIR / "less_than"
     _save_json(out_dir / "wash_count_model_12km.portable.json", portable)
+    joblib.dump(rf_bundle, out_dir / "wash_count_model_12km.rf.joblib")
+    _save_json(out_dir / "training_metrics_rf_12km.json", rf_metrics)
     _save_json(out_dir / "cluster_centroids_12km.json", centroids)
     _save_json(out_dir / "cluster_context_12km.json", {
         "cluster_label": "dbscan_cluster_12km",
         "feature_cols": [c for c in context_df.columns if c != "cluster_id"],
-        "records": context_df.to_dict(orient="records"),
+        "records": context_records,
     })
     _save_json(out_dir / "cluster_monthly_series_12km.json", {
         "frequency": "MS",
@@ -523,17 +585,19 @@ def build_less_than() -> dict[str, Any]:
         "cluster_col": "dbscan_cluster_12km",
     })
     _save_json(out_dir / "training_metrics_12km.json", metrics)
-    return {"cohort": "less_than_2yrs", "metrics": metrics, "features": len(feature_cols), "clusters": len(centroids["centroids"])}
+    return {
+        "cohort": COHORT_LESS_THAN,
+        "metrics": metrics,
+        "metrics_rf": rf_metrics,
+        "features": len(feature_cols),
+        "clusters": len(centroids["centroids"]),
+    }
 
-
-# ---------------------------------------------------------------------------
-# main
-# ---------------------------------------------------------------------------
 
 def main() -> None:
     summary = {
-        "more_than_2yrs": build_more_than(),
-        "less_than_2yrs": build_less_than(),
+        COHORT_MORE_THAN: build_more_than(),
+        COHORT_LESS_THAN: build_less_than(),
     }
     _save_json(V2_DIR / "results" / "build_summary.json", summary)
     print("\n=== V2 build complete ===")

@@ -1,0 +1,1986 @@
+{
+  "generated_at": "2026-04-21T10:11:03.146505Z",
+  "method": "arima",
+  "input": {
+    "address": "7021 Executive Center Dr, Brentwood, TN 37027",
+    "lat": 36.0295533,
+    "lon": -86.7892906
+  },
+  "compare": "ridge_vs_rf \u00d7 (no_prefix | prefix+bridge)",
+  "ridge": {
+    "no_prefix": {
+      "generated_at": "2026-04-21T10:11:01.871854Z",
+      "radius_km": 12.0,
+      "method": "arima",
+      "level_model": "ridge",
+      "input": {
+        "address": null,
+        "lat": 36.0295533,
+        "lon": -86.7892906
+      },
+      "nearest_cluster_max_distance_km": 20.0,
+      "allow_nearest_cluster_beyond_distance_cap": true,
+      "less_than_2yrs": {
+        "cohort": "less_than_2yrs",
+        "level_model": "ridge",
+        "cluster": {
+          "cluster_id": 61,
+          "distance_km": 10.285420667695886,
+          "size": 3,
+          "centroid_lat": 35.94013916666666,
+          "centroid_lon": -86.81856586666667,
+          "cluster_monthly_level_last_6mo": 12036.0,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "ridge_prediction": {
+          "raw_level": 10547.388889774518,
+          "monthly_level": 10547.388889774518,
+          "anchor_scale": 0.8763201138064571,
+          "cluster_context_used": true,
+          "level_model": "ridge"
+        },
+        "mature_forecast_series_mode": "cluster_monthly_only",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": false,
+        "method": "arima",
+        "horizons": {
+          "6m": {
+            "six_month_period_sum": 74994.78677561873,
+            "monthly_avg_in_period": 12499.131129269788,
+            "period_operational_month_start": 1,
+            "period_operational_month_end": 6,
+            "first_month": "2025-01-01",
+            "last_month": "2025-06-01"
+          },
+          "12m": {
+            "six_month_period_sum": 83218.40247213928,
+            "monthly_avg_in_period": 13869.733745356547,
+            "period_operational_month_start": 7,
+            "period_operational_month_end": 12,
+            "first_month": "2025-07-01",
+            "last_month": "2025-12-01"
+          },
+          "18m": {
+            "six_month_period_sum": 88908.62205519945,
+            "monthly_avg_in_period": 14818.103675866574,
+            "period_operational_month_start": 13,
+            "period_operational_month_end": 18,
+            "first_month": "2026-01-01",
+            "last_month": "2026-06-01"
+          },
+          "24m": {
+            "six_month_period_sum": 92845.89248445127,
+            "monthly_avg_in_period": 15474.31541407521,
+            "period_operational_month_start": 19,
+            "period_operational_month_end": 24,
+            "first_month": "2026-07-01",
+            "last_month": "2026-12-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2025-01-01",
+            "wash_count": 11789.676979636464,
+            "operational_month_index": 1
+          },
+          {
+            "month": "2025-02-01",
+            "wash_count": 12096.771599290858,
+            "operational_month_index": 2
+          },
+          {
+            "month": "2025-03-01",
+            "wash_count": 12385.584492712098,
+            "operational_month_index": 3
+          },
+          {
+            "month": "2025-04-01",
+            "wash_count": 12657.203993894575,
+            "operational_month_index": 4
+          },
+          {
+            "month": "2025-05-01",
+            "wash_count": 12912.653646950792,
+            "operational_month_index": 5
+          },
+          {
+            "month": "2025-06-01",
+            "wash_count": 13152.896063133945,
+            "operational_month_index": 6
+          },
+          {
+            "month": "2025-07-01",
+            "wash_count": 13378.836548247142,
+            "operational_month_index": 7
+          },
+          {
+            "month": "2025-08-01",
+            "wash_count": 13591.32651410841,
+            "operational_month_index": 8
+          },
+          {
+            "month": "2025-09-01",
+            "wash_count": 13791.166686926937,
+            "operational_month_index": 9
+          },
+          {
+            "month": "2025-10-01",
+            "wash_count": 13979.110124680663,
+            "operational_month_index": 10
+          },
+          {
+            "month": "2025-11-01",
+            "wash_count": 14155.865054865619,
+            "operational_month_index": 11
+          },
+          {
+            "month": "2025-12-01",
+            "wash_count": 14322.097543310509,
+            "operational_month_index": 12
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 14478.434004113413,
+            "operational_month_index": 13
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 14625.463560158834,
+            "operational_month_index": 14
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 14763.740263110218,
+            "operational_month_index": 15
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 14893.785181243536,
+            "operational_month_index": 16
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 15016.088362989545,
+            "operational_month_index": 17
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 15131.110683583898,
+            "operational_month_index": 18
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 15239.285581783894,
+            "operational_month_index": 19
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 15341.020693196297,
+            "operational_month_index": 20
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 15436.699386371109,
+            "operational_month_index": 21
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 15526.68220744977,
+            "operational_month_index": 22
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 15611.308238811638,
+            "operational_month_index": 23
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 15690.896376838557,
+            "operational_month_index": 24
+          }
+        ],
+        "operational_phase": "opening_phase_years_1_2",
+        "operational_calendar_months": "Months 1\u201324 after site open"
+      },
+      "more_than_2yrs": {
+        "cohort": "more_than_2yrs",
+        "level_model": "ridge",
+        "cluster": {
+          "cluster_id": 80,
+          "distance_km": 11.085652120522361,
+          "size": 3,
+          "centroid_lat": 36.113207233333334,
+          "centroid_lon": -86.85638706666667,
+          "cluster_monthly_level_last_6mo": 19419.666666666668,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "ridge_prediction": {
+          "raw_level": 593.1043204575552,
+          "monthly_level": 17793.129613726658,
+          "anchor_scale": 0.8798801685204175,
+          "cluster_context_used": true,
+          "level_model": "ridge"
+        },
+        "mature_forecast_series_mode": "cluster_monthly_only",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": false,
+        "method": "arima",
+        "horizons": {
+          "30m": {
+            "six_month_period_sum": 94167.91752580504,
+            "monthly_avg_in_period": 15694.652920967506,
+            "operational_month_end": 30,
+            "period_operational_month_start": 25,
+            "period_operational_month_end": 30,
+            "first_month": "2025-07-01",
+            "last_month": "2025-12-01"
+          },
+          "36m": {
+            "six_month_period_sum": 94170.16021967588,
+            "monthly_avg_in_period": 15695.026703279313,
+            "operational_month_end": 36,
+            "period_operational_month_start": 31,
+            "period_operational_month_end": 36,
+            "first_month": "2026-01-01",
+            "last_month": "2026-06-01"
+          },
+          "42m": {
+            "six_month_period_sum": 94170.299700539,
+            "monthly_avg_in_period": 15695.049950089835,
+            "operational_month_end": 42,
+            "period_operational_month_start": 37,
+            "period_operational_month_end": 42,
+            "first_month": "2026-07-01",
+            "last_month": "2026-12-01"
+          },
+          "48m": {
+            "six_month_period_sum": 94170.3083753347,
+            "monthly_avg_in_period": 15695.051395889117,
+            "operational_month_end": 48,
+            "period_operational_month_start": 43,
+            "period_operational_month_end": 48,
+            "first_month": "2027-01-01",
+            "last_month": "2027-06-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2025-12-01",
+            "wash_count": 15695.462045719703,
+            "operational_month_index": 30
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 15694.793070849877,
+            "operational_month_index": 31
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 15695.214153397726,
+            "operational_month_index": 32
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 15694.949105306836,
+            "operational_month_index": 33
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 15695.11593836806,
+            "operational_month_index": 34
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 15695.010926216402,
+            "operational_month_index": 35
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 15695.077025536975,
+            "operational_month_index": 36
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 15695.035419683642,
+            "operational_month_index": 37
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 15695.061608258902,
+            "operational_month_index": 38
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 15695.04512400442,
+            "operational_month_index": 39
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 15695.055499927626,
+            "operational_month_index": 40
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 15695.048968859903,
+            "operational_month_index": 41
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 15695.053079804515,
+            "operational_month_index": 42
+          },
+          {
+            "month": "2027-01-01",
+            "wash_count": 15695.050492193066,
+            "operational_month_index": 43
+          },
+          {
+            "month": "2027-02-01",
+            "wash_count": 15695.05212095084,
+            "operational_month_index": 44
+          },
+          {
+            "month": "2027-03-01",
+            "wash_count": 15695.051095738228,
+            "operational_month_index": 45
+          },
+          {
+            "month": "2027-04-01",
+            "wash_count": 15695.05174105266,
+            "operational_month_index": 46
+          },
+          {
+            "month": "2027-05-01",
+            "wash_count": 15695.051334863045,
+            "operational_month_index": 47
+          },
+          {
+            "month": "2027-06-01",
+            "wash_count": 15695.051590536863,
+            "operational_month_index": 48
+          }
+        ],
+        "opening_to_mature_bridge": {
+          "method": "scale_entire_mature_monthly_track",
+          "scale_factor": 1.0413267910325164,
+          "aligned_month_24_lt_to_month_25_gt": true
+        },
+        "monthly_projection_mature_25_48": [
+          {
+            "month": "2025-07-01",
+            "wash_count": 15690.896376838557
+          },
+          {
+            "month": "2025-08-01",
+            "wash_count": 15697.666905984523
+          },
+          {
+            "month": "2025-09-01",
+            "wash_count": 15693.405233698082
+          },
+          {
+            "month": "2025-10-01",
+            "wash_count": 15696.087719850268
+          },
+          {
+            "month": "2025-11-01",
+            "wash_count": 15694.399243713904
+          },
+          {
+            "month": "2025-12-01",
+            "wash_count": 15695.462045719703
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 15694.793070849877
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 15695.214153397726
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 15694.949105306836
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 15695.11593836806
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 15695.010926216402
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 15695.077025536975
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 15695.035419683642
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 15695.061608258902
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 15695.04512400442
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 15695.055499927626
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 15695.048968859903
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 15695.053079804515
+          },
+          {
+            "month": "2027-01-01",
+            "wash_count": 15695.050492193066
+          },
+          {
+            "month": "2027-02-01",
+            "wash_count": 15695.05212095084
+          },
+          {
+            "month": "2027-03-01",
+            "wash_count": 15695.051095738228
+          },
+          {
+            "month": "2027-04-01",
+            "wash_count": 15695.05174105266
+          },
+          {
+            "month": "2027-05-01",
+            "wash_count": 15695.051334863045
+          },
+          {
+            "month": "2027-06-01",
+            "wash_count": 15695.051590536863
+          }
+        ],
+        "horizon_definition": "Each bar is washes in a single 6-month window only (no running cumulative). >2y panel: months 25\u201330, 31\u201336, 37\u201342, 43\u201348 (labeled by window end 30/36/42/48).",
+        "operational_phase": "mature_phase_months_30_48",
+        "operational_calendar_months": "Months 30\u201348 after site open (published >2y view)"
+      },
+      "brand_new_site_continuation": {
+        "narrative": "Bars are independent 6-month wash totals per period. Optional running_total_through_operational_month sums those periods in calendar order through month 48.",
+        "six_month_period_sum_by_label": {
+          "opening_6m": 74994.78677561873,
+          "opening_12m": 83218.40247213928,
+          "opening_18m": 88908.62205519945,
+          "opening_24m": 92845.89248445127,
+          "mature_30m": 94167.91752580504,
+          "mature_36m": 94170.16021967588,
+          "mature_42m": 94170.299700539,
+          "mature_48m": 94170.3083753347
+        },
+        "running_total_through_operational_month": {
+          "6": 74994.78677561873,
+          "12": 158213.189247758,
+          "18": 247121.81130295747,
+          "24": 339967.70378740877,
+          "30": 434135.62131321384,
+          "36": 528305.7815328897,
+          "42": 622476.0812334287,
+          "48": 716646.3896087634
+        },
+        "opening_total_first_24_months": 339967.70378740877
+      },
+      "calendar_year_washes": {
+        "year_1": 158213.18924775804,
+        "year_2": 181754.51453965073,
+        "year_3": 188338.0777454809,
+        "year_4": 188340.6080758737,
+        "definition": "Each value is the sum of forecast monthly washes in that operational year after open (year 1 = months 1\u201312, year 2 = 13\u201324, year 3 = 25\u201336, year 4 = 37\u201348)."
+      },
+      "use_opening_prefix_for_mature_forecast": false,
+      "bridge_opening_to_mature_when_prefix": true
+    },
+    "with_opening_prefix_and_bridge": {
+      "generated_at": "2026-04-21T10:11:02.253954Z",
+      "radius_km": 12.0,
+      "method": "arima",
+      "level_model": "ridge",
+      "input": {
+        "address": null,
+        "lat": 36.0295533,
+        "lon": -86.7892906
+      },
+      "nearest_cluster_max_distance_km": 20.0,
+      "allow_nearest_cluster_beyond_distance_cap": true,
+      "less_than_2yrs": {
+        "cohort": "less_than_2yrs",
+        "level_model": "ridge",
+        "cluster": {
+          "cluster_id": 61,
+          "distance_km": 10.285420667695886,
+          "size": 3,
+          "centroid_lat": 35.94013916666666,
+          "centroid_lon": -86.81856586666667,
+          "cluster_monthly_level_last_6mo": 12036.0,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "ridge_prediction": {
+          "raw_level": 10547.388889774518,
+          "monthly_level": 10547.388889774518,
+          "anchor_scale": 0.8763201138064571,
+          "cluster_context_used": true,
+          "level_model": "ridge"
+        },
+        "mature_forecast_series_mode": "cluster_monthly_only",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": false,
+        "method": "arima",
+        "horizons": {
+          "6m": {
+            "six_month_period_sum": 74994.78677561873,
+            "monthly_avg_in_period": 12499.131129269788,
+            "period_operational_month_start": 1,
+            "period_operational_month_end": 6,
+            "first_month": "2025-01-01",
+            "last_month": "2025-06-01"
+          },
+          "12m": {
+            "six_month_period_sum": 83218.40247213928,
+            "monthly_avg_in_period": 13869.733745356547,
+            "period_operational_month_start": 7,
+            "period_operational_month_end": 12,
+            "first_month": "2025-07-01",
+            "last_month": "2025-12-01"
+          },
+          "18m": {
+            "six_month_period_sum": 88908.62205519945,
+            "monthly_avg_in_period": 14818.103675866574,
+            "period_operational_month_start": 13,
+            "period_operational_month_end": 18,
+            "first_month": "2026-01-01",
+            "last_month": "2026-06-01"
+          },
+          "24m": {
+            "six_month_period_sum": 92845.89248445127,
+            "monthly_avg_in_period": 15474.31541407521,
+            "period_operational_month_start": 19,
+            "period_operational_month_end": 24,
+            "first_month": "2026-07-01",
+            "last_month": "2026-12-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2025-01-01",
+            "wash_count": 11789.676979636464,
+            "operational_month_index": 1
+          },
+          {
+            "month": "2025-02-01",
+            "wash_count": 12096.771599290858,
+            "operational_month_index": 2
+          },
+          {
+            "month": "2025-03-01",
+            "wash_count": 12385.584492712098,
+            "operational_month_index": 3
+          },
+          {
+            "month": "2025-04-01",
+            "wash_count": 12657.203993894575,
+            "operational_month_index": 4
+          },
+          {
+            "month": "2025-05-01",
+            "wash_count": 12912.653646950792,
+            "operational_month_index": 5
+          },
+          {
+            "month": "2025-06-01",
+            "wash_count": 13152.896063133945,
+            "operational_month_index": 6
+          },
+          {
+            "month": "2025-07-01",
+            "wash_count": 13378.836548247142,
+            "operational_month_index": 7
+          },
+          {
+            "month": "2025-08-01",
+            "wash_count": 13591.32651410841,
+            "operational_month_index": 8
+          },
+          {
+            "month": "2025-09-01",
+            "wash_count": 13791.166686926937,
+            "operational_month_index": 9
+          },
+          {
+            "month": "2025-10-01",
+            "wash_count": 13979.110124680663,
+            "operational_month_index": 10
+          },
+          {
+            "month": "2025-11-01",
+            "wash_count": 14155.865054865619,
+            "operational_month_index": 11
+          },
+          {
+            "month": "2025-12-01",
+            "wash_count": 14322.097543310509,
+            "operational_month_index": 12
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 14478.434004113413,
+            "operational_month_index": 13
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 14625.463560158834,
+            "operational_month_index": 14
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 14763.740263110218,
+            "operational_month_index": 15
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 14893.785181243536,
+            "operational_month_index": 16
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 15016.088362989545,
+            "operational_month_index": 17
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 15131.110683583898,
+            "operational_month_index": 18
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 15239.285581783894,
+            "operational_month_index": 19
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 15341.020693196297,
+            "operational_month_index": 20
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 15436.699386371109,
+            "operational_month_index": 21
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 15526.68220744977,
+            "operational_month_index": 22
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 15611.308238811638,
+            "operational_month_index": 23
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 15690.896376838557,
+            "operational_month_index": 24
+          }
+        ],
+        "operational_phase": "opening_phase_years_1_2",
+        "operational_calendar_months": "Months 1\u201324 after site open"
+      },
+      "more_than_2yrs": {
+        "cohort": "more_than_2yrs",
+        "level_model": "ridge",
+        "cluster": {
+          "cluster_id": 80,
+          "distance_km": 11.085652120522361,
+          "size": 3,
+          "centroid_lat": 36.113207233333334,
+          "centroid_lon": -86.85638706666667,
+          "cluster_monthly_level_last_6mo": 19419.666666666668,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "ridge_prediction": {
+          "raw_level": 647.5594523830836,
+          "monthly_level": 19426.78357149251,
+          "anchor_scale": 0.8798801685204175,
+          "cluster_context_used": true,
+          "level_model": "ridge"
+        },
+        "mature_forecast_series_mode": "cluster_tail_72m_plus_lt2y_monthly_wash_24m_prefix_then_forecast_25_48",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": true,
+        "method": "arima",
+        "horizons": {
+          "30m": {
+            "six_month_period_sum": 94157.6420444742,
+            "monthly_avg_in_period": 15692.9403407457,
+            "operational_month_end": 30,
+            "period_operational_month_start": 25,
+            "period_operational_month_end": 30,
+            "first_month": "2027-07-01",
+            "last_month": "2027-12-01"
+          },
+          "36m": {
+            "six_month_period_sum": 94158.82167064385,
+            "monthly_avg_in_period": 15693.13694510731,
+            "operational_month_end": 36,
+            "period_operational_month_start": 31,
+            "period_operational_month_end": 36,
+            "first_month": "2028-01-01",
+            "last_month": "2028-06-01"
+          },
+          "42m": {
+            "six_month_period_sum": 94158.90705538819,
+            "monthly_avg_in_period": 15693.151175898032,
+            "operational_month_end": 42,
+            "period_operational_month_start": 37,
+            "period_operational_month_end": 42,
+            "first_month": "2028-07-01",
+            "last_month": "2028-12-01"
+          },
+          "48m": {
+            "six_month_period_sum": 94158.91323578225,
+            "monthly_avg_in_period": 15693.152205963708,
+            "operational_month_end": 48,
+            "period_operational_month_start": 43,
+            "period_operational_month_end": 48,
+            "first_month": "2029-01-01",
+            "last_month": "2029-06-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2027-12-01",
+            "wash_count": 15693.405226765375,
+            "operational_month_index": 30
+          },
+          {
+            "month": "2028-01-01",
+            "wash_count": 15692.988997104687,
+            "operational_month_index": 31
+          },
+          {
+            "month": "2028-02-01",
+            "wash_count": 15693.25769999559,
+            "operational_month_index": 32
+          },
+          {
+            "month": "2028-03-01",
+            "wash_count": 15693.084235078504,
+            "operational_month_index": 33
+          },
+          {
+            "month": "2028-04-01",
+            "wash_count": 15693.196217786837,
+            "operational_month_index": 34
+          },
+          {
+            "month": "2028-05-01",
+            "wash_count": 15693.123925780037,
+            "operational_month_index": 35
+          },
+          {
+            "month": "2028-06-01",
+            "wash_count": 15693.170594898196,
+            "operational_month_index": 36
+          },
+          {
+            "month": "2028-07-01",
+            "wash_count": 15693.140466994902,
+            "operational_month_index": 37
+          },
+          {
+            "month": "2028-08-01",
+            "wash_count": 15693.159916485116,
+            "operational_month_index": 38
+          },
+          {
+            "month": "2028-09-01",
+            "wash_count": 15693.147360594125,
+            "operational_month_index": 39
+          },
+          {
+            "month": "2028-10-01",
+            "wash_count": 15693.155466225524,
+            "operational_month_index": 40
+          },
+          {
+            "month": "2028-11-01",
+            "wash_count": 15693.150233521576,
+            "operational_month_index": 41
+          },
+          {
+            "month": "2028-12-01",
+            "wash_count": 15693.153611566946,
+            "operational_month_index": 42
+          },
+          {
+            "month": "2029-01-01",
+            "wash_count": 15693.151430822412,
+            "operational_month_index": 43
+          },
+          {
+            "month": "2029-02-01",
+            "wash_count": 15693.15283863261,
+            "operational_month_index": 44
+          },
+          {
+            "month": "2029-03-01",
+            "wash_count": 15693.151929801008,
+            "operational_month_index": 45
+          },
+          {
+            "month": "2029-04-01",
+            "wash_count": 15693.152516509987,
+            "operational_month_index": 46
+          },
+          {
+            "month": "2029-05-01",
+            "wash_count": 15693.152137751784,
+            "operational_month_index": 47
+          },
+          {
+            "month": "2029-06-01",
+            "wash_count": 15693.15238226445,
+            "operational_month_index": 48
+          }
+        ],
+        "opening_to_mature_bridge": {
+          "method": "scale_entire_mature_monthly_track",
+          "scale_factor": 1.13693490890884,
+          "aligned_month_24_lt_to_month_25_gt": true
+        },
+        "monthly_projection_mature_25_48": [
+          {
+            "month": "2027-07-01",
+            "wash_count": 15690.896376838557
+          },
+          {
+            "month": "2027-08-01",
+            "wash_count": 15694.608620336408
+          },
+          {
+            "month": "2027-09-01",
+            "wash_count": 15692.212129519376
+          },
+          {
+            "month": "2027-10-01",
+            "wash_count": 15693.759217753066
+          },
+          {
+            "month": "2027-11-01",
+            "wash_count": 15692.760473261407
+          },
+          {
+            "month": "2027-12-01",
+            "wash_count": 15693.405226765375
+          },
+          {
+            "month": "2028-01-01",
+            "wash_count": 15692.988997104687
+          },
+          {
+            "month": "2028-02-01",
+            "wash_count": 15693.25769999559
+          },
+          {
+            "month": "2028-03-01",
+            "wash_count": 15693.084235078504
+          },
+          {
+            "month": "2028-04-01",
+            "wash_count": 15693.196217786837
+          },
+          {
+            "month": "2028-05-01",
+            "wash_count": 15693.123925780037
+          },
+          {
+            "month": "2028-06-01",
+            "wash_count": 15693.170594898196
+          },
+          {
+            "month": "2028-07-01",
+            "wash_count": 15693.140466994902
+          },
+          {
+            "month": "2028-08-01",
+            "wash_count": 15693.159916485116
+          },
+          {
+            "month": "2028-09-01",
+            "wash_count": 15693.147360594125
+          },
+          {
+            "month": "2028-10-01",
+            "wash_count": 15693.155466225524
+          },
+          {
+            "month": "2028-11-01",
+            "wash_count": 15693.150233521576
+          },
+          {
+            "month": "2028-12-01",
+            "wash_count": 15693.153611566946
+          },
+          {
+            "month": "2029-01-01",
+            "wash_count": 15693.151430822412
+          },
+          {
+            "month": "2029-02-01",
+            "wash_count": 15693.15283863261
+          },
+          {
+            "month": "2029-03-01",
+            "wash_count": 15693.151929801008
+          },
+          {
+            "month": "2029-04-01",
+            "wash_count": 15693.152516509987
+          },
+          {
+            "month": "2029-05-01",
+            "wash_count": 15693.152137751784
+          },
+          {
+            "month": "2029-06-01",
+            "wash_count": 15693.15238226445
+          }
+        ],
+        "horizon_definition": "Each bar is washes in a single 6-month window only (no running cumulative). >2y panel: months 25\u201330, 31\u201336, 37\u201342, 43\u201348 (labeled by window end 30/36/42/48).",
+        "operational_phase": "mature_phase_months_30_48",
+        "operational_calendar_months": "Months 30\u201348 after site open (published >2y view)"
+      },
+      "brand_new_site_continuation": {
+        "narrative": "Bars are independent 6-month wash totals per period. Optional running_total_through_operational_month sums those periods in calendar order through month 48.",
+        "six_month_period_sum_by_label": {
+          "opening_6m": 74994.78677561873,
+          "opening_12m": 83218.40247213928,
+          "opening_18m": 88908.62205519945,
+          "opening_24m": 92845.89248445127,
+          "mature_30m": 94157.6420444742,
+          "mature_36m": 94158.82167064385,
+          "mature_42m": 94158.90705538819,
+          "mature_48m": 94158.91323578225
+        },
+        "running_total_through_operational_month": {
+          "6": 74994.78677561873,
+          "12": 158213.189247758,
+          "18": 247121.81130295747,
+          "24": 339967.70378740877,
+          "30": 434125.34583188297,
+          "36": 528284.1675025268,
+          "42": 622443.074557915,
+          "48": 716601.9877936973
+        },
+        "opening_total_first_24_months": 339967.70378740877
+      },
+      "calendar_year_washes": {
+        "year_1": 158213.18924775804,
+        "year_2": 181754.51453965073,
+        "year_3": 188316.46371511807,
+        "year_4": 188317.8202911704,
+        "definition": "Each value is the sum of forecast monthly washes in that operational year after open (year 1 = months 1\u201312, year 2 = 13\u201324, year 3 = 25\u201336, year 4 = 37\u201348)."
+      },
+      "use_opening_prefix_for_mature_forecast": true,
+      "bridge_opening_to_mature_when_prefix": true
+    }
+  },
+  "random_forest": {
+    "no_prefix": {
+      "generated_at": "2026-04-21T10:11:02.679817Z",
+      "radius_km": 12.0,
+      "method": "arima",
+      "level_model": "rf",
+      "input": {
+        "address": null,
+        "lat": 36.0295533,
+        "lon": -86.7892906
+      },
+      "nearest_cluster_max_distance_km": 20.0,
+      "allow_nearest_cluster_beyond_distance_cap": true,
+      "less_than_2yrs": {
+        "cohort": "less_than_2yrs",
+        "level_model": "rf",
+        "cluster": {
+          "cluster_id": 61,
+          "distance_km": 10.285420667695886,
+          "size": 3,
+          "centroid_lat": 35.94013916666666,
+          "centroid_lon": -86.81856586666667,
+          "cluster_monthly_level_last_6mo": 12036.0,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "rf_prediction": {
+          "raw_level": 11277.267348939473,
+          "monthly_level": 11277.267348939473,
+          "anchor_scale": 0.9369613948936086,
+          "cluster_context_used": true,
+          "level_model": "rf"
+        },
+        "mature_forecast_series_mode": "cluster_monthly_only",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": false,
+        "method": "arima",
+        "horizons": {
+          "6m": {
+            "six_month_period_sum": 80184.41996248829,
+            "monthly_avg_in_period": 13364.069993748048,
+            "period_operational_month_start": 1,
+            "period_operational_month_end": 6,
+            "first_month": "2025-01-01",
+            "last_month": "2025-06-01"
+          },
+          "12m": {
+            "six_month_period_sum": 88977.10920091266,
+            "monthly_avg_in_period": 14829.51820015211,
+            "period_operational_month_start": 7,
+            "period_operational_month_end": 12,
+            "first_month": "2025-07-01",
+            "last_month": "2025-12-01"
+          },
+          "18m": {
+            "six_month_period_sum": 95061.09151947038,
+            "monthly_avg_in_period": 15843.515253245065,
+            "period_operational_month_start": 13,
+            "period_operational_month_end": 18,
+            "first_month": "2026-01-01",
+            "last_month": "2026-06-01"
+          },
+          "24m": {
+            "six_month_period_sum": 99270.8207443777,
+            "monthly_avg_in_period": 16545.13679072962,
+            "period_operational_month_start": 19,
+            "period_operational_month_end": 24,
+            "first_month": "2026-07-01",
+            "last_month": "2026-12-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2025-01-01",
+            "wash_count": 12605.521674269088,
+            "operational_month_index": 1
+          },
+          {
+            "month": "2025-02-01",
+            "wash_count": 12933.86721679677,
+            "operational_month_index": 2
+          },
+          {
+            "month": "2025-03-01",
+            "wash_count": 13242.665939112747,
+            "operational_month_index": 3
+          },
+          {
+            "month": "2025-04-01",
+            "wash_count": 13533.081487835901,
+            "operational_month_index": 4
+          },
+          {
+            "month": "2025-05-01",
+            "wash_count": 13806.208236248642,
+            "operational_month_index": 5
+          },
+          {
+            "month": "2025-06-01",
+            "wash_count": 14063.07540822513,
+            "operational_month_index": 6
+          },
+          {
+            "month": "2025-07-01",
+            "wash_count": 14304.650956656915,
+            "operational_month_index": 7
+          },
+          {
+            "month": "2025-08-01",
+            "wash_count": 14531.84521099106,
+            "operational_month_index": 8
+          },
+          {
+            "month": "2025-09-01",
+            "wash_count": 14745.514307625741,
+            "operational_month_index": 9
+          },
+          {
+            "month": "2025-10-01",
+            "wash_count": 14946.46341609014,
+            "operational_month_index": 10
+          },
+          {
+            "month": "2025-11-01",
+            "wash_count": 15135.449773165812,
+            "operational_month_index": 11
+          },
+          {
+            "month": "2025-12-01",
+            "wash_count": 15313.185536382996,
+            "operational_month_index": 12
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 15480.340467644757,
+            "operational_month_index": 13
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 15637.544457091624,
+            "operational_month_index": 14
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 15785.38989671739,
+            "operational_month_index": 15
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 15924.433912680639,
+            "operational_month_index": 16
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 16055.200464723941,
+            "operational_month_index": 17
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 16178.182320612037,
+            "operational_month_index": 18
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 16293.842913029213,
+            "operational_month_index": 19
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 16402.618085933296,
+            "operational_month_index": 20
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 16504.917736946976,
+            "operational_month_index": 21
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 16601.12736197556,
+            "operational_month_index": 22
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 16691.60950787166,
+            "operational_month_index": 23
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 16776.705138620993,
+            "operational_month_index": 24
+          }
+        ],
+        "operational_phase": "opening_phase_years_1_2",
+        "operational_calendar_months": "Months 1\u201324 after site open"
+      },
+      "more_than_2yrs": {
+        "cohort": "more_than_2yrs",
+        "level_model": "rf",
+        "cluster": {
+          "cluster_id": 80,
+          "distance_km": 11.085652120522361,
+          "size": 3,
+          "centroid_lat": 36.113207233333334,
+          "centroid_lon": -86.85638706666667,
+          "cluster_monthly_level_last_6mo": 19419.666666666668,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "rf_prediction": {
+          "raw_level": 634.147091522849,
+          "monthly_level": 19024.41274568547,
+          "anchor_scale": 0.6736870128841844,
+          "cluster_context_used": true,
+          "level_model": "rf"
+        },
+        "mature_forecast_series_mode": "cluster_monthly_only",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": false,
+        "method": "arima",
+        "horizons": {
+          "30m": {
+            "six_month_period_sum": 100684.32981180129,
+            "monthly_avg_in_period": 16780.721635300215,
+            "operational_month_end": 30,
+            "period_operational_month_start": 25,
+            "period_operational_month_end": 30,
+            "first_month": "2025-07-01",
+            "last_month": "2025-12-01"
+          },
+          "36m": {
+            "six_month_period_sum": 100686.72769990683,
+            "monthly_avg_in_period": 16781.121283317803,
+            "operational_month_end": 36,
+            "period_operational_month_start": 31,
+            "period_operational_month_end": 36,
+            "first_month": "2026-01-01",
+            "last_month": "2026-06-01"
+          },
+          "42m": {
+            "six_month_period_sum": 100686.87683283442,
+            "monthly_avg_in_period": 16781.146138805736,
+            "operational_month_end": 42,
+            "period_operational_month_start": 37,
+            "period_operational_month_end": 42,
+            "first_month": "2026-07-01",
+            "last_month": "2026-12-01"
+          },
+          "48m": {
+            "six_month_period_sum": 100686.88610792528,
+            "monthly_avg_in_period": 16781.147684654214,
+            "operational_month_end": 48,
+            "period_operational_month_start": 43,
+            "period_operational_month_end": 48,
+            "first_month": "2027-01-01",
+            "last_month": "2027-06-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2025-12-01",
+            "wash_count": 16781.586751419905,
+            "operational_month_index": 30
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 16780.871483543124,
+            "operational_month_index": 31
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 16781.321704969272,
+            "operational_month_index": 32
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 16781.038315571903,
+            "operational_month_index": 33
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 16781.216693467486,
+            "operational_month_index": 34
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 16781.104414483416,
+            "operational_month_index": 35
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 16781.175087871634,
+            "operational_month_index": 36
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 16781.13060289661,
+            "operational_month_index": 37
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 16781.158603719163,
+            "operational_month_index": 38
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 16781.1409787556,
+            "operational_month_index": 39
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 16781.152072691857,
+            "operational_month_index": 40
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 16781.145089674774,
+            "operational_month_index": 41
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 16781.149485096423,
+            "operational_month_index": 42
+          },
+          {
+            "month": "2027-01-01",
+            "wash_count": 16781.14671842247,
+            "operational_month_index": 43
+          },
+          {
+            "month": "2027-02-01",
+            "wash_count": 16781.14845989015,
+            "operational_month_index": 44
+          },
+          {
+            "month": "2027-03-01",
+            "wash_count": 16781.14736373291,
+            "operational_month_index": 45
+          },
+          {
+            "month": "2027-04-01",
+            "wash_count": 16781.148053703047,
+            "operational_month_index": 46
+          },
+          {
+            "month": "2027-05-01",
+            "wash_count": 16781.147619405143,
+            "operational_month_index": 47
+          },
+          {
+            "month": "2027-06-01",
+            "wash_count": 16781.14789277157,
+            "operational_month_index": 48
+          }
+        ],
+        "opening_to_mature_bridge": {
+          "method": "scale_entire_mature_monthly_track",
+          "scale_factor": 1.4541570504734582,
+          "aligned_month_24_lt_to_month_25_gt": true
+        },
+        "monthly_projection_mature_25_48": [
+          {
+            "month": "2025-07-01",
+            "wash_count": 16776.705138620993
+          },
+          {
+            "month": "2025-08-01",
+            "wash_count": 16783.944187836943
+          },
+          {
+            "month": "2025-09-01",
+            "wash_count": 16779.387608172536
+          },
+          {
+            "month": "2025-10-01",
+            "wash_count": 16782.255722149763
+          },
+          {
+            "month": "2025-11-01",
+            "wash_count": 16780.450403601157
+          },
+          {
+            "month": "2025-12-01",
+            "wash_count": 16781.586751419905
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 16780.871483543124
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 16781.321704969272
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 16781.038315571903
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 16781.216693467486
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 16781.104414483416
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 16781.175087871634
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 16781.13060289661
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 16781.158603719163
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 16781.1409787556
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 16781.152072691857
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 16781.145089674774
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 16781.149485096423
+          },
+          {
+            "month": "2027-01-01",
+            "wash_count": 16781.14671842247
+          },
+          {
+            "month": "2027-02-01",
+            "wash_count": 16781.14845989015
+          },
+          {
+            "month": "2027-03-01",
+            "wash_count": 16781.14736373291
+          },
+          {
+            "month": "2027-04-01",
+            "wash_count": 16781.148053703047
+          },
+          {
+            "month": "2027-05-01",
+            "wash_count": 16781.147619405143
+          },
+          {
+            "month": "2027-06-01",
+            "wash_count": 16781.14789277157
+          }
+        ],
+        "horizon_definition": "Each bar is washes in a single 6-month window only (no running cumulative). >2y panel: months 25\u201330, 31\u201336, 37\u201342, 43\u201348 (labeled by window end 30/36/42/48).",
+        "operational_phase": "mature_phase_months_30_48",
+        "operational_calendar_months": "Months 30\u201348 after site open (published >2y view)"
+      },
+      "brand_new_site_continuation": {
+        "narrative": "Bars are independent 6-month wash totals per period. Optional running_total_through_operational_month sums those periods in calendar order through month 48.",
+        "six_month_period_sum_by_label": {
+          "opening_6m": 80184.41996248829,
+          "opening_12m": 88977.10920091266,
+          "opening_18m": 95061.09151947038,
+          "opening_24m": 99270.8207443777,
+          "mature_30m": 100684.32981180129,
+          "mature_36m": 100686.72769990683,
+          "mature_42m": 100686.87683283442,
+          "mature_48m": 100686.88610792528
+        },
+        "running_total_through_operational_month": {
+          "6": 80184.41996248829,
+          "12": 169161.52916340093,
+          "18": 264222.6206828713,
+          "24": 363493.441427249,
+          "30": 464177.7712390503,
+          "36": 564864.4989389571,
+          "42": 665551.3757717916,
+          "48": 766238.2618797169
+        },
+        "opening_total_first_24_months": 363493.441427249
+      },
+      "calendar_year_washes": {
+        "year_1": 169161.52916340093,
+        "year_2": 194331.91226384806,
+        "year_3": 201371.05751170815,
+        "year_4": 201373.76294075974,
+        "definition": "Each value is the sum of forecast monthly washes in that operational year after open (year 1 = months 1\u201312, year 2 = 13\u201324, year 3 = 25\u201336, year 4 = 37\u201348)."
+      },
+      "use_opening_prefix_for_mature_forecast": false,
+      "bridge_opening_to_mature_when_prefix": true
+    },
+    "with_opening_prefix_and_bridge": {
+      "generated_at": "2026-04-21T10:11:03.112541Z",
+      "radius_km": 12.0,
+      "method": "arima",
+      "level_model": "rf",
+      "input": {
+        "address": null,
+        "lat": 36.0295533,
+        "lon": -86.7892906
+      },
+      "nearest_cluster_max_distance_km": 20.0,
+      "allow_nearest_cluster_beyond_distance_cap": true,
+      "less_than_2yrs": {
+        "cohort": "less_than_2yrs",
+        "level_model": "rf",
+        "cluster": {
+          "cluster_id": 61,
+          "distance_km": 10.285420667695886,
+          "size": 3,
+          "centroid_lat": 35.94013916666666,
+          "centroid_lon": -86.81856586666667,
+          "cluster_monthly_level_last_6mo": 12036.0,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "rf_prediction": {
+          "raw_level": 11277.267348939473,
+          "monthly_level": 11277.267348939473,
+          "anchor_scale": 0.9369613948936086,
+          "cluster_context_used": true,
+          "level_model": "rf"
+        },
+        "mature_forecast_series_mode": "cluster_monthly_only",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": false,
+        "method": "arima",
+        "horizons": {
+          "6m": {
+            "six_month_period_sum": 80184.41996248829,
+            "monthly_avg_in_period": 13364.069993748048,
+            "period_operational_month_start": 1,
+            "period_operational_month_end": 6,
+            "first_month": "2025-01-01",
+            "last_month": "2025-06-01"
+          },
+          "12m": {
+            "six_month_period_sum": 88977.10920091266,
+            "monthly_avg_in_period": 14829.51820015211,
+            "period_operational_month_start": 7,
+            "period_operational_month_end": 12,
+            "first_month": "2025-07-01",
+            "last_month": "2025-12-01"
+          },
+          "18m": {
+            "six_month_period_sum": 95061.09151947038,
+            "monthly_avg_in_period": 15843.515253245065,
+            "period_operational_month_start": 13,
+            "period_operational_month_end": 18,
+            "first_month": "2026-01-01",
+            "last_month": "2026-06-01"
+          },
+          "24m": {
+            "six_month_period_sum": 99270.8207443777,
+            "monthly_avg_in_period": 16545.13679072962,
+            "period_operational_month_start": 19,
+            "period_operational_month_end": 24,
+            "first_month": "2026-07-01",
+            "last_month": "2026-12-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2025-01-01",
+            "wash_count": 12605.521674269088,
+            "operational_month_index": 1
+          },
+          {
+            "month": "2025-02-01",
+            "wash_count": 12933.86721679677,
+            "operational_month_index": 2
+          },
+          {
+            "month": "2025-03-01",
+            "wash_count": 13242.665939112747,
+            "operational_month_index": 3
+          },
+          {
+            "month": "2025-04-01",
+            "wash_count": 13533.081487835901,
+            "operational_month_index": 4
+          },
+          {
+            "month": "2025-05-01",
+            "wash_count": 13806.208236248642,
+            "operational_month_index": 5
+          },
+          {
+            "month": "2025-06-01",
+            "wash_count": 14063.07540822513,
+            "operational_month_index": 6
+          },
+          {
+            "month": "2025-07-01",
+            "wash_count": 14304.650956656915,
+            "operational_month_index": 7
+          },
+          {
+            "month": "2025-08-01",
+            "wash_count": 14531.84521099106,
+            "operational_month_index": 8
+          },
+          {
+            "month": "2025-09-01",
+            "wash_count": 14745.514307625741,
+            "operational_month_index": 9
+          },
+          {
+            "month": "2025-10-01",
+            "wash_count": 14946.46341609014,
+            "operational_month_index": 10
+          },
+          {
+            "month": "2025-11-01",
+            "wash_count": 15135.449773165812,
+            "operational_month_index": 11
+          },
+          {
+            "month": "2025-12-01",
+            "wash_count": 15313.185536382996,
+            "operational_month_index": 12
+          },
+          {
+            "month": "2026-01-01",
+            "wash_count": 15480.340467644757,
+            "operational_month_index": 13
+          },
+          {
+            "month": "2026-02-01",
+            "wash_count": 15637.544457091624,
+            "operational_month_index": 14
+          },
+          {
+            "month": "2026-03-01",
+            "wash_count": 15785.38989671739,
+            "operational_month_index": 15
+          },
+          {
+            "month": "2026-04-01",
+            "wash_count": 15924.433912680639,
+            "operational_month_index": 16
+          },
+          {
+            "month": "2026-05-01",
+            "wash_count": 16055.200464723941,
+            "operational_month_index": 17
+          },
+          {
+            "month": "2026-06-01",
+            "wash_count": 16178.182320612037,
+            "operational_month_index": 18
+          },
+          {
+            "month": "2026-07-01",
+            "wash_count": 16293.842913029213,
+            "operational_month_index": 19
+          },
+          {
+            "month": "2026-08-01",
+            "wash_count": 16402.618085933296,
+            "operational_month_index": 20
+          },
+          {
+            "month": "2026-09-01",
+            "wash_count": 16504.917736946976,
+            "operational_month_index": 21
+          },
+          {
+            "month": "2026-10-01",
+            "wash_count": 16601.12736197556,
+            "operational_month_index": 22
+          },
+          {
+            "month": "2026-11-01",
+            "wash_count": 16691.60950787166,
+            "operational_month_index": 23
+          },
+          {
+            "month": "2026-12-01",
+            "wash_count": 16776.705138620993,
+            "operational_month_index": 24
+          }
+        ],
+        "operational_phase": "opening_phase_years_1_2",
+        "operational_calendar_months": "Months 1\u201324 after site open"
+      },
+      "more_than_2yrs": {
+        "cohort": "more_than_2yrs",
+        "level_model": "rf",
+        "cluster": {
+          "cluster_id": 80,
+          "distance_km": 11.085652120522361,
+          "size": 3,
+          "centroid_lat": 36.113207233333334,
+          "centroid_lon": -86.85638706666667,
+          "cluster_monthly_level_last_6mo": 19419.666666666668,
+          "nearest_cluster_max_distance_km": 20.0,
+          "distance_cap_relaxed": true
+        },
+        "rf_prediction": {
+          "raw_level": 647.550107772588,
+          "monthly_level": 19426.50323317764,
+          "anchor_scale": 0.6736870128841844,
+          "cluster_context_used": true,
+          "level_model": "rf"
+        },
+        "mature_forecast_series_mode": "cluster_tail_72m_plus_lt2y_monthly_wash_24m_prefix_then_forecast_25_48",
+        "used_lt2y_monthly_forecast_as_mature_forecast_context": true,
+        "method": "arima",
+        "horizons": {
+          "30m": {
+            "six_month_period_sum": 100672.76542370915,
+            "monthly_avg_in_period": 16778.79423728486,
+            "operational_month_end": 30,
+            "period_operational_month_start": 25,
+            "period_operational_month_end": 30,
+            "first_month": "2027-07-01",
+            "last_month": "2027-12-01"
+          },
+          "36m": {
+            "six_month_period_sum": 100673.98294069184,
+            "monthly_avg_in_period": 16778.997156781974,
+            "operational_month_end": 36,
+            "period_operational_month_start": 31,
+            "period_operational_month_end": 36,
+            "first_month": "2028-01-01",
+            "last_month": "2028-06-01"
+          },
+          "42m": {
+            "six_month_period_sum": 100674.06744083008,
+            "monthly_avg_in_period": 16779.01124013835,
+            "operational_month_end": 42,
+            "period_operational_month_start": 37,
+            "period_operational_month_end": 42,
+            "first_month": "2028-07-01",
+            "last_month": "2028-12-01"
+          },
+          "48m": {
+            "six_month_period_sum": 100674.07330544919,
+            "monthly_avg_in_period": 16779.012217574866,
+            "operational_month_end": 48,
+            "period_operational_month_start": 43,
+            "period_operational_month_end": 48,
+            "first_month": "2029-01-01",
+            "last_month": "2029-06-01"
+          }
+        },
+        "monthly_projection": [
+          {
+            "month": "2027-12-01",
+            "wash_count": 16779.26207268313,
+            "operational_month_index": 30
+          },
+          {
+            "month": "2028-01-01",
+            "wash_count": 16778.85216568256,
+            "operational_month_index": 31
+          },
+          {
+            "month": "2028-02-01",
+            "wash_count": 16779.11493968782,
+            "operational_month_index": 32
+          },
+          {
+            "month": "2028-03-01",
+            "wash_count": 16778.94648641002,
+            "operational_month_index": 33
+          },
+          {
+            "month": "2028-04-01",
+            "wash_count": 16779.054474666977,
+            "operational_month_index": 34
+          },
+          {
+            "month": "2028-05-01",
+            "wash_count": 16778.985247972232,
+            "operational_month_index": 35
+          },
+          {
+            "month": "2028-06-01",
+            "wash_count": 16779.029626272248,
+            "operational_month_index": 36
+          },
+          {
+            "month": "2028-07-01",
+            "wash_count": 16779.001177224964,
+            "operational_month_index": 37
+          },
+          {
+            "month": "2028-08-01",
+            "wash_count": 16779.019414703438,
+            "operational_month_index": 38
+          },
+          {
+            "month": "2028-09-01",
+            "wash_count": 16779.007723428935,
+            "operational_month_index": 39
+          },
+          {
+            "month": "2028-10-01",
+            "wash_count": 16779.015218209515,
+            "operational_month_index": 40
+          },
+          {
+            "month": "2028-11-01",
+            "wash_count": 16779.01041362333,
+            "operational_month_index": 41
+          },
+          {
+            "month": "2028-12-01",
+            "wash_count": 16779.013493639904,
+            "operational_month_index": 42
+          },
+          {
+            "month": "2029-01-01",
+            "wash_count": 16779.011519171818,
+            "operational_month_index": 43
+          },
+          {
+            "month": "2029-02-01",
+            "wash_count": 16779.012784919625,
+            "operational_month_index": 44
+          },
+          {
+            "month": "2029-03-01",
+            "wash_count": 16779.01197350235,
+            "operational_month_index": 45
+          },
+          {
+            "month": "2029-04-01",
+            "wash_count": 16779.012493667575,
+            "operational_month_index": 46
+          },
+          {
+            "month": "2029-05-01",
+            "wash_count": 16779.012160211692,
+            "operational_month_index": 47
+          },
+          {
+            "month": "2029-06-01",
+            "wash_count": 16779.012373976126,
+            "operational_month_index": 48
+          }
+        ],
+        "opening_to_mature_bridge": {
+          "method": "scale_entire_mature_monthly_track",
+          "scale_factor": 1.4848913877237713,
+          "aligned_month_24_lt_to_month_25_gt": true
+        },
+        "monthly_projection_mature_25_48": [
+          {
+            "month": "2027-07-01",
+            "wash_count": 16776.705138620993
+          },
+          {
+            "month": "2027-08-01",
+            "wash_count": 16780.491307741027
+          },
+          {
+            "month": "2027-09-01",
+            "wash_count": 16778.064155184766
+          },
+          {
+            "month": "2027-10-01",
+            "wash_count": 16779.620099820255
+          },
+          {
+            "month": "2027-11-01",
+            "wash_count": 16778.62264965897
+          },
+          {
+            "month": "2027-12-01",
+            "wash_count": 16779.26207268313
+          },
+          {
+            "month": "2028-01-01",
+            "wash_count": 16778.85216568256
+          },
+          {
+            "month": "2028-02-01",
+            "wash_count": 16779.11493968782
+          },
+          {
+            "month": "2028-03-01",
+            "wash_count": 16778.94648641002
+          },
+          {
+            "month": "2028-04-01",
+            "wash_count": 16779.054474666977
+          },
+          {
+            "month": "2028-05-01",
+            "wash_count": 16778.985247972232
+          },
+          {
+            "month": "2028-06-01",
+            "wash_count": 16779.029626272248
+          },
+          {
+            "month": "2028-07-01",
+            "wash_count": 16779.001177224964
+          },
+          {
+            "month": "2028-08-01",
+            "wash_count": 16779.019414703438
+          },
+          {
+            "month": "2028-09-01",
+            "wash_count": 16779.007723428935
+          },
+          {
+            "month": "2028-10-01",
+            "wash_count": 16779.015218209515
+          },
+          {
+            "month": "2028-11-01",
+            "wash_count": 16779.01041362333
+          },
+          {
+            "month": "2028-12-01",
+            "wash_count": 16779.013493639904
+          },
+          {
+            "month": "2029-01-01",
+            "wash_count": 16779.011519171818
+          },
+          {
+            "month": "2029-02-01",
+            "wash_count": 16779.012784919625
+          },
+          {
+            "month": "2029-03-01",
+            "wash_count": 16779.01197350235
+          },
+          {
+            "month": "2029-04-01",
+            "wash_count": 16779.012493667575
+          },
+          {
+            "month": "2029-05-01",
+            "wash_count": 16779.012160211692
+          },
+          {
+            "month": "2029-06-01",
+            "wash_count": 16779.012373976126
+          }
+        ],
+        "horizon_definition": "Each bar is washes in a single 6-month window only (no running cumulative). >2y panel: months 25\u201330, 31\u201336, 37\u201342, 43\u201348 (labeled by window end 30/36/42/48).",
+        "operational_phase": "mature_phase_months_30_48",
+        "operational_calendar_months": "Months 30\u201348 after site open (published >2y view)"
+      },
+      "brand_new_site_continuation": {
+        "narrative": "Bars are independent 6-month wash totals per period. Optional running_total_through_operational_month sums those periods in calendar order through month 48.",
+        "six_month_period_sum_by_label": {
+          "opening_6m": 80184.41996248829,
+          "opening_12m": 88977.10920091266,
+          "opening_18m": 95061.09151947038,
+          "opening_24m": 99270.8207443777,
+          "mature_30m": 100672.76542370915,
+          "mature_36m": 100673.98294069184,
+          "mature_42m": 100674.06744083008,
+          "mature_48m": 100674.07330544919
+        },
+        "running_total_through_operational_month": {
+          "6": 80184.41996248829,
+          "12": 169161.52916340093,
+          "18": 264222.6206828713,
+          "24": 363493.441427249,
+          "30": 464166.2068509582,
+          "36": 564840.18979165,
+          "42": 665514.2572324801,
+          "48": 766188.3305379293
+        },
+        "opening_total_first_24_months": 363493.441427249
+      },
+      "calendar_year_washes": {
+        "year_1": 169161.52916340093,
+        "year_2": 194331.91226384806,
+        "year_3": 201346.74836440102,
+        "year_4": 201348.14074627924,
+        "definition": "Each value is the sum of forecast monthly washes in that operational year after open (year 1 = months 1\u201312, year 2 = 13\u201324, year 3 = 25\u201336, year 4 = 37\u201348)."
+      },
+      "use_opening_prefix_for_mature_forecast": true,
+      "bridge_opening_to_mature_when_prefix": true
+    }
+  }
+}

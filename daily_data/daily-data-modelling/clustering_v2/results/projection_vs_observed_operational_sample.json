@@ -1,0 +1,232 @@
+{
+  "generated_at": "2026-04-21T10:47:12.625451+00:00",
+  "caveat": "Greenfield Year 1\u20134 are model defaults for a hypothetical opening at this location; they are not calibrated to each site's realized ramp. Operational year_number in CSV is the panel's year index (not always Jan\u2013Dec calendar). 2024 vs pred_year_1 / 2025 vs pred_year_2 are rough calendar-vs-operational analogies only.",
+  "n_sites_attempted_sample": 8,
+  "n_sites_reported": 8,
+  "sites": [
+    {
+      "site_client_id": 9,
+      "address_snip": "Aloha Car Wash, 5360 Laurel Springs Pkwy, Suwanee, GA, 30024",
+      "lat": 34.0854544,
+      "lon": -84.1606903,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 48374.0,
+      "actual_calendar_2025_total_washes": 42123.0,
+      "actual_operational_year_totals": {
+        "year_1": 48374.0,
+        "year_2": 42123.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 44204.31622535636,
+        "pred_year_2": 44358.00287851592,
+        "pred_year_3": 44358.00299578553,
+        "pred_year_4": 44358.00299975334
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": -8.62,
+        "year_2": 5.31
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": -8.62,
+        "2025_vs_pred_year_2": 5.31
+      }
+    },
+    {
+      "site_client_id": 10,
+      "address_snip": "Aloha Car Wash 2, 13001 NE 177th Pl, Woodinville, WA, 98072",
+      "lat": 47.7553858,
+      "lon": -122.1660315,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 53970.0,
+      "actual_calendar_2025_total_washes": 58138.0,
+      "actual_operational_year_totals": {
+        "year_1": 53970.0,
+        "year_2": 58138.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 184061.32683479766,
+        "pred_year_2": 183966.9858408556,
+        "pred_year_3": 183966.98584085528,
+        "pred_year_4": 183966.98584085528
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": 241.04,
+        "year_2": 216.43
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": 241.04,
+        "2025_vs_pred_year_2": 216.43
+      }
+    },
+    {
+      "site_client_id": 11,
+      "address_snip": "Aloha Car Wash 2, 17818 Bothell Everett Hwy, Bothell, WA, 98012",
+      "lat": 47.835968,
+      "lon": -122.212199,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 77934.0,
+      "actual_calendar_2025_total_washes": 78264.0,
+      "actual_operational_year_totals": {
+        "year_1": 77934.0,
+        "year_2": 78264.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 184050.39647082423,
+        "pred_year_2": 183956.06107926165,
+        "pred_year_3": 183956.06107926127,
+        "pred_year_4": 183956.06107926127
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": 136.16,
+        "year_2": 135.05
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": 136.16,
+        "2025_vs_pred_year_2": 135.05
+      }
+    },
+    {
+      "site_client_id": 14,
+      "address_snip": "Alpine Wash, 250 S Denton Tap Rd, Coppell, TX, 75019",
+      "lat": 32.964135,
+      "lon": -96.992945,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 152960.0,
+      "actual_calendar_2025_total_washes": 152014.0,
+      "actual_operational_year_totals": {
+        "year_1": 152960.0,
+        "year_2": 152014.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 206496.3113299644,
+        "pred_year_2": 206700.6495615248,
+        "pred_year_3": 206707.26592820088,
+        "pred_year_4": 206707.28590574343
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": 35.0,
+        "year_2": 35.97
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": 35.0,
+        "2025_vs_pred_year_2": 35.97
+      }
+    },
+    {
+      "site_client_id": 15,
+      "address_snip": "Alton Town Center, 5200 Donald Ross Rd, Palm Beach Gardens, FL, 33418",
+      "lat": 26.8824789,
+      "lon": -80.1134695,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 77809.0,
+      "actual_calendar_2025_total_washes": 106787.0,
+      "actual_operational_year_totals": {
+        "year_1": 77809.0,
+        "year_2": 106787.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 25668.212779880017,
+        "pred_year_2": 25668.212780022397,
+        "pred_year_3": 27928.6533393279,
+        "pred_year_4": 27997.150112863215
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": -67.01,
+        "year_2": -75.96
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": -67.01,
+        "2025_vs_pred_year_2": -75.96
+      }
+    },
+    {
+      "site_client_id": 18,
+      "address_snip": "American Pride, 8909 Six Forks Rd, Raleigh, NC, 27615",
+      "lat": 35.902101,
+      "lon": -78.653225,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 277310.0,
+      "actual_calendar_2025_total_washes": 291403.0,
+      "actual_operational_year_totals": {
+        "year_1": 277310.0,
+        "year_2": 291403.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 344156.4513228686,
+        "pred_year_2": 531828.0064052942,
+        "pred_year_3": 618164.632081748,
+        "pred_year_4": 618183.9817770452
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": 24.11,
+        "year_2": 82.51
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": 24.11,
+        "2025_vs_pred_year_2": 82.51
+      }
+    },
+    {
+      "site_client_id": 19,
+      "address_snip": "American Pride, 1421 US-70, Garner, NC, 27529",
+      "lat": 35.68325647936693,
+      "lon": -78.52959606447831,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 185267.0,
+      "actual_calendar_2025_total_washes": 189798.0,
+      "actual_operational_year_totals": {
+        "year_1": 185267.0,
+        "year_2": 189798.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 344184.36865107645,
+        "pred_year_2": 531871.1472993494,
+        "pred_year_3": 618051.6024587366,
+        "pred_year_4": 618060.7456198876
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": 85.78,
+        "year_2": 180.23
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": 85.78,
+        "2025_vs_pred_year_2": 180.23
+      }
+    },
+    {
+      "site_client_id": 20,
+      "address_snip": "American Pride, 3810 New Bern Ave, Raleigh, NC, 27610",
+      "lat": 35.7978173,
+      "lon": -78.5746952,
+      "data_calendar_min": "2024-01-01",
+      "data_calendar_max": "2025-12-30",
+      "actual_calendar_2024_total_washes": 134739.0,
+      "actual_calendar_2025_total_washes": 165439.0,
+      "actual_operational_year_totals": {
+        "year_1": 134739.0,
+        "year_2": 165439.0
+      },
+      "greenfield_calendar_year_washes_projection": {
+        "pred_year_1": 344169.4375121057,
+        "pred_year_2": 531848.0740783139,
+        "pred_year_3": 618187.9225350962,
+        "pred_year_4": 618207.2708914966
+      },
+      "pct_error_pred_vs_actual_operational_year": {
+        "year_1": 155.43,
+        "year_2": 221.48
+      },
+      "pct_error_pred_vs_calendar_year": {
+        "2024_vs_pred_year_1": 155.43,
+        "2025_vs_pred_year_2": 221.48
+      }
+    }
+  ]
+}
