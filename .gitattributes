@@ -7,3 +7,4 @@ daily_data/daily-data-eda/master_daily_with_site_metadata.csv filter=lfs diff=lf
 daily_data/daily-data-modelling/more_than-2yrs.csv filter=lfs diff=lfs merge=lfs -text
 daily_data/daily-data-modelling/master_more_than-2yrs.csv filter=lfs diff=lfs merge=lfs -text
 modelling2/master_daily_with_site_metadata.backup_before_daily_weather.csv filter=lfs diff=lfs merge=lfs -text
+daily_data/daily-data-modelling/clustering_v2/models/*/wash_count_model_12km.rf.joblib filter=lfs diff=lfs merge=lfs -text
