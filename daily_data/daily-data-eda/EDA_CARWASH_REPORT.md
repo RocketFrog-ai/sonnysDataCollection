@@ -1,6 +1,6 @@
 # Car wash exploratory data analysis
 
-**Source data:** `app/modelling/ds/datasets/master_daily_with_site_metadata.csv`  
+**Source data:** `app/site_analysis/modelling/ds/datasets/master_daily_with_site_metadata.csv`  
 **Generated:** auto from `run_carwash_eda.py`
 
 ## What we measured

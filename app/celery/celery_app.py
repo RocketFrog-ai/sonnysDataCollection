@@ -10,7 +10,7 @@ celery_app = Celery(
     "proforma-backend",
     broker=CELERY_BROKER_URL,
     backend=CELERY_RESULT_BACKEND,
-    include=["app.modelling.site_analysis", "app.celery.tasks"]
+    include=["app.site_analysis.modelling.site_analysis", "app.celery.tasks"]
 )
 
 celery_app.conf.update(

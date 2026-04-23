@@ -89,10 +89,10 @@ app/
         └── ...
 ```
 
-- **app/server**: HTTP only; no business logic beyond calling analysis.
-- **app/modelling/site_analysis**: One orchestration: address → geocode → fetch all features once (using `features/active`) → build `feature_values` and v3 `location_features` → quantile prediction. Same fetched data reused for API and quantile.
-- **app/modelling/ds**: Already holds v3 and scoring; no changes to its responsibilities.
-- **app/modelling/ai**: Narrative generation: per-feature (summary, business_impact, impact_classification) and overall (insight, observation, conclusion). Stub implementations; wire LLM agents here.
+- **app/site_analysis/server**: HTTP only; no business logic beyond calling analysis.
+- **app/site_analysis/modelling/site_analysis**: One orchestration: address → geocode → fetch all features once (using `features/active`) → build `feature_values` and v3 `location_features` → quantile prediction. Same fetched data reused for API and quantile.
+- **app/site_analysis/modelling/ds**: Already holds v3 and scoring; no changes to its responsibilities.
+- **app/site_analysis/modelling/ai**: Narrative generation: per-feature (summary, business_impact, impact_classification) and overall (insight, observation, conclusion). Stub implementations; wire LLM agents here.
 
 ---
 
@@ -153,7 +153,7 @@ You can add `quantile_score` (0–100) and `scale_bands` (e.g. Poor 0–50, Fair
 
 ## 4. Where config lives
 
-- **app/server/config.py**: API-level config (e.g. `WEATHER_METRIC_CONFIG`: metric_key → climate key, unit, description). Add any route-level defaults here.
+- **app/site_analysis/server/config.py**: API-level config (e.g. `WEATHER_METRIC_CONFIG`: metric_key → climate key, unit, description). Add any route-level defaults here.
 - **app/narrative/config.py**: Narrative/UI config, e.g.:
   - Metric key → display name, subtitle, scale bounds (min/max per category if fixed).
   - Mapping from percentile or wash_q to category (Poor/Fair/Good/Strong) for each metric.
@@ -182,11 +182,11 @@ Start with **Option A**; add Option B later if you need to re-run only LLM or ca
 
 | Layer        | Responsibility                    | Location              |
 |-------------|------------------------------------|------------------------|
-| Feature fetch | Geocode, get weather/gas/retail/competitors (single fetch) | `app/modelling/site_analysis.py` (fetch_all_features) |
-| Feature mapping | API keys ↔ v3 internal keys       | `app/modelling/site_analysis.py` (build_feature_values_and_v3_input) |
-| Quantile prediction | v4.analyze(location_features)     | `app/modelling/ds/prediction` |
-| Per-feature narrative | One metric’s quantile data → summary, business_impact, impact_classification | `app/modelling/ai/narratives.py` (get_feature_narratives) |
-| Overall narrative | All narratives + score → insight, observation, conclusion | `app/modelling/ai/narratives.py` (get_overall_narrative) |
-| HTTP         | Validate, call analysis, return JSON | `app/server/routes.py` |
+| Feature fetch | Geocode, get weather/gas/retail/competitors (single fetch) | `app/site_analysis/modelling/site_analysis.py` (fetch_all_features) |
+| Feature mapping | API keys ↔ v3 internal keys       | `app/site_analysis/modelling/site_analysis.py` (build_feature_values_and_v3_input) |
+| Quantile prediction | v4.analyze(location_features)     | `app/site_analysis/modelling/ds/prediction` |
+| Per-feature narrative | One metric’s quantile data → summary, business_impact, impact_classification | `app/site_analysis/modelling/ai/narratives.py` (get_feature_narratives) |
+| Overall narrative | All narratives + score → insight, observation, conclusion | `app/site_analysis/modelling/ai/narratives.py` (get_overall_narrative) |
+| HTTP         | Validate, call analysis, return JSON | `app/site_analysis/server/routes.py` |
 
 This keeps a clear path from **address → single fetch (features/active) → feature_values + quantile result (v3) → modelling/ai narratives → summaries and overall text**, with config in `server` and no business logic in routes.

@@ -3,7 +3,7 @@ Build a long-format CSV: one row per site per day for calendar year 2025.
 
 Reads site rows from modelling2/finale.csv, builds an address from
 client_id + street + city + state + zip, geocodes to lat/lon, then fetches
-daily fields from Open-Meteo Archive (same stack as app/features/active/weather/open_meteo.py).
+daily fields from Open-Meteo Archive (same stack as app/site_analysis/features/active/weather/open_meteo.py).
 
 Weather is requested once per distinct (lat, lon) after rounding, then merged back to every site
 so duplicate coordinates do not multiply API calls.
@@ -45,7 +45,7 @@ from dotenv import load_dotenv
 
 load_dotenv(_ROOT / ".env")
 
-from app.features.active.weather.open_meteo import fetch_open_meteo_weather_data
+from app.site_analysis.features.active.weather.open_meteo import fetch_open_meteo_weather_data
 from app.utils import common as calib
 
 FINALE_CSV = Path(__file__).resolve().parent / "finale.csv"

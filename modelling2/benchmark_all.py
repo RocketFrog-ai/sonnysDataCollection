@@ -33,7 +33,7 @@ TIER_PERCENTILE_SPLITS = [19, 31, 31, 19]  # "4-class-90pct-custom"
 
 
 def add_engineered_features(df: pd.DataFrame, *, include_effective_capacity: bool) -> pd.DataFrame:
-    """Mirror app.modelling.ds.prediction._add_engineered_features (subset)."""
+    """Mirror app.site_analysis.modelling.ds.prediction._add_engineered_features (subset)."""
     df = df.copy()
 
     cr = df.get("competitor_1_rating_count", pd.Series(np.nan, index=df.index))
@@ -323,7 +323,7 @@ def main() -> None:
         "n_rows": len(raw),
         "tier_percentile_splits": TIER_PERCENTILE_SPLITS,
         "note_app_modelling": (
-            "app/modelling quantile predictor uses ExtraTreesClassifier on wash tiers Q1–Q4 "
+            "app/site_analysis/modelling quantile predictor uses ExtraTreesClassifier on wash tiers Q1–Q4 "
             "and reports exact tier match % (5-fold CV). It includes tunnel_count and "
             "effective_capacity; modelling2 policy excludes those from the primary feature set."
         ),
@@ -488,11 +488,11 @@ def main() -> None:
 
 **Dataset:** `{DATA_PATH.name}` — **{results['n_rows']}** sites.
 
-## Why this felt different from `app/modelling`
+## Why this felt different from `app/site_analysis/modelling`
 
 | What you saw | What it measures |
 |---|---|
-| **`app/modelling`** (`ds.prediction`) | **Classification:** each site gets a **tier** Q1–Q4 from `current_count`. **Accuracy** = % of sites where the **predicted tier equals the true tier** (5-fold CV). Docs cite ~**63.5%** exact and ~**98%** within one tier when **tunnel_count + effective_capacity** are in the model. |
+| **`app/site_analysis/modelling`** (`ds.prediction`) | **Classification:** each site gets a **tier** Q1–Q4 from `current_count`. **Accuracy** = % of sites where the **predicted tier equals the true tier** (5-fold CV). Docs cite ~**63.5%** exact and ~**98%** within one tier when **tunnel_count + effective_capacity** are in the model. |
 | **Earlier modelling2 regression** | **Regression:** predict the **number** of washes. **R²** = variance explained (not “% correct”). **MAPE** = average **percent** error. There is no single “accuracy %” unless we define one (e.g. % predictions within 20% of true). |
 
 So: **production “accuracy” is tier hit rate; regression “accuracy” must be defined** (we use median APE + “within 20% of actual” below).

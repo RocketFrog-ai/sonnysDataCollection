@@ -29,13 +29,13 @@ fi
 REPO_ROOT="$RFW_HOME/sonnysDataCollection"
 cd "$REPO_ROOT" || exit 3
 
-# So "from utils.xxx" in app/features/competitors and "from nearbyStores.xxx" in app/features/nearbyStores resolve
-export PYTHONPATH="${REPO_ROOT}/app/features/competitors:${REPO_ROOT}/app/features${PYTHONPATH:+:$PYTHONPATH}"
+# So "from utils.xxx" in app/site_analysis/features/competitors and "from nearbyStores.xxx" in app/site_analysis/features/nearbyStores resolve
+export PYTHONPATH="${REPO_ROOT}/app/site_analysis/features/competitors:${REPO_ROOT}/app/site_analysis/features${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "$REPO_ROOT/logs"
 bs_log_fn="proforma-fastapi-"`date +"%d-%b-%Y-%H-%M-%S"`".log";echo $curr_ts
 bs_log_pfn="$REPO_ROOT/logs/$bs_log_fn"
 echo "start_uvicorn_fast_api.sh - MESSAGE: Starting the server now logs available in: $bs_log_pfn"
 
-PYTHONPATH="${REPO_ROOT}/app/features/competitors:${REPO_ROOT}/app/features${PYTHONPATH:+:$PYTHONPATH}" nohup python -m app.server.main >"$bs_log_pfn" 2>&1 &
+PYTHONPATH="${REPO_ROOT}/app/site_analysis/features/competitors:${REPO_ROOT}/app/site_analysis/features${PYTHONPATH:+:$PYTHONPATH}" nohup python -m app.site_analysis.server.main >"$bs_log_pfn" 2>&1 &
 echo $! > "$REPO_ROOT/fastapi_$ENV_NAME.pid"

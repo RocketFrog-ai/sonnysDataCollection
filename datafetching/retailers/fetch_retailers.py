@@ -9,10 +9,10 @@ if str(_project_root) not in sys.path:
     sys.path.insert(0, str(_project_root))
 
 from app.utils import common as calib
-from app.features.active.nearbyStores.nearby_costcos import find_nearby_places as _find_places
-from app.features.active.nearbyStores.nearby_target import _find_nearby_places_text
-from app.features.active.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
-from app.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places as _search_nearby
+from app.site_analysis.features.active.nearbyStores.nearby_costcos import find_nearby_places as _find_places
+from app.site_analysis.features.active.nearbyStores.nearby_target import _find_nearby_places_text
+from app.site_analysis.features.active.nearbyRetailers.get_nearby_retailers import get_nearby_retailers
+from app.site_analysis.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places as _search_nearby
 
 _DATA_DIR = Path(__file__).resolve().parent.parent
 INPUT_PATH = _DATA_DIR / "input_data" / "Proforma-v2-data.xlsx"

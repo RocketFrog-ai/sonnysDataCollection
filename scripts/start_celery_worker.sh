@@ -35,12 +35,12 @@ mkdir -p data
 REPO_ROOT="$RFW_HOME/sonnysDataCollection"
 cd "$REPO_ROOT" || exit 3
 
-# So "from utils.xxx" in app/features/competitors and "from nearbyStores.xxx" in app/features/nearbyStores resolve
-export PYTHONPATH="${REPO_ROOT}/app/features/competitors:${REPO_ROOT}/app/features${PYTHONPATH:+:$PYTHONPATH}"
+# So "from utils.xxx" in app/site_analysis/features/competitors and "from nearbyStores.xxx" in app/site_analysis/features/nearbyStores resolve
+export PYTHONPATH="${REPO_ROOT}/app/site_analysis/features/competitors:${REPO_ROOT}/app/site_analysis/features${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "$REPO_ROOT/logs"
 bs_log_fn="proforma-celery-"`date +"%d-%b-%Y-%H-%M-%S"`".log";echo $curr_ts
 bs_log_pfn="$REPO_ROOT/logs/$bs_log_fn"
 echo "start_celery_worker.sh - MESSAGE: Starting the server now logs available in: $bs_log_pfn"
-PYTHONPATH="${REPO_ROOT}/app/features/competitors:${REPO_ROOT}/app/features${PYTHONPATH:+:$PYTHONPATH}" nohup "${CONDA_PREFIX}/bin/celery" -A app.celery.celery_app worker --loglevel=info --pool=prefork>"$bs_log_pfn" 2>&1 &
+PYTHONPATH="${REPO_ROOT}/app/site_analysis/features/competitors:${REPO_ROOT}/app/site_analysis/features${PYTHONPATH:+:$PYTHONPATH}" nohup "${CONDA_PREFIX}/bin/celery" -A app.celery.celery_app worker --loglevel=info --pool=prefork>"$bs_log_pfn" 2>&1 &
 echo $! > "$REPO_ROOT/celery_$ENV_NAME.pid"

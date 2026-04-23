@@ -3,8 +3,8 @@ import os
 import json
 from dotenv import load_dotenv
 
-from app.server.routes import get_competitors_dynamics_endpoint
-from app.server.models import CompetitorsDynamicsRequest
+from app.site_analysis.server.routes import get_competitors_dynamics_endpoint
+from app.site_analysis.server.models import CompetitorsDynamicsRequest
 
 load_dotenv()
 

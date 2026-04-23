@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
 from app.utils import common as calib
-from app.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearest_gas_station_only
+from app.site_analysis.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearest_gas_station_only
 
 INPUT_PATH = Path(__file__).resolve().parent / "input_data" / "Proforma-v2-data.xlsx"
 ADDRESS_COL = "Address"

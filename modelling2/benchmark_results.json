@@ -6,7 +6,7 @@
     31,
     19
   ],
-  "note_app_modelling": "app/modelling quantile predictor uses ExtraTreesClassifier on wash tiers Q1\u2013Q4 and reports exact tier match % (5-fold CV). It includes tunnel_count and effective_capacity; modelling2 policy excludes those from the primary feature set.",
+  "note_app_modelling": "app/site_analysis/modelling quantile predictor uses ExtraTreesClassifier on wash tiers Q1\u2013Q4 and reports exact tier match % (5-fold CV). It includes tunnel_count and effective_capacity; modelling2 policy excludes those from the primary feature set.",
   "quantile_classification_no_tunnel": {
     "knn_classifier": {
       "exact_accuracy_pct": 34.02,

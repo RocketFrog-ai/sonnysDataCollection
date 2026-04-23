@@ -63,7 +63,7 @@ These produce:
   - plus `<2y` versions under `clustering/models/less_than_2yrs/`
 
 Inference helper:
-- `app/server/cluster_portable_model.py`
+- `app/site_analysis/server/cluster_portable_model.py`
 
 ---
 
