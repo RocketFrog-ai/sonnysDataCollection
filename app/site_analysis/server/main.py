@@ -1,6 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
-from app.site_analysis.server.routes import router
+from app.site_analysis.server.routes import router as site_analysis_router
+from app.pnl_analysis.server.central_routes import router as central_input_router
+from app.pnl_analysis.server.routes import router as pnl_analysis_router
 from app.utils import common as calib
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -21,7 +23,9 @@ app.add_middleware(
 )
 
 # Include routes
-app.include_router(router, prefix="/v1")
+app.include_router(site_analysis_router, prefix="/v1")
+app.include_router(central_input_router, prefix="/v1")
+app.include_router(pnl_analysis_router, prefix="/v1")
 
 # Root endpoint
 @app.get("/")

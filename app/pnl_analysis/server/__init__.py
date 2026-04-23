@@ -1,0 +1,2 @@
+"""PnL analysis FastAPI routes."""
+
