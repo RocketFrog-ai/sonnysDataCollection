@@ -1,0 +1,1134 @@
+{
+  "generated_at": "2026-04-24T00:06:58.842016+00:00",
+  "purpose": "End-to-end projection accuracy for current greenfield pipeline variants.",
+  "notes": [
+    "This scores the full projection pipeline, not just the level-model holdout.",
+    "<2y year-1 numbers are still optimistic relative to a true leave-site-out greenfield test because the deployed artifacts were trained using year-1 rows from the same cohort.",
+    ">2y comparisons are analogies, not direct greenfield ground truth, because the mature file only contains realized 2024/2025 volumes for already-operating sites.",
+    "All variants were evaluated with allow_nearest_cluster_beyond_distance_cap=True so every site could be scored; distance summaries show how often a site is within the production 20 km cap.",
+    "Quantile q50 was not included in this end-to-end sweep because the saved joblib artifacts are not compatible with the current sklearn runtime (`SimpleImputer` deserialization error)."
+  ],
+  "dataset_counts": {
+    "less_than_sites": 490,
+    "more_than_sites": 482
+  },
+  "variants": [
+    {
+      "variant": {
+        "name": "ridge_arima_prefix_bridge",
+        "family": "ridge_rf",
+        "level_model": "ridge",
+        "method": "arima",
+        "use_prefix": true,
+        "bridge": true
+      },
+      "site_counts": {
+        "less_than_requested": 490,
+        "less_than_scored": 490,
+        "more_than_requested": 482,
+        "more_than_scored": 482
+      },
+      "summary": {
+        "less_than_2yrs": {
+          "n_sites": 490,
+          "cluster_distance_summary_km": {
+            "n": 490,
+            "median_km": 19.025,
+            "p90_km": 223.324,
+            "max_km": 12671.973,
+            "pct_within_20km": 51.22
+          },
+          "year_1": {
+            "n": 490,
+            "actual_sum": 68374650.0,
+            "pred_sum": 57748720.99,
+            "bias_pct_of_actual_sum": -15.54,
+            "mae": 75882.57,
+            "rmse": 106704.78,
+            "wape": 0.5438,
+            "median_abs_pct_error": 48.65,
+            "mean_abs_pct_error": 70.61,
+            "pct_within_10pct": 8.98,
+            "pct_within_15pct": 12.65,
+            "pct_within_20pct": 18.37,
+            "pct_within_30pct": 27.35
+          },
+          "year_2": {
+            "n": 490,
+            "actual_sum": 45573552.0,
+            "pred_sum": 60261754.13,
+            "bias_pct_of_actual_sum": 32.23,
+            "mae": 83334.38,
+            "rmse": 116321.92,
+            "wape": 0.896,
+            "median_abs_pct_error": 68.93,
+            "mean_abs_pct_error": 268.45,
+            "pct_within_10pct": 7.96,
+            "pct_within_15pct": 10.0,
+            "pct_within_20pct": 12.45,
+            "pct_within_30pct": 20.61
+          },
+          "combined_years_1_2": {
+            "n": 980,
+            "actual_sum": 113948202.0,
+            "pred_sum": 118010475.13,
+            "bias_pct_of_actual_sum": 3.57,
+            "mae": 79608.47,
+            "rmse": 111616.98,
+            "wape": 0.6847,
+            "median_abs_pct_error": 56.15,
+            "mean_abs_pct_error": 169.53,
+            "pct_within_10pct": 8.47,
+            "pct_within_15pct": 11.33,
+            "pct_within_20pct": 15.41,
+            "pct_within_30pct": 23.98
+          }
+        },
+        "more_than_2yrs_literal_calendar_analogy": {
+          "definition": "Compare projected operational Year 1/2 to actual calendar-year 2024/2025 totals of mature sites. This is not a true greenfield validation.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_1_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 58936360.12,
+            "bias_pct_of_actual_sum": 15.36,
+            "mae": 81731.42,
+            "rmse": 108152.79,
+            "wape": 0.7711,
+            "median_abs_pct_error": 60.84,
+            "mean_abs_pct_error": 965.18,
+            "pct_within_10pct": 8.09,
+            "pct_within_15pct": 11.62,
+            "pct_within_20pct": 13.69,
+            "pct_within_30pct": 22.41
+          },
+          "year_2_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 64968364.1,
+            "bias_pct_of_actual_sum": 18.8,
+            "mae": 97235.67,
+            "rmse": 139637.54,
+            "wape": 0.857,
+            "median_abs_pct_error": 61.37,
+            "mean_abs_pct_error": 1301.22,
+            "pct_within_10pct": 8.09,
+            "pct_within_15pct": 11.0,
+            "pct_within_20pct": 15.35,
+            "pct_within_30pct": 22.41
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 123904724.22,
+            "bias_pct_of_actual_sum": 17.14,
+            "mae": 89483.54,
+            "rmse": 124891.29,
+            "wape": 0.8155,
+            "median_abs_pct_error": 60.89,
+            "mean_abs_pct_error": 1133.2,
+            "pct_within_10pct": 8.09,
+            "pct_within_15pct": 11.31,
+            "pct_within_20pct": 14.52,
+            "pct_within_30pct": 22.41
+          }
+        },
+        "more_than_2yrs_mature_analogy": {
+          "definition": "Compare projected operational Year 3/4 to actual calendar-year 2024/2025 totals of mature sites. This is the more stage-aligned >2y analogue.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_3_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 68644208.03,
+            "bias_pct_of_actual_sum": 34.36,
+            "mae": 102209.22,
+            "rmse": 163424.65,
+            "wape": 0.9643,
+            "median_abs_pct_error": 61.76,
+            "mean_abs_pct_error": 1020.27,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 11.83,
+            "pct_within_20pct": 14.52,
+            "pct_within_30pct": 22.61
+          },
+          "year_4_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 71364226.73,
+            "bias_pct_of_actual_sum": 30.5,
+            "mae": 110297.69,
+            "rmse": 183194.83,
+            "wape": 0.9722,
+            "median_abs_pct_error": 61.03,
+            "mean_abs_pct_error": 1345.53,
+            "pct_within_10pct": 8.3,
+            "pct_within_15pct": 11.83,
+            "pct_within_20pct": 15.15,
+            "pct_within_30pct": 22.41
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 140008434.75,
+            "bias_pct_of_actual_sum": 32.37,
+            "mae": 106253.46,
+            "rmse": 173591.42,
+            "wape": 0.9684,
+            "median_abs_pct_error": 61.49,
+            "mean_abs_pct_error": 1182.9,
+            "pct_within_10pct": 8.4,
+            "pct_within_15pct": 11.83,
+            "pct_within_20pct": 14.83,
+            "pct_within_30pct": 22.51
+          }
+        }
+      }
+    },
+    {
+      "variant": {
+        "name": "ridge_blend_prefix_bridge",
+        "family": "ridge_rf",
+        "level_model": "ridge",
+        "method": "blend",
+        "use_prefix": true,
+        "bridge": true
+      },
+      "site_counts": {
+        "less_than_requested": 490,
+        "less_than_scored": 490,
+        "more_than_requested": 482,
+        "more_than_scored": 482
+      },
+      "summary": {
+        "less_than_2yrs": {
+          "n_sites": 490,
+          "cluster_distance_summary_km": {
+            "n": 490,
+            "median_km": 19.025,
+            "p90_km": 223.324,
+            "max_km": 12671.973,
+            "pct_within_20km": 51.22
+          },
+          "year_1": {
+            "n": 490,
+            "actual_sum": 68374650.0,
+            "pred_sum": 62270367.76,
+            "bias_pct_of_actual_sum": -8.93,
+            "mae": 77260.63,
+            "rmse": 108378.36,
+            "wape": 0.5537,
+            "median_abs_pct_error": 48.52,
+            "mean_abs_pct_error": 74.78,
+            "pct_within_10pct": 10.82,
+            "pct_within_15pct": 14.29,
+            "pct_within_20pct": 20.0,
+            "pct_within_30pct": 28.78
+          },
+          "year_2": {
+            "n": 490,
+            "actual_sum": 45573552.0,
+            "pred_sum": 74051218.59,
+            "bias_pct_of_actual_sum": 62.49,
+            "mae": 101975.96,
+            "rmse": 140873.64,
+            "wape": 1.0964,
+            "median_abs_pct_error": 86.18,
+            "mean_abs_pct_error": 345.86,
+            "pct_within_10pct": 5.92,
+            "pct_within_15pct": 8.16,
+            "pct_within_20pct": 10.82,
+            "pct_within_30pct": 18.57
+          },
+          "combined_years_1_2": {
+            "n": 980,
+            "actual_sum": 113948202.0,
+            "pred_sum": 136321586.35,
+            "bias_pct_of_actual_sum": 19.63,
+            "mae": 89618.3,
+            "rmse": 125680.65,
+            "wape": 0.7708,
+            "median_abs_pct_error": 60.21,
+            "mean_abs_pct_error": 210.32,
+            "pct_within_10pct": 8.37,
+            "pct_within_15pct": 11.22,
+            "pct_within_20pct": 15.41,
+            "pct_within_30pct": 23.67
+          }
+        },
+        "more_than_2yrs_literal_calendar_analogy": {
+          "definition": "Compare projected operational Year 1/2 to actual calendar-year 2024/2025 totals of mature sites. This is not a true greenfield validation.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_1_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 64027605.74,
+            "bias_pct_of_actual_sum": 25.33,
+            "mae": 86595.07,
+            "rmse": 114735.4,
+            "wape": 0.817,
+            "median_abs_pct_error": 63.69,
+            "mean_abs_pct_error": 1006.33,
+            "pct_within_10pct": 8.71,
+            "pct_within_15pct": 13.69,
+            "pct_within_20pct": 17.84,
+            "pct_within_30pct": 23.65
+          },
+          "year_2_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 80025310.3,
+            "bias_pct_of_actual_sum": 46.34,
+            "mae": 116125.29,
+            "rmse": 162823.3,
+            "wape": 1.0235,
+            "median_abs_pct_error": 74.5,
+            "mean_abs_pct_error": 1581.1,
+            "pct_within_10pct": 6.22,
+            "pct_within_15pct": 10.58,
+            "pct_within_20pct": 13.9,
+            "pct_within_30pct": 19.29
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 144052916.04,
+            "bias_pct_of_actual_sum": 36.19,
+            "mae": 101360.18,
+            "rmse": 140846.79,
+            "wape": 0.9238,
+            "median_abs_pct_error": 68.9,
+            "mean_abs_pct_error": 1293.71,
+            "pct_within_10pct": 7.47,
+            "pct_within_15pct": 12.14,
+            "pct_within_20pct": 15.87,
+            "pct_within_30pct": 21.47
+          }
+        },
+        "more_than_2yrs_mature_analogy": {
+          "definition": "Compare projected operational Year 3/4 to actual calendar-year 2024/2025 totals of mature sites. This is the more stage-aligned >2y analogue.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_3_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 91783050.48,
+            "bias_pct_of_actual_sum": 79.66,
+            "mae": 135681.16,
+            "rmse": 206000.62,
+            "wape": 1.2801,
+            "median_abs_pct_error": 83.2,
+            "mean_abs_pct_error": 1246.59,
+            "pct_within_10pct": 6.22,
+            "pct_within_15pct": 8.3,
+            "pct_within_20pct": 12.45,
+            "pct_within_30pct": 18.26
+          },
+          "year_4_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 100328253.83,
+            "bias_pct_of_actual_sum": 83.47,
+            "mae": 161596.39,
+            "rmse": 250255.4,
+            "wape": 1.4243,
+            "median_abs_pct_error": 92.0,
+            "mean_abs_pct_error": 1977.03,
+            "pct_within_10pct": 4.56,
+            "pct_within_15pct": 6.85,
+            "pct_within_20pct": 8.92,
+            "pct_within_30pct": 13.28
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 192111304.31,
+            "bias_pct_of_actual_sum": 81.63,
+            "mae": 148638.78,
+            "rmse": 229198.62,
+            "wape": 1.3547,
+            "median_abs_pct_error": 90.38,
+            "mean_abs_pct_error": 1611.81,
+            "pct_within_10pct": 5.39,
+            "pct_within_15pct": 7.57,
+            "pct_within_20pct": 10.68,
+            "pct_within_30pct": 15.77
+          }
+        }
+      }
+    },
+    {
+      "variant": {
+        "name": "rf_arima_prefix_bridge",
+        "family": "ridge_rf",
+        "level_model": "rf",
+        "method": "arima",
+        "use_prefix": true,
+        "bridge": true
+      },
+      "site_counts": {
+        "less_than_requested": 490,
+        "less_than_scored": 490,
+        "more_than_requested": 482,
+        "more_than_scored": 482
+      },
+      "summary": {
+        "less_than_2yrs": {
+          "n_sites": 490,
+          "cluster_distance_summary_km": {
+            "n": 490,
+            "median_km": 19.025,
+            "p90_km": 223.324,
+            "max_km": 12671.973,
+            "pct_within_20km": 51.22
+          },
+          "year_1": {
+            "n": 490,
+            "actual_sum": 68374650.0,
+            "pred_sum": 58359025.52,
+            "bias_pct_of_actual_sum": -14.65,
+            "mae": 74555.81,
+            "rmse": 105633.47,
+            "wape": 0.5343,
+            "median_abs_pct_error": 48.53,
+            "mean_abs_pct_error": 70.65,
+            "pct_within_10pct": 9.59,
+            "pct_within_15pct": 12.04,
+            "pct_within_20pct": 20.0,
+            "pct_within_30pct": 29.18
+          },
+          "year_2": {
+            "n": 490,
+            "actual_sum": 45573552.0,
+            "pred_sum": 60960574.02,
+            "bias_pct_of_actual_sum": 33.76,
+            "mae": 83338.0,
+            "rmse": 115827.86,
+            "wape": 0.896,
+            "median_abs_pct_error": 72.65,
+            "mean_abs_pct_error": 274.61,
+            "pct_within_10pct": 6.33,
+            "pct_within_15pct": 9.59,
+            "pct_within_20pct": 11.84,
+            "pct_within_30pct": 21.02
+          },
+          "combined_years_1_2": {
+            "n": 980,
+            "actual_sum": 113948202.0,
+            "pred_sum": 119319599.54,
+            "bias_pct_of_actual_sum": 4.71,
+            "mae": 78946.91,
+            "rmse": 110847.92,
+            "wape": 0.679,
+            "median_abs_pct_error": 55.82,
+            "mean_abs_pct_error": 172.63,
+            "pct_within_10pct": 7.96,
+            "pct_within_15pct": 10.82,
+            "pct_within_20pct": 15.92,
+            "pct_within_30pct": 25.1
+          }
+        },
+        "more_than_2yrs_literal_calendar_analogy": {
+          "definition": "Compare projected operational Year 1/2 to actual calendar-year 2024/2025 totals of mature sites. This is not a true greenfield validation.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_1_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 60971015.62,
+            "bias_pct_of_actual_sum": 19.34,
+            "mae": 82054.53,
+            "rmse": 108908.14,
+            "wape": 0.7742,
+            "median_abs_pct_error": 61.7,
+            "mean_abs_pct_error": 1048.77,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 12.45,
+            "pct_within_20pct": 15.35,
+            "pct_within_30pct": 24.07
+          },
+          "year_2_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 67208436.92,
+            "bias_pct_of_actual_sum": 22.9,
+            "mae": 98220.3,
+            "rmse": 142279.0,
+            "wape": 0.8657,
+            "median_abs_pct_error": 61.51,
+            "mean_abs_pct_error": 1429.78,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 11.62,
+            "pct_within_20pct": 14.11,
+            "pct_within_30pct": 23.44
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 128179452.54,
+            "bias_pct_of_actual_sum": 21.18,
+            "mae": 90137.42,
+            "rmse": 126697.07,
+            "wape": 0.8215,
+            "median_abs_pct_error": 61.53,
+            "mean_abs_pct_error": 1239.28,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 12.03,
+            "pct_within_20pct": 14.73,
+            "pct_within_30pct": 23.76
+          }
+        },
+        "more_than_2yrs_mature_analogy": {
+          "definition": "Compare projected operational Year 3/4 to actual calendar-year 2024/2025 totals of mature sites. This is the more stage-aligned >2y analogue.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_3_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 71480245.9,
+            "bias_pct_of_actual_sum": 39.92,
+            "mae": 103943.0,
+            "rmse": 168081.69,
+            "wape": 0.9807,
+            "median_abs_pct_error": 64.79,
+            "mean_abs_pct_error": 1108.44,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 11.2,
+            "pct_within_20pct": 15.56,
+            "pct_within_30pct": 24.69
+          },
+          "year_4_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 74268349.84,
+            "bias_pct_of_actual_sum": 35.81,
+            "mae": 112496.59,
+            "rmse": 188970.81,
+            "wape": 0.9916,
+            "median_abs_pct_error": 60.99,
+            "mean_abs_pct_error": 1478.14,
+            "pct_within_10pct": 8.71,
+            "pct_within_15pct": 11.83,
+            "pct_within_20pct": 14.32,
+            "pct_within_30pct": 24.27
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 145748595.74,
+            "bias_pct_of_actual_sum": 37.79,
+            "mae": 108219.79,
+            "rmse": 178831.52,
+            "wape": 0.9863,
+            "median_abs_pct_error": 62.83,
+            "mean_abs_pct_error": 1293.29,
+            "pct_within_10pct": 8.61,
+            "pct_within_15pct": 11.51,
+            "pct_within_20pct": 14.94,
+            "pct_within_30pct": 24.48
+          }
+        }
+      }
+    },
+    {
+      "variant": {
+        "name": "rf_blend_prefix_bridge",
+        "family": "ridge_rf",
+        "level_model": "rf",
+        "method": "blend",
+        "use_prefix": true,
+        "bridge": true
+      },
+      "site_counts": {
+        "less_than_requested": 490,
+        "less_than_scored": 490,
+        "more_than_requested": 482,
+        "more_than_scored": 482
+      },
+      "summary": {
+        "less_than_2yrs": {
+          "n_sites": 490,
+          "cluster_distance_summary_km": {
+            "n": 490,
+            "median_km": 19.025,
+            "p90_km": 223.324,
+            "max_km": 12671.973,
+            "pct_within_20km": 51.22
+          },
+          "year_1": {
+            "n": 490,
+            "actual_sum": 68374650.0,
+            "pred_sum": 63025584.21,
+            "bias_pct_of_actual_sum": -7.82,
+            "mae": 76588.32,
+            "rmse": 107351.46,
+            "wape": 0.5489,
+            "median_abs_pct_error": 47.85,
+            "mean_abs_pct_error": 75.52,
+            "pct_within_10pct": 9.18,
+            "pct_within_15pct": 13.67,
+            "pct_within_20pct": 17.14,
+            "pct_within_30pct": 27.96
+          },
+          "year_2": {
+            "n": 490,
+            "actual_sum": 45573552.0,
+            "pred_sum": 75048967.78,
+            "bias_pct_of_actual_sum": 64.68,
+            "mae": 102608.98,
+            "rmse": 140642.47,
+            "wape": 1.1032,
+            "median_abs_pct_error": 88.99,
+            "mean_abs_pct_error": 354.85,
+            "pct_within_10pct": 6.12,
+            "pct_within_15pct": 8.57,
+            "pct_within_20pct": 10.82,
+            "pct_within_30pct": 18.16
+          },
+          "combined_years_1_2": {
+            "n": 980,
+            "actual_sum": 113948202.0,
+            "pred_sum": 138074551.99,
+            "bias_pct_of_actual_sum": 21.17,
+            "mae": 89598.65,
+            "rmse": 125109.23,
+            "wape": 0.7706,
+            "median_abs_pct_error": 58.57,
+            "mean_abs_pct_error": 215.19,
+            "pct_within_10pct": 7.65,
+            "pct_within_15pct": 11.12,
+            "pct_within_20pct": 13.98,
+            "pct_within_30pct": 23.06
+          }
+        },
+        "more_than_2yrs_literal_calendar_analogy": {
+          "definition": "Compare projected operational Year 1/2 to actual calendar-year 2024/2025 totals of mature sites. This is not a true greenfield validation.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_1_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 66283507.22,
+            "bias_pct_of_actual_sum": 29.74,
+            "mae": 87833.99,
+            "rmse": 115933.96,
+            "wape": 0.8287,
+            "median_abs_pct_error": 65.4,
+            "mean_abs_pct_error": 1095.76,
+            "pct_within_10pct": 9.54,
+            "pct_within_15pct": 13.49,
+            "pct_within_20pct": 17.22,
+            "pct_within_30pct": 24.27
+          },
+          "year_2_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 82809822.21,
+            "bias_pct_of_actual_sum": 51.43,
+            "mae": 118901.24,
+            "rmse": 166639.21,
+            "wape": 1.048,
+            "median_abs_pct_error": 75.73,
+            "mean_abs_pct_error": 1745.86,
+            "pct_within_10pct": 7.68,
+            "pct_within_15pct": 10.79,
+            "pct_within_20pct": 13.49,
+            "pct_within_30pct": 20.54
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 149093329.42,
+            "bias_pct_of_actual_sum": 40.96,
+            "mae": 103367.61,
+            "rmse": 143543.22,
+            "wape": 0.9421,
+            "median_abs_pct_error": 70.4,
+            "mean_abs_pct_error": 1420.81,
+            "pct_within_10pct": 8.61,
+            "pct_within_15pct": 12.14,
+            "pct_within_20pct": 15.35,
+            "pct_within_30pct": 22.41
+          }
+        },
+        "more_than_2yrs_mature_analogy": {
+          "definition": "Compare projected operational Year 3/4 to actual calendar-year 2024/2025 totals of mature sites. This is the more stage-aligned >2y analogue.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_3_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 95637025.65,
+            "bias_pct_of_actual_sum": 87.2,
+            "mae": 140544.89,
+            "rmse": 212527.2,
+            "wape": 1.326,
+            "median_abs_pct_error": 90.72,
+            "mean_abs_pct_error": 1384.18,
+            "pct_within_10pct": 5.39,
+            "pct_within_15pct": 8.09,
+            "pct_within_20pct": 10.17,
+            "pct_within_30pct": 17.22
+          },
+          "year_4_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 105010504.85,
+            "bias_pct_of_actual_sum": 92.03,
+            "mae": 166829.75,
+            "rmse": 258787.45,
+            "wape": 1.4705,
+            "median_abs_pct_error": 96.8,
+            "mean_abs_pct_error": 2290.66,
+            "pct_within_10pct": 3.73,
+            "pct_within_15pct": 5.6,
+            "pct_within_20pct": 9.13,
+            "pct_within_30pct": 15.77
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 200647530.5,
+            "bias_pct_of_actual_sum": 89.7,
+            "mae": 153687.32,
+            "rmse": 236789.73,
+            "wape": 1.4007,
+            "median_abs_pct_error": 95.08,
+            "mean_abs_pct_error": 1837.42,
+            "pct_within_10pct": 4.56,
+            "pct_within_15pct": 6.85,
+            "pct_within_20pct": 9.65,
+            "pct_within_30pct": 16.49
+          }
+        }
+      }
+    },
+    {
+      "variant": {
+        "name": "rf_arima_no_prefix",
+        "family": "ridge_rf",
+        "level_model": "rf",
+        "method": "arima",
+        "use_prefix": false,
+        "bridge": false
+      },
+      "site_counts": {
+        "less_than_requested": 490,
+        "less_than_scored": 490,
+        "more_than_requested": 482,
+        "more_than_scored": 482
+      },
+      "summary": {
+        "less_than_2yrs": {
+          "n_sites": 490,
+          "cluster_distance_summary_km": {
+            "n": 490,
+            "median_km": 19.025,
+            "p90_km": 223.324,
+            "max_km": 12671.973,
+            "pct_within_20km": 51.22
+          },
+          "year_1": {
+            "n": 490,
+            "actual_sum": 68374650.0,
+            "pred_sum": 58359025.52,
+            "bias_pct_of_actual_sum": -14.65,
+            "mae": 74555.81,
+            "rmse": 105633.47,
+            "wape": 0.5343,
+            "median_abs_pct_error": 48.53,
+            "mean_abs_pct_error": 70.65,
+            "pct_within_10pct": 9.59,
+            "pct_within_15pct": 12.04,
+            "pct_within_20pct": 20.0,
+            "pct_within_30pct": 29.18
+          },
+          "year_2": {
+            "n": 490,
+            "actual_sum": 45573552.0,
+            "pred_sum": 60960574.02,
+            "bias_pct_of_actual_sum": 33.76,
+            "mae": 83338.0,
+            "rmse": 115827.86,
+            "wape": 0.896,
+            "median_abs_pct_error": 72.65,
+            "mean_abs_pct_error": 274.61,
+            "pct_within_10pct": 6.33,
+            "pct_within_15pct": 9.59,
+            "pct_within_20pct": 11.84,
+            "pct_within_30pct": 21.02
+          },
+          "combined_years_1_2": {
+            "n": 980,
+            "actual_sum": 113948202.0,
+            "pred_sum": 119319599.54,
+            "bias_pct_of_actual_sum": 4.71,
+            "mae": 78946.91,
+            "rmse": 110847.92,
+            "wape": 0.679,
+            "median_abs_pct_error": 55.82,
+            "mean_abs_pct_error": 172.63,
+            "pct_within_10pct": 7.96,
+            "pct_within_15pct": 10.82,
+            "pct_within_20pct": 15.92,
+            "pct_within_30pct": 25.1
+          }
+        },
+        "more_than_2yrs_literal_calendar_analogy": {
+          "definition": "Compare projected operational Year 1/2 to actual calendar-year 2024/2025 totals of mature sites. This is not a true greenfield validation.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_1_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 60971015.62,
+            "bias_pct_of_actual_sum": 19.34,
+            "mae": 82054.53,
+            "rmse": 108908.14,
+            "wape": 0.7742,
+            "median_abs_pct_error": 61.7,
+            "mean_abs_pct_error": 1048.77,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 12.45,
+            "pct_within_20pct": 15.35,
+            "pct_within_30pct": 24.07
+          },
+          "year_2_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 67208436.92,
+            "bias_pct_of_actual_sum": 22.9,
+            "mae": 98220.3,
+            "rmse": 142279.0,
+            "wape": 0.8657,
+            "median_abs_pct_error": 61.51,
+            "mean_abs_pct_error": 1429.78,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 11.62,
+            "pct_within_20pct": 14.11,
+            "pct_within_30pct": 23.44
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 128179452.54,
+            "bias_pct_of_actual_sum": 21.18,
+            "mae": 90137.42,
+            "rmse": 126697.07,
+            "wape": 0.8215,
+            "median_abs_pct_error": 61.53,
+            "mean_abs_pct_error": 1239.28,
+            "pct_within_10pct": 8.51,
+            "pct_within_15pct": 12.03,
+            "pct_within_20pct": 14.73,
+            "pct_within_30pct": 23.76
+          }
+        },
+        "more_than_2yrs_mature_analogy": {
+          "definition": "Compare projected operational Year 3/4 to actual calendar-year 2024/2025 totals of mature sites. This is the more stage-aligned >2y analogue.",
+          "n_sites": 482,
+          "cluster_distance_summary_km": {
+            "n": 482,
+            "median_km": 13.318,
+            "p90_km": 213.722,
+            "max_km": 12693.926,
+            "pct_within_20km": 54.56
+          },
+          "year_3_vs_2024": {
+            "n": 482,
+            "actual_sum": 51088056.0,
+            "pred_sum": 70170212.27,
+            "bias_pct_of_actual_sum": 37.35,
+            "mae": 101596.31,
+            "rmse": 159691.67,
+            "wape": 0.9585,
+            "median_abs_pct_error": 65.79,
+            "mean_abs_pct_error": 1085.3,
+            "pct_within_10pct": 8.71,
+            "pct_within_15pct": 11.83,
+            "pct_within_20pct": 15.98,
+            "pct_within_30pct": 24.27
+          },
+          "year_4_vs_2025": {
+            "n": 482,
+            "actual_sum": 54685098.0,
+            "pred_sum": 70158511.63,
+            "bias_pct_of_actual_sum": 28.3,
+            "mae": 104604.36,
+            "rmse": 160042.66,
+            "wape": 0.922,
+            "median_abs_pct_error": 61.35,
+            "mean_abs_pct_error": 1448.22,
+            "pct_within_10pct": 7.88,
+            "pct_within_15pct": 10.79,
+            "pct_within_20pct": 14.32,
+            "pct_within_30pct": 23.86
+          },
+          "combined": {
+            "n": 964,
+            "actual_sum": 105773154.0,
+            "pred_sum": 140328723.9,
+            "bias_pct_of_actual_sum": 32.67,
+            "mae": 103100.33,
+            "rmse": 159867.26,
+            "wape": 0.9396,
+            "median_abs_pct_error": 62.49,
+            "mean_abs_pct_error": 1266.76,
+            "pct_within_10pct": 8.3,
+            "pct_within_15pct": 11.31,
+            "pct_within_20pct": 15.15,
+            "pct_within_30pct": 24.07
+          }
+        }
+      }
+    }
+  ],
+  "scoreboard": {
+    "rows": [
+      {
+        "variant": "ridge_arima_prefix_bridge",
+        "evaluation_slice": "<2y_combined_years_1_2",
+        "wape": 0.6847,
+        "mae": 79608.47
+      },
+      {
+        "variant": "ridge_arima_prefix_bridge",
+        "evaluation_slice": ">2y_literal_combined",
+        "wape": 0.8155,
+        "mae": 89483.54
+      },
+      {
+        "variant": "ridge_arima_prefix_bridge",
+        "evaluation_slice": ">2y_mature_combined",
+        "wape": 0.9684,
+        "mae": 106253.46
+      },
+      {
+        "variant": "ridge_blend_prefix_bridge",
+        "evaluation_slice": "<2y_combined_years_1_2",
+        "wape": 0.7708,
+        "mae": 89618.3
+      },
+      {
+        "variant": "ridge_blend_prefix_bridge",
+        "evaluation_slice": ">2y_literal_combined",
+        "wape": 0.9238,
+        "mae": 101360.18
+      },
+      {
+        "variant": "ridge_blend_prefix_bridge",
+        "evaluation_slice": ">2y_mature_combined",
+        "wape": 1.3547,
+        "mae": 148638.78
+      },
+      {
+        "variant": "rf_arima_prefix_bridge",
+        "evaluation_slice": "<2y_combined_years_1_2",
+        "wape": 0.679,
+        "mae": 78946.91
+      },
+      {
+        "variant": "rf_arima_prefix_bridge",
+        "evaluation_slice": ">2y_literal_combined",
+        "wape": 0.8215,
+        "mae": 90137.42
+      },
+      {
+        "variant": "rf_arima_prefix_bridge",
+        "evaluation_slice": ">2y_mature_combined",
+        "wape": 0.9863,
+        "mae": 108219.79
+      },
+      {
+        "variant": "rf_blend_prefix_bridge",
+        "evaluation_slice": "<2y_combined_years_1_2",
+        "wape": 0.7706,
+        "mae": 89598.65
+      },
+      {
+        "variant": "rf_blend_prefix_bridge",
+        "evaluation_slice": ">2y_literal_combined",
+        "wape": 0.9421,
+        "mae": 103367.61
+      },
+      {
+        "variant": "rf_blend_prefix_bridge",
+        "evaluation_slice": ">2y_mature_combined",
+        "wape": 1.4007,
+        "mae": 153687.32
+      },
+      {
+        "variant": "rf_arima_no_prefix",
+        "evaluation_slice": "<2y_combined_years_1_2",
+        "wape": 0.679,
+        "mae": 78946.91
+      },
+      {
+        "variant": "rf_arima_no_prefix",
+        "evaluation_slice": ">2y_literal_combined",
+        "wape": 0.8215,
+        "mae": 90137.42
+      },
+      {
+        "variant": "rf_arima_no_prefix",
+        "evaluation_slice": ">2y_mature_combined",
+        "wape": 0.9396,
+        "mae": 103100.33
+      }
+    ],
+    "ranked_by_slice": {
+      "<2y_combined_years_1_2": [
+        {
+          "variant": "rf_arima_no_prefix",
+          "evaluation_slice": "<2y_combined_years_1_2",
+          "wape": 0.679,
+          "mae": 78946.91
+        },
+        {
+          "variant": "rf_arima_prefix_bridge",
+          "evaluation_slice": "<2y_combined_years_1_2",
+          "wape": 0.679,
+          "mae": 78946.91
+        },
+        {
+          "variant": "ridge_arima_prefix_bridge",
+          "evaluation_slice": "<2y_combined_years_1_2",
+          "wape": 0.6847,
+          "mae": 79608.47
+        },
+        {
+          "variant": "rf_blend_prefix_bridge",
+          "evaluation_slice": "<2y_combined_years_1_2",
+          "wape": 0.7706,
+          "mae": 89598.65
+        },
+        {
+          "variant": "ridge_blend_prefix_bridge",
+          "evaluation_slice": "<2y_combined_years_1_2",
+          "wape": 0.7708,
+          "mae": 89618.3
+        }
+      ],
+      ">2y_literal_combined": [
+        {
+          "variant": "ridge_arima_prefix_bridge",
+          "evaluation_slice": ">2y_literal_combined",
+          "wape": 0.8155,
+          "mae": 89483.54
+        },
+        {
+          "variant": "rf_arima_no_prefix",
+          "evaluation_slice": ">2y_literal_combined",
+          "wape": 0.8215,
+          "mae": 90137.42
+        },
+        {
+          "variant": "rf_arima_prefix_bridge",
+          "evaluation_slice": ">2y_literal_combined",
+          "wape": 0.8215,
+          "mae": 90137.42
+        },
+        {
+          "variant": "ridge_blend_prefix_bridge",
+          "evaluation_slice": ">2y_literal_combined",
+          "wape": 0.9238,
+          "mae": 101360.18
+        },
+        {
+          "variant": "rf_blend_prefix_bridge",
+          "evaluation_slice": ">2y_literal_combined",
+          "wape": 0.9421,
+          "mae": 103367.61
+        }
+      ],
+      ">2y_mature_combined": [
+        {
+          "variant": "rf_arima_no_prefix",
+          "evaluation_slice": ">2y_mature_combined",
+          "wape": 0.9396,
+          "mae": 103100.33
+        },
+        {
+          "variant": "ridge_arima_prefix_bridge",
+          "evaluation_slice": ">2y_mature_combined",
+          "wape": 0.9684,
+          "mae": 106253.46
+        },
+        {
+          "variant": "rf_arima_prefix_bridge",
+          "evaluation_slice": ">2y_mature_combined",
+          "wape": 0.9863,
+          "mae": 108219.79
+        },
+        {
+          "variant": "ridge_blend_prefix_bridge",
+          "evaluation_slice": ">2y_mature_combined",
+          "wape": 1.3547,
+          "mae": 148638.78
+        },
+        {
+          "variant": "rf_blend_prefix_bridge",
+          "evaluation_slice": ">2y_mature_combined",
+          "wape": 1.4007,
+          "mae": 153687.32
+        }
+      ]
+    }
+  }
+}

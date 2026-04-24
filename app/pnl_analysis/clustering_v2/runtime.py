@@ -49,10 +49,10 @@ def run_projection(
     lat: Optional[float],
     lon: Optional[float],
     method: str,
-    use_opening_prefix_for_mature_forecast: bool = True,
-    bridge_opening_to_mature_when_prefix: bool = True,
+    use_opening_prefix_for_mature_forecast: bool = False,
+    bridge_opening_to_mature_when_prefix: bool = False,
     allow_nearest_cluster_beyond_distance_cap: bool = False,
-    level_model: str = "ridge",
+    level_model: str = "rf",
 ) -> Dict[str, Any]:
     ps = _project_site_module()
     try:

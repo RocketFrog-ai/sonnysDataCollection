@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-04-21T10:38:36.121715+00:00",
+  "generated_at": "2026-04-24T00:00:54.599595+00:00",
   "evaluation": "V2 holdout \u2014 Ridge + RandomForest level models (monthly figures)",
   "more_than_2yrs": {
     "ridge": {

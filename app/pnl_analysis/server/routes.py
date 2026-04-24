@@ -139,3 +139,63 @@ def get_wash_volume_projection(task_id: str = Query(..., description="Task id fr
             "error": str(task_result.result) if task_result.result else "Task failed",
         }
     return {"task_id": task_id, "status": state.lower()}
+
+
+@router.get("/cash_flow_projections")
+def get_cash_flow_projections(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "cash_flow_projections": res.get("cash_flow_projections"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
+@router.get("/membership_retail_count")
+def get_membership_retail_count(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "membership_retail_count": res.get("membership_retail_count"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
+@router.get("/membership_retail_revenue")
+def get_membership_retail_revenue(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "membership_retail_revenue": res.get("membership_retail_revenue"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}

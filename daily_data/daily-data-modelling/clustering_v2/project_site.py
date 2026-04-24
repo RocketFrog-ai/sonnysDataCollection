@@ -1,4 +1,4 @@
-"""Greenfield Ridge projection (both cohorts). Outputs results/projection_demo/. See APPROACH.md.
+"""Greenfield projection (both cohorts). Outputs results/projection_demo/. See APPROACH.md.
 
 Peer overlays read training panels via ``data_paths`` — the same
 ``daily_data/daily-data-modelling/less_than-2yrs-clustering-ready.csv`` and
@@ -280,7 +280,7 @@ def _project_cohort(
     opening_prefix_monthly: list[float] | None = None,
     *,
     allow_nearest_cluster_beyond_distance_cap: bool = False,
-    level_model: str = "ridge",
+    level_model: str = "rf",
 ) -> dict[str, Any]:
     centroids = cohort_assets["centroids"]["centroids"]
     if not centroids:
@@ -724,8 +724,9 @@ def _plot_projection(resp: dict[str, Any], out_path: Path) -> None:
         pfx = ""
         if gt.get("used_lt2y_monthly_forecast_as_mature_forecast_context"):
             pfx = " | >2y forecast used <2y monthly as TS context"
+        level = str(resp.get("level_model", "rf")).upper()
         ax.set_title(
-            f"V2 Ridge | calendar years 1–4 (opening cl {lt.get('cluster', {}).get('cluster_id', '?')}, "
+            f"V2 {level} | calendar years 1–4 (opening cl {lt.get('cluster', {}).get('cluster_id', '?')}, "
             f"mature cl {gt.get('cluster', {}).get('cluster_id', '?')}){pfx}",
             fontsize=10,
         )
@@ -840,8 +841,9 @@ def _plot_compare_panels(
             ax.set_title(subtitle, fontsize=10)
         ax.tick_params(axis="x", rotation=15)
     axes[0].set_ylabel("Washes in calendar year (12-mo sum)")
+    level = str((resps[0][1] or {}).get("level_model", "rf")).upper() if resps else "RF"
     fig.suptitle(
-        f"V2 Ridge compare (method={method})  |  {loc_title}\nNearest train centroids: {cluster_line}",
+        f"V2 {level} compare (method={method})  |  {loc_title}\nNearest train centroids: {cluster_line}",
         fontsize=10,
         y=1.03,
     )
@@ -864,7 +866,7 @@ def run_projection(
     use_opening_prefix_for_mature_forecast: bool = True,
     bridge_opening_to_mature_when_prefix: bool = True,
     allow_nearest_cluster_beyond_distance_cap: bool = False,
-    level_model: str = "ridge",
+    level_model: str = "rf",
 ) -> dict[str, Any]:
     lat, lon, addr = _resolve_latlon(address, lat, lon)
     print(f"[project] address={addr!r}  lat={lat:.5f}  lon={lon:.5f}  method={method}  level={level_model}")
@@ -1062,7 +1064,7 @@ def main() -> None:
             args.method,
             use_opening_prefix_for_mature_forecast=False,
             bridge_opening_to_mature_when_prefix=True,
-            level_model="ridge",
+            level_model="rf",
             **cap_kw,
         )
         r_prefix = run_projection(
@@ -1072,7 +1074,7 @@ def main() -> None:
             args.method,
             use_opening_prefix_for_mature_forecast=True,
             bridge_opening_to_mature_when_prefix=True,
-            level_model="ridge",
+            level_model="rf",
             **cap_kw,
         )
         combined = {
@@ -1107,6 +1109,7 @@ def main() -> None:
         use_opening_prefix_for_mature_forecast=not args.no_opening_prefix,
         bridge_opening_to_mature_when_prefix=not args.legacy_prefix_no_bridge,
         allow_nearest_cluster_beyond_distance_cap=args.allow_distant_nearest_cluster,
+        level_model="rf",
     )
 
     json_path = DEMO_OUT / f"projection_{args.method}_{tag}.json"

@@ -1,0 +1,353 @@
+{
+  "generated_at": "2026-04-24T00:50:38.984000+00:00",
+  "config": {
+    "name": "rf_arima_no_prefix",
+    "family": "ridge_rf",
+    "level_model": "rf",
+    "method": "arima",
+    "use_prefix": false,
+    "bridge": false
+  },
+  "site_counts": {
+    "less_than_test_sites": 490,
+    "more_than_test_sites": 482
+  },
+  "less_than_2yrs": {
+    "note": "For this file, Year 1 / Year 2 are operational-year totals from year_number=1/2.",
+    "assigned_cluster_counts_top15": [
+      {
+        "cluster_id": 10,
+        "count": 31
+      },
+      {
+        "cluster_id": 49,
+        "count": 20
+      },
+      {
+        "cluster_id": 67,
+        "count": 13
+      },
+      {
+        "cluster_id": 22,
+        "count": 13
+      },
+      {
+        "cluster_id": 43,
+        "count": 13
+      },
+      {
+        "cluster_id": 4,
+        "count": 12
+      },
+      {
+        "cluster_id": 19,
+        "count": 12
+      },
+      {
+        "cluster_id": 38,
+        "count": 12
+      },
+      {
+        "cluster_id": 60,
+        "count": 10
+      },
+      {
+        "cluster_id": 74,
+        "count": 10
+      },
+      {
+        "cluster_id": 12,
+        "count": 10
+      },
+      {
+        "cluster_id": 55,
+        "count": 10
+      },
+      {
+        "cluster_id": 24,
+        "count": 9
+      },
+      {
+        "cluster_id": 51,
+        "count": 9
+      },
+      {
+        "cluster_id": 13,
+        "count": 9
+      }
+    ],
+    "cluster_53_peer_example": {
+      "cluster_id": 53,
+      "year_1_peer_stats": {
+        "min": 133893.0,
+        "max": 191915.0,
+        "median": 162904.0,
+        "mean": 162904.0,
+        "n": 2.0
+      },
+      "year_2_peer_stats": {
+        "min": 166527.0,
+        "max": 200082.0,
+        "median": 183304.5,
+        "mean": 183304.5,
+        "n": 2.0
+      }
+    },
+    "year_1_peer_range_check": {
+      "n": 490,
+      "pred_inside_peer_min_max_pct": 45.71,
+      "actual_inside_peer_min_max_pct": 39.39,
+      "pred_below_peer_range_pct": 38.78,
+      "pred_above_peer_range_pct": 15.51,
+      "median_gap_to_peer_range_when_outside": 33281.16,
+      "mean_gap_to_peer_range_when_outside": 45929.06,
+      "model_mae_vs_actual": 74555.81,
+      "cluster_median_baseline_mae_vs_actual": 77410.14,
+      "model_wape_vs_actual": 0.5343,
+      "cluster_median_baseline_wape_vs_actual": 0.5548,
+      "pct_sites_model_better_than_cluster_median": 49.8,
+      "median_abs_pct_error_model": 48.53,
+      "median_abs_pct_error_cluster_median": 46.29,
+      "median_gap_pred_to_peer_median": 37443.02,
+      "median_gap_actual_to_peer_median": 56556.25,
+      "median_gap_actual_to_peer_range": 10512.5
+    },
+    "year_2_peer_range_check": {
+      "n": 490,
+      "pred_inside_peer_min_max_pct": 38.16,
+      "actual_inside_peer_min_max_pct": 39.39,
+      "pred_below_peer_range_pct": 16.73,
+      "pred_above_peer_range_pct": 45.1,
+      "median_gap_to_peer_range_when_outside": 44781.75,
+      "mean_gap_to_peer_range_when_outside": 57281.86,
+      "model_mae_vs_actual": 83338.0,
+      "cluster_median_baseline_mae_vs_actual": 68202.57,
+      "model_wape_vs_actual": 0.896,
+      "cluster_median_baseline_wape_vs_actual": 0.7333,
+      "pct_sites_model_better_than_cluster_median": 47.14,
+      "median_abs_pct_error_model": 72.65,
+      "median_abs_pct_error_cluster_median": 62.6,
+      "median_gap_pred_to_peer_median": 46491.59,
+      "median_gap_actual_to_peer_median": 50984.5,
+      "median_gap_actual_to_peer_range": 9779.5
+    },
+    "combined_years_1_2_peer_range_check": {
+      "n": 980,
+      "pred_inside_peer_min_max_pct": 41.94,
+      "actual_inside_peer_min_max_pct": 39.39,
+      "pred_below_peer_range_pct": 27.76,
+      "pred_above_peer_range_pct": 30.31,
+      "median_gap_to_peer_range_when_outside": 35371.81,
+      "mean_gap_to_peer_range_when_outside": 51974.57,
+      "model_mae_vs_actual": 78946.91,
+      "cluster_median_baseline_mae_vs_actual": 72806.36,
+      "model_wape_vs_actual": 0.679,
+      "cluster_median_baseline_wape_vs_actual": 0.6262,
+      "pct_sites_model_better_than_cluster_median": 48.47,
+      "median_abs_pct_error_model": 55.82,
+      "median_abs_pct_error_cluster_median": 52.82,
+      "median_gap_pred_to_peer_median": 40602.42,
+      "median_gap_actual_to_peer_median": 53790.0,
+      "median_gap_actual_to_peer_range": 10297.0
+    }
+  },
+  "more_than_2yrs_literal_analogy": {
+    "note": "Compare predicted Year 1 to peer actual 2024 range and predicted Year 2 to peer actual 2025 range.",
+    "assigned_cluster_counts_top15": [
+      {
+        "cluster_id": 48,
+        "count": 19
+      },
+      {
+        "cluster_id": 55,
+        "count": 12
+      },
+      {
+        "cluster_id": 51,
+        "count": 12
+      },
+      {
+        "cluster_id": 43,
+        "count": 12
+      },
+      {
+        "cluster_id": 17,
+        "count": 11
+      },
+      {
+        "cluster_id": 39,
+        "count": 11
+      },
+      {
+        "cluster_id": 25,
+        "count": 11
+      },
+      {
+        "cluster_id": 9,
+        "count": 10
+      },
+      {
+        "cluster_id": 50,
+        "count": 10
+      },
+      {
+        "cluster_id": 37,
+        "count": 10
+      },
+      {
+        "cluster_id": 11,
+        "count": 9
+      },
+      {
+        "cluster_id": 24,
+        "count": 8
+      },
+      {
+        "cluster_id": 7,
+        "count": 8
+      },
+      {
+        "cluster_id": 18,
+        "count": 8
+      },
+      {
+        "cluster_id": 81,
+        "count": 8
+      }
+    ],
+    "cluster_53_peer_example": {
+      "cluster_id": 53,
+      "year_2024_peer_stats": {
+        "min": 64541.0,
+        "max": 239816.0,
+        "median": 152178.5,
+        "mean": 152178.5,
+        "n": 2.0
+      },
+      "year_2025_peer_stats": {
+        "min": 83196.0,
+        "max": 261722.0,
+        "median": 172459.0,
+        "mean": 172459.0,
+        "n": 2.0
+      }
+    },
+    "year_1_vs_2024_peer_range_check": {
+      "n": 476,
+      "pred_inside_peer_min_max_pct": 34.66,
+      "actual_inside_peer_min_max_pct": 32.98,
+      "pred_below_peer_range_pct": 24.16,
+      "pred_above_peer_range_pct": 41.18,
+      "median_gap_to_peer_range_when_outside": 62153.72,
+      "mean_gap_to_peer_range_when_outside": 75838.29,
+      "model_mae_vs_actual": 81299.71,
+      "cluster_median_baseline_mae_vs_actual": 69418.07,
+      "model_wape_vs_actual": 0.7826,
+      "cluster_median_baseline_wape_vs_actual": 0.6682,
+      "pct_sites_model_better_than_cluster_median": 46.85,
+      "median_abs_pct_error_model": 63.29,
+      "median_abs_pct_error_cluster_median": 57.4,
+      "median_gap_pred_to_peer_median": 61535.79,
+      "median_gap_actual_to_peer_median": 55079.75,
+      "median_gap_actual_to_peer_range": 20657.5
+    },
+    "year_2_vs_2025_peer_range_check": {
+      "n": 476,
+      "pred_inside_peer_min_max_pct": 33.82,
+      "actual_inside_peer_min_max_pct": 33.19,
+      "pred_below_peer_range_pct": 26.89,
+      "pred_above_peer_range_pct": 39.29,
+      "median_gap_to_peer_range_when_outside": 54045.97,
+      "mean_gap_to_peer_range_when_outside": 96383.62,
+      "model_mae_vs_actual": 96891.76,
+      "cluster_median_baseline_mae_vs_actual": 75684.11,
+      "model_wape_vs_actual": 0.8758,
+      "cluster_median_baseline_wape_vs_actual": 0.6841,
+      "pct_sites_model_better_than_cluster_median": 48.53,
+      "median_abs_pct_error_model": 62.05,
+      "median_abs_pct_error_cluster_median": 57.78,
+      "median_gap_pred_to_peer_median": 62958.95,
+      "median_gap_actual_to_peer_median": 54740.25,
+      "median_gap_actual_to_peer_range": 20361.5
+    },
+    "combined_peer_range_check": {
+      "n": 952,
+      "pred_inside_peer_min_max_pct": 34.24,
+      "actual_inside_peer_min_max_pct": 33.09,
+      "pred_below_peer_range_pct": 25.53,
+      "pred_above_peer_range_pct": 40.23,
+      "median_gap_to_peer_range_when_outside": 56824.11,
+      "mean_gap_to_peer_range_when_outside": 86176.6,
+      "model_mae_vs_actual": 89095.73,
+      "cluster_median_baseline_mae_vs_actual": 72551.09,
+      "model_wape_vs_actual": 0.8307,
+      "cluster_median_baseline_wape_vs_actual": 0.6764,
+      "pct_sites_model_better_than_cluster_median": 47.69,
+      "median_abs_pct_error_model": 62.35,
+      "median_abs_pct_error_cluster_median": 57.61,
+      "median_gap_pred_to_peer_median": 62680.85,
+      "median_gap_actual_to_peer_median": 54844.25,
+      "median_gap_actual_to_peer_range": 20510.5
+    }
+  },
+  "more_than_2yrs_mature_analogy": {
+    "note": "Compare predicted Year 3 to peer actual 2024 range and predicted Year 4 to peer actual 2025 range.",
+    "year_3_vs_2024_peer_range_check": {
+      "n": 476,
+      "pred_inside_peer_min_max_pct": 32.77,
+      "actual_inside_peer_min_max_pct": 32.98,
+      "pred_below_peer_range_pct": 26.26,
+      "pred_above_peer_range_pct": 40.97,
+      "median_gap_to_peer_range_when_outside": 57314.33,
+      "mean_gap_to_peer_range_when_outside": 103832.46,
+      "model_mae_vs_actual": 101060.64,
+      "cluster_median_baseline_mae_vs_actual": 69418.07,
+      "model_wape_vs_actual": 0.9728,
+      "cluster_median_baseline_wape_vs_actual": 0.6682,
+      "pct_sites_model_better_than_cluster_median": 45.8,
+      "median_abs_pct_error_model": 66.19,
+      "median_abs_pct_error_cluster_median": 57.4,
+      "median_gap_pred_to_peer_median": 62597.31,
+      "median_gap_actual_to_peer_median": 55079.75,
+      "median_gap_actual_to_peer_range": 20657.5
+    },
+    "year_4_vs_2025_peer_range_check": {
+      "n": 476,
+      "pred_inside_peer_min_max_pct": 33.4,
+      "actual_inside_peer_min_max_pct": 33.19,
+      "pred_below_peer_range_pct": 27.52,
+      "pred_above_peer_range_pct": 39.08,
+      "median_gap_to_peer_range_when_outside": 54123.28,
+      "mean_gap_to_peer_range_when_outside": 105478.12,
+      "model_mae_vs_actual": 103287.79,
+      "cluster_median_baseline_mae_vs_actual": 75684.11,
+      "model_wape_vs_actual": 0.9336,
+      "cluster_median_baseline_wape_vs_actual": 0.6841,
+      "pct_sites_model_better_than_cluster_median": 48.32,
+      "median_abs_pct_error_model": 61.51,
+      "median_abs_pct_error_cluster_median": 57.78,
+      "median_gap_pred_to_peer_median": 61564.43,
+      "median_gap_actual_to_peer_median": 54740.25,
+      "median_gap_actual_to_peer_range": 20361.5
+    },
+    "combined_peer_range_check": {
+      "n": 952,
+      "pred_inside_peer_min_max_pct": 33.09,
+      "actual_inside_peer_min_max_pct": 33.09,
+      "pred_below_peer_range_pct": 26.89,
+      "pred_above_peer_range_pct": 40.02,
+      "median_gap_to_peer_range_when_outside": 56406.54,
+      "mean_gap_to_peer_range_when_outside": 104651.41,
+      "model_mae_vs_actual": 102174.22,
+      "cluster_median_baseline_mae_vs_actual": 72551.09,
+      "model_wape_vs_actual": 0.9526,
+      "cluster_median_baseline_wape_vs_actual": 0.6764,
+      "pct_sites_model_better_than_cluster_median": 47.06,
+      "median_abs_pct_error_model": 63.04,
+      "median_abs_pct_error_cluster_median": 57.61,
+      "median_gap_pred_to_peer_median": 61821.99,
+      "median_gap_actual_to_peer_median": 54844.25,
+      "median_gap_actual_to_peer_range": 20510.5
+    }
+  }
+}
