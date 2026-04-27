@@ -16,6 +16,15 @@ SessionLocal = None
 _site_fetch_table_ready = False
 _site_response_table_ready = False
 
+def get_car_wash_engine():
+    """Return the shared SQLAlchemy engine after pool init, or None if unavailable."""
+    global engine
+    if engine is not None:
+        return engine
+    init_db()
+    return engine
+
+
 def init_db():
     global engine, SessionLocal
     db_url = os.getenv("CAR_WASH_DB_URL")

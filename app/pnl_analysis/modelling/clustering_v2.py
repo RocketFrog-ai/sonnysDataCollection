@@ -43,6 +43,51 @@ def _effective_dollar_per_wash(wash_prices: List[float], wash_pcts: List[float])
     return float(sum(float(p) * max(float(c), 0.0) / 100.0 for p, c in zip(wash_prices, wash_pcts)))
 
 
+def _normalize_central_task_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Map nested central input-form JSON onto legacy flat keys used by projection and PnL helpers.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    out = dict(payload)
+    ci = payload.get("customer_information")
+    if isinstance(ci, dict):
+        site = (ci.get("site_address") or "").strip()
+        if site:
+            out["address"] = site
+        lat, lon = ci.get("latitude"), ci.get("longitude")
+        if lat is not None:
+            try:
+                out["latitude"] = out["lat"] = float(lat)
+            except (TypeError, ValueError):
+                pass
+        if lon is not None:
+            try:
+                out["longitude"] = out["lon"] = float(lon)
+            except (TypeError, ValueError):
+                pass
+    mp = payload.get("menu_packages")
+    if isinstance(mp, list) and mp:
+        if not out.get("wash_prices") or not out.get("wash_pcts"):
+            prices: List[float] = []
+            pcts: List[float] = []
+            for p in mp:
+                if not isinstance(p, dict):
+                    continue
+                pr, pc = p.get("price"), p.get("customer_percentage")
+                if pr is None or pc is None:
+                    continue
+                try:
+                    prices.append(float(pr))
+                    pcts.append(float(pc))
+                except (TypeError, ValueError):
+                    continue
+            if prices and len(prices) == len(pcts):
+                out["wash_prices"] = prices
+                out["wash_pcts"] = pcts
+    return out
+
+
 @lru_cache(maxsize=1)
 def _cohort_membership_retail_shares() -> Dict[str, Dict[str, float]]:
     """
@@ -281,6 +326,7 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
     Uses fixed "best accuracy" model configs; request does not include model tuning knobs.
     Returns minimal result blocks used by dedicated endpoints.
     """
+    payload = _normalize_central_task_payload(payload)
     address = payload.get("address")
     lat = payload.get("latitude", payload.get("lat"))
     lon = payload.get("longitude", payload.get("lon"))

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Map — /v1/map/data-by-task JSON</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+    #toolbar {
+      padding: 10px 12px;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: flex-start;
+      background: #f6f6f6;
+    }
+    #toolbar > div { flex: 1; min-width: 260px; }
+    #jsonIn {
+      width: 100%;
+      min-height: 140px;
+      font-family: ui-monospace, monospace;
+      font-size: 12px;
+      padding: 8px;
+    }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 6px; }
+    .row input[type="text"] { flex: 1; min-width: 180px; padding: 6px 8px; }
+    #map { height: calc(100vh - 200px); min-height: 320px; width: 100%; }
+    button {
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    label { font-size: 13px; font-weight: 600; }
+    .hint { font-size: 12px; color: #444; margin-top: 6px; max-width: 900px; }
+    code { background: #eee; padding: 1px 5px; border-radius: 3px; }
+    /* Legend panel */
+    .map-legend {
+      background: rgba(255, 255, 255, 0.94);
+      padding: 10px 12px;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+      font-size: 12px;
+      line-height: 1.45;
+      max-width: 240px;
+      color: #1e293b;
+    }
+    .map-legend h4 {
+      margin: 0 0 6px 0;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .map-legend .leg-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    .map-legend .swatch {
+      flex-shrink: 0;
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      border: 2px solid #333;
+    }
+    .map-legend hr {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 8px 0;
+    }
+    .map-legend .ring-line {
+      flex-shrink: 0;
+      width: 28px;
+      display: inline-block;
+      border-top-style: dashed;
+      border-top-width: 2px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <div>
+      <label for="jsonIn">Paste JSON from <code>GET /v1/map/data-by-task/{task_id}</code></label>
+      <textarea id="jsonIn" placeholder='{"task_id":"...","lat":33.75,"lon":-84.39,"markers":[...]}'></textarea>
+      <div class="row">
+        <button type="button" id="btnRender">Render map</button>
+        <button type="button" id="btnClear">Clear</button>
+        <input type="file" id="jsonFile" accept=".json,application/json" title="Load a saved API JSON file" />
+        <span style="font-size:13px;color:#333;">Load <code>.json</code> file</span>
+      </div>
+      <p class="hint">
+        Default base is <strong>light streets</strong> (Carto Positron), not the bright OSM “map” style. Use the layer control (top-right) for <strong>Satellite</strong>.<br />
+        <code>?api=http://127.0.0.1:8002/v1&amp;task=YOUR_TASK_ID</code> — serve this folder over HTTP if <code>file://</code> fetch is blocked.
+      </p>
+    </div>
+    <div>
+      <label>Fetch from API</label>
+      <div class="row">
+        <input type="text" id="apiBase" placeholder="http://127.0.0.1:8002/v1" value="http://127.0.0.1:8002/v1" />
+      </div>
+      <div class="row">
+        <input type="text" id="taskId" placeholder="task_id (UUID)" />
+        <button type="button" id="btnFetch">Fetch &amp; render</button>
+      </div>
+    </div>
+  </div>
+  <div id="map"></div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    const METERS_PER_MILE = 1609.344;
+
+    const CATEGORY_STYLE = {
+      origin: { color: "#1a5fb4", fill: "#3584e4", r: 11 },
+      gas_station: { color: "#c64600", fill: "#ff7800", r: 7 },
+      car_wash: { color: "#1a7f37", fill: "#33d17a", r: 7 },
+      food_beverage: { color: "#63452c", fill: "#cdab8f", r: 6 },
+      grocery_anchor: { color: "#63452c", fill: "#f9f06b", r: 6 },
+      walmart: { color: "#0047ab", fill: "#62a0ea", r: 7 },
+      target: { color: "#c01c28", fill: "#f66151", r: 7 },
+      costco: { color: "#003057", fill: "#99c1f1", r: 7 },
+      big_box: { color: "#613583", fill: "#dc8add", r: 6 },
+      retail_anchor: { color: "#555", fill: "#aaa", r: 6 },
+    };
+
+    /** Legend labels (order shown) */
+    const LEGEND_ITEMS = [
+      ["origin", "Site (origin)"],
+      ["gas_station", "Gas station"],
+      ["car_wash", "Car wash / competitor"],
+      ["food_beverage", "Food & beverage"],
+      ["grocery_anchor", "Grocery / anchor"],
+      ["walmart", "Walmart"],
+      ["target", "Target"],
+      ["costco", "Costco / club"],
+      ["big_box", "Big box"],
+      ["retail_anchor", "Other retail"],
+    ];
+
+    const RING_STYLES = [
+      { miles: 1, color: "#1e40af", weight: 2.5, dashArray: "10 7" },
+      { miles: 3, color: "#475569", weight: 2, dashArray: "6 5" },
+      { miles: 6, color: "#64748b", weight: 1.5, dashArray: "4 8" },
+    ];
+
+    let map = null;
+    let legendControl = null;
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function buildLegendHtml() {
+      let html = '<div class="map-legend">';
+      html += "<h4>Markers</h4>";
+      LEGEND_ITEMS.forEach(([key, label]) => {
+        const st = CATEGORY_STYLE[key] || { color: "#555", fill: "#ccc" };
+        html +=
+          '<div class="leg-row"><span class="swatch" style="border-color:' +
+          st.color +
+          ";background:" +
+          st.fill +
+          '"></span><span>' +
+          escapeHtml(label) +
+          "</span></div>";
+      });
+      html += "<hr/><h4>Distance from site</h4>";
+      RING_STYLES.forEach((r) => {
+        html +=
+          '<div class="leg-row"><span class="ring-line" style="border-top-color:' +
+          r.color +
+          '"></span><span>' +
+          r.miles +
+          " mi radius</span></div>";
+      });
+      html += "</div>";
+      return html;
+    }
+
+    function addLegend(mapInstance) {
+      if (legendControl) {
+        mapInstance.removeControl(legendControl);
+        legendControl = null;
+      }
+      legendControl = L.control({ position: "bottomleft" });
+      legendControl.onAdd = function () {
+        const div = L.DomUtil.create("div", "");
+        div.innerHTML = buildLegendHtml();
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+        return div;
+      };
+      legendControl.addTo(mapInstance);
+    }
+
+    function renderFromData(data) {
+      if (!data || typeof data.lat !== "number" || typeof data.lon !== "number") {
+        alert("Invalid JSON: top-level lat and lon must be numbers.");
+        return;
+      }
+      const markers = Array.isArray(data.markers) ? data.markers : [];
+      const origin = [data.lat, data.lon];
+
+      if (map) {
+        map.remove();
+        map = null;
+      }
+      legendControl = null;
+
+      map = L.map("map").setView(origin, 14);
+
+      const streets = L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+        {
+          subdomains: "abcd",
+          maxZoom: 20,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        }
+      );
+
+      const satellite = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 19,
+          attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS user community",
+        }
+      );
+
+      streets.addTo(map);
+      L.control.layers(
+        {
+          "Streets (light)": streets,
+          Satellite: satellite,
+        },
+        {},
+        { collapsed: true }
+      ).addTo(map);
+
+      const ringGroup = L.featureGroup();
+      RING_STYLES.forEach((cfg) => {
+        L.circle(origin, {
+          radius: cfg.miles * METERS_PER_MILE,
+          color: cfg.color,
+          weight: cfg.weight,
+          opacity: 0.9,
+          fill: false,
+          dashArray: cfg.dashArray,
+        }).addTo(ringGroup);
+      });
+      ringGroup.addTo(map);
+
+      const markerLayer = L.layerGroup();
+      const latlngs = [];
+
+      markers.forEach((m) => {
+        const lat = m.latitude;
+        const lon = m.longitude;
+        if (lat == null || lon == null) return;
+        latlngs.push([lat, lon]);
+
+        const cat = m.category || "retail_anchor";
+        const st = CATEGORY_STYLE[cat] || { color: "#555", fill: "#ccc", r: 6 };
+
+        const circle = L.circleMarker([lat, lon], {
+          radius: st.r,
+          color: st.color,
+          weight: 2,
+          fillColor: st.fill,
+          fillOpacity: 0.88,
+        });
+
+        const miles =
+          m.distance_miles != null ? Number(m.distance_miles).toFixed(2) + " mi" : "—";
+        let ratingLine = "—";
+        if (m.rating != null && m.user_rating_count != null) {
+          ratingLine = escapeHtml(String(m.rating)) + " (" + m.user_rating_count + " reviews)";
+        } else if (m.rating != null) {
+          ratingLine = escapeHtml(String(m.rating));
+        }
+
+        circle.bindPopup(
+          "<div style=\"min-width:220px\"><strong>" +
+            escapeHtml(m.name || "") +
+            "</strong><br/><span style=\"color:#666\">" +
+            escapeHtml(cat) +
+            "</span><br/>" +
+            escapeHtml(m.address || "") +
+            "<br/><small>Distance: " +
+            miles +
+            "<br/>Rating: " +
+            ratingLine +
+            "</small></div>"
+        );
+        circle.addTo(markerLayer);
+      });
+      markerLayer.addTo(map);
+
+      addLegend(map);
+
+      const boundsLayers = L.featureGroup([ringGroup, markerLayer]);
+      if (boundsLayers.getLayers().length) {
+        map.fitBounds(boundsLayers.getBounds(), { padding: [48, 48], maxZoom: 15 });
+      }
+    }
+
+    document.getElementById("btnRender").addEventListener("click", () => {
+      const raw = document.getElementById("jsonIn").value.trim();
+      if (!raw) {
+        alert("Paste JSON first.");
+        return;
+      }
+      try {
+        renderFromData(JSON.parse(raw));
+      } catch (e) {
+        alert("Invalid JSON: " + e.message);
+      }
+    });
+
+    document.getElementById("btnClear").addEventListener("click", () => {
+      document.getElementById("jsonIn").value = "";
+      document.getElementById("jsonFile").value = "";
+    });
+
+    document.getElementById("jsonFile").addEventListener("change", (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const text = String(reader.result || "").trim();
+          const data = JSON.parse(text);
+          document.getElementById("jsonIn").value = JSON.stringify(data, null, 2);
+          renderFromData(data);
+        } catch (e) {
+          alert("Could not parse JSON file: " + e.message);
+        }
+      };
+      reader.onerror = () => alert("Could not read file.");
+      reader.readAsText(f, "UTF-8");
+    });
+
+    document.getElementById("btnFetch").addEventListener("click", () => {
+      let base = (document.getElementById("apiBase").value || "").trim().replace(/\/$/, "");
+      const task = (document.getElementById("taskId").value || "").trim();
+      if (!base || !task) {
+        alert("Enter API base (e.g. http://127.0.0.1:8002/v1) and task_id.");
+        return;
+      }
+      const url = base + "/map/data-by-task/" + encodeURIComponent(task);
+      fetch(url)
+        .then((r) => {
+          if (!r.ok) throw new Error(r.status + " " + r.statusText);
+          return r.json();
+        })
+        .then((data) => {
+          document.getElementById("jsonIn").value = JSON.stringify(data, null, 2);
+          renderFromData(data);
+        })
+        .catch((e) => alert("Fetch failed: " + e.message));
+    });
+
+    (function initFromQuery() {
+      const q = new URLSearchParams(window.location.search);
+      const api = (q.get("api") || "").trim().replace(/\/$/, "");
+      const task = (q.get("task") || "").trim();
+      if (api) document.getElementById("apiBase").value = api;
+      if (task) document.getElementById("taskId").value = task;
+      if (api && task) {
+        document.getElementById("btnFetch").click();
+      }
+    })();
+  </script>
+</body>
+</html>

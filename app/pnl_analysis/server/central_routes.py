@@ -5,6 +5,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 
 from app.pnl_analysis.modelling.clustering_v2 import run_pnl_central_input_form_task
+from app.pnl_analysis.server.central_input_db import save_central_input_form_submission
 from app.pnl_analysis.server.models import CentralInputFormRequest, TaskResponse, TaskStatus
 
 
@@ -16,13 +17,15 @@ router = APIRouter()
 def submit_central_input_form(req: CentralInputFormRequest):
     """
     Shared input-form endpoint.
+    Accepts the full nested input form, persists it to MySQL (CAR_WASH_DB_URL), and enqueues processing.
     Returns one central task id that downstream modules can read from.
     """
-    if not (req.address and req.address.strip()) and (req.latitude is None or req.longitude is None):
-        raise HTTPException(status_code=400, detail="Provide either address or latitude+longitude.")
+    payload = req.to_task_payload()
     try:
-        result = run_pnl_central_input_form_task.delay(req.model_dump())
+        result = run_pnl_central_input_form_task.delay(payload)
     except Exception as exc:
         logger.exception("Failed to enqueue central input form task")
         raise HTTPException(status_code=500, detail=str(exc))
+    if not save_central_input_form_submission(task_id=result.id, payload=payload):
+        logger.warning("Central input form not saved to DB (task_id=%s); check CAR_WASH_DB_URL and connectivity.", result.id)
     return TaskResponse(task_id=result.id, status=TaskStatus.PENDING, message="Submitted")

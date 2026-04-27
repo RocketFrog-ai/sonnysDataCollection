@@ -1,0 +1,57 @@
+{
+  "task_id": "sample-task-id",
+  "address": "100 Peachtree St NE, Atlanta, GA 30303, USA",
+  "lat": 33.756814,
+  "lon": -84.388549,
+  "complete": false,
+  "counts": {
+    "markers_total": 4,
+    "gas_stations": 1,
+    "competitors": 1,
+    "retail_anchors": 1
+  },
+  "markers": [
+    {
+      "id": "origin",
+      "name": "Input Site",
+      "category": "origin",
+      "latitude": 33.756814,
+      "longitude": -84.388549,
+      "distance_miles": 0.0,
+      "address": "100 Peachtree St NE, Atlanta, GA 30303, USA"
+    },
+    {
+      "id": "ChIJexampleGas",
+      "name": "Example Gas",
+      "category": "gas_station",
+      "latitude": 33.7573126,
+      "longitude": -84.3824826,
+      "distance_miles": 0.35,
+      "rating": 3.5,
+      "user_rating_count": 20,
+      "address": "120 Piedmont Ave NE, Atlanta, GA 30303, USA"
+    },
+    {
+      "id": "ChIJexampleWash",
+      "name": "Example Car Wash",
+      "category": "car_wash",
+      "latitude": 33.7564893,
+      "longitude": -84.3881037,
+      "distance_miles": 0.01,
+      "rating": 4.0,
+      "user_rating_count": 10,
+      "address": "105 Peachtree Rd NE, Atlanta, GA 30303, USA"
+    },
+    {
+      "id": "ChIJexampleRetail",
+      "name": "Example Coffee",
+      "category": "food_beverage",
+      "latitude": 33.7569076,
+      "longitude": -84.3885377,
+      "distance_miles": 0.01,
+      "rating": null,
+      "user_rating_count": null,
+      "address": "100 Peachtree St NW, Atlanta, GA 30303, USA"
+    }
+  ]
+}
