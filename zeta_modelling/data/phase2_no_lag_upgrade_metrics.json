@@ -1,0 +1,40 @@
+{
+  "input_path": "zeta_modelling/data/phase1_final_monthly_2024_2025.csv",
+  "features_path": "zeta_modelling/data/phase2_features_no_lag_upgrade_2024_2025.csv",
+  "time_split": {
+    "train_before": "2025-01-01",
+    "test_from": "2025-01-01"
+  },
+  "best_tuned_params_no_lag": {
+    "num_leaves": 31,
+    "max_depth": -1,
+    "min_child_samples": 20,
+    "learning_rate": 0.1,
+    "best_val_rmse": 2588.1398376260963
+  },
+  "baseline_no_lag": {
+    "train_rows": 10462,
+    "test_rows": 8403,
+    "mae": 2252.397892219322,
+    "rmse": 3772.0960589548718
+  },
+  "upgraded_no_lag": {
+    "train_rows": 10462,
+    "test_rows": 8403,
+    "mae": 2146.259219730112,
+    "rmse": 3670.8778250144655
+  },
+  "warm_model_with_true_lags": {
+    "train_rows": 10462,
+    "test_rows": 8403,
+    "mae": 1409.792308505564,
+    "rmse": 2558.8083814076
+  },
+  "gap_reduction_mae": 106.13867248920997,
+  "error_analysis_files": {
+    "error_by_site": "zeta_modelling/data/phase2_error_by_site.csv",
+    "error_by_cluster": "zeta_modelling/data/phase2_error_by_cluster.csv",
+    "error_by_age_phase": "zeta_modelling/data/phase2_error_by_age_phase.csv"
+  },
+  "feature_importance_file": "zeta_modelling/data/phase2_feature_importance.csv"
+}

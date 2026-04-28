@@ -1,0 +1,39 @@
+{
+  "input": "zeta_modelling/data/phase1_final_monthly_2024_2025.csv",
+  "train_rows": 10462,
+  "test_rows": 8403,
+  "model_type": "deployable_no_lag_multiplier",
+  "site_type_inference": "LightGBM classifier using cluster_id + latitude + longitude",
+  "metrics_full_test": {
+    "mae": 2049.8764690660328,
+    "rmse": 3465.9848371890284
+  },
+  "metrics_cold_start_early_months": {
+    "mae_early_months": 3125.2049856867984,
+    "rmse_early_months": 4940.582522060546,
+    "rows": 441
+  },
+  "features": [
+    "age_in_months",
+    "real_age_months",
+    "cluster_id",
+    "cluster_month_avg",
+    "cluster_age_avg",
+    "month",
+    "month_sin",
+    "month_cos",
+    "latitude",
+    "longitude",
+    "maturity_bucket",
+    "site_type",
+    "age_sq",
+    "log_age",
+    "is_early",
+    "is_growth",
+    "is_mature",
+    "age_saturation",
+    "growth_velocity",
+    "distance_from_peak",
+    "lat_lon_interaction"
+  ]
+}

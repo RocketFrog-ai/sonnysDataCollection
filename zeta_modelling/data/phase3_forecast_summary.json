@@ -1,0 +1,11 @@
+{
+  "input": "zeta_modelling/data/phase1_final_monthly_2024_2025.csv",
+  "forecast_rows": 60,
+  "lat": 32.646615,
+  "lon": -96.533319,
+  "assigned_cluster": "53",
+  "inferred_site_type": "1",
+  "total_5y_volume": 997765.623363579,
+  "break_even_month_estimate": 13,
+  "output_csv": "zeta_modelling/data/phase3_new_site_forecast_5y.csv"
+}

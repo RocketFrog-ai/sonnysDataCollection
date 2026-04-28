@@ -1,0 +1,24 @@
+{
+  "input_path": "zeta_modelling/data/phase1_final_monthly_2024_2025.csv",
+  "output_features_path": "zeta_modelling/data/phase2_features_2024_2025.csv",
+  "time_split": {
+    "train_before": "2025-01-01",
+    "test_from": "2025-01-01"
+  },
+  "metrics": [
+    {
+      "model_name": "lightgbm_no_lag",
+      "train_rows": 10462,
+      "test_rows": 8403,
+      "mae": 2236.313782554812,
+      "rmse": 3716.7138997975353
+    },
+    {
+      "model_name": "lightgbm_with_lag",
+      "train_rows": 10462,
+      "test_rows": 8403,
+      "mae": 1466.5960883569733,
+      "rmse": 2679.94031585077
+    }
+  ]
+}

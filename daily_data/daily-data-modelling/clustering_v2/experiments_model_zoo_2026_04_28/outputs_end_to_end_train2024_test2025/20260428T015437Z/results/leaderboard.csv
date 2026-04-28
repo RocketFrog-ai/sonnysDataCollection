@@ -1,0 +1,3 @@
+variant,level_model,ts_method,score_wape_sum,gt_wape,lt_wape,gt_r2,lt_r2,gt_site_months,lt_site_months
+xgb_arima,xgb,arima,0.8348,0.3558,0.479,0.4972,-0.1478,5780,3228
+xgb_prophet,xgb,prophet,2.7435,1.6697,1.0738,-11.046,-8.6921,5780,3228

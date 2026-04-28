@@ -1,0 +1,86 @@
+{
+  "run_id": "20260428T015437Z",
+  "created_utc": "2026-04-28T01:54:42.644762+00:00",
+  "gt_train_days": 173706,
+  "gt_test_days": 172098,
+  "lt_train_rows": 8218,
+  "lt_test_rows": 4689,
+  "definition": {
+    "gt": "Train 2024 daily rows, predict 2025 monthly site totals (end-to-end anchor+TS).",
+    "lt": "Train 2024 monthly rows, predict 2025 monthly site totals (end-to-end anchor+TS)."
+  },
+  "variants": {
+    "xgb_arima": {
+      "gt_2025_monthly": {
+        "n": 5780,
+        "actual_sum": 54685098.0,
+        "pred_sum": 45017866.13,
+        "bias_pct_of_actual_sum": -17.68,
+        "mae": 3366.26,
+        "rmse": 5140.86,
+        "wape": 0.3558,
+        "r2": 0.4972,
+        "pct_within_10pct": 15.97,
+        "pct_within_15pct": 24.39,
+        "pct_within_20pct": 33.11,
+        "pct_within_30pct": 50.14,
+        "n_sites": 482,
+        "n_site_months": 5780
+      },
+      "lt_2025_monthly": {
+        "n": 3228,
+        "actual_sum": 45573552.0,
+        "pred_sum": 32411249.76,
+        "bias_pct_of_actual_sum": -28.88,
+        "mae": 6762.73,
+        "rmse": 9940.59,
+        "wape": 0.479,
+        "r2": -0.1478,
+        "pct_within_10pct": 11.4,
+        "pct_within_15pct": 17.38,
+        "pct_within_20pct": 23.76,
+        "pct_within_30pct": 35.07,
+        "n_sites": 490,
+        "n_site_months": 3228
+      }
+    },
+    "xgb_prophet": {
+      "gt_2025_monthly": {
+        "n": 5780,
+        "actual_sum": 54685098.0,
+        "pred_sum": 118691529.52,
+        "bias_pct_of_actual_sum": 117.05,
+        "mae": 15797.56,
+        "rmse": 25163.43,
+        "wape": 1.6697,
+        "r2": -11.046,
+        "pct_within_10pct": 4.48,
+        "pct_within_15pct": 6.78,
+        "pct_within_20pct": 8.72,
+        "pct_within_30pct": 12.73,
+        "n_sites": 482,
+        "n_site_months": 5780
+      },
+      "lt_2025_monthly": {
+        "n": 3228,
+        "actual_sum": 45573552.0,
+        "pred_sum": 57607827.62,
+        "bias_pct_of_actual_sum": 26.41,
+        "mae": 15160.06,
+        "rmse": 28885.44,
+        "wape": 1.0738,
+        "r2": -8.6921,
+        "pct_within_10pct": 6.26,
+        "pct_within_15pct": 10.04,
+        "pct_within_20pct": 13.1,
+        "pct_within_30pct": 19.45,
+        "n_sites": 490,
+        "n_site_months": 3228
+      }
+    }
+  },
+  "variants_requested": [
+    "xgb_arima",
+    "xgb_prophet"
+  ]
+}
