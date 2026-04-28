@@ -1,7 +1,5 @@
 import os
 import json
-import ssl
-import certifi
 from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -15,6 +13,24 @@ engine = None
 SessionLocal = None
 _site_fetch_table_ready = False
 _site_response_table_ready = False
+
+_pg_mysql_cache_skip_logged = False
+
+
+def _car_wash_db_is_postgresql() -> bool:
+    url = (os.getenv("CAR_WASH_DB_URL") or "").lower()
+    return "postgresql" in url or url.startswith("postgres://")
+
+
+def _log_pg_cache_disabled_once():
+    global _pg_mysql_cache_skip_logged
+    if not _pg_mysql_cache_skip_logged:
+        logger.warning(
+            "CAR_WASH_DB_URL is PostgreSQL: site/classification MySQL cache paths are disabled "
+            "(revert URL to MySQL to re-enable)."
+        )
+        _pg_mysql_cache_skip_logged = True
+
 
 def get_car_wash_engine():
     """Return the shared SQLAlchemy engine after pool init, or None if unavailable."""
@@ -33,24 +49,26 @@ def init_db():
         return False
         
     try:
-        # Create a connection pool optimized for threading
-        # Azure requires secure transport. Match DBeaver: Require SSL = True, Verify Cert = False
-        connect_args = {
-            "ssl": {
-                "check_hostname": False
-            }
-        }
+        # Azure: TLS required for both PostgreSQL and MySQL.
+        if _car_wash_db_is_postgresql():
+            # psycopg2/libpq — do not pass MySQL-style connect_args["ssl"] dict (invalid DSN option "ssl").
+            connect_args = {"sslmode": "require"}
+            pool_label = "PostgreSQL"
+        else:
+            # MySQL (pymysql / mysqlclient); Azure MySQL often needs relaxed hostname verify.
+            connect_args = {"ssl": {"check_hostname": False}}
+            pool_label = "MySQL"
 
         engine = create_engine(
             db_url,
-            pool_size=15, 
+            pool_size=15,
             max_overflow=5,
             pool_timeout=30,
             pool_recycle=1800,
-            connect_args=connect_args
+            connect_args=connect_args,
         )
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        logger.info("Initialized Azure MySQL caching connection pool.")
+        logger.info("Initialized CAR_WASH_DB_URL connection pool (%s).", pool_label)
         return True
     except Exception as e:
         logger.error(f"Failed to initialize database cache: {e}")
@@ -61,6 +79,9 @@ def _ensure_site_fetch_cache_table():
     global _site_fetch_table_ready
     if _site_fetch_table_ready:
         return True
+    if _car_wash_db_is_postgresql():
+        _log_pg_cache_disabled_once()
+        return False
     if not SessionLocal and not init_db():
         return False
     try:
@@ -96,6 +117,9 @@ def _ensure_site_response_cache_table():
     global _site_response_table_ready
     if _site_response_table_ready:
         return True
+    if _car_wash_db_is_postgresql():
+        _log_pg_cache_disabled_once()
+        return False
     if not SessionLocal and not init_db():
         return False
     try:
@@ -377,10 +401,13 @@ def get_all_site_analysis_cache(page: int = 1, page_size: int = 50, include_resp
         return {"total": 0, "page": page, "page_size": page_size, "rows": []}
 
 def get_cached_classification(place_id: str) -> dict:
+    if _car_wash_db_is_postgresql():
+        _log_pg_cache_disabled_once()
+        return None
     if not SessionLocal:
         if not init_db():
             return None
-            
+
     try:
         with engine.connect() as conn:
             query = text("SELECT * FROM car_wash_classifications WHERE place_id = :place_id")
@@ -402,10 +429,13 @@ def get_cached_classification(place_id: str) -> dict:
     return None
 
 def save_classification(comp_dict: dict, classification: dict):
+    if _car_wash_db_is_postgresql():
+        _log_pg_cache_disabled_once()
+        return
     if not SessionLocal:
         if not init_db():
             return
-            
+
     try:
         place_id = comp_dict.get("place_id")
         if not place_id:

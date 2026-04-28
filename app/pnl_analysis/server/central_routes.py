@@ -17,7 +17,7 @@ router = APIRouter()
 def submit_central_input_form(req: CentralInputFormRequest):
     """
     Shared input-form endpoint.
-    Accepts the full nested input form, persists it to MySQL (CAR_WASH_DB_URL), and enqueues processing.
+    Accepts the full nested input form, persists it to PostgreSQL (CAR_WASH_DB_URL), and enqueues processing.
     Returns one central task id that downstream modules can read from.
     """
     payload = req.to_task_payload()
