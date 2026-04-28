@@ -1,0 +1,50 @@
+{
+  "forecast_summary": {
+    "lat": 32.646615,
+    "lon": -96.533319,
+    "top3_clusters": [
+      {
+        "cluster_id": "53",
+        "distance": 0.7600254154947661,
+        "weight": 0.39303367709902826
+      },
+      {
+        "cluster_id": "70",
+        "distance": 0.774311338395401,
+        "weight": 0.385782276688665
+      },
+      {
+        "cluster_id": "30",
+        "distance": 1.3505302968530053,
+        "weight": 0.22118404621230686
+      }
+    ],
+    "total_volume": 779864.843160417,
+    "total_profit": -30540.627358331483,
+    "break_even_month": null
+  },
+  "uncertainty_calibration": {
+    "method": "global_single_scale",
+    "target_coverage": 0.8,
+    "current_coverage_before_calibration": 0.454,
+    "scale": 1.762114537444934
+  },
+  "final_report": {
+    "expected_volume_5y": 779864.843160417,
+    "range_5y_low": 552177.0249342107,
+    "range_5y_high": 1107479.0753777535,
+    "break_even": "Not reached (margin=4.0)",
+    "confidence": "Low confidence",
+    "risk": "Moderate variability cluster"
+  },
+  "backtest": {
+    "mae": 2089.7656474727414,
+    "rmse": 3604.581452175239,
+    "p10_p90_coverage": 0.454,
+    "plot_random_sites": "zeta_modelling/data/phase3_backtest_plots/backtest_random_sites.png",
+    "plot_high_error_sites": "zeta_modelling/data/phase3_backtest_plots/backtest_high_error_sites.png",
+    "plot_cluster_curves": "zeta_modelling/data/phase3_backtest_plots/backtest_cluster_curves.png",
+    "plot_error_heatmap": "zeta_modelling/data/phase3_backtest_plots/backtest_error_heatmap.png"
+  },
+  "output_csv": "zeta_modelling/data/phase3_advanced_forecast.csv"
+}
