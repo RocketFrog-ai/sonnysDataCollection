@@ -328,20 +328,30 @@ def break_even_from_costs(
     return out, month
 
 
-def evaluate_backtest(df: pd.DataFrame, artifacts: Artifacts, out_dir: Path) -> dict[str, float | str]:
-    test = df[df["date"] >= pd.Timestamp("2025-01-01")].copy()
-    test = test.sample(min(len(test), 3000), random_state=42).copy()
-
-    # Predict each row by its own cluster (fast backtest proxy for uncertainty models).
-    preds = predict_for_cluster(test, cluster_id=test["cluster_id"].iloc[0], artifacts=artifacts)
-    # Above line uses one cluster; for fair row-wise cluster use loop:
+def backtest_predictions_merge(
+    df: pd.DataFrame,
+    artifacts: Artifacts,
+    max_rows: int | None = 3000,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """Test-period rows with Phase 3 quantile predictions (row-wise cluster assignment)."""
+    base = add_base_features(df)
+    test = base[base["date"] >= pd.Timestamp("2025-01-01")].copy()
+    if max_rows is not None:
+        test = test.sample(min(len(test), max_rows), random_state=random_state).copy()
     pred_rows = []
     for cid, part in test.groupby("cluster_id"):
         pred_rows.append(predict_for_cluster(part, str(cid), artifacts))
     preds = pd.concat(pred_rows, ignore_index=True)
-
-    merged = preds[["site_id", "date", "cluster_id", "age_in_months", "monthly_volume", "pred_p50", "pred_p10", "pred_p90"]].copy()
+    merged = preds[
+        ["site_id", "date", "cluster_id", "age_in_months", "monthly_volume", "pred_p50", "pred_p10", "pred_p90"]
+    ].copy()
     merged["abs_error"] = (merged["monthly_volume"] - merged["pred_p50"]).abs()
+    return merged
+
+
+def evaluate_backtest(df: pd.DataFrame, artifacts: Artifacts, out_dir: Path) -> dict[str, float | str]:
+    merged = backtest_predictions_merge(df, artifacts, max_rows=3000, random_state=42)
     mae = float(mean_absolute_error(merged["monthly_volume"], merged["pred_p50"]))
     rmse = float(np.sqrt(mean_squared_error(merged["monthly_volume"], merged["pred_p50"])))
     coverage = float(((merged["monthly_volume"] >= merged["pred_p10"]) & (merged["monthly_volume"] <= merged["pred_p90"])).mean())

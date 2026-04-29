@@ -1,0 +1,34 @@
+{
+  "data_dir": "zeta_modelling/data_2",
+  "split": {
+    "train_before": "2025-01-01",
+    "test_from": "2025-01-01"
+  },
+  "less_than_2y": {
+    "mae": 3240.241211857688,
+    "wmape": 0.22950808468641237,
+    "rows_test": 3228
+  },
+  "more_than_2y": {
+    "mae": 1505.7295230970356,
+    "wmape": 0.1591612648505932,
+    "rows_test": 5756
+  },
+  "uncertainty_calibration": {
+    "target_coverage": 0.8,
+    "raw_coverage_p10_p90": 0.9794078361531612,
+    "calibrated_coverage_p10_p90": 0.8361531611754229,
+    "interval_width_scale": 0.3807207183937016,
+    "empirical_coverage_before_scale": 0.9794078361531612
+  },
+  "cold_start_holdout_first6": {
+    "mae": 4501.476845566108,
+    "rows_test": 558
+  },
+  "artifacts": {
+    "saved_models": "zeta_modelling/data_2/model_saves_2/model2_artifacts.joblib",
+    "sample_forecast": "zeta_modelling/data_2/model_2_outputs/model2_sample_forecast_60m.csv",
+    "less_cluster_centroids": "zeta_modelling/data_2/model_2_outputs/model2_less_cluster_centroids.csv",
+    "more_cluster_centroids": "zeta_modelling/data_2/model_2_outputs/model2_more_cluster_centroids.csv"
+  }
+}

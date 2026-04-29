@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 import pandas as pd
 
 from app.celery.celery_app import celery_app
+from app.utils import common as calib
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _ZETA_DATA = _REPO_ROOT / "zeta_modelling" / "data_1"
@@ -125,6 +126,30 @@ def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
         "target_calibration_coverage": float(z.get("target_calibration_coverage", 0.80)),
         "forecast_start_date": str(z.get("forecast_start_date", "2026-01-01")),
     }
+
+
+def _resolve_site_lat_lon(payload: Dict[str, Any]) -> tuple[float, float, Optional[str]]:
+    """
+    Resolve site coordinates from payload.
+    Priority:
+    1) explicit latitude/longitude
+    2) geocode address
+    """
+    address = str(payload.get("address") or "").strip() or None
+    lat = payload.get("latitude", payload.get("lat"))
+    lon = payload.get("longitude", payload.get("lon"))
+
+    if lat is not None and lon is not None:
+        return float(lat), float(lon), address
+
+    if address:
+        try:
+            geocoded_lat, geocoded_lon = calib.resolve_lat_lon(address)
+            return float(geocoded_lat), float(geocoded_lon), address
+        except ValueError as e:
+            raise ValueError(f"Could not geocode address: {e}")
+
+    raise ValueError("Provide address or both latitude and longitude for zeta projection")
 
 
 def _scenario_adjust(df: pd.DataFrame, scenario: str) -> pd.DataFrame:
@@ -414,17 +439,13 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     Compatible shape with legacy /wash-count-plot consumers.
     """
     payload = _normalize_central_task_payload(payload)
-    address = payload.get("address")
-    lat = payload.get("latitude", payload.get("lat"))
-    lon = payload.get("longitude", payload.get("lon"))
-    if lat is None or lon is None:
-        raise ValueError("latitude and longitude are required for zeta projection")
+    lat, lon, address = _resolve_site_lat_lon(payload)
 
     zp = _zeta_params(payload)
     months_use = min(max(int(zp["forecast_months"]), 12), 60)
     forecast, summary = _run_zeta_forecast_df(
-        float(lat),
-        float(lon),
+        lat,
+        lon,
         months=months_use,
         margin_per_wash=zp["margin_per_wash"],
         fixed_monthly_cost=zp["fixed_monthly_cost"],
@@ -481,16 +502,13 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
     Central input-form task: zeta_modelling volume + P10/P90-derived year ranges.
     """
     payload = _normalize_central_task_payload(payload)
-    lat = payload.get("latitude", payload.get("lat"))
-    lon = payload.get("longitude", payload.get("lon"))
-    if lat is None or lon is None:
-        raise ValueError("latitude and longitude are required")
+    lat, lon, _address = _resolve_site_lat_lon(payload)
 
     zp = _zeta_params(payload)
     months_use = min(max(int(zp["forecast_months"]), 12), 60)
     forecast, summary = _run_zeta_forecast_df(
-        float(lat),
-        float(lon),
+        lat,
+        lon,
         months=months_use,
         margin_per_wash=zp["margin_per_wash"],
         fixed_monthly_cost=zp["fixed_monthly_cost"],
