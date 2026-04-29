@@ -28,6 +28,20 @@ class TaskStatusResponse(BaseModel):
     error: Optional[str] = None
 
 
+class ZetaForecastParams(BaseModel):
+    """Optional overrides for zeta_modelling wash forecast (passed through Celery payload)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    margin_per_wash: float = Field(4.0, description="Margin per wash for break-even style fields inside zeta forecast.")
+    fixed_monthly_cost: float = Field(50_000.0)
+    ramp_up_cost: float = Field(150_000.0)
+    scenario: str = Field("Expected", description="Expected | Conservative | Aggressive")
+    forecast_months: int = Field(48, ge=12, le=60)
+    target_calibration_coverage: float = Field(0.80, ge=0.1, le=0.99)
+    forecast_start_date: str = Field("2026-01-01", description="First month of synthetic timeline (ISO date).")
+
+
 class ClusteringV2ProjectionRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -224,20 +238,6 @@ class FinancialInputs(BaseModel):
     bank_debt_allocation: List[BankDebtAllocationRow] = Field(default_factory=_default_bank_debt_allocation)
     operational_expenses: List[OperationalExpenseRow] = Field(default_factory=_default_operational_expenses)
     expense_description: str = ""
-
-
-class ZetaForecastParams(BaseModel):
-    """Optional overrides for zeta_modelling wash forecast (passed through Celery payload)."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    margin_per_wash: float = Field(4.0, description="Margin per wash for break-even style fields inside zeta forecast.")
-    fixed_monthly_cost: float = Field(50_000.0)
-    ramp_up_cost: float = Field(150_000.0)
-    scenario: str = Field("Expected", description="Expected | Conservative | Aggressive")
-    forecast_months: int = Field(48, ge=12, le=60)
-    target_calibration_coverage: float = Field(0.80, ge=0.1, le=0.99)
-    forecast_start_date: str = Field("2026-01-01", description="First month of synthetic timeline (ISO date).")
 
 
 class CentralInputFormRequest(BaseModel):

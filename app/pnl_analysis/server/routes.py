@@ -114,7 +114,7 @@ def get_wash_volume_range_minmax(task_id: str = Query(..., description="Task id 
     return {"task_id": task_id, "status": state.lower()}
 
 
-@router.get("/wash_volume_projection")
+@router.api_route("/wash_volume_projection", methods=["GET", "POST"])
 def get_wash_volume_projection(task_id: str = Query(..., description="Task id from /v1/input-form")):
     task_result = AsyncResult(task_id, app=celery_app)
     state = (task_result.state or "PENDING").upper()

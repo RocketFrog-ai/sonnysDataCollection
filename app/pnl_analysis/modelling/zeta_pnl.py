@@ -193,26 +193,33 @@ def _wash_volume_projection_from_forecast(forecast: pd.DataFrame) -> Dict[str, f
 
 
 def _wash_volume_range_minmax_from_forecast(forecast: pd.DataFrame) -> Dict[str, Dict[str, float]]:
+    """
+    Year bands from zeta_modelling quantile tracks (blend_clusters): p10 / p50 / p90.
+    These are the raw top-3–weighted quantile sums per period (not post-calibration low/high).
+    """
+    c_lo = "p10" if "p10" in forecast.columns else "low"
+    c_mid = "p50" if "p50" in forecast.columns else "volume"
+    c_hi = "p90" if "p90" in forecast.columns else "high"
     return {
         "year_1": {
-            "min": _year_sum_volume(forecast, 1, 12, "low"),
-            "median": _year_sum_volume(forecast, 1, 12, "volume"),
-            "max": _year_sum_volume(forecast, 1, 12, "high"),
+            "min": _year_sum_volume(forecast, 1, 12, c_lo),
+            "median": _year_sum_volume(forecast, 1, 12, c_mid),
+            "max": _year_sum_volume(forecast, 1, 12, c_hi),
         },
         "year_2": {
-            "min": _year_sum_volume(forecast, 13, 24, "low"),
-            "median": _year_sum_volume(forecast, 13, 24, "volume"),
-            "max": _year_sum_volume(forecast, 13, 24, "high"),
+            "min": _year_sum_volume(forecast, 13, 24, c_lo),
+            "median": _year_sum_volume(forecast, 13, 24, c_mid),
+            "max": _year_sum_volume(forecast, 13, 24, c_hi),
         },
         "year_3": {
-            "min": _year_sum_volume(forecast, 25, 36, "low"),
-            "median": _year_sum_volume(forecast, 25, 36, "volume"),
-            "max": _year_sum_volume(forecast, 25, 36, "high"),
+            "min": _year_sum_volume(forecast, 25, 36, c_lo),
+            "median": _year_sum_volume(forecast, 25, 36, c_mid),
+            "max": _year_sum_volume(forecast, 25, 36, c_hi),
         },
         "year_4": {
-            "min": _year_sum_volume(forecast, 37, 48, "low"),
-            "median": _year_sum_volume(forecast, 37, 48, "volume"),
-            "max": _year_sum_volume(forecast, 37, 48, "high"),
+            "min": _year_sum_volume(forecast, 37, 48, c_lo),
+            "median": _year_sum_volume(forecast, 37, 48, c_mid),
+            "max": _year_sum_volume(forecast, 37, 48, c_hi),
         },
     }
 
@@ -307,24 +314,47 @@ def _cluster_peer_membership_retail_shares() -> Dict[str, Dict[int, Dict[str, fl
     return out
 
 
-def _primary_cluster_id_from_forecast(forecast: pd.DataFrame, summary_top3: List[Dict[str, Any]]) -> int:
-    if summary_top3:
+def _top3_weighted_peer_shares(summary_top3: List[Dict[str, Any]], cohort: str) -> Dict[str, float]:
+    """Blend retail/membership mix across zeta top-3 nearest clusters by forecast weight."""
+    peer = _cluster_peer_membership_retail_shares()
+    cohort_map = peer.get(cohort, {})
+    fallback = _cohort_membership_retail_shares()[cohort]
+    if not summary_top3:
+        return fallback
+    retail_acc = 0.0
+    mem_acc = 0.0
+    w_sum = 0.0
+    for row in summary_top3[:3]:
+        if not isinstance(row, dict):
+            continue
         try:
-            return int(float(str(summary_top3[0]["cluster_id"])))
+            cid = int(float(str(row.get("cluster_id"))))
         except (TypeError, ValueError):
-            pass
-    return -1
+            continue
+        try:
+            w = float(row.get("weight", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            w = 0.0
+        if w <= 0:
+            continue
+        sh = cohort_map.get(cid, fallback)
+        retail_acc += w * float(sh["retail_share"])
+        mem_acc += w * float(sh["membership_share"])
+        w_sum += w
+    if w_sum <= 0:
+        return fallback
+    return {"retail_share": retail_acc / w_sum, "membership_share": mem_acc / w_sum}
 
 
 def _membership_retail_count_projection(
     wash_volume_projection: Dict[str, float],
-    primary_cluster_id: int,
+    summary_top3: List[Dict[str, Any]],
 ) -> Dict[str, Dict[str, float]]:
     shares_by_year = {
-        "year_1": _cluster_peer_share(primary_cluster_id, "less_than"),
-        "year_2": _cluster_peer_share(primary_cluster_id, "less_than"),
-        "year_3": _cluster_peer_share(primary_cluster_id, "more_than"),
-        "year_4": _cluster_peer_share(primary_cluster_id, "more_than"),
+        "year_1": _top3_weighted_peer_shares(summary_top3, "less_than"),
+        "year_2": _top3_weighted_peer_shares(summary_top3, "less_than"),
+        "year_3": _top3_weighted_peer_shares(summary_top3, "more_than"),
+        "year_4": _top3_weighted_peer_shares(summary_top3, "more_than"),
     }
     out: Dict[str, Dict[str, float]] = {}
     for year_key, year_shares in shares_by_year.items():
@@ -334,13 +364,6 @@ def _membership_retail_count_projection(
             "retail": float(total * float(year_shares["retail_share"])),
         }
     return out
-
-
-def _cluster_peer_share(cluster_id: int, cohort: str) -> Dict[str, float]:
-    fallback = _cohort_membership_retail_shares()[cohort]
-    if cluster_id < 0:
-        return fallback
-    return _cluster_peer_membership_retail_shares().get(cohort, {}).get(cluster_id, fallback)
 
 
 def _membership_retail_revenue_projection(
@@ -390,6 +413,7 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     Greenfield wash projection via zeta_modelling (quantile + calibrated bands).
     Compatible shape with legacy /wash-count-plot consumers.
     """
+    payload = _normalize_central_task_payload(payload)
     address = payload.get("address")
     lat = payload.get("latitude", payload.get("lat"))
     lon = payload.get("longitude", payload.get("lon"))
@@ -411,7 +435,9 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     wash_vol = _wash_volume_projection_from_forecast(forecast)
+    wash_volume_range_minmax = _wash_volume_range_minmax_from_forecast(forecast)
     timeline = _monthly_projection_48mo(forecast.head(48))
+    top3 = summary.get("top3_clusters") or []
 
     out: Dict[str, Any] = {
         "task_id": self.request.id,
@@ -419,6 +445,7 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         "method": "zeta_modelling",
         "level_model": "quantile_lgbm",
         "calendar_year_washes": wash_vol,
+        "wash_volume_range_minmax": wash_volume_range_minmax,
         "monthly_projection_48mo": timeline,
         "zeta_forecast_summary": _json_sanitize(summary),
         "zeta_model_path": str(_ARTIFACTS_PATH),
@@ -428,13 +455,14 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     wash_prices = payload.get("wash_prices")
     wash_pcts = payload.get("wash_pcts")
     opex_years = payload.get("opex_years")
-    primary_cid = _primary_cluster_id_from_forecast(forecast, summary.get("top3_clusters") or [])
 
     if isinstance(wash_prices, list) and isinstance(wash_pcts, list) and len(wash_prices) == len(wash_pcts) and wash_prices:
+        # Blended $/wash = Σ (price_i × pct_i/100); annual revenue = that × P50 year wash volume.
         dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
         out["dollars_per_wash"] = dpw
-        mrc = _membership_retail_count_projection(wash_vol, primary_cid)
+        mrc = _membership_retail_count_projection(wash_vol, top3)
         out["membership_retail_count"] = mrc
+        out["membership_retail_revenue"] = _membership_retail_revenue_projection(mrc, dpw)
         years = ["year_1", "year_2", "year_3", "year_4"]
         washes = [float(wash_vol.get(y, 0.0) or 0.0) for y in years]
         revenue = [float(dpw * w) for w in washes]
@@ -495,8 +523,8 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
     wash_prices = payload.get("wash_prices")
     wash_pcts = payload.get("wash_pcts")
     opex_years = payload.get("opex_years")
-    primary_cid = _primary_cluster_id_from_forecast(forecast, summary.get("top3_clusters") or [])
-    membership_retail_count = _membership_retail_count_projection(wash_volume_projection, primary_cid)
+    top3 = summary.get("top3_clusters") or []
+    membership_retail_count = _membership_retail_count_projection(wash_volume_projection, top3)
     out["membership_retail_count"] = membership_retail_count
 
     if isinstance(wash_prices, list) and isinstance(wash_pcts, list) and len(wash_prices) == len(wash_pcts) and wash_prices:
