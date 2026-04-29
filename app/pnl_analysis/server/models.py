@@ -40,6 +40,13 @@ class ZetaForecastParams(BaseModel):
     forecast_months: int = Field(48, ge=12, le=60)
     target_calibration_coverage: float = Field(0.80, ge=0.1, le=0.99)
     forecast_start_date: str = Field("2026-01-01", description="First month of synthetic timeline (ISO date).")
+    enable_mature_yoy_control: bool = Field(
+        True,
+        description="If true, may constrain late-year annual totals to a YoY band only when those years are strictly decreasing YoY; otherwise raw forecast is unchanged.",
+    )
+    mature_yoy_start_year: int = Field(4, ge=2, le=10, description="Forecast year index (1-based) when YoY band starts.")
+    mature_min_yoy: float = Field(0.005, ge=0.0, le=0.5, description="Minimum YoY growth vs prior year total (fraction).")
+    mature_max_yoy: float = Field(0.05, ge=0.0, le=1.0, description="Maximum YoY growth vs prior year total (fraction).")
 
 
 class ClusteringV2ProjectionRequest(BaseModel):

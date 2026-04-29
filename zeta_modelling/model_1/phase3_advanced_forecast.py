@@ -312,6 +312,109 @@ def blend_clusters(rows: pd.DataFrame, cluster_weights: pd.DataFrame, artifacts:
     return g.sort_values("date").reset_index(drop=True)
 
 
+def apply_mature_yoy_control(
+    forecast: pd.DataFrame,
+    *,
+    start_year: int = 4,
+    min_yoy: float = 0.005,
+    max_yoy: float = 0.05,
+) -> tuple[pd.DataFrame, dict]:
+    """
+    When (and only when) late-horizon annual P50 totals are strictly decreasing
+    year-on-year from ``start_year`` onward, re-scale those years so each annual
+    total lies in [prev * (1+min_yoy), prev * (1+max_yoy)].
+
+    If the raw forecast is flat, up, or mixed in that tail, the dataframe is
+    returned unchanged (summary explains skip).
+    """
+    out = forecast.copy()
+    if out.empty or "age_in_months" not in out.columns or "p50" not in out.columns:
+        return out, {"enabled": False, "reason": "missing_required_columns"}
+
+    years = ((pd.to_numeric(out["age_in_months"], errors="coerce") - 1) // 12 + 1).astype(int)
+    out["_forecast_year"] = years
+    year_order = sorted(out["_forecast_year"].dropna().unique().tolist())
+    if not year_order or max(year_order) < int(start_year):
+        out = out.drop(columns=["_forecast_year"], errors="ignore")
+        return out, {"enabled": False, "reason": "insufficient_horizon"}
+
+    # Annual P50 totals by forecast year (1-based).
+    totals_by_year: dict[int, float] = {}
+    for y in year_order:
+        y_mask = out["_forecast_year"] == int(y)
+        totals_by_year[int(y)] = float(pd.to_numeric(out.loc[y_mask, "p50"], errors="coerce").fillna(0.0).sum())
+
+    late_years = [y for y in year_order if int(y) >= int(start_year)]
+    if len(late_years) < 2:
+        out = out.drop(columns=["_forecast_year"], errors="ignore")
+        return out, {
+            "enabled": False,
+            "reason": "skipped_need_at_least_two_late_years",
+            "start_year": int(start_year),
+            "late_year_totals": {str(y): totals_by_year.get(y, 0.0) for y in late_years},
+        }
+
+    late_vals = [totals_by_year[y] for y in late_years]
+    strict_monotonic_down = all(late_vals[i] < late_vals[i - 1] for i in range(1, len(late_vals)))
+    if not strict_monotonic_down:
+        out = out.drop(columns=["_forecast_year"], errors="ignore")
+        return out, {
+            "enabled": False,
+            "reason": "skipped_not_strict_monotonic_down_late_years",
+            "start_year": int(start_year),
+            "late_year_totals": {str(y): float(totals_by_year[y]) for y in late_years},
+        }
+
+    scaled_years: list[int] = []
+    year_scale_factors: dict[str, float] = {}
+    prev_target_total: float | None = None
+    bands: dict[str, dict[str, float]] = {}
+
+    for y in year_order:
+        y_mask = out["_forecast_year"] == int(y)
+        cur_total = float(pd.to_numeric(out.loc[y_mask, "p50"], errors="coerce").fillna(0.0).sum())
+        if prev_target_total is None:
+            prev_target_total = cur_total
+            continue
+        if y < int(start_year):
+            prev_target_total = cur_total
+            continue
+        if cur_total <= 0:
+            prev_target_total = max(prev_target_total, 1.0)
+            continue
+
+        lower = float(prev_target_total * (1.0 + float(min_yoy)))
+        upper = float(prev_target_total * (1.0 + float(max_yoy)))
+        target = float(np.clip(cur_total, lower, upper))
+        factor = float(target / cur_total) if cur_total > 0 else 1.0
+        bands[str(int(y))] = {"lower": lower, "upper": upper, "raw": cur_total, "target": target}
+
+        if abs(factor - 1.0) > 1e-9:
+            for c in ("pred_p10", "pred_p50", "pred_p90", "p10", "p50", "p90", "volume", "low", "high"):
+                if c in out.columns:
+                    out.loc[y_mask, c] = pd.to_numeric(out.loc[y_mask, c], errors="coerce") * factor
+            scaled_years.append(int(y))
+            year_scale_factors[str(int(y))] = factor
+
+        prev_target_total = target
+
+    if "volume" in out.columns:
+        out["cumulative_volume"] = pd.to_numeric(out["volume"], errors="coerce").fillna(0.0).cumsum()
+    out = out.drop(columns=["_forecast_year"], errors="ignore")
+    return out, {
+        "enabled": True,
+        "applied": True,
+        "trigger": "strict_monotonic_down_late_years",
+        "start_year": int(start_year),
+        "min_yoy": float(min_yoy),
+        "max_yoy": float(max_yoy),
+        "late_year_totals_raw": {str(y): float(totals_by_year[y]) for y in late_years},
+        "scaled_years": scaled_years,
+        "year_scale_factors": year_scale_factors,
+        "year_bands": bands,
+    }
+
+
 def break_even_from_costs(
     forecast: pd.DataFrame,
     margin_per_wash: float,
@@ -476,10 +579,22 @@ def final_report(
     margin_per_wash: float,
     fixed_monthly_cost: float,
     ramp_up_cost: float,
+    enable_mature_yoy_control: bool = True,
+    mature_yoy_start_year: int = 4,
+    mature_min_yoy: float = 0.005,
+    mature_max_yoy: float = 0.05,
 ) -> tuple[pd.DataFrame, dict]:
     weights = top_k_cluster_weights(lat, lon, artifacts.cluster_centroids, k=3)
     rows = make_future_rows(lat, lon, months, start_date)
     fc = blend_clusters(rows, weights, artifacts)
+    mature_yoy_summary = {"enabled": False}
+    if enable_mature_yoy_control:
+        fc, mature_yoy_summary = apply_mature_yoy_control(
+            fc,
+            start_year=mature_yoy_start_year,
+            min_yoy=mature_min_yoy,
+            max_yoy=mature_max_yoy,
+        )
     fc, be_month = break_even_from_costs(fc, margin_per_wash, fixed_monthly_cost, ramp_up_cost)
     summary = {
         "lat": lat,
@@ -488,6 +603,7 @@ def final_report(
         "total_volume": float(fc["volume"].sum()),
         "total_profit": float(fc["monthly_profit"].sum()),
         "break_even_month": be_month,
+        "mature_yoy_control": mature_yoy_summary,
     }
     return fc, summary
 

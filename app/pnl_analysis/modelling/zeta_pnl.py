@@ -117,7 +117,7 @@ def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
     z = payload.get("zeta_forecast") or {}
     if not isinstance(z, dict):
         z = {}
-    return {
+    out = {
         "margin_per_wash": float(z.get("margin_per_wash", 4.0)),
         "fixed_monthly_cost": float(z.get("fixed_monthly_cost", 50_000.0)),
         "ramp_up_cost": float(z.get("ramp_up_cost", 150_000.0)),
@@ -125,7 +125,14 @@ def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
         "forecast_months": int(z.get("forecast_months", 48)),
         "target_calibration_coverage": float(z.get("target_calibration_coverage", 0.80)),
         "forecast_start_date": str(z.get("forecast_start_date", "2026-01-01")),
+        "enable_mature_yoy_control": bool(z.get("enable_mature_yoy_control", True)),
+        "mature_yoy_start_year": int(min(10, max(2, int(z.get("mature_yoy_start_year", 4))))),
+        "mature_min_yoy": float(z.get("mature_min_yoy", 0.005)),
+        "mature_max_yoy": float(z.get("mature_max_yoy", 0.05)),
     }
+    if out["mature_min_yoy"] > out["mature_max_yoy"]:
+        out["mature_min_yoy"], out["mature_max_yoy"] = out["mature_max_yoy"], out["mature_min_yoy"]
+    return out
 
 
 def _resolve_site_lat_lon(payload: Dict[str, Any]) -> tuple[float, float, Optional[str]]:
@@ -172,6 +179,10 @@ def _run_zeta_forecast_df(
     scenario: str,
     target_coverage: float,
     start_date: str,
+    enable_mature_yoy_control: bool = True,
+    mature_yoy_start_year: int = 4,
+    mature_min_yoy: float = 0.005,
+    mature_max_yoy: float = 0.05,
 ) -> tuple[pd.DataFrame, Dict[str, Any]]:
     _ensure_repo_on_path()
     from zeta_modelling.model_1.phase3_advanced_forecast import (
@@ -190,6 +201,10 @@ def _run_zeta_forecast_df(
         margin_per_wash=margin_per_wash,
         fixed_monthly_cost=fixed_monthly_cost,
         ramp_up_cost=ramp_up_cost,
+        enable_mature_yoy_control=enable_mature_yoy_control,
+        mature_yoy_start_year=mature_yoy_start_year,
+        mature_min_yoy=mature_min_yoy,
+        mature_max_yoy=mature_max_yoy,
     )
     cov = _read_calibration_coverage()
     forecast, _scale = apply_global_uncertainty_calibration(
@@ -453,6 +468,10 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         scenario=zp["scenario"],
         target_coverage=zp["target_calibration_coverage"],
         start_date=zp["forecast_start_date"],
+        enable_mature_yoy_control=zp["enable_mature_yoy_control"],
+        mature_yoy_start_year=zp["mature_yoy_start_year"],
+        mature_min_yoy=zp["mature_min_yoy"],
+        mature_max_yoy=zp["mature_max_yoy"],
     )
 
     wash_vol = _wash_volume_projection_from_forecast(forecast)
@@ -516,6 +535,10 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
         scenario=zp["scenario"],
         target_coverage=zp["target_calibration_coverage"],
         start_date=zp["forecast_start_date"],
+        enable_mature_yoy_control=zp["enable_mature_yoy_control"],
+        mature_yoy_start_year=zp["mature_yoy_start_year"],
+        mature_min_yoy=zp["mature_min_yoy"],
+        mature_max_yoy=zp["mature_max_yoy"],
     )
 
     wash_volume_projection = _wash_volume_projection_from_forecast(forecast)

@@ -736,12 +736,20 @@ with st.sidebar:
         horizon_choice = st.selectbox("Time horizon", ["3y", "5y"], index=1)
         target_coverage = st.number_input("Target coverage", value=0.80, min_value=0.1, max_value=0.99, step=0.01)
         rebuild_m2 = st.checkbox("Rebuild and save Model 2 artifacts", value=False)
+        st.caption("Model 1 mature-year YoY band: only if late years are strictly down YoY; else unchanged.")
+        enable_mature_yoy = st.checkbox("Enable mature YoY band", value=True)
+        mature_yoy_start_year = st.number_input("Start at forecast year", min_value=2, max_value=10, value=4, step=1)
+        mature_min_yoy = st.number_input("Min YoY vs prior year (fraction)", value=0.005, min_value=0.0, max_value=0.5, step=0.005, format="%.4f")
+        mature_max_yoy = st.number_input("Max YoY vs prior year (fraction)", value=0.05, min_value=0.0, max_value=1.0, step=0.01, format="%.4f")
 
     run = st.button("Run Forecast", type="primary", use_container_width=True)
 
 if run:
     artifacts = get_artifacts(str(ARTIFACTS_PATH))
     months = 36 if horizon_choice == "3y" else 60
+    _mmn, _mmx = float(mature_min_yoy), float(mature_max_yoy)
+    if _mmn > _mmx:
+        _mmn, _mmx = _mmx, _mmn
 
     forecast, summary = final_report(
         lat=lat,
@@ -752,6 +760,10 @@ if run:
         margin_per_wash=margin_per_wash,
         fixed_monthly_cost=fixed_monthly_cost,
         ramp_up_cost=ramp_up_cost,
+        enable_mature_yoy_control=enable_mature_yoy,
+        mature_yoy_start_year=int(mature_yoy_start_year),
+        mature_min_yoy=_mmn,
+        mature_max_yoy=_mmx,
     )
     current_coverage = get_current_coverage()
     forecast, scale = apply_global_uncertainty_calibration(
@@ -783,6 +795,9 @@ if run:
     c4.metric("Total Profit", f"{total_profit:,.0f}")
     c5.metric("Confidence", overall_confidence)
     c6.metric("Risk", risk)
+
+    with st.expander("Model 1 mature-year YoY control (pre-calibration)"):
+        st.json(summary.get("mature_yoy_control") or {})
 
     st.subheader("Forecast (P50 with P10-P90 band)")
     fig, ax = plt.subplots(figsize=(10, 4))
