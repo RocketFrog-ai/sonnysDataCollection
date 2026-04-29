@@ -206,7 +206,7 @@ class TrafficInputs(BaseModel):
 
 
 class AcquisitionBudgetRow(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
     category: str = ""
     total_investment: Optional[float] = None
@@ -215,16 +215,20 @@ class AcquisitionBudgetRow(BaseModel):
 
 
 class BankDebtAllocationRow(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
     category: str = ""
     bank_debt_total: Optional[float] = None
     interest_rate: Optional[float] = None
     loan_term_months: Optional[float] = None
+    # Keep parity with variants currently sent by clients for some categories.
+    total_investment: Optional[float] = None
+    owner_percent: Optional[float] = None
+    bank_percent: Optional[float] = None
 
 
 class OperationalExpenseRow(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
     category: str = ""
     percent_of_sales: Optional[float] = None
@@ -232,11 +236,16 @@ class OperationalExpenseRow(BaseModel):
 
 
 class FinancialInputs(BaseModel):
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
     acquisition_budget: List[AcquisitionBudgetRow] = Field(default_factory=_default_acquisition_budget)
     bank_debt_allocation: List[BankDebtAllocationRow] = Field(default_factory=_default_bank_debt_allocation)
     operational_expenses: List[OperationalExpenseRow] = Field(default_factory=_default_operational_expenses)
+    capex_initial: Optional[float] = Field(None, description="Initial capex ($).")
+    zeta_forecast: Optional[ZetaForecastParams] = Field(
+        None,
+        description="Zeta forecast parameters; preferred placement in updated input form.",
+    )
     expense_description: str = ""
 
 
@@ -246,7 +255,7 @@ class CentralInputFormRequest(BaseModel):
     are merged into customer_information for older clients.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    model_config = ConfigDict(extra="allow")
 
     customer_information: CustomerInformation = Field(default_factory=CustomerInformation)
     labor_information: LaborInformation = Field(default_factory=LaborInformation)

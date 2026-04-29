@@ -94,7 +94,7 @@ Target for both cohorts:
 ## 6) Mature cluster time-series models
 
 - For each mature cluster, builds monthly median volume series from training period.
-- Fits ARIMA(1,1,1) per cluster (with median fallback when fitting fails or history is short).
+- Fits Holt-Winters (Exponential Smoothing) per cluster (with median fallback when fitting fails or history is short).
 - Produces 36-step forecasts used for months 25-60.
 
 ## 7) 60-month new-site forecast stitching
@@ -104,8 +104,8 @@ Given `(lat, lon)`:
 1. Finds nearest `<2y` and `>2y` clusters from their separate centroids.
 2. Builds 60 monthly rows starting from `start_date` (default `2026-01-01`).
 3. Predicts months 1-24 from `<2y` model path.
-4. Predicts months 25-60 from mature LightGBM baseline and blends with mature ARIMA forecast:
-   - ARIMA branch is anchor-scaled to connect smoothly from month 24.
+4. Predicts months 25-60 from mature LightGBM baseline and blends with mature Holt-Winters forecast:
+   - Holt-Winters branch is anchor-scaled to connect smoothly from month 24.
    - blend weight transitions over horizon (higher model weight near month 25, lower near month 60).
 5. Generates uncertainty bands:
    - base width from cohort-specific cluster std

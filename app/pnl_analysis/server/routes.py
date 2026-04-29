@@ -114,6 +114,26 @@ def get_wash_volume_range_minmax(task_id: str = Query(..., description="Task id 
     return {"task_id": task_id, "status": state.lower()}
 
 
+@router.get("/wash-count-minmax")
+def get_wash_count_minmax(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "wash_count_minmax": res.get("wash_volume_range_minmax"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
 @router.api_route("/wash_volume_projection", methods=["GET", "POST"])
 def get_wash_volume_projection(task_id: str = Query(..., description="Task id from /v1/input-form")):
     task_result = AsyncResult(task_id, app=celery_app)
@@ -144,6 +164,67 @@ def get_cash_flow_projections(task_id: str = Query(..., description="Task id fro
             "task_id": task_id,
             "status": "success",
             "cash_flow_projections": res.get("cash_flow_projections"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
+@router.get("/cash-on-cash-return")
+def get_cash_on_cash_return(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "project_cost": res.get("project_cost"),
+            "cash_on_cash_return": res.get("cash_on_cash_return"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
+@router.get("/expense-breakdown")
+def get_expense_breakdown(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "expense_breakdown": res.get("expense_breakdown"),
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
+@router.get("/headlines-washcast")
+def get_headlines_washcast(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "headlines_washcast": res.get("headlines_washcast"),
         }
     if state == TaskStatus.FAILURE.value:
         return {

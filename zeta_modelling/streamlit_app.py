@@ -465,6 +465,20 @@ def recommendation_text(confidence: str, break_even: str, risk: str, margin: flo
     return "\n".join([f"- {r}" for r in rec])
 
 
+def _annual_volume_by_year(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
+    out = out.dropna(subset=["date", "volume"]).copy()
+    out["year"] = out["date"].dt.year.astype(int)
+    annual = (
+        out.groupby("year", as_index=False)["volume"]
+        .sum()
+        .rename(columns={"volume": "annual_volume"})
+        .sort_values("year")
+    )
+    return annual
+
+
 def render_model1_benchmarking() -> None:
     st.subheader("Model 1 / Data 1 — holdout benchmarks")
     st.caption(
@@ -889,6 +903,28 @@ if run:
     ax_cmp.set_title("Forecast comparison for entered site")
     ax_cmp.legend(loc="upper left")
     st.pyplot(fig_cmp, clear_figure=True)
+    st.subheader("Annual volume by year (Model 1 vs Model 2)")
+    m1_annual = _annual_volume_by_year(forecast).rename(columns={"annual_volume": "model1_annual_volume"})
+    m2_annual = _annual_volume_by_year(m2_forecast).rename(columns={"annual_volume": "model2_annual_volume"})
+    annual_cmp = (
+        m1_annual.merge(m2_annual, on="year", how="outer")
+        .sort_values("year")
+        .fillna(0.0)
+    )
+    st.dataframe(annual_cmp, use_container_width=True, hide_index=True)
+    years = annual_cmp["year"].astype(int).to_numpy()
+    x = np.arange(len(years), dtype=float)
+    width = 0.36
+    fig_annual, ax_annual = plt.subplots(figsize=(10, 4))
+    ax_annual.bar(x - width / 2, annual_cmp["model1_annual_volume"].to_numpy(dtype=float), width=width, label="Model 1")
+    ax_annual.bar(x + width / 2, annual_cmp["model2_annual_volume"].to_numpy(dtype=float), width=width, label="Model 2")
+    ax_annual.set_xticks(x)
+    ax_annual.set_xticklabels([str(y) for y in years])
+    ax_annual.set_xlabel("Year")
+    ax_annual.set_ylabel("Annual Volume")
+    ax_annual.set_title("Annual volume comparison by year")
+    ax_annual.legend()
+    st.pyplot(fig_annual, clear_figure=True)
 
     st.header("Model 2 site forecast (same input)")
     d1, d2, d3 = st.columns(3)

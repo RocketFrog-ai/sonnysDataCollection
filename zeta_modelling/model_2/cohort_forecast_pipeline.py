@@ -12,7 +12,7 @@ import pandas as pd
 from lightgbm import LGBMClassifier, LGBMRegressor
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.metrics import mean_absolute_error
-from statsmodels.tsa.arima.model import ARIMA
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
 
 EARTH_RADIUS_KM = 6371.0088
@@ -415,9 +415,23 @@ def fit_cluster_ts_models(more_train: pd.DataFrame, horizon: int = 36) -> Dict[i
             out[int(cid)] = np.array([float(np.median(s)) if len(s) else 0.0] * horizon)
             continue
         try:
-            model = ARIMA(s, order=(1, 1, 1))
-            fit = model.fit()
-            fc = fit.forecast(steps=horizon)
+            if len(s) >= 24:
+                model = ExponentialSmoothing(
+                    s,
+                    trend="add",
+                    seasonal="add",
+                    seasonal_periods=12,
+                    initialization_method="estimated",
+                )
+            else:
+                model = ExponentialSmoothing(
+                    s,
+                    trend="add",
+                    seasonal=None,
+                    initialization_method="estimated",
+                )
+            fit = model.fit(optimized=True, use_brute=False)
+            fc = fit.forecast(horizon)
             out[int(cid)] = np.asarray(fc, dtype=float)
         except Exception:
             out[int(cid)] = np.array([float(np.median(s))] * horizon)

@@ -21,7 +21,8 @@ def submit_central_input_form(req: CentralInputFormRequest):
     Returns one central task id that downstream modules can read from.
 
     Wash volumes and P10/P90-style year ranges come from ``zeta_modelling`` (``model_1`` / ``data_1``).
-    Optional body field ``zeta_forecast`` overrides margin/costs/scenario (see ``ZetaForecastParams``).
+    Optional zeta forecast overrides are accepted either at root ``zeta_forecast`` (legacy)
+    or under ``financial_inputs.zeta_forecast`` (preferred).
     """
     payload = req.to_task_payload()
     try:
