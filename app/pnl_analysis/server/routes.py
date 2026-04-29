@@ -7,10 +7,7 @@ from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException, Query
 
 from app.celery.celery_app import celery_app
-from app.pnl_analysis.modelling.clustering_v2 import (
-    run_clustering_v2_projection_task,
-    run_pnl_central_input_form_task,
-)
+from app.pnl_analysis.modelling.zeta_pnl import run_clustering_v2_projection_task
 from app.pnl_analysis.server.models import (
     ClusteringV2ProjectionRequest,
     TaskResponse,
@@ -26,7 +23,7 @@ router = APIRouter(prefix="/pnl_analysis")
 @router.post("/clustering-v2/project", response_model=TaskResponse)
 def start_clustering_v2_projection(req: ClusteringV2ProjectionRequest):
     """
-    Enqueue clustering_v2 projection (greenfield wash-count forecast).
+    Enqueue zeta_modelling wash projection (legacy path name kept for API compatibility).
     Returns `task_id`; poll `/pnl_analysis/task/{task_id}` or fetch data via `/pnl_analysis/wash-count-plot?task_id=...`.
     """
     if not (req.address and req.address.strip()) and (req.latitude is None or req.longitude is None):
@@ -34,7 +31,7 @@ def start_clustering_v2_projection(req: ClusteringV2ProjectionRequest):
     try:
         result = run_clustering_v2_projection_task.delay(req.model_dump())
     except Exception as e:
-        logger.exception("Failed to enqueue clustering_v2 projection")
+        logger.exception("Failed to enqueue zeta_modelling projection")
         raise HTTPException(status_code=500, detail=str(e))
     return TaskResponse(task_id=result.id, status=TaskStatus.PENDING, message="Clustering v2 projection submitted")
 
@@ -59,7 +56,7 @@ def get_pnl_task_status(task_id: str):
 @router.get("/wash-count-plot")
 def get_wash_count_plot_data(task_id: str = Query(..., description="Celery task id from /clustering-v2/project")):
     """
-    Return wash-count projection *data* (no plots) for an existing clustering_v2 task_id.
+    Return wash-count projection *data* (no plots) for an existing projection task_id (zeta_modelling).
     """
     task_result = AsyncResult(task_id, app=celery_app)
     state = (task_result.state or "PENDING").upper()
@@ -67,10 +64,6 @@ def get_wash_count_plot_data(task_id: str = Query(..., description="Celery task 
         res: Dict[str, Any] = task_result.result or {}
         # Prefer flattened timeline if present (task output), else fall back to raw response.
         timeline = res.get("monthly_projection_48mo")
-        if timeline is None and isinstance(res.get("raw"), dict):
-            from app.pnl_analysis.clustering_v2.runtime import build_monthly_wash_projection_48mo
-
-            timeline = build_monthly_wash_projection_48mo(res["raw"])
         return {
             "task_id": task_id,
             "status": "success",

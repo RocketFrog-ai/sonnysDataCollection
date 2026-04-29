@@ -53,6 +53,10 @@ class ClusteringV2ProjectionRequest(BaseModel):
     wash_prices: Optional[List[float]] = Field(None, description="List of wash tier prices in dollars.")
     wash_pcts: Optional[List[float]] = Field(None, description="List of wash tier user share percentages (0–100).")
     opex_years: Optional[List[float]] = Field(None, description="Operating expense by year: [y1,y2,y3,y4].")
+    zeta_forecast: Optional[ZetaForecastParams] = Field(
+        None,
+        description="Optional zeta_modelling parameters (same shape as central form).",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -222,6 +226,20 @@ class FinancialInputs(BaseModel):
     expense_description: str = ""
 
 
+class ZetaForecastParams(BaseModel):
+    """Optional overrides for zeta_modelling wash forecast (passed through Celery payload)."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    margin_per_wash: float = Field(4.0, description="Margin per wash for break-even style fields inside zeta forecast.")
+    fixed_monthly_cost: float = Field(50_000.0)
+    ramp_up_cost: float = Field(150_000.0)
+    scenario: str = Field("Expected", description="Expected | Conservative | Aggressive")
+    forecast_months: int = Field(48, ge=12, le=60)
+    target_calibration_coverage: float = Field(0.80, ge=0.1, le=0.99)
+    forecast_start_date: str = Field("2026-01-01", description="First month of synthetic timeline (ISO date).")
+
+
 class CentralInputFormRequest(BaseModel):
     """
     Full central PnL input form. Optional legacy root keys `address`, `latitude`, `longitude`
@@ -243,6 +261,10 @@ class CentralInputFormRequest(BaseModel):
     wash_pcts: Optional[List[float]] = Field(None, description="Optional legacy: wash tier mix percentages.")
     opex_years: Optional[List[float]] = Field(None, description="Optional: operating expense by year [y1..y4].")
     capex_initial: Optional[float] = Field(None, description="Optional legacy: initial capex ($).")
+    zeta_forecast: Optional[ZetaForecastParams] = Field(
+        None,
+        description="Optional zeta_modelling (model_1/data_1) forecast parameters; defaults are used if omitted.",
+    )
 
     @model_validator(mode="before")
     @classmethod

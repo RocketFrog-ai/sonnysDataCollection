@@ -177,15 +177,31 @@ Numbers below are from:
 
 ---
 
-## 7) How to Run
+## 7) PnL API integration (`app/pnl_analysis`)
 
-### 7.1 Build artifacts (one-time / after retrain)
+The FastAPI/Celery central input form and wash projection endpoints now call this stack instead of `daily_data/.../clustering_v2`:
+
+- Code: `zeta_modelling/model_1/` (artifacts: `phase3_artifacts.joblib`)
+- Data: `zeta_modelling/data_1/` (training panel, raw cohort CSVs, `phase3_advanced_report.json` for calibration coverage)
+
+Implementation: `app/pnl_analysis/modelling/zeta_pnl.py`
+
+- **Year totals** (`wash_volume_projection`): sum of scenario-adjusted monthly `volume` (P50 track) for months 1–12, 13–24, 25–36, 37–48.
+- **Min / median / max** (`wash_volume_range_minmax`): same windows using calibrated **`low`** (P10 track), **`volume`** (P50), **`high`** (P90 track) — aligned with zeta quantile + global calibration.
+
+Optional JSON payload (central form or `/pnl_analysis/clustering-v2/project`): `zeta_forecast` with fields from `ZetaForecastParams` in `app/pnl_analysis/server/models.py`.
+
+---
+
+## 8) How to Run
+
+### 8.1 Build artifacts (one-time / after retrain)
 
 ```bash
 python zeta_modelling/model_1/build_phase3_artifacts.py
 ```
 
-### 7.2 Run Streamlit decision app
+### 8.2 Run Streamlit decision app
 
 ```bash
 streamlit run zeta_modelling/streamlit_app.py
@@ -193,7 +209,7 @@ streamlit run zeta_modelling/streamlit_app.py
 
 ---
 
-## 8) Current Status
+## 9) Current Status
 
 `model_1` is now a full forecasting + decision pipeline:
 

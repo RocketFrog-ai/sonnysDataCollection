@@ -1,0 +1,523 @@
+"""
+PnL wash-volume projection using zeta_modelling (model_1 + data_1).
+
+Replaces clustering_v2 for central input-form and standalone projection tasks.
+"""
+from __future__ import annotations
+
+import json
+import sys
+from functools import lru_cache
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+import pandas as pd
+
+from app.celery.celery_app import celery_app
+
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+_ZETA_DATA = _REPO_ROOT / "zeta_modelling" / "data_1"
+_ZETA_MODEL = _REPO_ROOT / "zeta_modelling" / "model_1"
+_ARTIFACTS_PATH = _ZETA_MODEL / "phase3_artifacts.joblib"
+_ADVANCED_REPORT = _ZETA_DATA / "phase3_advanced_report.json"
+
+
+def _ensure_repo_on_path() -> None:
+    r = str(_REPO_ROOT)
+    if r not in sys.path:
+        sys.path.insert(0, r)
+
+
+@lru_cache(maxsize=1)
+def _load_artifacts():
+    _ensure_repo_on_path()
+    from zeta_modelling.model_1.phase3_advanced_forecast import load_artifacts
+
+    if not _ARTIFACTS_PATH.exists():
+        raise FileNotFoundError(
+            f"Missing {_ARTIFACTS_PATH}. Run: python zeta_modelling/model_1/build_phase3_artifacts.py"
+        )
+    return load_artifacts(_ARTIFACTS_PATH)
+
+
+def _read_calibration_coverage() -> float:
+    if _ADVANCED_REPORT.exists():
+        try:
+            payload = json.loads(_ADVANCED_REPORT.read_text())
+            return float(payload.get("backtest", {}).get("p10_p90_coverage", 0.454))
+        except Exception:
+            pass
+    return 0.454
+
+
+def _json_sanitize(obj: Any) -> Any:
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return obj
+    if isinstance(obj, dict):
+        return {str(k): _json_sanitize(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_json_sanitize(v) for v in obj]
+    item = getattr(obj, "item", None)
+    if callable(item):
+        try:
+            return _json_sanitize(item())
+        except Exception:
+            pass
+    return str(obj)
+
+
+def _effective_dollar_per_wash(wash_prices: List[float], wash_pcts: List[float]) -> float:
+    return float(sum(float(p) * max(float(c), 0.0) / 100.0 for p, c in zip(wash_prices, wash_pcts)))
+
+
+def _normalize_central_task_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return payload
+    out = dict(payload)
+    ci = payload.get("customer_information")
+    if isinstance(ci, dict):
+        site = (ci.get("site_address") or "").strip()
+        if site:
+            out["address"] = site
+        lat, lon = ci.get("latitude"), ci.get("longitude")
+        if lat is not None:
+            try:
+                out["latitude"] = out["lat"] = float(lat)
+            except (TypeError, ValueError):
+                pass
+        if lon is not None:
+            try:
+                out["longitude"] = out["lon"] = float(lon)
+            except (TypeError, ValueError):
+                pass
+    mp = payload.get("menu_packages")
+    if isinstance(mp, list) and mp:
+        if not out.get("wash_prices") or not out.get("wash_pcts"):
+            prices: List[float] = []
+            pcts: List[float] = []
+            for p in mp:
+                if not isinstance(p, dict):
+                    continue
+                pr, pc = p.get("price"), p.get("customer_percentage")
+                if pr is None or pc is None:
+                    continue
+                try:
+                    prices.append(float(pr))
+                    pcts.append(float(pc))
+                except (TypeError, ValueError):
+                    continue
+            if prices and len(prices) == len(pcts):
+                out["wash_prices"] = prices
+                out["wash_pcts"] = pcts
+    return out
+
+
+def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
+    z = payload.get("zeta_forecast") or {}
+    if not isinstance(z, dict):
+        z = {}
+    return {
+        "margin_per_wash": float(z.get("margin_per_wash", 4.0)),
+        "fixed_monthly_cost": float(z.get("fixed_monthly_cost", 50_000.0)),
+        "ramp_up_cost": float(z.get("ramp_up_cost", 150_000.0)),
+        "scenario": str(z.get("scenario", "Expected")),
+        "forecast_months": int(z.get("forecast_months", 48)),
+        "target_calibration_coverage": float(z.get("target_calibration_coverage", 0.80)),
+        "forecast_start_date": str(z.get("forecast_start_date", "2026-01-01")),
+    }
+
+
+def _scenario_adjust(df: pd.DataFrame, scenario: str) -> pd.DataFrame:
+    out = df.copy()
+    if scenario == "Conservative":
+        out["volume"] = out["low"]
+    elif scenario == "Aggressive":
+        out["volume"] = out["high"]
+    return out
+
+
+def _run_zeta_forecast_df(
+    lat: float,
+    lon: float,
+    *,
+    months: int,
+    margin_per_wash: float,
+    fixed_monthly_cost: float,
+    ramp_up_cost: float,
+    scenario: str,
+    target_coverage: float,
+    start_date: str,
+) -> tuple[pd.DataFrame, Dict[str, Any]]:
+    _ensure_repo_on_path()
+    from zeta_modelling.model_1.phase3_advanced_forecast import (
+        add_confidence_label,
+        apply_global_uncertainty_calibration,
+        final_report,
+    )
+
+    artifacts = _load_artifacts()
+    forecast, summary = final_report(
+        lat=float(lat),
+        lon=float(lon),
+        artifacts=artifacts,
+        months=int(months),
+        start_date=start_date,
+        margin_per_wash=margin_per_wash,
+        fixed_monthly_cost=fixed_monthly_cost,
+        ramp_up_cost=ramp_up_cost,
+    )
+    cov = _read_calibration_coverage()
+    forecast, _scale = apply_global_uncertainty_calibration(
+        forecast=forecast,
+        current_coverage=cov,
+        target_coverage=target_coverage,
+    )
+    forecast, _conf = add_confidence_label(forecast)
+    forecast = _scenario_adjust(forecast, scenario)
+    forecast["cumulative_volume"] = forecast["volume"].cumsum()
+    return forecast, summary
+
+
+def _year_sum_volume(df: pd.DataFrame, start_m: int, end_m: int, col: str) -> float:
+    mask = (df["age_in_months"] >= start_m) & (df["age_in_months"] <= end_m)
+    return float(df.loc[mask, col].sum())
+
+
+def _wash_volume_projection_from_forecast(forecast: pd.DataFrame) -> Dict[str, float]:
+    return {
+        "year_1": _year_sum_volume(forecast, 1, 12, "volume"),
+        "year_2": _year_sum_volume(forecast, 13, 24, "volume"),
+        "year_3": _year_sum_volume(forecast, 25, 36, "volume"),
+        "year_4": _year_sum_volume(forecast, 37, 48, "volume"),
+    }
+
+
+def _wash_volume_range_minmax_from_forecast(forecast: pd.DataFrame) -> Dict[str, Dict[str, float]]:
+    return {
+        "year_1": {
+            "min": _year_sum_volume(forecast, 1, 12, "low"),
+            "median": _year_sum_volume(forecast, 1, 12, "volume"),
+            "max": _year_sum_volume(forecast, 1, 12, "high"),
+        },
+        "year_2": {
+            "min": _year_sum_volume(forecast, 13, 24, "low"),
+            "median": _year_sum_volume(forecast, 13, 24, "volume"),
+            "max": _year_sum_volume(forecast, 13, 24, "high"),
+        },
+        "year_3": {
+            "min": _year_sum_volume(forecast, 25, 36, "low"),
+            "median": _year_sum_volume(forecast, 25, 36, "volume"),
+            "max": _year_sum_volume(forecast, 25, 36, "high"),
+        },
+        "year_4": {
+            "min": _year_sum_volume(forecast, 37, 48, "low"),
+            "median": _year_sum_volume(forecast, 37, 48, "volume"),
+            "max": _year_sum_volume(forecast, 37, 48, "high"),
+        },
+    }
+
+
+def _monthly_projection_48mo(forecast: pd.DataFrame) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for _, r in forecast.iterrows():
+        try:
+            rows.append(
+                {
+                    "month": str(r["date"])[:10],
+                    "wash_count": float(r["volume"]),
+                    "wash_count_low": float(r["low"]),
+                    "wash_count_high": float(r["high"]),
+                    "operational_month_index": int(r["age_in_months"]),
+                }
+            )
+        except Exception:
+            continue
+    return rows
+
+
+@lru_cache(maxsize=1)
+def _cohort_membership_retail_shares() -> Dict[str, Dict[str, float]]:
+    cfg = {
+        "less_than": _ZETA_DATA / "less_than-2yrs.csv",
+        "more_than": _ZETA_DATA / "more_than-2yrs.csv",
+    }
+    out: Dict[str, Dict[str, float]] = {}
+    for cohort, path in cfg.items():
+        if not path.exists():
+            out[cohort] = {"retail_share": 0.5, "membership_share": 0.5}
+            continue
+        df = pd.read_csv(path, usecols=["wash_count_retail", "wash_count_membership"])
+        retail = float(df["wash_count_retail"].fillna(0).sum())
+        membership = float(df["wash_count_membership"].fillna(0).sum())
+        denom = retail + membership
+        if denom <= 0:
+            out[cohort] = {"retail_share": 0.5, "membership_share": 0.5}
+        else:
+            out[cohort] = {
+                "retail_share": retail / denom,
+                "membership_share": membership / denom,
+            }
+    return out
+
+
+@lru_cache(maxsize=1)
+def _cluster_peer_membership_retail_shares() -> Dict[str, Dict[int, Dict[str, float]]]:
+    out: Dict[str, Dict[int, Dict[str, float]]] = {"less_than": {}, "more_than": {}}
+
+    lt_path = _ZETA_DATA / "less_than-2yrs.csv"
+    if lt_path.exists():
+        lt = pd.read_csv(
+            lt_path,
+            usecols=["dbscan_cluster_12km", "wash_count_retail", "wash_count_membership"],
+        )
+        lt = lt[lt["dbscan_cluster_12km"].notna()].copy()
+        lt["dbscan_cluster_12km"] = pd.to_numeric(lt["dbscan_cluster_12km"], errors="coerce").astype("Int64")
+        lt = lt[lt["dbscan_cluster_12km"].notna() & (lt["dbscan_cluster_12km"] >= 0)].copy()
+        g = lt.groupby("dbscan_cluster_12km", as_index=True)[["wash_count_retail", "wash_count_membership"]].sum()
+        for cluster_id, row in g.iterrows():
+            retail = float(row["wash_count_retail"] or 0.0)
+            membership = float(row["wash_count_membership"] or 0.0)
+            denom = retail + membership
+            if denom > 0:
+                out["less_than"][int(cluster_id)] = {
+                    "retail_share": retail / denom,
+                    "membership_share": membership / denom,
+                }
+
+    gt_path = _ZETA_DATA / "more_than-2yrs.csv"
+    if gt_path.exists():
+        gt = pd.read_csv(
+            gt_path,
+            usecols=["dbscan_cluster_12km", "wash_count_retail", "wash_count_membership"],
+        )
+        gt = gt[gt["dbscan_cluster_12km"].notna()].copy()
+        gt["dbscan_cluster_12km"] = pd.to_numeric(gt["dbscan_cluster_12km"], errors="coerce").astype("Int64")
+        gt = gt[gt["dbscan_cluster_12km"].notna() & (gt["dbscan_cluster_12km"] >= 0)].copy()
+        g2 = gt.groupby("dbscan_cluster_12km", as_index=True)[["wash_count_retail", "wash_count_membership"]].sum()
+        for cluster_id, row in g2.iterrows():
+            retail = float(row["wash_count_retail"] or 0.0)
+            membership = float(row["wash_count_membership"] or 0.0)
+            denom = retail + membership
+            if denom > 0:
+                out["more_than"][int(cluster_id)] = {
+                    "retail_share": retail / denom,
+                    "membership_share": membership / denom,
+                }
+
+    return out
+
+
+def _primary_cluster_id_from_forecast(forecast: pd.DataFrame, summary_top3: List[Dict[str, Any]]) -> int:
+    if summary_top3:
+        try:
+            return int(float(str(summary_top3[0]["cluster_id"])))
+        except (TypeError, ValueError):
+            pass
+    return -1
+
+
+def _membership_retail_count_projection(
+    wash_volume_projection: Dict[str, float],
+    primary_cluster_id: int,
+) -> Dict[str, Dict[str, float]]:
+    shares_by_year = {
+        "year_1": _cluster_peer_share(primary_cluster_id, "less_than"),
+        "year_2": _cluster_peer_share(primary_cluster_id, "less_than"),
+        "year_3": _cluster_peer_share(primary_cluster_id, "more_than"),
+        "year_4": _cluster_peer_share(primary_cluster_id, "more_than"),
+    }
+    out: Dict[str, Dict[str, float]] = {}
+    for year_key, year_shares in shares_by_year.items():
+        total = float(wash_volume_projection.get(year_key, 0.0) or 0.0)
+        out[year_key] = {
+            "membership": float(total * float(year_shares["membership_share"])),
+            "retail": float(total * float(year_shares["retail_share"])),
+        }
+    return out
+
+
+def _cluster_peer_share(cluster_id: int, cohort: str) -> Dict[str, float]:
+    fallback = _cohort_membership_retail_shares()[cohort]
+    if cluster_id < 0:
+        return fallback
+    return _cluster_peer_membership_retail_shares().get(cohort, {}).get(cluster_id, fallback)
+
+
+def _membership_retail_revenue_projection(
+    membership_retail_count: Dict[str, Dict[str, float]],
+    dollars_per_wash: float,
+) -> Dict[str, Dict[str, float]]:
+    out: Dict[str, Dict[str, float]] = {}
+    for year_key, counts in membership_retail_count.items():
+        out[year_key] = {
+            "membership": float(float(counts.get("membership", 0.0) or 0.0) * dollars_per_wash),
+            "retail": float(float(counts.get("retail", 0.0) or 0.0) * dollars_per_wash),
+        }
+    return out
+
+
+def _cash_flow_projection(
+    wash_volume_projection: Dict[str, float],
+    wash_prices: Optional[List[float]],
+    wash_pcts: Optional[List[float]],
+    opex_years: Optional[List[float]],
+) -> Optional[Dict[str, Dict[str, float]]]:
+    if not (
+        isinstance(wash_prices, list)
+        and isinstance(wash_pcts, list)
+        and len(wash_prices)
+        and len(wash_prices) == len(wash_pcts)
+        and isinstance(opex_years, list)
+        and len(opex_years) == 4
+    ):
+        return None
+    dollars_per_wash = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
+    out: Dict[str, Dict[str, float]] = {}
+    for year_key, expense in zip(("year_1", "year_2", "year_3", "year_4"), [float(x) for x in opex_years]):
+        total_revenue = float(float(wash_volume_projection.get(year_key, 0.0) or 0.0) * dollars_per_wash)
+        total_expense = float(expense)
+        out[year_key] = {
+            "total_revenue": total_revenue,
+            "total_expense": total_expense,
+            "net_cash_flow": float(total_revenue - total_expense),
+        }
+    return out
+
+
+@celery_app.task(bind=True, name="pnl_zeta_projection")
+def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Greenfield wash projection via zeta_modelling (quantile + calibrated bands).
+    Compatible shape with legacy /wash-count-plot consumers.
+    """
+    address = payload.get("address")
+    lat = payload.get("latitude", payload.get("lat"))
+    lon = payload.get("longitude", payload.get("lon"))
+    if lat is None or lon is None:
+        raise ValueError("latitude and longitude are required for zeta projection")
+
+    zp = _zeta_params(payload)
+    months_use = min(max(int(zp["forecast_months"]), 12), 60)
+    forecast, summary = _run_zeta_forecast_df(
+        float(lat),
+        float(lon),
+        months=months_use,
+        margin_per_wash=zp["margin_per_wash"],
+        fixed_monthly_cost=zp["fixed_monthly_cost"],
+        ramp_up_cost=zp["ramp_up_cost"],
+        scenario=zp["scenario"],
+        target_coverage=zp["target_calibration_coverage"],
+        start_date=zp["forecast_start_date"],
+    )
+
+    wash_vol = _wash_volume_projection_from_forecast(forecast)
+    timeline = _monthly_projection_48mo(forecast.head(48))
+
+    out: Dict[str, Any] = {
+        "task_id": self.request.id,
+        "input": {"address": address, "lat": lat, "lon": lon},
+        "method": "zeta_modelling",
+        "level_model": "quantile_lgbm",
+        "calendar_year_washes": wash_vol,
+        "monthly_projection_48mo": timeline,
+        "zeta_forecast_summary": _json_sanitize(summary),
+        "zeta_model_path": str(_ARTIFACTS_PATH),
+        "zeta_data_path": str(_ZETA_DATA),
+    }
+
+    wash_prices = payload.get("wash_prices")
+    wash_pcts = payload.get("wash_pcts")
+    opex_years = payload.get("opex_years")
+    primary_cid = _primary_cluster_id_from_forecast(forecast, summary.get("top3_clusters") or [])
+
+    if isinstance(wash_prices, list) and isinstance(wash_pcts, list) and len(wash_prices) == len(wash_pcts) and wash_prices:
+        dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
+        out["dollars_per_wash"] = dpw
+        mrc = _membership_retail_count_projection(wash_vol, primary_cid)
+        out["membership_retail_count"] = mrc
+        years = ["year_1", "year_2", "year_3", "year_4"]
+        washes = [float(wash_vol.get(y, 0.0) or 0.0) for y in years]
+        revenue = [float(dpw * w) for w in washes]
+        out["revenue_by_year"] = dict(zip(years, revenue))
+        if isinstance(opex_years, list) and len(opex_years) == 4:
+            opex = [float(x) for x in opex_years]
+            out["opex_by_year"] = dict(zip(years, opex))
+            out["profit_by_year"] = dict(zip(years, [float(r - e) for r, e in zip(revenue, opex)]))
+
+    return _json_sanitize(out)
+
+
+@celery_app.task(bind=True, name="pnl_central_input_form")
+def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Central input-form task: zeta_modelling volume + P10/P90-derived year ranges.
+    """
+    payload = _normalize_central_task_payload(payload)
+    lat = payload.get("latitude", payload.get("lat"))
+    lon = payload.get("longitude", payload.get("lon"))
+    if lat is None or lon is None:
+        raise ValueError("latitude and longitude are required")
+
+    zp = _zeta_params(payload)
+    months_use = min(max(int(zp["forecast_months"]), 12), 60)
+    forecast, summary = _run_zeta_forecast_df(
+        float(lat),
+        float(lon),
+        months=months_use,
+        margin_per_wash=zp["margin_per_wash"],
+        fixed_monthly_cost=zp["fixed_monthly_cost"],
+        ramp_up_cost=zp["ramp_up_cost"],
+        scenario=zp["scenario"],
+        target_coverage=zp["target_calibration_coverage"],
+        start_date=zp["forecast_start_date"],
+    )
+
+    wash_volume_projection = _wash_volume_projection_from_forecast(forecast)
+    wash_volume_range_minmax = _wash_volume_range_minmax_from_forecast(forecast)
+
+    inp = payload.get("customer_information") or {}
+    out_input = {
+        "address": inp.get("site_address") if isinstance(inp, dict) else None,
+        "lat": lat,
+        "lon": lon,
+    }
+
+    out: Dict[str, Any] = {
+        "task_id": self.request.id,
+        "input": out_input,
+        "wash_volume_projection": wash_volume_projection,
+        "wash_volume_range_minmax": wash_volume_range_minmax,
+        "zeta_forecast_summary": _json_sanitize(summary),
+        "zeta_model_path": str(_ARTIFACTS_PATH),
+        "zeta_data_path": str(_ZETA_DATA),
+    }
+
+    wash_prices = payload.get("wash_prices")
+    wash_pcts = payload.get("wash_pcts")
+    opex_years = payload.get("opex_years")
+    primary_cid = _primary_cluster_id_from_forecast(forecast, summary.get("top3_clusters") or [])
+    membership_retail_count = _membership_retail_count_projection(wash_volume_projection, primary_cid)
+    out["membership_retail_count"] = membership_retail_count
+
+    if isinstance(wash_prices, list) and isinstance(wash_pcts, list) and len(wash_prices) == len(wash_pcts) and wash_prices:
+        dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
+        out["dollars_per_wash"] = dpw
+        out["membership_retail_revenue"] = _membership_retail_revenue_projection(membership_retail_count, dpw)
+        years = ["year_1", "year_2", "year_3", "year_4"]
+        washes = [float(wash_volume_projection.get(y, 0.0) or 0.0) for y in years]
+        revenue = [float(dpw * w) for w in washes]
+        out["revenue_by_year"] = dict(zip(years, revenue))
+        if isinstance(opex_years, list) and len(opex_years) == 4:
+            opex = [float(x) for x in opex_years]
+            out["opex_by_year"] = dict(zip(years, opex))
+            out["profit_by_year"] = dict(zip(years, [float(r - e) for r, e in zip(revenue, opex)]))
+
+    cash_flow = _cash_flow_projection(wash_volume_projection, wash_prices, wash_pcts, opex_years)
+    if cash_flow is not None:
+        out["cash_flow_projections"] = cash_flow
+
+    return _json_sanitize(out)
+
+
+# Backward-compatible Celery name for clients still enqueueing the old task.
+run_clustering_v2_projection_task = run_zeta_projection_task

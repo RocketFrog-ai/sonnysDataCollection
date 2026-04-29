@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
 
-from model.phase3_advanced_forecast import (
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from zeta_modelling.model_1.phase3_advanced_forecast import (
     add_confidence_label,
     apply_global_uncertainty_calibration,
     final_report,
@@ -15,8 +20,8 @@ from model.phase3_advanced_forecast import (
 )
 
 
-ARTIFACTS_PATH = Path("zeta_modelling/model/phase3_artifacts.joblib")
-DEFAULT_REPORT_PATH = Path("zeta_modelling/data/phase3_advanced_report.json")
+ARTIFACTS_PATH = _REPO_ROOT / "zeta_modelling" / "model_1" / "phase3_artifacts.joblib"
+DEFAULT_REPORT_PATH = _REPO_ROOT / "zeta_modelling" / "data_1" / "phase3_advanced_report.json"
 
 
 @st.cache_resource
@@ -61,7 +66,7 @@ st.caption("Forecasting tool for 3y/5y volume, uncertainty, and business viabili
 if not ARTIFACTS_PATH.exists():
     st.error(
         "Artifacts not found. Run this once before using app:\n"
-        "`python zeta_modelling/model/build_phase3_artifacts.py`"
+        "`python zeta_modelling/model_1/build_phase3_artifacts.py`"
     )
     st.stop()
 

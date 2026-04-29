@@ -6,8 +6,11 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from model.phase3_advanced_forecast import save_artifacts, train_artifacts
+_REPO = Path(__file__).resolve().parents[2]
+if str(_REPO) not in sys.path:
+    sys.path.insert(0, str(_REPO))
+
+from zeta_modelling.model_1.phase3_advanced_forecast import save_artifacts, train_artifacts
 
 
 def parse_args() -> argparse.Namespace:
@@ -15,12 +18,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input",
         type=Path,
-        default=Path("zeta_modelling/data/phase1_final_monthly_2024_2025.csv"),
+        default=_REPO / "zeta_modelling" / "data_1" / "phase1_final_monthly_2024_2025.csv",
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("zeta_modelling/model/phase3_artifacts.joblib"),
+        default=_REPO / "zeta_modelling" / "model_1" / "phase3_artifacts.joblib",
     )
     return parser.parse_args()
 

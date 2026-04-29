@@ -12,7 +12,7 @@ celery_app = Celery(
     backend=CELERY_RESULT_BACKEND,
     include=[
         "app.site_analysis.modelling.site_analysis",
-        "app.pnl_analysis.modelling.clustering_v2",
+        "app.pnl_analysis.modelling.zeta_pnl",
         "app.celery.tasks",
     ]
 )
