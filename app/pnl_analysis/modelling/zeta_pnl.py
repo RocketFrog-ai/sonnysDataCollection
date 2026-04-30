@@ -121,7 +121,13 @@ def _normalize_central_task_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
-    z = payload.get("zeta_forecast") or {}
+    z = payload.get("zeta_forecast")
+    if not isinstance(z, dict):
+        fi = payload.get("financial_inputs")
+        if isinstance(fi, dict) and isinstance(fi.get("zeta_forecast"), dict):
+            z = fi.get("zeta_forecast")
+    if z is None:
+        z = {}
     if not isinstance(z, dict):
         z = {}
     out = {
