@@ -126,7 +126,7 @@ def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
         "target_calibration_coverage": float(z.get("target_calibration_coverage", 0.80)),
         "forecast_start_date": str(z.get("forecast_start_date", "2026-01-01")),
         "enable_mature_yoy_control": bool(z.get("enable_mature_yoy_control", True)),
-        "mature_yoy_start_year": int(min(10, max(2, int(z.get("mature_yoy_start_year", 4))))),
+        "mature_yoy_start_year": int(min(10, max(2, int(z.get("mature_yoy_start_year", 3))))),
         "mature_min_yoy": float(z.get("mature_min_yoy", 0.005)),
         "mature_max_yoy": float(z.get("mature_max_yoy", 0.05)),
     }
@@ -180,7 +180,7 @@ def _run_zeta_forecast_df(
     target_coverage: float,
     start_date: str,
     enable_mature_yoy_control: bool = True,
-    mature_yoy_start_year: int = 4,
+    mature_yoy_start_year: int = 3,
     mature_min_yoy: float = 0.005,
     mature_max_yoy: float = 0.05,
 ) -> tuple[pd.DataFrame, Dict[str, Any]]:

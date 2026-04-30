@@ -44,7 +44,7 @@ class ZetaForecastParams(BaseModel):
         True,
         description="If true, may constrain late-year annual totals to a YoY band only when those years are strictly decreasing YoY; otherwise raw forecast is unchanged.",
     )
-    mature_yoy_start_year: int = Field(4, ge=2, le=10, description="Forecast year index (1-based) when YoY band starts.")
+    mature_yoy_start_year: int = Field(3, ge=2, le=10, description="Forecast year index (1-based) when YoY band starts.")
     mature_min_yoy: float = Field(0.005, ge=0.0, le=0.5, description="Minimum YoY growth vs prior year total (fraction).")
     mature_max_yoy: float = Field(0.05, ge=0.0, le=1.0, description="Maximum YoY growth vs prior year total (fraction).")
 
