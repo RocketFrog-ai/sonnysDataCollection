@@ -194,11 +194,19 @@ def apply_cat_maps(df: pd.DataFrame, maps: dict[str, dict[str, int]]) -> pd.Data
 
 def top_k_cluster_weights(lat: float, lon: float, centroids: pd.DataFrame, k: int = 3) -> pd.DataFrame:
     c = centroids.copy()
-    c["distance"] = np.sqrt((c["latitude"] - lat) ** 2 + (c["longitude"] - lon) ** 2)
-    top = c.sort_values("distance").head(k).copy()
-    top["w_raw"] = 1.0 / (top["distance"] + 1e-6)
+    lat1 = np.radians(float(lat))
+    lon1 = np.radians(float(lon))
+    lat2 = np.radians(c["latitude"].astype(float).to_numpy())
+    lon2 = np.radians(c["longitude"].astype(float).to_numpy())
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2.0) ** 2
+    cc = 2.0 * np.arctan2(np.sqrt(a), np.sqrt(1.0 - a))
+    c["distance_km"] = 6371.0 * cc
+    top = c.sort_values("distance_km").head(k).copy()
+    top["w_raw"] = 1.0 / (top["distance_km"] + 1e-6)
     top["weight"] = top["w_raw"] / top["w_raw"].sum()
-    return top[["cluster_id", "distance", "weight"]]
+    return top[["cluster_id", "distance_km", "weight"]]
 
 
 def make_future_rows(lat: float, lon: float, months: int, start_date: str) -> pd.DataFrame:
@@ -583,8 +591,18 @@ def final_report(
     mature_yoy_start_year: int = 4,
     mature_min_yoy: float = 0.005,
     mature_max_yoy: float = 0.05,
+    max_cluster_distance_km: float | None = 100.0,
 ) -> tuple[pd.DataFrame, dict]:
     weights = top_k_cluster_weights(lat, lon, artifacts.cluster_centroids, k=3)
+    if max_cluster_distance_km is not None:
+        max_d = float(max_cluster_distance_km)
+        within = weights[weights["distance_km"] <= max_d].copy()
+        if len(within) < 3:
+            raise ValueError(
+                "No forecast: need 3 nearest clusters within "
+                f"{max_d:.1f} km (found {len(within)} within threshold)."
+            )
+        weights = within.sort_values("distance_km").head(3).copy()
     rows = make_future_rows(lat, lon, months, start_date)
     fc = blend_clusters(rows, weights, artifacts)
     mature_yoy_summary = {"enabled": False}

@@ -9,6 +9,7 @@ import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import LinearRegression
@@ -452,6 +453,19 @@ def scenario_adjust(df: pd.DataFrame, scenario: str) -> pd.DataFrame:
     return out
 
 
+def regional_cluster_distance_cap_km(lat: float, lon: float) -> float:
+    # Coarse US geospatial bands for practical clustering distance caps.
+    if lon >= -80 and lat >= 38:
+        return 100.0  # Northeast
+    if -104 <= lon < -80 and lat >= 36:
+        return 150.0  # Midwest
+    if -105 <= lon < -75 and lat < 36:
+        return 160.0  # South
+    if lon < -104:
+        return 180.0  # West (more spread in many areas)
+    return 120.0
+
+
 def recommendation_text(confidence: str, break_even: str, risk: str, margin: float) -> str:
     rec = []
     if "Low" in confidence:
@@ -477,6 +491,23 @@ def _annual_volume_by_year(df: pd.DataFrame) -> pd.DataFrame:
         .sort_values("year")
     )
     return annual
+
+
+def _six_month_change(df: pd.DataFrame) -> pd.DataFrame:
+    out = df.copy()
+    out["age_in_months"] = pd.to_numeric(out["age_in_months"], errors="coerce")
+    out["volume"] = pd.to_numeric(out["volume"], errors="coerce")
+    out = out.dropna(subset=["age_in_months", "volume"]).copy()
+    out["half_year_index"] = ((out["age_in_months"].astype(int) - 1) // 6) + 1
+    g = (
+        out.groupby("half_year_index", as_index=False)["volume"]
+        .sum()
+        .rename(columns={"volume": "wash_count"})
+        .sort_values("half_year_index")
+    )
+    g["period"] = g["half_year_index"].apply(lambda i: f"M{(i - 1) * 6 + 1}-{i * 6}")
+    g["change_vs_prev"] = g["wash_count"].diff()
+    return g
 
 
 def render_model1_benchmarking() -> None:
@@ -735,10 +766,18 @@ with st.sidebar:
         scenario = st.selectbox("Scenario", ["Expected", "Conservative", "Aggressive"], index=0)
         horizon_choice = st.selectbox("Time horizon", ["3y", "5y"], index=1)
         target_coverage = st.number_input("Target coverage", value=0.80, min_value=0.1, max_value=0.99, step=0.01)
+        distance_policy = st.selectbox(
+            "Nearest-cluster distance policy",
+            [
+                "Fixed 100 km (all top-3 must satisfy)",
+                "Regional caps (NE/Midwest/South/West)",
+            ],
+            index=1,
+        )
         rebuild_m2 = st.checkbox("Rebuild and save Model 2 artifacts", value=False)
         st.caption("Model 1 mature-year YoY band: only if late years are strictly down YoY; else unchanged.")
         enable_mature_yoy = st.checkbox("Enable mature YoY band", value=True)
-        mature_yoy_start_year = st.number_input("Start at forecast year", min_value=2, max_value=10, value=4, step=1)
+        mature_yoy_start_year = st.number_input("Start at forecast year", min_value=2, max_value=10, value=3, step=1)
         mature_min_yoy = st.number_input("Min YoY vs prior year (fraction)", value=0.005, min_value=0.0, max_value=0.5, step=0.005, format="%.4f")
         mature_max_yoy = st.number_input("Max YoY vs prior year (fraction)", value=0.05, min_value=0.0, max_value=1.0, step=0.01, format="%.4f")
 
@@ -748,23 +787,37 @@ if run:
     artifacts = get_artifacts(str(ARTIFACTS_PATH))
     months = 36 if horizon_choice == "3y" else 60
     _mmn, _mmx = float(mature_min_yoy), float(mature_max_yoy)
+    max_cluster_distance_km = (
+        100.0
+        if distance_policy.startswith("Fixed")
+        else regional_cluster_distance_cap_km(float(lat), float(lon))
+    )
     if _mmn > _mmx:
         _mmn, _mmx = _mmx, _mmn
 
-    forecast, summary = final_report(
-        lat=lat,
-        lon=lon,
-        artifacts=artifacts,
-        months=months,
-        start_date="2026-01-01",
-        margin_per_wash=margin_per_wash,
-        fixed_monthly_cost=fixed_monthly_cost,
-        ramp_up_cost=ramp_up_cost,
-        enable_mature_yoy_control=enable_mature_yoy,
-        mature_yoy_start_year=int(mature_yoy_start_year),
-        mature_min_yoy=_mmn,
-        mature_max_yoy=_mmx,
-    )
+    try:
+        forecast, summary = final_report(
+            lat=lat,
+            lon=lon,
+            artifacts=artifacts,
+            months=months,
+            start_date="2026-01-01",
+            margin_per_wash=margin_per_wash,
+            fixed_monthly_cost=fixed_monthly_cost,
+            ramp_up_cost=ramp_up_cost,
+            enable_mature_yoy_control=enable_mature_yoy,
+            mature_yoy_start_year=int(mature_yoy_start_year),
+            mature_min_yoy=_mmn,
+            mature_max_yoy=_mmx,
+            max_cluster_distance_km=float(max_cluster_distance_km),
+        )
+    except ValueError as e:
+        st.error(str(e))
+        st.info(
+            "Try a nearby metro location or switch to regional caps. "
+            f"Current cap in effect: {float(max_cluster_distance_km):.0f} km."
+        )
+        st.stop()
     current_coverage = get_current_coverage()
     forecast, scale = apply_global_uncertainty_calibration(
         forecast=forecast,
@@ -795,6 +848,52 @@ if run:
     c4.metric("Total Profit", f"{total_profit:,.0f}")
     c5.metric("Confidence", overall_confidence)
     c6.metric("Risk", risk)
+
+    st.subheader("Model 1 early trend checks")
+    six_m = _six_month_change(forecast)
+    yoy = _annual_volume_by_year(forecast)
+    yoy["change_vs_prev"] = yoy["annual_volume"].diff()
+    p1, p2 = st.columns(2)
+    with p1:
+        fig_6m = go.Figure(
+            data=[
+                go.Bar(
+                    x=six_m["period"],
+                    y=six_m["wash_count"],
+                    marker_color="#4E79A7",
+                    hovertemplate="Period: %{x}<br>Wash Count: %{y:,.0f}<extra></extra>",
+                )
+            ]
+        )
+        fig_6m.update_layout(
+            title="Model 1: 6-month wash count totals",
+            xaxis_title="6-month period",
+            yaxis_title="Wash Count",
+            height=360,
+            margin=dict(l=20, r=20, t=50, b=20),
+        )
+        st.plotly_chart(fig_6m, use_container_width=True)
+    with p2:
+        yoy_plot = yoy.copy()
+        yoy_plot["year_label"] = [f"Year {i+1}" for i in range(len(yoy_plot))]
+        fig_yoy = go.Figure(
+            data=[
+                go.Bar(
+                    x=yoy_plot["year_label"],
+                    y=yoy_plot["annual_volume"],
+                    marker_color="#4E79A7",
+                    hovertemplate="Year: %{x}<br>Annual Wash Count: %{y:,.0f}<extra></extra>",
+                )
+            ]
+        )
+        fig_yoy.update_layout(
+            title="Model 1: New-site annual wash count prediction (Year 1-5)",
+            xaxis_title="Year",
+            yaxis_title="Annual Wash Count",
+            height=360,
+            margin=dict(l=20, r=20, t=50, b=20),
+        )
+        st.plotly_chart(fig_yoy, use_container_width=True)
 
     with st.expander("Model 1 mature-year YoY control (pre-calibration)"):
         st.json(summary.get("mature_yoy_control") or {})
@@ -851,7 +950,41 @@ if run:
         st.dataframe(forecast[show_cols], use_container_width=True)
 
     st.subheader("Cluster Info")
-    st.dataframe(pd.DataFrame(summary["top3_clusters"]), use_container_width=True)
+    top3_info = pd.DataFrame(summary["top3_clusters"]).copy()
+    if "distance_km" in top3_info.columns:
+        top3_info["distance_km_model"] = top3_info["distance_km"].astype(float)
+        top3_info = top3_info.drop(columns=["distance_km"])
+    elif "distance" in top3_info.columns:
+        # Backward compatibility: convert prior degree-space distance to km.
+        top3_info["distance_km_model"] = top3_info["distance"].astype(float) * 111.0
+        top3_info = top3_info.drop(columns=["distance"])
+    centroids_for_top3 = artifacts.cluster_centroids.copy()
+    centroids_for_top3["cluster_id_str"] = centroids_for_top3["cluster_id"].astype(str)
+    top3_info["cluster_id_str"] = top3_info["cluster_id"].astype(str)
+    top3_info = top3_info.merge(
+        centroids_for_top3[["cluster_id_str", "latitude", "longitude"]],
+        on="cluster_id_str",
+        how="left",
+    )
+    if {"latitude", "longitude"}.issubset(top3_info.columns):
+        lat1 = np.radians(float(lat))
+        lon1 = np.radians(float(lon))
+        lat2 = np.radians(top3_info["latitude"].astype(float).to_numpy())
+        lon2 = np.radians(top3_info["longitude"].astype(float).to_numpy())
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2.0) ** 2
+        c = 2.0 * np.arctan2(np.sqrt(a), np.sqrt(1.0 - a))
+        top3_info["distance_km_haversine"] = 6371.0 * c
+    top3_info = top3_info.drop(columns=["cluster_id_str", "latitude", "longitude"], errors="ignore")
+    ordered_cols = [
+        c
+        for c in ["cluster_id", "distance_km_model", "distance_km_haversine", "weight"]
+        if c in top3_info.columns
+    ]
+    if ordered_cols:
+        top3_info = top3_info[ordered_cols]
+    st.dataframe(top3_info, use_container_width=True)
 
     st.subheader("Risk + Recommendation")
     st.info(recommendation_text(overall_confidence, break_even_text, risk, margin_per_wash))
@@ -880,7 +1013,112 @@ if run:
     )
 
     st.subheader("Map")
-    st.map(pd.DataFrame([{"lat": lat, "lon": lon}]))
+    cluster_map = artifacts.cluster_centroids.copy()
+    cluster_map = cluster_map.dropna(subset=["latitude", "longitude"]).copy()
+    top3_df = pd.DataFrame(summary["top3_clusters"]).copy()
+    top_cluster_ids = set(top3_df["cluster_id"].astype(str).tolist())
+    cluster_map["cluster_id_str"] = cluster_map["cluster_id"].astype(str)
+    cluster_map["is_top3"] = cluster_map["cluster_id_str"].isin(top_cluster_ids)
+    top3_map = cluster_map[cluster_map["is_top3"]].copy()
+
+    # Map-facing distances in km for easier interpretation.
+    if not top3_map.empty:
+        lat1 = np.radians(float(lat))
+        lon1 = np.radians(float(lon))
+        lat2 = np.radians(top3_map["latitude"].astype(float).to_numpy())
+        lon2 = np.radians(top3_map["longitude"].astype(float).to_numpy())
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = np.sin(dlat / 2.0) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2.0) ** 2
+        c = 2.0 * np.arctan2(np.sqrt(a), np.sqrt(1.0 - a))
+        top3_map["distance_km"] = 6371.0 * c
+    else:
+        top3_map["distance_km"] = []
+    fig_map = go.Figure()
+    fig_map.add_trace(
+        go.Scattergeo(
+            lon=cluster_map.loc[~cluster_map["is_top3"], "longitude"],
+            lat=cluster_map.loc[~cluster_map["is_top3"], "latitude"],
+            mode="markers",
+            marker=dict(size=7, color="#9AA0A6", opacity=0.7),
+            text=["Cluster " + cid for cid in cluster_map.loc[~cluster_map["is_top3"], "cluster_id_str"]],
+            hovertemplate="%{text}<br>Lat: %{lat:.4f}<br>Lon: %{lon:.4f}<extra></extra>",
+            name="Other clusters",
+        )
+    )
+    fig_map.add_trace(
+        go.Scattergeo(
+            lon=top3_map["longitude"],
+            lat=top3_map["latitude"],
+            mode="markers+text",
+            marker=dict(size=11, color="#2E7D32", opacity=0.95),
+            text=["Cluster " + cid for cid in top3_map["cluster_id_str"]],
+            textposition="top center",
+            customdata=np.column_stack([top3_map["distance_km"]]) if not top3_map.empty else None,
+            hovertemplate="%{text}<br>Distance: %{customdata[0]:,.1f} km<br>Lat: %{lat:.4f}<br>Lon: %{lon:.4f}<extra></extra>",
+            name="Top-3 weighted clusters",
+        )
+    )
+    for _, r in top3_map.iterrows():
+        mid_lat = (float(lat) + float(r["latitude"])) / 2.0
+        mid_lon = (float(lon) + float(r["longitude"])) / 2.0
+        fig_map.add_trace(
+            go.Scattergeo(
+                lon=[float(lon), float(r["longitude"])],
+                lat=[float(lat), float(r["latitude"])],
+                mode="lines",
+                line=dict(width=1.8, color="#546E7A"),
+                hovertemplate=(
+                    f"Input site to Cluster {r['cluster_id_str']}"
+                    f"<br>Distance: {float(r['distance_km']):,.1f} km<extra></extra>"
+                ),
+                name=f"Distance to cluster {r['cluster_id_str']}",
+                showlegend=False,
+            )
+        )
+        fig_map.add_trace(
+            go.Scattergeo(
+                lon=[mid_lon],
+                lat=[mid_lat],
+                mode="text",
+                text=[f"{float(r['distance_km']):,.1f} km"],
+                textfont=dict(size=11, color="#37474F"),
+                hoverinfo="skip",
+                showlegend=False,
+            )
+        )
+    fig_map.add_trace(
+        go.Scattergeo(
+            lon=[float(lon)],
+            lat=[float(lat)],
+            mode="markers+text",
+            marker=dict(size=14, color="#1E88E5", symbol="star"),
+            text=["Input site"],
+            textposition="bottom center",
+            hovertemplate="Input site<br>Lat: %{lat:.4f}<br>Lon: %{lon:.4f}<extra></extra>",
+            name="Input lat/lon",
+        )
+    )
+    fig_map.update_layout(
+        height=560,
+        margin=dict(l=0, r=0, t=40, b=0),
+        geo=dict(
+            scope="usa",
+            projection_type="albers usa",
+            showland=True,
+            landcolor="#F5F7FA",
+            showcountries=True,
+            countrycolor="#C7CCD1",
+            showlakes=True,
+            lakecolor="#E7F3FF",
+            subunitcolor="#D8DDE3",
+            showsubunits=True,
+            coastlinecolor="#C7CCD1",
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        legend=dict(orientation="h", y=1.03, x=0.01),
+    )
+    st.plotly_chart(fig_map, use_container_width=True)
 
     st.divider()
     if rebuild_m2 and MODEL2_ARTIFACTS_PATH.exists():

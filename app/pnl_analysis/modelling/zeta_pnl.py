@@ -30,6 +30,20 @@ _YEAR_BANDS = (
 )
 
 
+def _regional_cluster_distance_cap_km(lat: float, lon: float) -> float:
+    # Requested regional caps:
+    # Northeast: 100km, Midwest: 150km, South: 160km, West: 180km.
+    if lon >= -80 and lat >= 38:
+        return 100.0
+    if -104 <= lon < -80 and lat >= 36:
+        return 150.0
+    if -105 <= lon < -75 and lat < 36:
+        return 160.0
+    if lon < -104:
+        return 180.0
+    return 150.0
+
+
 def _ensure_repo_on_path() -> None:
     r = str(_REPO_ROOT)
     if r not in sys.path:
@@ -142,6 +156,12 @@ def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
         "mature_yoy_start_year": int(min(10, max(2, int(z.get("mature_yoy_start_year", 3))))),
         "mature_min_yoy": float(z.get("mature_min_yoy", 0.005)),
         "mature_max_yoy": float(z.get("mature_max_yoy", 0.05)),
+        "cluster_distance_policy": str(z.get("cluster_distance_policy", "regional")).strip().lower(),
+        "max_cluster_distance_km": (
+            float(z["max_cluster_distance_km"])
+            if z.get("max_cluster_distance_km") is not None
+            else None
+        ),
     }
     if out["mature_min_yoy"] > out["mature_max_yoy"]:
         out["mature_min_yoy"], out["mature_max_yoy"] = out["mature_max_yoy"], out["mature_min_yoy"]
@@ -196,6 +216,7 @@ def _run_zeta_forecast_df(
     mature_yoy_start_year: int = 3,
     mature_min_yoy: float = 0.005,
     mature_max_yoy: float = 0.05,
+    max_cluster_distance_km: float = 100.0,
 ) -> tuple[pd.DataFrame, Dict[str, Any]]:
     _ensure_repo_on_path()
     from zeta_modelling.model_1.phase3_advanced_forecast import (
@@ -218,6 +239,7 @@ def _run_zeta_forecast_df(
         mature_yoy_start_year=mature_yoy_start_year,
         mature_min_yoy=mature_min_yoy,
         mature_max_yoy=mature_max_yoy,
+        max_cluster_distance_km=max_cluster_distance_km,
     )
     cov = _read_calibration_coverage()
     forecast, _scale = apply_global_uncertainty_calibration(
@@ -604,6 +626,12 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
     lat, lon, address = _resolve_site_lat_lon(payload)
 
     zp = _zeta_params(payload)
+    if zp["cluster_distance_policy"] == "fixed":
+        max_cluster_distance_km = float(
+            zp["max_cluster_distance_km"] if zp["max_cluster_distance_km"] is not None else 100.0
+        )
+    else:
+        max_cluster_distance_km = _regional_cluster_distance_cap_km(float(lat), float(lon))
     months_use = min(max(int(zp["forecast_months"]), 12), 60)
     forecast, summary = _run_zeta_forecast_df(
         lat,
@@ -619,6 +647,7 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         mature_yoy_start_year=zp["mature_yoy_start_year"],
         mature_min_yoy=zp["mature_min_yoy"],
         mature_max_yoy=zp["mature_max_yoy"],
+        max_cluster_distance_km=max_cluster_distance_km,
     )
 
     wash_vol = _wash_volume_projection_from_forecast(forecast)
@@ -663,6 +692,12 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
     lat, lon, _address = _resolve_site_lat_lon(payload)
 
     zp = _zeta_params(payload)
+    if zp["cluster_distance_policy"] == "fixed":
+        max_cluster_distance_km = float(
+            zp["max_cluster_distance_km"] if zp["max_cluster_distance_km"] is not None else 100.0
+        )
+    else:
+        max_cluster_distance_km = _regional_cluster_distance_cap_km(float(lat), float(lon))
     months_use = min(max(int(zp["forecast_months"]), 12), 60)
     forecast, summary = _run_zeta_forecast_df(
         lat,
@@ -678,6 +713,7 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
         mature_yoy_start_year=zp["mature_yoy_start_year"],
         mature_min_yoy=zp["mature_min_yoy"],
         mature_max_yoy=zp["mature_max_yoy"],
+        max_cluster_distance_km=max_cluster_distance_km,
     )
 
     wash_volume_projection = _wash_volume_projection_from_forecast(forecast)

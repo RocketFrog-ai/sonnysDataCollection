@@ -47,6 +47,15 @@ class ZetaForecastParams(BaseModel):
     mature_yoy_start_year: int = Field(3, ge=2, le=10, description="Forecast year index (1-based) when YoY band starts.")
     mature_min_yoy: float = Field(0.005, ge=0.0, le=0.5, description="Minimum YoY growth vs prior year total (fraction).")
     mature_max_yoy: float = Field(0.05, ge=0.0, le=1.0, description="Maximum YoY growth vs prior year total (fraction).")
+    cluster_distance_policy: str = Field(
+        "regional",
+        description="regional | fixed. regional uses: Northeast=100, Midwest=150, South=160, West=180 km.",
+    )
+    max_cluster_distance_km: Optional[float] = Field(
+        None,
+        gt=0.0,
+        description="Used when cluster_distance_policy='fixed'. If omitted, defaults to 100 km.",
+    )
 
 
 class ClusteringV2ProjectionRequest(BaseModel):
