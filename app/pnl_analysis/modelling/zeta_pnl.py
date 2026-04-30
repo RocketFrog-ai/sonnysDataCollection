@@ -258,9 +258,9 @@ def _wash_volume_range_minmax_from_forecast(forecast: pd.DataFrame) -> Dict[str,
     }
 
 
-def _monthly_projection_48mo(forecast: pd.DataFrame) -> List[Dict[str, Any]]:
+def _monthly_projection(forecast: pd.DataFrame, months: int) -> List[Dict[str, Any]]:
     rows: List[Dict[str, Any]] = []
-    for _, r in forecast.iterrows():
+    for _, r in forecast.head(int(months)).iterrows():
         try:
             rows.append(
                 {
@@ -623,7 +623,8 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 
     wash_vol = _wash_volume_projection_from_forecast(forecast)
     wash_volume_range_minmax = _wash_volume_range_minmax_from_forecast(forecast)
-    timeline = _monthly_projection_48mo(forecast.head(48))
+    timeline_60 = _monthly_projection(forecast, 60)
+    timeline_48 = timeline_60[:48]
     top3 = summary.get("top3_clusters") or []
 
     out: Dict[str, Any] = {
@@ -633,7 +634,8 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         "level_model": "quantile_lgbm",
         "calendar_year_washes": wash_vol,
         "wash_volume_range_minmax": wash_volume_range_minmax,
-        "monthly_projection_48mo": timeline,
+        "monthly_projection_48mo": timeline_48,
+        "monthly_projection_60mo": timeline_60,
         "zeta_forecast_summary": _json_sanitize(summary),
         "zeta_model_path": str(_ARTIFACTS_PATH),
         "zeta_data_path": str(_ZETA_DATA),

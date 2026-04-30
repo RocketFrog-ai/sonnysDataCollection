@@ -62,8 +62,9 @@ def get_wash_count_plot_data(task_id: str = Query(..., description="Celery task 
     state = (task_result.state or "PENDING").upper()
     if state == TaskStatus.SUCCESS.value:
         res: Dict[str, Any] = task_result.result or {}
-        # Prefer flattened timeline if present (task output), else fall back to raw response.
-        timeline = res.get("monthly_projection_48mo")
+        # Prefer 60-month timeline if present, retain 48-month for compatibility.
+        timeline_60 = res.get("monthly_projection_60mo")
+        timeline_48 = res.get("monthly_projection_48mo")
         return {
             "task_id": task_id,
             "status": "success",
@@ -71,7 +72,8 @@ def get_wash_count_plot_data(task_id: str = Query(..., description="Celery task 
             "method": res.get("method"),
             "level_model": res.get("level_model"),
             "calendar_year_washes": res.get("calendar_year_washes"),
-            "monthly_projection_48mo": timeline,
+            "monthly_projection_48mo": timeline_48,
+            "monthly_projection_60mo": timeline_60,
             "dollars_per_wash": res.get("dollars_per_wash"),
             "revenue_by_year": res.get("revenue_by_year"),
             "opex_by_year": res.get("opex_by_year"),
