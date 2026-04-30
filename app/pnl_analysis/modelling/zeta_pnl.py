@@ -419,32 +419,181 @@ def _membership_retail_revenue_projection(
     return out
 
 
-def _cash_flow_projection(
-    wash_volume_projection: Dict[str, float],
-    wash_prices: Optional[List[float]],
-    wash_pcts: Optional[List[float]],
-    opex_years: Optional[List[float]],
-) -> Optional[Dict[str, Dict[str, float]]]:
-    if not (
-        isinstance(wash_prices, list)
-        and isinstance(wash_pcts, list)
-        and len(wash_prices)
-        and len(wash_prices) == len(wash_pcts)
-        and isinstance(opex_years, list)
-        and len(opex_years) == 4
-    ):
+def _opex_percent_from_input_form(payload: Dict[str, Any]) -> Optional[float]:
+    fi = payload.get("financial_inputs")
+    if not isinstance(fi, dict):
         return None
-    dollars_per_wash = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
+    rows = fi.get("operational_expenses")
+    if not isinstance(rows, list):
+        return None
+    total_pct = 0.0
+    found = False
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        p = r.get("percent_of_sales")
+        if p is None:
+            continue
+        try:
+            total_pct += float(p)
+            found = True
+        except (TypeError, ValueError):
+            continue
+    return float(total_pct) if found else None
+
+
+def _project_cost_from_input_form(payload: Dict[str, Any]) -> Optional[float]:
+    # Strict source only: financial_inputs.acquisition_budget[].category == "projectCost"
+    fi = payload.get("financial_inputs")
+    if not isinstance(fi, dict):
+        return None
+    ab = fi.get("acquisition_budget")
+    if not isinstance(ab, list):
+        return None
+    for r in ab:
+        if not isinstance(r, dict):
+            continue
+        cat = str(r.get("category", "")).strip().lower()
+        if cat != "projectcost":
+            continue
+        v = r.get("total_investment")
+        if v is None:
+            continue
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
+def _annual_cash_flow_from_percent(
+    wash_volume_projection: Dict[str, float],
+    dollars_per_wash: float,
+    opex_percent: float,
+) -> Dict[str, Dict[str, float]]:
     out: Dict[str, Dict[str, float]] = {}
-    for year_key, expense in zip(("year_1", "year_2", "year_3", "year_4"), [float(x) for x in opex_years]):
-        total_revenue = float(float(wash_volume_projection.get(year_key, 0.0) or 0.0) * dollars_per_wash)
-        total_expense = float(expense)
-        out[year_key] = {
+    pct = max(float(opex_percent), 0.0) / 100.0
+    for y in ("year_1", "year_2", "year_3", "year_4"):
+        washes = float(wash_volume_projection.get(y, 0.0) or 0.0)
+        total_revenue = float(washes * dollars_per_wash)
+        total_expense = float(total_revenue * pct)
+        out[y] = {
             "total_revenue": total_revenue,
             "total_expense": total_expense,
             "net_cash_flow": float(total_revenue - total_expense),
         }
     return out
+
+
+def _expense_breakdown_from_percent(
+    payload: Dict[str, Any],
+    revenue_by_year: Dict[str, float],
+) -> Optional[Dict[str, Any]]:
+    fi = payload.get("financial_inputs")
+    if not isinstance(fi, dict):
+        return None
+    rows = fi.get("operational_expenses")
+    if not isinstance(rows, list):
+        return None
+    out_rows: List[Dict[str, Any]] = []
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        cat = str(r.get("category", "")).strip()
+        p = r.get("percent_of_sales")
+        if not cat or p is None:
+            continue
+        try:
+            pct = float(p)
+        except (TypeError, ValueError):
+            continue
+        amounts = {
+            y: float((float(revenue_by_year.get(y, 0.0) or 0.0) * pct) / 100.0)
+            for y in ("year_1", "year_2", "year_3", "year_4")
+        }
+        out_rows.append(
+            {
+                "category": cat,
+                "percent_of_sales": pct,
+                "amount_by_year": amounts,
+            }
+        )
+    if not out_rows:
+        return None
+    return {"items": out_rows}
+
+
+def _attach_financial_outputs(
+    out: Dict[str, Any],
+    payload: Dict[str, Any],
+    wash_volume_projection: Dict[str, float],
+    forecast: pd.DataFrame,
+) -> None:
+    wash_prices = payload.get("wash_prices")
+    wash_pcts = payload.get("wash_pcts")
+    if not (isinstance(wash_prices, list) and isinstance(wash_pcts, list) and wash_prices and len(wash_prices) == len(wash_pcts)):
+        return
+
+    years = ("year_1", "year_2", "year_3", "year_4")
+    dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
+    out["dollars_per_wash"] = dpw
+    revenue_by_year = {y: float(float(wash_volume_projection.get(y, 0.0) or 0.0) * dpw) for y in years}
+    out["revenue_by_year"] = revenue_by_year
+
+    opex_years = payload.get("opex_years")
+    cash_flow: Optional[Dict[str, Dict[str, float]]] = None
+    if isinstance(opex_years, list) and len(opex_years) == 4:
+        opex_by_year = {y: float(v) for y, v in zip(years, opex_years)}
+        out["opex_by_year"] = opex_by_year
+        out["profit_by_year"] = {y: float(revenue_by_year[y] - opex_by_year[y]) for y in years}
+        cash_flow = {
+            y: {
+                "total_revenue": revenue_by_year[y],
+                "total_expense": opex_by_year[y],
+                "net_cash_flow": float(revenue_by_year[y] - opex_by_year[y]),
+            }
+            for y in years
+        }
+    else:
+        opex_pct = _opex_percent_from_input_form(payload)
+        if opex_pct is not None:
+            out["opex_percent_total"] = float(opex_pct)
+            cash_flow = _annual_cash_flow_from_percent(wash_volume_projection, dpw, opex_pct)
+            out["opex_by_year"] = {y: float(v["total_expense"]) for y, v in cash_flow.items()}
+            out["profit_by_year"] = {y: float(v["net_cash_flow"]) for y, v in cash_flow.items()}
+            expense_breakdown = _expense_breakdown_from_percent(payload, revenue_by_year)
+            if expense_breakdown is not None:
+                out["expense_breakdown"] = expense_breakdown
+    if cash_flow is None and "profit_by_year" in out:
+        profit_by_year = {y: float((out.get("profit_by_year") or {}).get(y, 0.0) or 0.0) for y in years}
+        cash_flow = {
+            y: {
+                "total_revenue": revenue_by_year[y],
+                "total_expense": float(revenue_by_year[y] - profit_by_year[y]),
+                "net_cash_flow": profit_by_year[y],
+            }
+            for y in years
+        }
+    if cash_flow is not None:
+        out["cash_flow_projections"] = cash_flow
+
+    project_cost = _project_cost_from_input_form(payload)
+    out["project_cost"] = project_cost
+    profit_by_year = {y: float((out.get("profit_by_year") or {}).get(y, 0.0) or 0.0) for y in years}
+    if project_cost is not None and project_cost > 0:
+        out["cash_on_cash_return"] = {y: float((profit_by_year[y] / project_cost) * 100.0) for y in years}
+
+    y2_rev = revenue_by_year["year_2"]
+    y2_net = profit_by_year["year_2"]
+    y2_exp = float((out.get("cash_flow_projections") or {}).get("year_2", {}).get("total_expense", y2_rev - y2_net) or 0.0)
+    break_even_vol_pm = float((y2_exp / max(dpw, 1e-9)) / 12.0) if dpw > 0 else None
+    total_revenue_5y = float(forecast["volume"].sum() * dpw) if len(forecast) else None
+    out["headlines_washcast"] = {
+        "revenue_total_5y": total_revenue_5y,
+        "net_cash_flow_year_2": y2_net,
+        "break_even_volume_per_month": break_even_vol_pm,
+        "avg_net_margin_year_2_pct": float((y2_net / y2_rev) * 100.0) if y2_rev > 0 else None,
+    }
 
 
 @celery_app.task(bind=True, name="pnl_zeta_projection")
@@ -494,23 +643,13 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
 
     wash_prices = payload.get("wash_prices")
     wash_pcts = payload.get("wash_pcts")
-    opex_years = payload.get("opex_years")
-
     if isinstance(wash_prices, list) and isinstance(wash_pcts, list) and len(wash_prices) == len(wash_pcts) and wash_prices:
         # Blended $/wash = Σ (price_i × pct_i/100); annual revenue = that × P50 year wash volume.
         dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
-        out["dollars_per_wash"] = dpw
         mrc = _membership_retail_count_projection(wash_vol, top3)
         out["membership_retail_count"] = mrc
         out["membership_retail_revenue"] = _membership_retail_revenue_projection(mrc, dpw)
-        years = ["year_1", "year_2", "year_3", "year_4"]
-        washes = [float(wash_vol.get(y, 0.0) or 0.0) for y in years]
-        revenue = [float(dpw * w) for w in washes]
-        out["revenue_by_year"] = dict(zip(years, revenue))
-        if isinstance(opex_years, list) and len(opex_years) == 4:
-            opex = [float(x) for x in opex_years]
-            out["opex_by_year"] = dict(zip(years, opex))
-            out["profit_by_year"] = dict(zip(years, [float(r - e) for r, e in zip(revenue, opex)]))
+    _attach_financial_outputs(out, payload, wash_vol, forecast)
 
     return _json_sanitize(out)
 
@@ -563,27 +702,14 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
 
     wash_prices = payload.get("wash_prices")
     wash_pcts = payload.get("wash_pcts")
-    opex_years = payload.get("opex_years")
     top3 = summary.get("top3_clusters") or []
     membership_retail_count = _membership_retail_count_projection(wash_volume_projection, top3)
     out["membership_retail_count"] = membership_retail_count
 
     if isinstance(wash_prices, list) and isinstance(wash_pcts, list) and len(wash_prices) == len(wash_pcts) and wash_prices:
         dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
-        out["dollars_per_wash"] = dpw
         out["membership_retail_revenue"] = _membership_retail_revenue_projection(membership_retail_count, dpw)
-        years = ["year_1", "year_2", "year_3", "year_4"]
-        washes = [float(wash_volume_projection.get(y, 0.0) or 0.0) for y in years]
-        revenue = [float(dpw * w) for w in washes]
-        out["revenue_by_year"] = dict(zip(years, revenue))
-        if isinstance(opex_years, list) and len(opex_years) == 4:
-            opex = [float(x) for x in opex_years]
-            out["opex_by_year"] = dict(zip(years, opex))
-            out["profit_by_year"] = dict(zip(years, [float(r - e) for r, e in zip(revenue, opex)]))
-
-    cash_flow = _cash_flow_projection(wash_volume_projection, wash_prices, wash_pcts, opex_years)
-    if cash_flow is not None:
-        out["cash_flow_projections"] = cash_flow
+    _attach_financial_outputs(out, payload, wash_volume_projection, forecast)
 
     return _json_sanitize(out)
 
