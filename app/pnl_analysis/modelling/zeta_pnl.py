@@ -11,6 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+import numpy as np
 import pandas as pd
 
 from app.celery.celery_app import celery_app
@@ -270,16 +271,39 @@ def _wash_volume_projection_from_forecast(forecast: pd.DataFrame) -> Dict[str, f
 
 def _wash_volume_range_minmax_from_forecast(forecast: pd.DataFrame) -> Dict[str, Dict[str, float]]:
     """
-    Year bands from zeta_modelling quantile tracks (blend_clusters): p10 / p50 / p90.
-    These are the raw top-3–weighted quantile sums per period (not post-calibration low/high).
+    Year bands from zeta_modelling quantile tracks (blend_clusters).
+
+    min / median / max: annual sums of monthly p10 / p50 / p90.
+
+    q1 / q3: annual sums of monthly **p25 / p75** when present (trained LGBM quantiles at
+    0.25 and 0.75 in rebuilt artifacts). If the artifact predates that (no p25/p75 columns),
+    q1/q3 fall back to the same linear-in-probability interpolation between p10–p50 and
+    p50–p90 per month (then summed), so older deployments keep working.
     """
     c_lo = "p10" if "p10" in forecast.columns else "low"
     c_mid = "p50" if "p50" in forecast.columns else "volume"
     c_hi = "p90" if "p90" in forecast.columns else "high"
+
+    if "p25" in forecast.columns and "p75" in forecast.columns:
+        tmp = forecast
+        q1_key, q3_key = "p25", "p75"
+    else:
+        lo = pd.to_numeric(forecast[c_lo], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+        mid = pd.to_numeric(forecast[c_mid], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+        hi = pd.to_numeric(forecast[c_hi], errors="coerce").fillna(0.0).to_numpy(dtype=float)
+        mid = np.maximum(mid, lo)
+        hi = np.maximum(hi, mid)
+        tmp = forecast.copy()
+        tmp["_q1_month"] = lo + ((0.25 - 0.1) / (0.5 - 0.1)) * (mid - lo)
+        tmp["_q3_month"] = mid + ((0.75 - 0.5) / (0.9 - 0.5)) * (hi - mid)
+        q1_key, q3_key = "_q1_month", "_q3_month"
+
     return {
         y: {
             "min": _year_sum_volume(forecast, s, e, c_lo),
+            "q1": _year_sum_volume(tmp, s, e, q1_key),
             "median": _year_sum_volume(forecast, s, e, c_mid),
+            "q3": _year_sum_volume(tmp, s, e, q3_key),
             "max": _year_sum_volume(forecast, s, e, c_hi),
         }
         for y, s, e in _YEAR_BANDS
@@ -546,6 +570,45 @@ def _expense_breakdown_from_percent(
     return {"items": out_rows}
 
 
+def _break_even_volume_per_month_year2_vs_project_cost(
+    *,
+    project_cost: Optional[float],
+    dpw: float,
+    uses_fixed_annual_opex: bool,
+    opex_year1: Optional[float],
+    opex_year2: Optional[float],
+    opex_percent_total: Optional[float],
+) -> Optional[float]:
+    """
+    Minimum constant wash count per month (same every month in Year 1 and Year 2) so that,
+    by the end of Year 2, cumulative operating cash covers ``project_cost``.
+
+    - ``dpw`` = effective $/wash (Σ price_i × pct_i/100).
+    - **Fixed annual opex** (``opex_years`` list): need 24·V·dpw ≥ project_cost + Opex_Y1 + Opex_Y2.
+    - **Percent-of-revenue opex**: net cash per $ revenue is (1 − total_pct/100), so
+      need 24·V·dpw·(1 − pct/100) ≥ project_cost.
+
+    This is independent of the zeta wash forecast volumes (those drive *actual* revenue;
+    this headline answers *how many washes/month* would recover project cost by end of Y2
+    under the stated pricing and opex rules).
+    """
+    if project_cost is None or float(project_cost) <= 0 or dpw <= 1e-12:
+        return None
+    pc = float(project_cost)
+    if uses_fixed_annual_opex:
+        if opex_year1 is None or opex_year2 is None:
+            return None
+        num = pc + float(opex_year1) + float(opex_year2)
+        return float(num / (24.0 * dpw))
+    if opex_percent_total is not None:
+        k = max(min(float(opex_percent_total) / 100.0, 0.9999), 0.0)
+        net = 1.0 - k
+        if net <= 1e-12:
+            return None
+        return float(pc / (24.0 * dpw * net))
+    return None
+
+
 def _attach_financial_outputs(
     out: Dict[str, Any],
     payload: Dict[str, Any],
@@ -565,7 +628,9 @@ def _attach_financial_outputs(
 
     opex_years = payload.get("opex_years")
     cash_flow: Optional[Dict[str, Dict[str, float]]] = None
+    uses_fixed_annual_opex = False
     if isinstance(opex_years, list) and len(opex_years) in (4, 5):
+        uses_fixed_annual_opex = True
         opex_vals = [float(v) for v in opex_years]
         if len(opex_vals) == 4:
             opex_vals.append(opex_vals[-1])
@@ -611,13 +676,32 @@ def _attach_financial_outputs(
 
     y2_rev = revenue_by_year["year_2"]
     y2_net = profit_by_year["year_2"]
-    y2_exp = float((out.get("cash_flow_projections") or {}).get("year_2", {}).get("total_expense", y2_rev - y2_net) or 0.0)
-    break_even_vol_pm = float((y2_exp / max(dpw, 1e-9)) / 12.0) if dpw > 0 else None
+    oby = out.get("opex_by_year")
+    opex_y1_fixed = float(oby["year_1"]) if uses_fixed_annual_opex and isinstance(oby, dict) else None
+    opex_y2_fixed = float(oby["year_2"]) if uses_fixed_annual_opex and isinstance(oby, dict) else None
+    opex_pct_total = out.get("opex_percent_total") if not uses_fixed_annual_opex else None
+    pct_for_be = float(opex_pct_total) if isinstance(opex_pct_total, (int, float)) else None
+
+    break_even_vol_pm = _break_even_volume_per_month_year2_vs_project_cost(
+        project_cost=project_cost,
+        dpw=float(dpw),
+        uses_fixed_annual_opex=uses_fixed_annual_opex,
+        opex_year1=opex_y1_fixed,
+        opex_year2=opex_y2_fixed,
+        opex_percent_total=pct_for_be,
+    )
     total_revenue_5y = float(forecast["volume"].sum() * dpw) if len(forecast) else None
     out["headlines_washcast"] = {
         "revenue_total_5y": total_revenue_5y,
         "net_cash_flow_year_2": y2_net,
+        "project_cost": project_cost,
+        "effective_dollars_per_wash": float(dpw),
         "break_even_volume_per_month": break_even_vol_pm,
+        "break_even_volume_per_month_basis": (
+            "Constant washes/month in Year 1–2 (24 months) such that cumulative net operating cash "
+            "covers projectCost; revenue = washes × effective_dollars_per_wash; opex from opex_years "
+            "(fixed $ per year) or operational_expenses percent-of-sales total."
+        ),
         "avg_net_margin_year_2_pct": float((y2_net / y2_rev) * 100.0) if y2_rev > 0 else None,
     }
 

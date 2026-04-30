@@ -14,7 +14,9 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
-QUANTILES = {"p10": 0.1, "p50": 0.5, "p90": 0.9}
+# Ordered quantiles for LightGBM; p25/p75 support proper annual Q1/Q3 bands (retrain artifacts after change).
+QUANTILES = {"p10": 0.1, "p25": 0.25, "p50": 0.5, "p75": 0.75, "p90": 0.9}
+QUANTILE_KEYS = tuple(QUANTILES.keys())
 
 
 @dataclass
@@ -31,6 +33,12 @@ class Artifacts:
     feature_cols: list[str]
     cat_cols: list[str]
     cat_maps: dict[str, dict[str, int]]
+
+
+def _artifacts_have_trained_inner_quantiles(artifacts: Artifacts) -> bool:
+    """True when joblib includes p25/p75 models in both early and main blocks."""
+    need = ("p25", "p75")
+    return all(q in artifacts.early_models for q in need) and all(q in artifacts.main_models for q in need)
 
 
 def add_base_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -250,7 +258,7 @@ def predict_for_cluster(
     eps = 1e-6
 
     pred = pd.DataFrame(index=out.index)
-    for q in QUANTILES.keys():
+    for q in QUANTILE_KEYS:
         pred[q] = 0.0
 
     # Probabilistic site type: weighted over top-3 types.
@@ -278,19 +286,36 @@ def predict_for_cluster(
             if "site_type_code" in row_mod.columns:
                 row_mod["site_type_code"] = artifacts.cat_maps["site_type"].get(stype, -1)
             model_set = artifacts.early_models if bool(early_mask.iloc[i]) else artifacts.main_models
-            for q in QUANTILES.keys():
+            for q in QUANTILE_KEYS:
+                if q not in model_set:
+                    continue
                 pred.at[out.index[i], q] += weights[local_k] * model_set[q].predict(row_mod)[0]
 
-    out["pred_p10"] = pred["p10"] * (out["cluster_month_avg"] + eps)
-    out["pred_p50"] = pred["p50"] * (out["cluster_month_avg"] + eps)
-    out["pred_p90"] = pred["p90"] * (out["cluster_month_avg"] + eps)
+    if not _artifacts_have_trained_inner_quantiles(artifacts):
+        pred["p25"] = pred["p10"] + ((0.25 - 0.1) / (0.5 - 0.1)) * (pred["p50"] - pred["p10"])
+        pred["p75"] = pred["p50"] + ((0.75 - 0.5) / (0.9 - 0.5)) * (pred["p90"] - pred["p50"])
+
+    base = out["cluster_month_avg"] + eps
+    for q in QUANTILE_KEYS:
+        out[f"pred_{q}"] = pred[q] * base
 
     # Early-stage correction from empirical cluster-age ratio.
     corr = 1.0 + np.clip((out["cluster_age_std"] / (out["cluster_age_avg"].abs() + 1e-6)) * 0.10, -0.2, 0.2)
     early = out["age_in_months"] <= 3
-    out.loc[early, "pred_p10"] *= 1 / corr.loc[early]
+    inv_c = 1.0 / corr.loc[early]
+    out.loc[early, "pred_p10"] *= inv_c
     out.loc[early, "pred_p50"] *= 1.0
     out.loc[early, "pred_p90"] *= corr.loc[early]
+    out.loc[early, "pred_p25"] *= 1.0 + 0.375 * (inv_c - 1.0)
+    out.loc[early, "pred_p75"] *= 1.0 + 0.625 * (corr.loc[early] - 1.0)
+
+    # Enforce monotonic quantiles (LGBM quantiles can cross slightly).
+    _cols = [f"pred_{q}" for q in QUANTILE_KEYS]
+    mat = np.column_stack([out[c].to_numpy(dtype=float) for c in _cols])
+    for j in range(1, mat.shape[1]):
+        mat[:, j] = np.maximum(mat[:, j], mat[:, j - 1])
+    for j, c in enumerate(_cols):
+        out[c] = mat[:, j]
     return out
 
 
@@ -306,13 +331,20 @@ def blend_clusters(rows: pd.DataFrame, cluster_weights: pd.DataFrame, artifacts:
         lambda d: pd.Series(
             {
                 "age_in_months": int(d["age_in_months"].iloc[0]),
-                "p50": float(np.sum(d["pred_p50"] * d["cluster_weight"])),
-                "p10": float(np.sum(d["pred_p10"] * d["cluster_weight"])),
-                "p90": float(np.sum(d["pred_p90"] * d["cluster_weight"])),
+                **{
+                    q: float(np.sum(d[f"pred_{q}"] * d["cluster_weight"]))
+                    for q in QUANTILE_KEYS
+                    if f"pred_{q}" in d.columns
+                },
             }
         ),
         include_groups=False,
     )
+    mat = np.column_stack([pd.to_numeric(g[q], errors="coerce").fillna(0.0).to_numpy(dtype=float) for q in QUANTILE_KEYS])
+    for j in range(1, mat.shape[1]):
+        mat[:, j] = np.maximum(mat[:, j], mat[:, j - 1])
+    for j, q in enumerate(QUANTILE_KEYS):
+        g[q] = mat[:, j]
     g["volume"] = g["p50"]
     g["low"] = g["p10"]
     g["high"] = g["p90"]
@@ -398,7 +430,13 @@ def apply_mature_yoy_control(
         bands[str(int(y))] = {"lower": lower, "upper": upper, "raw": cur_total, "target": target}
 
         if abs(factor - 1.0) > 1e-9:
-            for c in ("pred_p10", "pred_p50", "pred_p90", "p10", "p50", "p90", "volume", "low", "high"):
+            for c in (
+                *(f"pred_{q}" for q in QUANTILE_KEYS),
+                *QUANTILE_KEYS,
+                "volume",
+                "low",
+                "high",
+            ):
                 if c in out.columns:
                     out.loc[y_mask, c] = pd.to_numeric(out.loc[y_mask, c], errors="coerce") * factor
             scaled_years.append(int(y))
@@ -494,7 +532,13 @@ def apply_lifecycle_smoothing_control(
         }
 
         if abs(factor - 1.0) > 1e-9:
-            for c in ("pred_p10", "pred_p50", "pred_p90", "p10", "p50", "p90", "volume", "low", "high"):
+            for c in (
+                *(f"pred_{q}" for q in QUANTILE_KEYS),
+                *QUANTILE_KEYS,
+                "volume",
+                "low",
+                "high",
+            ):
                 if c in out.columns:
                     out.loc[y_mask, c] = pd.to_numeric(out.loc[y_mask, c], errors="coerce") * factor
             scaled_years.append(int(y))
