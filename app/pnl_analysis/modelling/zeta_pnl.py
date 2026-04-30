@@ -156,6 +156,8 @@ def _zeta_params(payload: Dict[str, Any]) -> Dict[str, Any]:
         "mature_yoy_start_year": int(min(10, max(2, int(z.get("mature_yoy_start_year", 3))))),
         "mature_min_yoy": float(z.get("mature_min_yoy", 0.005)),
         "mature_max_yoy": float(z.get("mature_max_yoy", 0.05)),
+        "lifecycle_min_growth": float(z.get("lifecycle_min_growth", 0.005)),
+        "lifecycle_max_growth": float(z.get("lifecycle_max_growth", 0.05)),
         "cluster_distance_policy": str(z.get("cluster_distance_policy", "regional")).strip().lower(),
         "max_cluster_distance_km": (
             float(z["max_cluster_distance_km"])
@@ -217,6 +219,8 @@ def _run_zeta_forecast_df(
     mature_min_yoy: float = 0.005,
     mature_max_yoy: float = 0.05,
     max_cluster_distance_km: float = 100.0,
+    lifecycle_min_growth: float = 0.005,
+    lifecycle_max_growth: float = 0.05,
 ) -> tuple[pd.DataFrame, Dict[str, Any]]:
     _ensure_repo_on_path()
     from zeta_modelling.model_1.phase3_advanced_forecast import (
@@ -240,6 +244,8 @@ def _run_zeta_forecast_df(
         mature_min_yoy=mature_min_yoy,
         mature_max_yoy=mature_max_yoy,
         max_cluster_distance_km=max_cluster_distance_km,
+        lifecycle_min_growth=lifecycle_min_growth,
+        lifecycle_max_growth=lifecycle_max_growth,
     )
     cov = _read_calibration_coverage()
     forecast, _scale = apply_global_uncertainty_calibration(
@@ -648,6 +654,8 @@ def run_zeta_projection_task(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         mature_min_yoy=zp["mature_min_yoy"],
         mature_max_yoy=zp["mature_max_yoy"],
         max_cluster_distance_km=max_cluster_distance_km,
+        lifecycle_min_growth=zp["lifecycle_min_growth"],
+        lifecycle_max_growth=zp["lifecycle_max_growth"],
     )
 
     wash_vol = _wash_volume_projection_from_forecast(forecast)
@@ -714,6 +722,8 @@ def run_pnl_central_input_form_task(self, payload: Dict[str, Any]) -> Dict[str, 
         mature_min_yoy=zp["mature_min_yoy"],
         mature_max_yoy=zp["mature_max_yoy"],
         max_cluster_distance_km=max_cluster_distance_km,
+        lifecycle_min_growth=zp["lifecycle_min_growth"],
+        lifecycle_max_growth=zp["lifecycle_max_growth"],
     )
 
     wash_volume_projection = _wash_volume_projection_from_forecast(forecast)

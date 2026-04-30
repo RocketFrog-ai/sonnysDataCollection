@@ -423,6 +423,107 @@ def apply_mature_yoy_control(
     }
 
 
+def apply_lifecycle_smoothing_control(
+    forecast: pd.DataFrame,
+    *,
+    min_annual_growth: float = 0.005,
+    max_annual_growth: float = 0.05,
+    year2_max_growth: float = 0.35,
+) -> tuple[pd.DataFrame, dict]:
+    """
+    Enforce a business-realistic upward lifecycle for annual wash volumes.
+
+    Rules (applied year-by-year, each anchored to previous target):
+    - Year 2: always >= Year 1 * 1.02 (ramp-up), capped at year2_max_growth.
+    - Year 3+: if model already grew vs prior → keep it (capped at max_annual_growth).
+              if model declined → scale UP to at least prev * (1 + min_annual_growth).
+    - We NEVER let any year go below the prior year; the floor is always +min_annual_growth.
+    - Scale is applied proportionally within the year so monthly shape is preserved.
+    """
+    out = forecast.copy()
+    if out.empty or "age_in_months" not in out.columns or "p50" not in out.columns:
+        return out, {"enabled": False, "reason": "missing_required_columns"}
+
+    years = ((pd.to_numeric(out["age_in_months"], errors="coerce") - 1) // 12 + 1).astype(int)
+    out["_forecast_year"] = years
+    year_order = sorted(out["_forecast_year"].dropna().unique().tolist())
+    if len(year_order) < 2:
+        out = out.drop(columns=["_forecast_year"], errors="ignore")
+        return out, {"enabled": False, "reason": "insufficient_horizon"}
+
+    totals_raw: dict[int, float] = {}
+    for y in year_order:
+        y_mask = out["_forecast_year"] == int(y)
+        totals_raw[int(y)] = float(pd.to_numeric(out.loc[y_mask, "p50"], errors="coerce").fillna(0.0).sum())
+
+    prev_target: float | None = None
+    scaled_years: list[int] = []
+    year_scale_factors: dict[str, float] = {}
+    bands: dict[str, dict[str, float]] = {}
+
+    for y in year_order:
+        y_mask = out["_forecast_year"] == int(y)
+        cur_total = float(pd.to_numeric(out.loc[y_mask, "p50"], errors="coerce").fillna(0.0).sum())
+
+        if prev_target is None:
+            prev_target = max(cur_total, 1.0)
+            continue
+        if cur_total <= 0:
+            prev_target = max(prev_target, 1.0)
+            continue
+
+        if int(y) == 2:
+            # Ramp-up: minimum +2%, max +35%.
+            lower = float(prev_target * 1.02)
+            upper = float(prev_target * (1.0 + float(year2_max_growth)))
+        else:
+            # Mature lifecycle: always grow, min_annual_growth to max_annual_growth.
+            lower = float(prev_target * (1.0 + float(min_annual_growth)))
+            upper = float(prev_target * (1.0 + float(max_annual_growth)))
+
+        # If raw model already landed above lower (grew naturally), respect it
+        # up to the upper cap.  If raw fell below lower, lift it.
+        target = float(np.clip(cur_total, lower, upper))
+        factor = float(target / cur_total)
+        bands[str(int(y))] = {
+            "lower": lower,
+            "upper": upper,
+            "raw": cur_total,
+            "target": target,
+            "yoy_pct": float((target / prev_target - 1.0) * 100),
+        }
+
+        if abs(factor - 1.0) > 1e-9:
+            for c in ("pred_p10", "pred_p50", "pred_p90", "p10", "p50", "p90", "volume", "low", "high"):
+                if c in out.columns:
+                    out.loc[y_mask, c] = pd.to_numeric(out.loc[y_mask, c], errors="coerce") * factor
+            scaled_years.append(int(y))
+            year_scale_factors[str(int(y))] = round(factor, 6)
+
+        prev_target = target
+
+    if "volume" in out.columns:
+        out["cumulative_volume"] = pd.to_numeric(out["volume"], errors="coerce").fillna(0.0).cumsum()
+
+    totals_adj: dict[int, float] = {}
+    for y in year_order:
+        y_mask = out["_forecast_year"] == int(y)
+        totals_adj[int(y)] = float(pd.to_numeric(out.loc[y_mask, "p50"], errors="coerce").fillna(0.0).sum())
+    out = out.drop(columns=["_forecast_year"], errors="ignore")
+
+    return out, {
+        "enabled": True,
+        "applied": len(scaled_years) > 0,
+        "min_annual_growth_pct": float(min_annual_growth * 100),
+        "max_annual_growth_pct": float(max_annual_growth * 100),
+        "scaled_years": scaled_years,
+        "year_scale_factors": year_scale_factors,
+        "year_bands": bands,
+        "annual_totals_raw": {str(k): float(v) for k, v in totals_raw.items()},
+        "annual_totals_adjusted": {str(k): float(v) for k, v in totals_adj.items()},
+    }
+
+
 def break_even_from_costs(
     forecast: pd.DataFrame,
     margin_per_wash: float,
@@ -592,6 +693,9 @@ def final_report(
     mature_min_yoy: float = 0.005,
     mature_max_yoy: float = 0.05,
     max_cluster_distance_km: float | None = 100.0,
+    enable_lifecycle_smoothing: bool = True,
+    lifecycle_min_growth: float = 0.005,
+    lifecycle_max_growth: float = 0.05,
 ) -> tuple[pd.DataFrame, dict]:
     weights = top_k_cluster_weights(lat, lon, artifacts.cluster_centroids, k=3)
     if max_cluster_distance_km is not None:
@@ -613,6 +717,13 @@ def final_report(
             min_yoy=mature_min_yoy,
             max_yoy=mature_max_yoy,
         )
+    lifecycle_summary = {"enabled": False}
+    if enable_lifecycle_smoothing:
+        fc, lifecycle_summary = apply_lifecycle_smoothing_control(
+            fc,
+            min_annual_growth=lifecycle_min_growth,
+            max_annual_growth=lifecycle_max_growth,
+        )
     fc, be_month = break_even_from_costs(fc, margin_per_wash, fixed_monthly_cost, ramp_up_cost)
     summary = {
         "lat": lat,
@@ -622,6 +733,7 @@ def final_report(
         "total_profit": float(fc["monthly_profit"].sum()),
         "break_even_month": be_month,
         "mature_yoy_control": mature_yoy_summary,
+        "lifecycle_smoothing_control": lifecycle_summary,
     }
     return fc, summary
 

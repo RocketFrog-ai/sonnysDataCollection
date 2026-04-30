@@ -780,6 +780,9 @@ with st.sidebar:
         mature_yoy_start_year = st.number_input("Start at forecast year", min_value=2, max_value=10, value=3, step=1)
         mature_min_yoy = st.number_input("Min YoY vs prior year (fraction)", value=0.005, min_value=0.0, max_value=0.5, step=0.005, format="%.4f")
         mature_max_yoy = st.number_input("Max YoY vs prior year (fraction)", value=0.05, min_value=0.0, max_value=1.0, step=0.01, format="%.4f")
+        st.caption("Lifecycle smoothing: enforces upward annual trend (min 0.5% growth, max 5%). Applied to every year.")
+        lifecycle_min_growth = st.number_input("Lifecycle min annual growth (fraction)", value=0.005, min_value=0.0, max_value=0.2, step=0.005, format="%.4f")
+        lifecycle_max_growth = st.number_input("Lifecycle max annual growth (fraction)", value=0.05, min_value=0.0, max_value=0.5, step=0.01, format="%.4f")
 
     run = st.button("Run Forecast", type="primary", use_container_width=True)
 
@@ -796,6 +799,10 @@ if run:
         _mmn, _mmx = _mmx, _mmn
 
     try:
+        _lgn = float(lifecycle_min_growth)
+        _lgx = float(lifecycle_max_growth)
+        if _lgn > _lgx:
+            _lgn, _lgx = _lgx, _lgn
         forecast, summary = final_report(
             lat=lat,
             lon=lon,
@@ -810,6 +817,8 @@ if run:
             mature_min_yoy=_mmn,
             mature_max_yoy=_mmx,
             max_cluster_distance_km=float(max_cluster_distance_km),
+            lifecycle_min_growth=_lgn,
+            lifecycle_max_growth=_lgx,
         )
     except ValueError as e:
         st.error(str(e))
@@ -897,6 +906,7 @@ if run:
 
     with st.expander("Model 1 mature-year YoY control (pre-calibration)"):
         st.json(summary.get("mature_yoy_control") or {})
+        st.json(summary.get("lifecycle_smoothing_control") or {})
 
     st.subheader("Forecast (P50 with P10-P90 band)")
     fig, ax = plt.subplots(figsize=(10, 4))
