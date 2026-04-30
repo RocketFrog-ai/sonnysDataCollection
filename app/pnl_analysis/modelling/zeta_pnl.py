@@ -21,6 +21,13 @@ _ZETA_DATA = _REPO_ROOT / "zeta_modelling" / "data_1"
 _ZETA_MODEL = _REPO_ROOT / "zeta_modelling" / "model_1"
 _ARTIFACTS_PATH = _ZETA_MODEL / "phase3_artifacts.joblib"
 _ADVANCED_REPORT = _ZETA_DATA / "phase3_advanced_report.json"
+_YEAR_BANDS = (
+    ("year_1", 1, 12),
+    ("year_2", 13, 24),
+    ("year_3", 25, 36),
+    ("year_4", 37, 48),
+    ("year_5", 49, 60),
+)
 
 
 def _ensure_repo_on_path() -> None:
@@ -224,12 +231,7 @@ def _year_sum_volume(df: pd.DataFrame, start_m: int, end_m: int, col: str) -> fl
 
 
 def _wash_volume_projection_from_forecast(forecast: pd.DataFrame) -> Dict[str, float]:
-    return {
-        "year_1": _year_sum_volume(forecast, 1, 12, "volume"),
-        "year_2": _year_sum_volume(forecast, 13, 24, "volume"),
-        "year_3": _year_sum_volume(forecast, 25, 36, "volume"),
-        "year_4": _year_sum_volume(forecast, 37, 48, "volume"),
-    }
+    return {y: _year_sum_volume(forecast, s, e, "volume") for y, s, e in _YEAR_BANDS}
 
 
 def _wash_volume_range_minmax_from_forecast(forecast: pd.DataFrame) -> Dict[str, Dict[str, float]]:
@@ -241,26 +243,12 @@ def _wash_volume_range_minmax_from_forecast(forecast: pd.DataFrame) -> Dict[str,
     c_mid = "p50" if "p50" in forecast.columns else "volume"
     c_hi = "p90" if "p90" in forecast.columns else "high"
     return {
-        "year_1": {
-            "min": _year_sum_volume(forecast, 1, 12, c_lo),
-            "median": _year_sum_volume(forecast, 1, 12, c_mid),
-            "max": _year_sum_volume(forecast, 1, 12, c_hi),
-        },
-        "year_2": {
-            "min": _year_sum_volume(forecast, 13, 24, c_lo),
-            "median": _year_sum_volume(forecast, 13, 24, c_mid),
-            "max": _year_sum_volume(forecast, 13, 24, c_hi),
-        },
-        "year_3": {
-            "min": _year_sum_volume(forecast, 25, 36, c_lo),
-            "median": _year_sum_volume(forecast, 25, 36, c_mid),
-            "max": _year_sum_volume(forecast, 25, 36, c_hi),
-        },
-        "year_4": {
-            "min": _year_sum_volume(forecast, 37, 48, c_lo),
-            "median": _year_sum_volume(forecast, 37, 48, c_mid),
-            "max": _year_sum_volume(forecast, 37, 48, c_hi),
-        },
+        y: {
+            "min": _year_sum_volume(forecast, s, e, c_lo),
+            "median": _year_sum_volume(forecast, s, e, c_mid),
+            "max": _year_sum_volume(forecast, s, e, c_hi),
+        }
+        for y, s, e in _YEAR_BANDS
     }
 
 
@@ -395,6 +383,7 @@ def _membership_retail_count_projection(
         "year_2": _top3_weighted_peer_shares(summary_top3, "less_than"),
         "year_3": _top3_weighted_peer_shares(summary_top3, "more_than"),
         "year_4": _top3_weighted_peer_shares(summary_top3, "more_than"),
+        "year_5": _top3_weighted_peer_shares(summary_top3, "more_than"),
     }
     out: Dict[str, Dict[str, float]] = {}
     for year_key, year_shares in shares_by_year.items():
@@ -473,7 +462,7 @@ def _annual_cash_flow_from_percent(
 ) -> Dict[str, Dict[str, float]]:
     out: Dict[str, Dict[str, float]] = {}
     pct = max(float(opex_percent), 0.0) / 100.0
-    for y in ("year_1", "year_2", "year_3", "year_4"):
+    for y, _s, _e in _YEAR_BANDS:
         washes = float(wash_volume_projection.get(y, 0.0) or 0.0)
         total_revenue = float(washes * dollars_per_wash)
         total_expense = float(total_revenue * pct)
@@ -509,7 +498,7 @@ def _expense_breakdown_from_percent(
             continue
         amounts = {
             y: float((float(revenue_by_year.get(y, 0.0) or 0.0) * pct) / 100.0)
-            for y in ("year_1", "year_2", "year_3", "year_4")
+            for y, _s, _e in _YEAR_BANDS
         }
         out_rows.append(
             {
@@ -534,7 +523,7 @@ def _attach_financial_outputs(
     if not (isinstance(wash_prices, list) and isinstance(wash_pcts, list) and wash_prices and len(wash_prices) == len(wash_pcts)):
         return
 
-    years = ("year_1", "year_2", "year_3", "year_4")
+    years = tuple(y for y, _s, _e in _YEAR_BANDS)
     dpw = _effective_dollar_per_wash([float(x) for x in wash_prices], [float(x) for x in wash_pcts])
     out["dollars_per_wash"] = dpw
     revenue_by_year = {y: float(float(wash_volume_projection.get(y, 0.0) or 0.0) * dpw) for y in years}
@@ -542,8 +531,11 @@ def _attach_financial_outputs(
 
     opex_years = payload.get("opex_years")
     cash_flow: Optional[Dict[str, Dict[str, float]]] = None
-    if isinstance(opex_years, list) and len(opex_years) == 4:
-        opex_by_year = {y: float(v) for y, v in zip(years, opex_years)}
+    if isinstance(opex_years, list) and len(opex_years) in (4, 5):
+        opex_vals = [float(v) for v in opex_years]
+        if len(opex_vals) == 4:
+            opex_vals.append(opex_vals[-1])
+        opex_by_year = {y: float(v) for y, v in zip(years, opex_vals)}
         out["opex_by_year"] = opex_by_year
         out["profit_by_year"] = {y: float(revenue_by_year[y] - opex_by_year[y]) for y in years}
         cash_flow = {

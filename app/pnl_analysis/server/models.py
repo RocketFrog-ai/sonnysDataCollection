@@ -73,7 +73,7 @@ class ClusteringV2ProjectionRequest(BaseModel):
     # Optional PnL inputs (to compute revenue/opex/profit summary on top of wash projections).
     wash_prices: Optional[List[float]] = Field(None, description="List of wash tier prices in dollars.")
     wash_pcts: Optional[List[float]] = Field(None, description="List of wash tier user share percentages (0–100).")
-    opex_years: Optional[List[float]] = Field(None, description="Operating expense by year: [y1,y2,y3,y4].")
+    opex_years: Optional[List[float]] = Field(None, description="Operating expense by year: [y1,y2,y3,y4,y5] (or legacy 4-year list).")
     zeta_forecast: Optional[ZetaForecastParams] = Field(
         None,
         description="Optional zeta_modelling parameters (same shape as central form).",
@@ -275,7 +275,7 @@ class CentralInputFormRequest(BaseModel):
     # Legacy optional PnL shortcuts (used by worker when menu_packages rows lack price/pct).
     wash_prices: Optional[List[float]] = Field(None, description="Optional legacy: wash tier prices.")
     wash_pcts: Optional[List[float]] = Field(None, description="Optional legacy: wash tier mix percentages.")
-    opex_years: Optional[List[float]] = Field(None, description="Optional: operating expense by year [y1..y4].")
+    opex_years: Optional[List[float]] = Field(None, description="Optional: operating expense by year [y1..y5] (legacy [y1..y4] also accepted).")
     capex_initial: Optional[float] = Field(None, description="Optional legacy: initial capex ($).")
     zeta_forecast: Optional[ZetaForecastParams] = Field(
         None,
