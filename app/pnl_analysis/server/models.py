@@ -28,6 +28,29 @@ class TaskStatusResponse(BaseModel):
     error: Optional[str] = None
 
 
+class BreakevenRequest(BaseModel):
+    project_cost: float = Field(..., gt=0, description="Initial project investment cost.")
+    net_cashflows_cumulative: List[float] = Field(
+        ...,
+        min_length=1,
+        description="Cumulative net cashflow values by year index (year 1..N).",
+    )
+
+
+class BreakevenResponse(BaseModel):
+    project_cost: float
+    net_cashflows_cumulative: List[float]
+    breakeven_achieved: bool
+    breakeven_year: Optional[int] = Field(
+        None,
+        description="1-based year where cumulative cashflow first meets/exceeds project_cost.",
+    )
+    breakeven_year_fractional: Optional[float] = Field(
+        None,
+        description="Interpolated breakeven point in year units (e.g., 2.4 means 40% into year 2-3 interval).",
+    )
+    cumulative_at_breakeven_year: Optional[float] = None
+
 class ZetaForecastParams(BaseModel):
     """Optional overrides for zeta_modelling wash forecast (passed through Celery payload)."""
 

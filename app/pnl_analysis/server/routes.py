@@ -9,6 +9,8 @@ from fastapi import APIRouter, HTTPException, Query
 from app.celery.celery_app import celery_app
 from app.pnl_analysis.modelling.zeta_pnl import run_clustering_v2_projection_task
 from app.pnl_analysis.server.models import (
+    BreakevenRequest,
+    BreakevenResponse,
     ClusteringV2ProjectionRequest,
     TaskResponse,
     TaskStatus,
@@ -18,6 +20,46 @@ from app.pnl_analysis.server.models import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pnl_analysis")
+
+
+@router.post("/breakeven", response_model=BreakevenResponse)
+def calculate_breakeven(req: BreakevenRequest):
+    """
+    Compute breakeven from project cost vs cumulative yearly net cashflows.
+    """
+    cumulative_values = req.net_cashflows_cumulative
+    project_cost = float(req.project_cost)
+
+    for idx, cumulative in enumerate(cumulative_values, start=1):
+        if cumulative >= project_cost:
+            prev_cumulative = cumulative_values[idx - 2] if idx > 1 else 0.0
+            delta = cumulative - prev_cumulative
+
+            # Linear interpolation within the current year interval.
+            if delta > 0:
+                fraction = (project_cost - prev_cumulative) / delta
+                fraction = max(0.0, min(1.0, fraction))
+                breakeven_year_fractional = (idx - 1) + fraction
+            else:
+                breakeven_year_fractional = float(idx)
+
+            return BreakevenResponse(
+                project_cost=project_cost,
+                net_cashflows_cumulative=cumulative_values,
+                breakeven_achieved=True,
+                breakeven_year=idx,
+                breakeven_year_fractional=round(breakeven_year_fractional, 4),
+                cumulative_at_breakeven_year=cumulative,
+            )
+
+    return BreakevenResponse(
+        project_cost=project_cost,
+        net_cashflows_cumulative=cumulative_values,
+        breakeven_achieved=False,
+        breakeven_year=None,
+        breakeven_year_fractional=None,
+        cumulative_at_breakeven_year=None,
+    )
 
 
 @router.post("/clustering-v2/project", response_model=TaskResponse)
