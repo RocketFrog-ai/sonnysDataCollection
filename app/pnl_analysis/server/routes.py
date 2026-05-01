@@ -138,6 +138,94 @@ def _get_task_payload(task_id: str) -> Dict[str, Any] | None:
     return res if isinstance(res, dict) else None
 
 
+def _extract_project_cost_from_payload(payload: Dict[str, Any]) -> float | None:
+    """Prefer computed project_cost; fallback to input-form acquisition_budget projectCost."""
+    project_cost = payload.get("project_cost")
+    if isinstance(project_cost, (int, float)):
+        return float(project_cost)
+
+    input_payload = payload.get("input")
+    if not isinstance(input_payload, dict):
+        return None
+    financial_inputs = input_payload.get("financial_inputs")
+    if not isinstance(financial_inputs, dict):
+        return None
+    acquisition_budget = financial_inputs.get("acquisition_budget")
+    if not isinstance(acquisition_budget, list):
+        return None
+
+    for row in acquisition_budget:
+        if not isinstance(row, dict):
+            continue
+        category = str(row.get("category") or "").strip().lower()
+        if category != "projectcost":
+            continue
+        total_investment = row.get("total_investment")
+        if isinstance(total_investment, (int, float)):
+            return float(total_investment)
+    return None
+
+
+def _net_cashflows_cumulative_by_year(payload: Dict[str, Any]) -> Dict[str, float]:
+    """Build cumulative net cashflow timeline from cash_flow_projections."""
+    cash_flow = payload.get("cash_flow_projections")
+    if not isinstance(cash_flow, dict):
+        return {}
+
+    def _year_order(k: str) -> int:
+        try:
+            return int(str(k).split("_")[-1])
+        except (TypeError, ValueError):
+            return 10_000
+
+    cumulative = 0.0
+    out: Dict[str, float] = {}
+    for year_key in sorted(cash_flow.keys(), key=_year_order):
+        year_data = cash_flow.get(year_key)
+        if not isinstance(year_data, dict):
+            continue
+        net = year_data.get("net_cash_flow")
+        if not isinstance(net, (int, float)):
+            continue
+        cumulative += float(net)
+        out[str(year_key)] = cumulative
+    return out
+
+
+@router.get("/breakeven")
+def get_breakeven(task_id: str = Query(..., description="Task id from /v1/input-form")):
+    """
+    Return projectCost and cumulative net cashflow values by year for a task.
+    breakeven_achieved is true when cumulative net cashflow reaches/exceeds projectCost.
+    """
+    task_result = AsyncResult(task_id, app=celery_app)
+    state = (task_result.state or "PENDING").upper()
+    if state == TaskStatus.SUCCESS.value:
+        res = _get_task_payload(task_id) or {}
+        project_cost = _extract_project_cost_from_payload(res)
+        cumulative_by_year = _net_cashflows_cumulative_by_year(res)
+        cumulative_values = list(cumulative_by_year.values())
+        breakeven_achieved = bool(
+            isinstance(project_cost, (int, float))
+            and any(v >= float(project_cost) for v in cumulative_values)
+        )
+        return {
+            "task_id": task_id,
+            "status": "success",
+            "project_cost": project_cost,
+            "net_cashflows_cumulative_by_year": cumulative_by_year,
+            "net_cashflows_cumulative": cumulative_values,
+            "breakeven_achieved": breakeven_achieved,
+        }
+    if state == TaskStatus.FAILURE.value:
+        return {
+            "task_id": task_id,
+            "status": "failure",
+            "error": str(task_result.result) if task_result.result else "Task failed",
+        }
+    return {"task_id": task_id, "status": state.lower()}
+
+
 @router.get("/wash_volume_range_minmax")
 def get_wash_volume_range_minmax(task_id: str = Query(..., description="Task id from /v1/input-form")):
     task_result = AsyncResult(task_id, app=celery_app)
