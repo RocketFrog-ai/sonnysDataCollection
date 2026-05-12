@@ -436,20 +436,54 @@ def _membership_retail_count_projection(
     wash_volume_projection: Dict[str, float],
     summary_top3: List[Dict[str, Any]],
 ) -> Dict[str, Dict[str, float]]:
+    less_than_shares = _top3_weighted_peer_shares(summary_top3, "less_than")
+    more_than_shares = _top3_weighted_peer_shares(summary_top3, "more_than")
+
+    def _clip_membership_share(v: float) -> float:
+        # Keep small non-zero floor/ceiling for stability.
+        return float(min(0.98, max(0.02, v)))
+
+    y1_share = _clip_membership_share(float(less_than_shares["membership_share"]))
+    y2_share = _clip_membership_share(float(less_than_shares["membership_share"]))
+    mature_share = _clip_membership_share(float(more_than_shares["membership_share"]))
+
+    # Smooth projection using the Year1->Year2 trend; enforce non-decreasing membership share.
+    # If mature cohort implies higher share, allow gradual upward convergence by Year 5.
+    y12_delta = max(0.0, y2_share - y1_share)
+    projected_shares: Dict[str, float] = {"year_1": y1_share, "year_2": y2_share}
+    prev_share = y2_share
+    for idx, year_key in enumerate(("year_3", "year_4", "year_5"), start=1):
+        trend_share = y2_share + (y12_delta * idx)
+        if mature_share > y2_share:
+            maturity_nudge = y2_share + ((mature_share - y2_share) * (idx / 3.0))
+            trend_share = max(trend_share, maturity_nudge)
+        share = _clip_membership_share(max(prev_share, trend_share))
+        projected_shares[year_key] = share
+        prev_share = share
+
     shares_by_year = {
-        "year_1": _top3_weighted_peer_shares(summary_top3, "less_than"),
-        "year_2": _top3_weighted_peer_shares(summary_top3, "less_than"),
-        "year_3": _top3_weighted_peer_shares(summary_top3, "more_than"),
-        "year_4": _top3_weighted_peer_shares(summary_top3, "more_than"),
-        "year_5": _top3_weighted_peer_shares(summary_top3, "more_than"),
+        year_key: {
+            "membership_share": membership_share,
+            "retail_share": float(1.0 - membership_share),
+        }
+        for year_key, membership_share in projected_shares.items()
     }
+
     out: Dict[str, Dict[str, float]] = {}
+    prev_membership_count: Optional[float] = None
     for year_key, year_shares in shares_by_year.items():
         total = float(wash_volume_projection.get(year_key, 0.0) or 0.0)
+        membership_count = float(total * float(year_shares["membership_share"]))
+        # Keep membership trajectory smooth/non-decreasing across years.
+        if prev_membership_count is not None:
+            membership_count = max(membership_count, prev_membership_count)
+        membership_count = min(membership_count, total)
+        retail_count = float(total - membership_count)
         out[year_key] = {
-            "membership": float(total * float(year_shares["membership_share"])),
-            "retail": float(total * float(year_shares["retail_share"])),
+            "membership": membership_count,
+            "retail": retail_count,
         }
+        prev_membership_count = membership_count
     return out
 
 
