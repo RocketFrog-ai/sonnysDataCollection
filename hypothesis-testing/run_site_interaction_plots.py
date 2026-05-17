@@ -16,8 +16,13 @@ from site_interaction_analysis_lib import (
     plot_any_new_operator_effect,
     plot_existing_single_new_multi_trend,
     plot_market_saturation,
+    plot_four_body_all_quads_trend,
+    plot_four_body_all_quads_trend_overall,
     plot_new_multi_three_body_trend,
     plot_pair_examples_all,
+    plot_three_body_all_triples_trend,
+    plot_three_body_all_triples_trend_overall,
+    plot_two_body_trends_by_type_combo,
     plot_quad_examples_all,
     plot_triple_examples_all,
     prepare_interaction_dirs,
@@ -53,15 +58,34 @@ def main() -> None:
     plot_existing_single_new_multi_trend(
         pair_deltas, panel, out["two_body"] / "avg_existing_single_new_multi_trend.png", PRE_POST_WINDOW
     )
+    plot_two_body_trends_by_type_combo(
+        pair_deltas, panel, out["two_body"] / "trends_by_site_type_combo.png", PRE_POST_WINDOW
+    )
     plot_triple_examples_all(triple_deltas, panel, out["three_body"] / "examples_all_sites.png")
+    plot_three_body_all_triples_trend(
+        triple_deltas, panel, out["three_body"] / "avg_all_triples_trend.png", PRE_POST_WINDOW
+    )
+    plot_three_body_all_triples_trend_overall(
+        triple_deltas, panel, out["three_body"] / "avg_all_triples_trend_overall.png", PRE_POST_WINDOW
+    )
     plot_new_multi_three_body_trend(
         triple_deltas, panel, out["three_body"] / "avg_new_multi_intro_trend.png", PRE_POST_WINDOW
     )
     plot_quad_examples_all(quad_deltas, panel, out["four_body"] / "examples_all_sites.png")
+    plot_four_body_all_quads_trend(
+        quad_deltas, panel, out["four_body"] / "avg_all_quads_trend.png", PRE_POST_WINDOW
+    )
+    plot_four_body_all_quads_trend_overall(
+        quad_deltas, panel, out["four_body"] / "avg_all_quads_trend_overall.png", PRE_POST_WINDOW
+    )
     plot_any_new_operator_effect(
         pair_deltas, panel, out["aggregate"] / "any_new_operator_effect.png", PRE_POST_WINDOW
     )
     plot_market_saturation(pair_deltas, out["aggregate"] / "market_saturation_threshold.png")
+
+    from backtesting_analysis import main as run_backtesting
+
+    run_backtesting()
 
     curate_outputs(OUT_DIR)
     print(f"Done — outputs in {OUT_DIR}")

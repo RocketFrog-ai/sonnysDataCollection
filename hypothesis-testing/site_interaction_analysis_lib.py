@@ -858,20 +858,16 @@ def build_triple_event_profile(triple_deltas: pd.DataFrame, panel: pd.DataFrame,
         if pd.isna(base) or base <= 0:
             continue
 
-        traces = {}
-        for label, site_col in [("A", "A_site"), ("B", "B_site"), ("C", "C_site")]:
-            sub = panel.loc[panel["client_id_location_id"] == triple[site_col], ["calendar_month", "site_month_number", PAIR_EVENT_METRIC]].copy()
-            if label == "C":
-                sub = sub[sub["site_month_number"].ge(1)]
-            sub["relative_month"] = month_diff(sub["calendar_month"], event_month).astype(int)
-            traces[label] = sub.set_index("relative_month")[PAIR_EVENT_METRIC]
+        traces = {
+            "A": _site_event_wash_series(panel, triple["A_site"], event_month),
+            "B": _site_event_wash_series(panel, triple["B_site"], event_month),
+            "C": _site_event_wash_series(panel, triple["C_site"], event_month, newest_site=True),
+        }
 
         for relative_month in range(-window, window + 1):
             a_value = traces["A"].get(relative_month, np.nan)
             b_value = traces["B"].get(relative_month, np.nan)
             c_value = traces["C"].get(relative_month, np.nan)
-            if relative_month < 0:
-                c_value = np.nan
             rows.append(
                 {
                     "triple_id": f"{triple['A_site']}|{triple['B_site']}|{triple['C_site']}",
@@ -1287,43 +1283,151 @@ def filter_triples_newest_type(
     return triple_deltas.loc[keep].reset_index(drop=True)
 
 
+def _site_event_wash_series(
+    panel: pd.DataFrame,
+    site_id: str,
+    event_month: pd.Timestamp,
+    *,
+    newest_site: bool = False,
+) -> pd.Series:
+    """Washes by month relative to event; NaN before operational launch (site_month ≥ 1)."""
+    sub = panel.loc[
+        panel["client_id_location_id"] == site_id,
+        ["calendar_month", "site_month_number", PAIR_EVENT_METRIC],
+    ].copy()
+    sub = sub[sub["site_month_number"].ge(1)]
+    sub["relative_month"] = month_diff(sub["calendar_month"], event_month).astype(int)
+    series = sub.set_index("relative_month")[PAIR_EVENT_METRIC]
+    if newest_site:
+        series = series.copy()
+        series.loc[series.index < 0] = np.nan
+    return series
+
+
+# One unique hue per role×type series (solid = single, dashed = multi).
+BODY_TYPE_DISTINCT_COLORS: list[str] = [
+    "#00F0FF",  # A single — cyan
+    "#FF3366",  # A multi — rose
+    "#39FF14",  # B single — neon green
+    "#FFD700",  # B multi — gold
+    "#FF6600",  # C single — orange
+    "#FF00FF",  # C multi — magenta
+    "#00FFAA",  # D single — mint
+    "#9B59FF",  # D multi — violet
+]
+BODY_TYPE_SERIES_ORDER: list[tuple[str, str]] = [
+    ("A", "single"),
+    ("A", "multi"),
+    ("B", "single"),
+    ("B", "multi"),
+    ("C", "single"),
+    ("C", "multi"),
+    ("D", "single"),
+    ("D", "multi"),
+]
+BODY_ROLE_MARKERS: dict[str, str] = {"A": "o", "B": "s", "C": "^", "D": "D"}
+BODY_TYPE_LINE_STYLES: dict[str, str] = {"single": "-", "multi": (0, (6, 3))}
+
+# Overall pool (all single/multi mixes combined per role).
+THREE_BODY_POOLED_DARK: list[tuple[str, str, str, str]] = [
+    ("A_index", "#00F0FF", "o", "A (oldest)"),
+    ("B_index", "#39FF14", "s", "B (middle)"),
+    ("C_index", "#FF6600", "^", "C (newest)"),
+    ("region_index", "#F5F5F5", "P", "A+B+C market"),
+]
+FOUR_BODY_POOLED_DARK: list[tuple[str, str, str, str]] = [
+    ("A_index", "#00F0FF", "o", "A (oldest)"),
+    ("B_index", "#39FF14", "s", "B"),
+    ("C_index", "#FFD700", "^", "C"),
+    ("D_index", "#FF00FF", "D", "D (newest)"),
+    ("region_index", "#F5F5F5", "P", "A+B+C+D market"),
+]
+BODY_TREND_REGION_STYLE: dict[str, object] = {
+    "color": "#F5F5F5",
+    "ls": (0, (5, 3)),
+    "marker": "P",
+}
+BODY_TREND_DARK_BG = "#0d1117"
+BODY_TREND_DARK_AXES = "#161b22"
+
+
+def _style_for_role_type(role: str, site_type: str) -> dict[str, object]:
+    key = (role, site_type)
+    try:
+        idx = BODY_TYPE_SERIES_ORDER.index(key)
+    except ValueError:
+        idx = 0
+    return {
+        "color": BODY_TYPE_DISTINCT_COLORS[idx % len(BODY_TYPE_DISTINCT_COLORS)],
+        "ls": BODY_TYPE_LINE_STYLES.get(site_type, "-"),
+        "marker": BODY_ROLE_MARKERS.get(role, "o"),
+    }
+
+
+def _apply_body_trend_dark_theme(fig: plt.Figure, ax: plt.Axes) -> None:
+    fig.patch.set_facecolor(BODY_TREND_DARK_BG)
+    ax.set_facecolor(BODY_TREND_DARK_AXES)
+    for spine in ax.spines.values():
+        spine.set_color("#484f58")
+    ax.tick_params(colors="#e6edf3", labelsize=9)
+    ax.xaxis.label.set_color("#e6edf3")
+    ax.yaxis.label.set_color("#e6edf3")
+    ax.title.set_color("#e6edf3")
+    ax.grid(True, color="#30363d", alpha=0.85, lw=0.8)
+
+
 def build_triple_event_traces(
     triple_deltas: pd.DataFrame,
     panel: pd.DataFrame,
     window: int = 6,
+    *,
+    align: str = "newest",
 ) -> pd.DataFrame:
+    """Event-time traces; align='newest' → month 0 = C, align='middle' → month 0 = B."""
     rows: list[dict[str, float]] = []
+    align = align.lower()
     for _, triple in triple_deltas.iterrows():
-        event_month = triple["event_month"]
-        pre_a, _ = window_mean(panel, triple["A_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
-        pre_b, _ = window_mean(panel, triple["B_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
-        base = safe_add(pre_a[PAIR_EVENT_METRIC], pre_b[PAIR_EVENT_METRIC])
+        if align == "middle":
+            event_month = month_floor(triple["B_launch_month"])
+            pre_a, _ = window_mean(panel, triple["A_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            base = pre_a[PAIR_EVENT_METRIC]
+            anchor_role = "B"
+        else:
+            event_month = month_floor(triple["C_launch_month"])
+            pre_a, _ = window_mean(panel, triple["A_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            pre_b, _ = window_mean(panel, triple["B_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            base = safe_add(pre_a[PAIR_EVENT_METRIC], pre_b[PAIR_EVENT_METRIC])
+            anchor_role = "C"
         if pd.isna(base) or base <= 0:
             continue
 
-        traces: dict[str, pd.Series] = {}
-        for label, site_col in [("A", "A_site"), ("B", "B_site"), ("C", "C_site")]:
-            sub = panel.loc[
-                panel["client_id_location_id"] == triple[site_col],
-                ["calendar_month", "site_month_number", PAIR_EVENT_METRIC],
-            ].copy()
-            if label == "C":
-                sub = sub[sub["site_month_number"].ge(1)]
-            sub["relative_month"] = month_diff(sub["calendar_month"], event_month).astype(int)
-            traces[label] = sub.set_index("relative_month")[PAIR_EVENT_METRIC]
+        a_type = _site_type_label(panel, triple["A_site"])
+        b_type = _site_type_label(panel, triple["B_site"])
+        c_type = _site_type_label(panel, triple["C_site"])
+        traces = {
+            "A": _site_event_wash_series(panel, triple["A_site"], event_month),
+            "B": _site_event_wash_series(
+                panel, triple["B_site"], event_month, newest_site=(anchor_role == "B")
+            ),
+            "C": _site_event_wash_series(
+                panel, triple["C_site"], event_month, newest_site=(anchor_role == "C")
+            ),
+        }
 
         triple_id = f"{triple['A_site']}|{triple['B_site']}|{triple['C_site']}"
         for relative_month in range(-window, window + 1):
             a_val = traces["A"].get(relative_month, np.nan)
             b_val = traces["B"].get(relative_month, np.nan)
             c_val = traces["C"].get(relative_month, np.nan)
-            if relative_month < 0:
-                c_val = np.nan
             region_val = safe_add(a_val, b_val, c_val)
             rows.append(
                 {
                     "triple_id": triple_id,
+                    "align": align,
                     "relative_month": relative_month,
+                    "A_type": a_type,
+                    "B_type": b_type,
+                    "C_type": c_type,
                     "A_index": a_val / base * 100 if pd.notna(a_val) else np.nan,
                     "B_index": b_val / base * 100 if pd.notna(b_val) else np.nan,
                     "C_index": c_val / base * 100 if pd.notna(c_val) else np.nan,
@@ -1332,27 +1436,91 @@ def build_triple_event_traces(
                 }
             )
 
-    traces_df = pd.DataFrame(rows)
-    if traces_df.empty:
-        return traces_df
+    return pd.DataFrame(rows)
 
-    pre_mean = float(base)
-    cum_rows: list[dict[str, float]] = []
-    for triple_id, group in traces_df.groupby("triple_id"):
-        group = group.sort_values("relative_month")
-        running = 0.0
-        for _, row in group.iterrows():
-            wash = row["region_wash"] if pd.notna(row["region_wash"]) else 0.0
-            if row["relative_month"] >= 0:
-                running += float(wash)
-            cum_rows.append(
+
+def build_quad_event_traces(
+    quad_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    window: int = 6,
+    *,
+    align: str = "newest",
+) -> pd.DataFrame:
+    """Event-time traces; align='newest' → month 0 = D, align='middle' → month 0 = C."""
+    rows: list[dict[str, float]] = []
+    align = align.lower()
+    for _, quad in quad_deltas.iterrows():
+        if align == "middle":
+            event_month = month_floor(quad["C_launch_month"])
+            pre_a, _ = window_mean(panel, quad["A_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            pre_b, _ = window_mean(panel, quad["B_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            base = safe_add(pre_a[PAIR_EVENT_METRIC], pre_b[PAIR_EVENT_METRIC])
+            anchor_role = "C"
+        else:
+            event_month = month_floor(quad["D_launch_month"])
+            pre_a, _ = window_mean(panel, quad["A_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            pre_b, _ = window_mean(panel, quad["B_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            pre_c, _ = window_mean(panel, quad["C_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+            base = safe_add(pre_a[PAIR_EVENT_METRIC], pre_b[PAIR_EVENT_METRIC], pre_c[PAIR_EVENT_METRIC])
+            anchor_role = "D"
+        if pd.isna(base) or base <= 0:
+            continue
+
+        a_type = _site_type_label(panel, quad["A_site"])
+        b_type = _site_type_label(panel, quad["B_site"])
+        c_type = _site_type_label(panel, quad["C_site"])
+        d_type = _site_type_label(panel, quad["D_site"])
+        traces = {
+            "A": _site_event_wash_series(panel, quad["A_site"], event_month),
+            "B": _site_event_wash_series(panel, quad["B_site"], event_month),
+            "C": _site_event_wash_series(
+                panel, quad["C_site"], event_month, newest_site=(anchor_role == "C")
+            ),
+            "D": _site_event_wash_series(
+                panel, quad["D_site"], event_month, newest_site=(anchor_role == "D")
+            ),
+        }
+
+        quad_id = f"{quad['A_site']}|{quad['B_site']}|{quad['C_site']}|{quad['D_site']}"
+        for relative_month in range(-window, window + 1):
+            a_val = traces["A"].get(relative_month, np.nan)
+            b_val = traces["B"].get(relative_month, np.nan)
+            c_val = traces["C"].get(relative_month, np.nan)
+            d_val = traces["D"].get(relative_month, np.nan)
+            region_val = safe_add(a_val, b_val, c_val, d_val)
+            rows.append(
                 {
-                    "triple_id": triple_id,
-                    "relative_month": int(row["relative_month"]),
-                    "region_cum_index": running / pre_mean * 100 if pre_mean > 0 else np.nan,
+                    "quad_id": quad_id,
+                    "align": align,
+                    "relative_month": relative_month,
+                    "A_type": a_type,
+                    "B_type": b_type,
+                    "C_type": c_type,
+                    "D_type": d_type,
+                    "A_index": a_val / base * 100 if pd.notna(a_val) else np.nan,
+                    "B_index": b_val / base * 100 if pd.notna(b_val) else np.nan,
+                    "C_index": c_val / base * 100 if pd.notna(c_val) else np.nan,
+                    "D_index": d_val / base * 100 if pd.notna(d_val) else np.nan,
+                    "region_index": region_val / base * 100 if pd.notna(region_val) else np.nan,
                 }
             )
-    return traces_df.merge(pd.DataFrame(cum_rows), on=["triple_id", "relative_month"], how="left")
+    return pd.DataFrame(rows)
+
+
+THREE_BODY_TREND_SERIES: list[tuple[str, str, str]] = [
+    ("A_index", "#1f77b4", "A (oldest)"),
+    ("B_index", "#2ca02c", "B (middle)"),
+    ("C_index", "#d62728", "C (newest)"),
+    ("region_index", "#ff7f0e", "A+B+C market"),
+]
+
+FOUR_BODY_TREND_SERIES: list[tuple[str, str, str]] = [
+    ("A_index", "#1f77b4", "A (oldest)"),
+    ("B_index", "#2ca02c", "B"),
+    ("C_index", "#ff7f0e", "C"),
+    ("D_index", "#d62728", "D (newest)"),
+    ("region_index", "#9467bd", "A+B+C+D market"),
+]
 
 
 def _add_pair_cumulative(
@@ -1389,6 +1557,460 @@ def _add_pair_cumulative(
                 }
             )
     return traces.merge(pd.DataFrame(cum_rows), on=["pair_id", "relative_month"], how="left")
+
+
+def _draw_event_medians(
+    ax: plt.Axes,
+    traces: pd.DataFrame,
+    *,
+    window: int,
+    title: str,
+    series_specs: list[tuple[str, str, str]],
+    event_id_col: str,
+    ylabel: str = "Index (pre-launch baseline = 100)",
+    show_faint: bool = True,
+    ymax_cap: float = 320.0,
+) -> None:
+    """Median + IQR event-time lines for arbitrary site roles."""
+    if traces.empty:
+        ax.set_title(title)
+        return
+
+    cols = [c for c, _, _ in series_specs]
+    for col, color, label in series_specs:
+        if show_faint:
+            for _, group in traces.groupby(event_id_col):
+                sub = group.sort_values("relative_month")
+                ax.plot(sub["relative_month"], sub[col], color=color, alpha=0.1, lw=0.8, zorder=1)
+
+        summary = (
+            traces.groupby("relative_month")[col]
+            .agg(median="median", q25=lambda s: s.quantile(0.25), q75=lambda s: s.quantile(0.75))
+            .reset_index()
+            .sort_values("relative_month")
+        )
+        ax.fill_between(summary["relative_month"], summary["q25"], summary["q75"], color=color, alpha=0.18, zorder=2)
+        ax.plot(
+            summary["relative_month"],
+            summary["median"],
+            color=color,
+            lw=2.4,
+            marker="o",
+            ms=4,
+            label=f"{label} (median)",
+            zorder=3,
+        )
+
+    ymax = float(traces[cols].quantile(0.98).max())
+    ax.set_ylim(0, max(150.0, min(ymax * 1.1, ymax_cap)))
+    ax.axvline(0, color="black", ls="--", lw=1.1)
+    ax.axhline(100, color="gray", ls=":", lw=1)
+    ax.set_xticks(range(-window, window + 1))
+    ax.set_xlabel("Months relative to newest-site launch (0)")
+    ax.set_ylabel(ylabel)
+    n_events = int(traces[event_id_col].nunique())
+    ax.set_title(f"{title}\n(n = {n_events})", fontsize=10)
+    ax.legend(loc="upper left", fontsize=7, frameon=True)
+    ax.grid(True, alpha=0.3)
+
+
+def _save_event_trend_figure(
+    traces: pd.DataFrame,
+    out_path: Path,
+    *,
+    series_specs: list[tuple[str, str, str]],
+    event_id_col: str,
+    title: str,
+    suptitle: str,
+    window: int = 6,
+    ylabel: str = "Index (pre-launch baseline = 100)",
+    ymax_cap: float = 320.0,
+) -> None:
+    if traces.empty:
+        return
+    fig, ax = plt.subplots(figsize=(12, 6.5))
+    _draw_event_medians(
+        ax,
+        traces,
+        window=window,
+        title=title,
+        series_specs=series_specs,
+        event_id_col=event_id_col,
+        ylabel=ylabel,
+        ymax_cap=ymax_cap,
+    )
+    fig.suptitle(suptitle, fontsize=11, y=1.02)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120)
+    plt.close(fig)
+
+
+def _draw_multi_body_trend_by_site_type(
+    ax: plt.Axes,
+    traces: pd.DataFrame,
+    *,
+    roles: list[str],
+    event_id_col: str,
+    window: int,
+    title: str,
+    ylabel: str,
+    ymax_cap: float,
+    show_faint: bool = False,
+    region_col: str = "region_index",
+    region_label: str = "Market (sum, post-launch only)",
+    dark_theme: bool = True,
+) -> None:
+    """Median event-time lines split by single vs multi for each role."""
+    if traces.empty:
+        ax.set_title(title)
+        return
+
+    index_cols = [f"{role}_index" for role in roles]
+    min_cohort = 2
+    ref_color = "#8b949e" if dark_theme else "gray"
+    launch_color = "#f0f6fc" if dark_theme else "black"
+
+    for role in roles:
+        col = f"{role}_index"
+        type_col = f"{role}_type"
+        for site_type in ("single", "multi"):
+            style = _style_for_role_type(role, site_type)
+            color = str(style["color"])
+            ls = style["ls"]
+            marker = str(style["marker"])
+            subset = traces[traces[type_col] == site_type]
+            n_events = int(subset[event_id_col].nunique()) if not subset.empty else 0
+            if n_events < min_cohort:
+                continue
+
+            if show_faint:
+                faint_alpha = 0.06 if dark_theme else 0.08
+                for _, group in subset.groupby(event_id_col):
+                    sub = group.sort_values("relative_month")
+                    ax.plot(
+                        sub["relative_month"],
+                        sub[col],
+                        color=color,
+                        alpha=faint_alpha,
+                        lw=0.6,
+                        ls=ls,
+                        zorder=1,
+                    )
+
+            summary = (
+                subset.groupby("relative_month")[col]
+                .agg(median="median", q25=lambda s: s.quantile(0.25), q75=lambda s: s.quantile(0.75))
+                .reset_index()
+                .sort_values("relative_month")
+            )
+            band_alpha = 0.22 if dark_theme else 0.15
+            ax.fill_between(
+                summary["relative_month"],
+                summary["q25"],
+                summary["q75"],
+                color=color,
+                alpha=band_alpha,
+                zorder=2,
+            )
+            ax.plot(
+                summary["relative_month"],
+                summary["median"],
+                color=color,
+                lw=3.0 if dark_theme else 2.2,
+                ls=ls,
+                marker=marker,
+                ms=5 if dark_theme else 3.5,
+                mew=0.8,
+                mec=BODY_TREND_DARK_BG if dark_theme else "white",
+                label=f"{role} · {site_type} (n={n_events})",
+                zorder=4,
+            )
+
+    if region_col in traces.columns:
+        region_style = BODY_TREND_REGION_STYLE
+        region_color = str(region_style["color"])
+        summary = (
+            traces.groupby("relative_month")[region_col]
+            .agg(median="median", q25=lambda s: s.quantile(0.25), q75=lambda s: s.quantile(0.75))
+            .reset_index()
+            .sort_values("relative_month")
+        )
+        ax.fill_between(
+            summary["relative_month"],
+            summary["q25"],
+            summary["q75"],
+            color=region_color,
+            alpha=0.14,
+            zorder=2,
+        )
+        ax.plot(
+            summary["relative_month"],
+            summary["median"],
+            color=region_color,
+            lw=2.4,
+            ls=region_style["ls"],
+            marker=str(region_style["marker"]),
+            ms=4,
+            mew=0.6,
+            mec=BODY_TREND_DARK_BG if dark_theme else "white",
+            label=region_label,
+            zorder=3,
+        )
+
+    ymax = float(traces[index_cols + [region_col]].quantile(0.98).max())
+    ax.set_ylim(0, max(150.0, min(ymax * 1.1, ymax_cap)))
+    ax.axvline(0, color=launch_color, ls="--", lw=1.2, alpha=0.9)
+    ax.axhline(100, color=ref_color, ls=":", lw=1.1)
+    ax.set_xticks(range(-window, window + 1))
+    ax.set_xlabel("Months relative to newest-site launch (0)")
+    ax.set_ylabel(ylabel)
+    n_events = int(traces[event_id_col].nunique())
+    ax.set_title(f"{title}\n(n = {n_events} events)", fontsize=10)
+    legend = ax.legend(
+        loc="upper left",
+        fontsize=7.5,
+        frameon=True,
+        ncol=2,
+        facecolor=BODY_TREND_DARK_AXES if dark_theme else "white",
+        edgecolor="#484f58" if dark_theme else "0.8",
+        labelcolor="#e6edf3" if dark_theme else "black",
+    )
+    if dark_theme:
+        legend.get_frame().set_alpha(0.95)
+    if not dark_theme:
+        ax.grid(True, alpha=0.3)
+
+
+def _save_multi_body_trend_by_site_type(
+    traces: pd.DataFrame,
+    out_path: Path,
+    *,
+    roles: list[str],
+    event_id_col: str,
+    title: str,
+    suptitle: str,
+    window: int = 6,
+    ylabel: str = "Index (pre-launch baseline = 100)",
+    ymax_cap: float = 320.0,
+    region_label: str = "Market (sum, post-launch only)",
+) -> None:
+    if traces.empty:
+        return
+    fig, ax = plt.subplots(figsize=(13, 7))
+    _apply_body_trend_dark_theme(fig, ax)
+    _draw_multi_body_trend_by_site_type(
+        ax,
+        traces,
+        roles=roles,
+        event_id_col=event_id_col,
+        window=window,
+        title=title,
+        ylabel=ylabel,
+        ymax_cap=ymax_cap,
+        region_label=region_label,
+        dark_theme=True,
+    )
+    fig.suptitle(suptitle, fontsize=10.5, y=1.02, color="#e6edf3")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120, facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def _draw_multi_body_trend_pooled(
+    ax: plt.Axes,
+    traces: pd.DataFrame,
+    *,
+    series_specs: list[tuple[str, str, str, str]],
+    event_id_col: str,
+    window: int,
+    title: str,
+    ylabel: str,
+    ymax_cap: float,
+    xlabel: str = "Months relative to anchor launch (0)",
+) -> None:
+    """One median line per role (all site types pooled) on dark theme."""
+    if traces.empty:
+        ax.set_title(title)
+        return
+
+    cols = [col for col, _, _, _ in series_specs]
+    for col, color, marker, label in series_specs:
+        if col not in traces.columns:
+            continue
+        summary = (
+            traces.groupby("relative_month")[col]
+            .agg(median="median", q25=lambda s: s.quantile(0.25), q75=lambda s: s.quantile(0.75))
+            .reset_index()
+            .sort_values("relative_month")
+        )
+        ax.fill_between(
+            summary["relative_month"],
+            summary["q25"],
+            summary["q75"],
+            color=color,
+            alpha=0.2,
+            zorder=2,
+        )
+        ax.plot(
+            summary["relative_month"],
+            summary["median"],
+            color=color,
+            lw=3.2,
+            marker=marker,
+            ms=5.5,
+            mew=0.8,
+            mec=BODY_TREND_DARK_BG,
+            label=label,
+            zorder=4,
+        )
+
+    ymax = float(traces[cols].quantile(0.98).max())
+    ax.set_ylim(0, max(150.0, min(ymax * 1.1, ymax_cap)))
+    ax.axvline(0, color="#f0f6fc", ls="--", lw=1.2, alpha=0.9)
+    ax.axhline(100, color="#8b949e", ls=":", lw=1.1)
+    ax.set_xticks(range(-window, window + 1))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    n_events = int(traces[event_id_col].nunique())
+    ax.set_title(f"{title}\n(n = {n_events} events)", fontsize=10)
+    legend = ax.legend(
+        loc="upper left",
+        fontsize=7.5,
+        frameon=True,
+        facecolor=BODY_TREND_DARK_AXES,
+        edgecolor="#484f58",
+        labelcolor="#e6edf3",
+    )
+    legend.get_frame().set_alpha(0.95)
+
+
+def _save_multi_body_trend_pooled(
+    traces: pd.DataFrame,
+    out_path: Path,
+    *,
+    series_specs: list[tuple[str, str, str, str]],
+    event_id_col: str,
+    title: str,
+    suptitle: str,
+    window: int = 6,
+    ylabel: str = "Index (pre-launch baseline = 100)",
+    ymax_cap: float = 320.0,
+    xlabel: str = "Months relative to anchor launch (0)",
+) -> None:
+    if traces.empty:
+        return
+    fig, ax = plt.subplots(figsize=(12, 6.5))
+    _apply_body_trend_dark_theme(fig, ax)
+    _draw_multi_body_trend_pooled(
+        ax,
+        traces,
+        series_specs=series_specs,
+        event_id_col=event_id_col,
+        window=window,
+        title=title,
+        ylabel=ylabel,
+        ymax_cap=ymax_cap,
+        xlabel=xlabel,
+    )
+    fig.suptitle(suptitle, fontsize=10.5, y=1.02, color="#e6edf3")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120, facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def _save_multi_body_dual_alignment_overall(
+    triple_or_quad_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    *,
+    body: str,
+    series_specs: list[tuple[str, str, str, str]],
+    event_id_col: str,
+    build_traces: object,
+    window: int = 6,
+    ylabel: str,
+    ymax_cap: float,
+    suptitle: str,
+    middle_panel: tuple[str, str, str],
+    newest_panel: tuple[str, str, str],
+) -> None:
+    """Side-by-side overall pool: middle-site anchor (left) vs newest-site anchor (right)."""
+    middle_title, middle_xlabel, middle_ylabel_note = middle_panel
+    newest_title, newest_xlabel, newest_ylabel_note = newest_panel
+
+    traces_middle = build_traces(triple_or_quad_deltas, panel, window=window, align="middle")
+    traces_newest = build_traces(triple_or_quad_deltas, panel, window=window, align="newest")
+    if traces_middle.empty and traces_newest.empty:
+        return
+
+    fig, axes = plt.subplots(1, 2, figsize=(16, 6.8), sharey=True)
+    _apply_body_trend_dark_theme(fig, axes[0])
+    _apply_body_trend_dark_theme(fig, axes[1])
+
+    if not traces_middle.empty:
+        _draw_multi_body_trend_pooled(
+            axes[0],
+            traces_middle,
+            series_specs=series_specs,
+            event_id_col=event_id_col,
+            window=window,
+            title=middle_title,
+            ylabel=middle_ylabel_note or ylabel,
+            ymax_cap=ymax_cap,
+            xlabel=middle_xlabel,
+        )
+    else:
+        axes[0].text(0.5, 0.5, "No events", ha="center", va="center", color="#e6edf3", transform=axes[0].transAxes)
+
+    if not traces_newest.empty:
+        _draw_multi_body_trend_pooled(
+            axes[1],
+            traces_newest,
+            series_specs=series_specs,
+            event_id_col=event_id_col,
+            window=window,
+            title=newest_title,
+            ylabel=ylabel,
+            ymax_cap=ymax_cap,
+            xlabel=newest_xlabel,
+        )
+    else:
+        axes[1].text(0.5, 0.5, "No events", ha="center", va="center", color="#e6edf3", transform=axes[1].transAxes)
+
+    fig.suptitle(suptitle, fontsize=11, y=1.02, color="#e6edf3")
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120, facecolor=fig.get_facecolor())
+    plt.close(fig)
+
+
+def _draw_pair_event_medians(
+    ax: plt.Axes,
+    traces: pd.DataFrame,
+    *,
+    window: int,
+    title: str,
+    show_faint: bool = True,
+    show_combined: bool = True,
+    event_id_col: str = "pair_id",
+) -> None:
+    work = traces.copy()
+    series_specs: list[tuple[str, str, str]] = [
+        ("existing_index", "#1f77b4", "Existing"),
+        ("new_index", "#d62728", "New"),
+    ]
+    if show_combined:
+        work["combined_index"] = work["existing_index"] + work["new_index"].fillna(0)
+        series_specs.append(("combined_index", "#ff7f0e", "Combined (monthly)"))
+    _draw_event_medians(
+        ax,
+        work,
+        window=window,
+        title=title,
+        series_specs=series_specs,
+        event_id_col=event_id_col,
+        ylabel="Index (incumbent pre-launch = 100)",
+        show_faint=show_faint,
+    )
 
 
 def plot_aggregate_event_trend(
@@ -1429,25 +2051,8 @@ def plot_aggregate_event_trend(
             zorder=3,
         )
 
-    if show_cumulative and show_cumulative in traces.columns:
-        summary = (
-            traces.groupby("relative_month")[show_cumulative]
-            .agg(median="median")
-            .reset_index()
-            .sort_values("relative_month")
-        )
-        ax.plot(
-            summary["relative_month"],
-            summary["median"],
-            color="#9467bd",
-            lw=2.5,
-            ls="--",
-            marker="s",
-            ms=4,
-            label="Cumulative market (median)",
-            zorder=4,
-        )
-
+    ymax = float(traces[[c for c, _, _ in series_specs]].quantile(0.98).max())
+    ax.set_ylim(0, max(150.0, min(ymax * 1.1, 280.0)))
     ax.axvline(0, color="black", ls="--", lw=1.2)
     ax.axhline(100, color="gray", ls=":", lw=1)
     ax.set_xticks(range(-window, window + 1))
@@ -1469,7 +2074,6 @@ def plot_any_new_operator_effect(
     window: int = 6,
 ) -> None:
     traces = build_pair_event_traces(pair_deltas, panel, window=window)
-    traces = _add_pair_cumulative(traces, pair_deltas, panel, window)
     traces["combined_index"] = traces["existing_index"] + traces["new_index"].fillna(0)
     plot_aggregate_event_trend(
         traces,
@@ -1481,7 +2085,6 @@ def plot_any_new_operator_effect(
         ],
         event_id_col="pair_id",
         title="Effect of any new nearby operator on running sites (all two-body pairs)",
-        show_cumulative="combined_cum_index",
         window=window,
     )
 
@@ -1494,22 +2097,124 @@ def plot_existing_single_new_multi_trend(
 ) -> pd.DataFrame:
     filtered = filter_pairs_by_site_types(pair_deltas, panel, existing_type="single", new_type="multi")
     traces = build_pair_event_traces(filtered, panel, window=window)
-    traces = _add_pair_cumulative(traces, filtered, panel, window)
-    traces["combined_index"] = traces["existing_index"] + traces["new_index"].fillna(0)
-    plot_aggregate_event_trend(
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    _draw_pair_event_medians(
+        ax,
+        traces,
+        window=window,
+        title="Existing single → new multi",
+        show_faint=True,
+        show_combined=True,
+    )
+    fig.suptitle(
+        "Monthly index around launch (100 = incumbent's 6-month pre-launch mean)\n"
+        "Faint = each pair | band = 25th–75th | bold = median",
+        fontsize=11,
+        y=1.02,
+    )
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120)
+    plt.close(fig)
+    return filtered
+
+
+def plot_two_body_trends_by_type_combo(
+    pair_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    """2×2 grid: median event-time trend for each existing×new single/multi combo."""
+    combos = [
+        ("single", "single", "Existing single → new single"),
+        ("single", "multi", "Existing single → new multi"),
+        ("multi", "single", "Existing multi → new single"),
+        ("multi", "multi", "Existing multi → new multi"),
+    ]
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10), sharex=True, sharey=True)
+    counts: list[dict[str, object]] = []
+
+    for ax, (ex_type, nw_type, title) in zip(axes.flat, combos):
+        filtered = filter_pairs_by_site_types(pair_deltas, panel, existing_type=ex_type, new_type=nw_type)
+        counts.append({"existing": ex_type, "new": nw_type, "n": len(filtered)})
+        if filtered.empty:
+            ax.text(0.5, 0.5, "No pairs", ha="center", va="center", transform=ax.transAxes)
+            ax.set_title(title, fontsize=10)
+            continue
+        traces = build_pair_event_traces(filtered, panel, window=window)
+        _draw_pair_event_medians(ax, traces, window=window, title=title, show_faint=True, show_combined=True)
+
+    fig.suptitle(
+        "Two-body trends by site type (single / multi)\n"
+        "Blue = incumbent | Red = new (from month 0) | Orange = combined monthly | 100 = incumbent pre-launch",
+        fontsize=12,
+        y=1.01,
+    )
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120)
+    plt.close(fig)
+    return pd.DataFrame(counts)
+
+
+def plot_three_body_all_triples_trend(
+    triple_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    """Median trend by role × site type (each series has a unique color)."""
+    traces = build_triple_event_traces(triple_deltas, panel, window=window)
+    _save_multi_body_trend_by_site_type(
         traces,
         out_path,
-        series_specs=[
-            ("existing_index", "#1f77b4", "Existing (single)"),
-            ("new_index", "#d62728", "New (multi)"),
-            ("combined_index", "#ff7f0e", "Combined (monthly)"),
-        ],
-        event_id_col="pair_id",
-        title="Existing single vs new multi: pooled event-time trend",
-        show_cumulative="combined_cum_index",
+        roles=["A", "B", "C"],
+        event_id_col="triple_id",
+        title="All three-body triples (by site type)",
+        suptitle=(
+            "Three-body: each line = role + single/multi — unique color per series\n"
+            "solid = single | dashed = multi | 100 = (A+B) pre-launch | month 0 = C launch"
+        ),
         window=window,
+        ylabel="Index (A+B pre-launch = 100)",
+        region_label="A+B+C market",
     )
-    return filtered
+    return triple_deltas
+
+
+def plot_three_body_all_triples_trend_overall(
+    triple_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    """Overall pool: dual panel — month 0 = B (middle) | month 0 = C (newest)."""
+    _save_multi_body_dual_alignment_overall(
+        triple_deltas,
+        panel,
+        out_path,
+        body="triple",
+        series_specs=THREE_BODY_POOLED_DARK,
+        event_id_col="triple_id",
+        build_traces=build_triple_event_traces,
+        window=window,
+        ylabel="Index (pre-launch baseline = 100)",
+        ymax_cap=320.0,
+        suptitle=(
+            "Three-body overall pool — left: months relative to B (middle) | right: months relative to C (newest)\n"
+            "Left baseline = A pre-launch | right baseline = (A+B) pre-launch | lines start at each site's launch"
+        ),
+        middle_panel=(
+            "Month 0 = B (middle site)",
+            "Months relative to B launch (0)",
+            "Index (A pre-launch = 100)",
+        ),
+        newest_panel=(
+            "Month 0 = C (newest site)",
+            "Months relative to C launch (0)",
+            "",
+        ),
+    )
+    return triple_deltas
 
 
 def plot_new_multi_three_body_trend(
@@ -1520,21 +2225,83 @@ def plot_new_multi_three_body_trend(
 ) -> pd.DataFrame:
     filtered = filter_triples_newest_type(triple_deltas, panel, "multi")
     traces = build_triple_event_traces(filtered, panel, window=window)
-    plot_aggregate_event_trend(
+    _save_multi_body_trend_by_site_type(
         traces,
         out_path,
-        series_specs=[
-            ("A_index", "#1f77b4", "Oldest site (A)"),
-            ("B_index", "#2ca02c", "Middle site (B)"),
-            ("C_index", "#d62728", "New multi site (C)"),
-            ("region_index", "#ff7f0e", "A+B+C market (monthly)"),
-        ],
+        roles=["A", "B", "C"],
         event_id_col="triple_id",
-        title="Three-body: introduction of a new multi site (A/B type any)",
-        show_cumulative="region_cum_index",
+        title="Newest site (C) is multi — A/B any type",
+        suptitle=(
+            "Three-body subset: C = multi only\n"
+            "Colors by single/multi per role | lines start at each site's launch | month 0 = C"
+        ),
         window=window,
+        ylabel="Index (A+B pre-launch = 100)",
+        region_label="A+B+C market (post-launch washes only)",
     )
     return filtered
+
+
+def plot_four_body_all_quads_trend(
+    quad_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    """Median trend by role × site type (each series has a unique color)."""
+    traces = build_quad_event_traces(quad_deltas, panel, window=window)
+    _save_multi_body_trend_by_site_type(
+        traces,
+        out_path,
+        roles=["A", "B", "C", "D"],
+        event_id_col="quad_id",
+        title="All four-body quads (by site type)",
+        suptitle=(
+            "Four-body: each line = role + single/multi — unique color per series\n"
+            "solid = single | dashed = multi | 100 = (A+B+C) pre-launch | month 0 = D launch"
+        ),
+        window=window,
+        ylabel="Index (A+B+C pre-launch = 100)",
+        ymax_cap=400.0,
+        region_label="A+B+C+D market",
+    )
+    return quad_deltas
+
+
+def plot_four_body_all_quads_trend_overall(
+    quad_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    """Overall pool: dual panel — month 0 = C (middle) | month 0 = D (newest)."""
+    _save_multi_body_dual_alignment_overall(
+        quad_deltas,
+        panel,
+        out_path,
+        body="quad",
+        series_specs=FOUR_BODY_POOLED_DARK,
+        event_id_col="quad_id",
+        build_traces=build_quad_event_traces,
+        window=window,
+        ylabel="Index (pre-launch baseline = 100)",
+        ymax_cap=400.0,
+        suptitle=(
+            "Four-body overall pool — left: months relative to C (middle) | right: months relative to D (newest)\n"
+            "Left baseline = (A+B) pre-launch | right baseline = (A+B+C) pre-launch | lines start at each site's launch"
+        ),
+        middle_panel=(
+            "Month 0 = C (middle site)",
+            "Months relative to C launch (0)",
+            "Index (A+B pre-launch = 100)",
+        ),
+        newest_panel=(
+            "Month 0 = D (newest site)",
+            "Months relative to D launch (0)",
+            "",
+        ),
+    )
+    return quad_deltas
 
 
 def plot_market_saturation(pair_deltas: pd.DataFrame, out_path: Path) -> None:
@@ -2011,13 +2778,18 @@ INTERACTION_README = """# Site interaction outputs
 ## plots/two_body/
 - `examples_all_sites.png` — every usable pair (calendar grid)
 - `avg_existing_single_new_multi_trend.png` — pooled median when existing=single, new=multi
+- `trends_by_site_type_combo.png` — 2×2 grid for all four single/multi combinations
 
 ## plots/three_body/
 - `examples_all_sites.png` — every usable triple
-- `avg_new_multi_intro_trend.png` — pooled trend when newest site (C) is multi
+- `avg_all_triples_trend.png` — by role + single/multi (unique color per series)
+- `avg_all_triples_trend_overall.png` — overall pool dual panel: month 0 = B (middle) | month 0 = C (newest)
+- `avg_new_multi_intro_trend.png` — subset when newest site (C) is multi
 
 ## plots/four_body/
 - `examples_all_sites.png` — every usable quad
+- `avg_all_quads_trend.png` — by role + single/multi (unique color per series)
+- `avg_all_quads_trend_overall.png` — overall pool dual panel: month 0 = C (middle) | month 0 = D (newest)
 
 ## plots/aggregate/
 - `any_new_operator_effect.png` — all pairs: incumbent + combined market
@@ -2029,12 +2801,16 @@ INTERACTION_README = """# Site interaction outputs
 ## report/
 - `site_interaction_report.md`
 
-Re-run `site_interaction_analysis.ipynb` or `python run_site_interaction_plots.py`.
+## backtesting/
+Factor hypothesis from `backtesting.xlsx` matched to panel sites (n=18). See `backtesting/README.md`.
+
+Re-run `site_interaction_analysis.ipynb`, `python run_site_interaction_plots.py`, or `python backtesting_analysis.py`.
 """
 
 
 def prepare_interaction_dirs(out_dir: Path) -> dict[str, Path]:
     plots = out_dir / "plots"
+    backtesting = out_dir / "backtesting"
     dirs = {
         "plots": plots,
         "two_body": plots / "two_body",
@@ -2043,6 +2819,9 @@ def prepare_interaction_dirs(out_dir: Path) -> dict[str, Path]:
         "aggregate": plots / "aggregate",
         "data": out_dir / "data",
         "report": out_dir / "report",
+        "backtesting": backtesting,
+        "backtesting_plots": backtesting / "plots",
+        "backtesting_data": backtesting / "data",
     }
     for path in dirs.values():
         path.mkdir(parents=True, exist_ok=True)
@@ -2060,15 +2839,33 @@ def interaction_keep_set() -> set[str]:
         "README.md",
         "plots/two_body/examples_all_sites.png",
         "plots/two_body/avg_existing_single_new_multi_trend.png",
+        "plots/two_body/trends_by_site_type_combo.png",
         "plots/three_body/examples_all_sites.png",
+        "plots/three_body/avg_all_triples_trend.png",
+        "plots/three_body/avg_all_triples_trend_overall.png",
         "plots/three_body/avg_new_multi_intro_trend.png",
         "plots/four_body/examples_all_sites.png",
+        "plots/four_body/avg_all_quads_trend.png",
+        "plots/four_body/avg_all_quads_trend_overall.png",
         "plots/aggregate/any_new_operator_effect.png",
         "plots/aggregate/market_saturation_threshold.png",
         "data/two_body_pair_deltas.csv",
         "data/three_body_triple_deltas.csv",
         "data/four_body_quad_deltas.csv",
         "report/site_interaction_report.md",
+        "backtesting/README.md",
+        "backtesting/data/backtesting_matched.csv",
+        "backtesting/data/backtesting_clusters.csv",
+        "backtesting/plots/factor_correlation_heatmap.png",
+        "backtesting/plots/wash_vs_traffic.png",
+        "backtesting/plots/cluster_localisation_1.png",
+        "backtesting/plots/cluster_localisation_1_washes_2024_2025.png",
+        "backtesting/plots/cluster_localisation_2.png",
+        "backtesting/plots/cluster_localisation_2_washes_2024_2025.png",
+        "backtesting/plots/cluster_localisation_3.png",
+        "backtesting/plots/cluster_localisation_3_washes_2024_2025.png",
+        "backtesting/plots/cluster_localisation_4.png",
+        "backtesting/plots/cluster_localisation_4_washes_2024_2025.png",
     }
 
 
