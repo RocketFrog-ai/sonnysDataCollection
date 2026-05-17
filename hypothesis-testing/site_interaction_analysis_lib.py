@@ -107,8 +107,9 @@ def build_panel(data_dir: Path) -> tuple[pd.DataFrame, dict[str, object]]:
     ]:
         panel[col] = pd.to_numeric(panel[col], errors="coerce")
 
+    # Prefer lt2 row when the same site-month exists in both files (rare); otherwise keep both cohorts.
     panel = panel.sort_values(["client_id_location_id", "year_month", "cohort"])
-    panel = panel.drop_duplicates(["client_id_location_id", "year_month"], keep="last").reset_index(drop=True)
+    panel = panel.drop_duplicates(["client_id_location_id", "year_month"], keep="first").reset_index(drop=True)
 
     panel = add_site_month_numbers(panel)
     panel["site_month_zero_based"] = panel["site_month_number"] - 1
@@ -134,11 +135,22 @@ def build_panel(data_dir: Path) -> tuple[pd.DataFrame, dict[str, object]]:
         ],
     ].sort_values(["client_id_location_id", "year_month"])
 
+    gt2_panel_final = panel.loc[panel["cohort"] == "gt2"]
+    lt2_panel_final = panel.loc[panel["cohort"] == "lt2"]
+
     validation = {
         "sites": int(panel["client_id_location_id"].nunique()),
         "rows": int(len(panel)),
-        "month_min": panel["year_month"].min(),
-        "month_max": panel["year_month"].max(),
+        "month_min": panel["calendar_month"].min(),
+        "month_max": panel["calendar_month"].max(),
+        "lt2_sites": int(lt2_panel_final["client_id_location_id"].nunique()),
+        "gt2_sites": int(gt2_panel_final["client_id_location_id"].nunique()),
+        "lt2_rows": int(len(lt2_panel_final)),
+        "gt2_rows": int(len(gt2_panel_final)),
+        "lt2_month_min": lt2_panel_final["calendar_month"].min(),
+        "lt2_month_max": lt2_panel_final["calendar_month"].max(),
+        "gt2_month_min": gt2_panel_final["calendar_month"].min(),
+        "gt2_month_max": gt2_panel_final["calendar_month"].max(),
         "lt2_rows_with_changed_month_number": int(impacted_mask.sum()),
         "lt2_sites_with_changed_month_number": int(impacted_rows["client_id_location_id"].nunique()),
         "lt2_prelaunch_rows": int(
@@ -238,6 +250,7 @@ def build_sites(panel: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame, np.nda
             zip=("zip", "first"),
             state=("state", "first"),
             region=("region", "first"),
+            cohort=("cohort", "first"),
             client_type=("client_type", "first"),
             n_months=("year_month", "nunique"),
             first_obs=("year_month", "min"),
@@ -320,6 +333,8 @@ def find_pairs(
                 "distance_miles": float(chosen["distance_miles"]),
                 "state": new_row["state"],
                 "region": new_row["region"],
+                "new_cohort": new_row.get("cohort"),
+                "existing_cohort": chosen.get("cohort"),
             }
         )
 
@@ -587,6 +602,9 @@ def find_triples(
                 "AB_miles": float(site_distances[int(a_row["site_index"]), int(b_row["site_index"])]),
                 "state": c_row["state"],
                 "region": c_row["region"],
+                "A_cohort": a_row.get("cohort"),
+                "B_cohort": b_row.get("cohort"),
+                "C_cohort": c_row.get("cohort"),
             }
         )
 
@@ -639,6 +657,177 @@ def build_triple_deltas(
     if triple_deltas.empty:
         return triple_deltas
     return triple_deltas.sort_values(["A_to_C_miles", "B_to_C_miles", "event_month"]).reset_index(drop=True)
+
+
+def find_quads(
+    sites: pd.DataFrame,
+    site_distances: np.ndarray,
+    max_neighbor_miles: float = 10.0,
+    pre_buffer_months: int = 6,
+) -> pd.DataFrame:
+    quads: list[dict[str, object]] = []
+    for i, d_row in sites.iterrows():
+        if not d_row["has_launch_month"]:
+            continue
+
+        older = sites[
+            (sites.index != i)
+            & sites["has_launch_month"]
+            & (sites["launch_month"] <= d_row["launch_month"] - pd.DateOffset(months=pre_buffer_months))
+        ].copy()
+        if len(older) < 3:
+            continue
+
+        older["distance_to_d_miles"] = site_distances[i, older.index]
+        older = older[older["distance_to_d_miles"] <= max_neighbor_miles]
+        if len(older) < 3:
+            continue
+
+        same_zip = older[older["zip"] == d_row["zip"]]
+        pool = same_zip if len(same_zip) >= 3 else older
+        selection_rule = "same_zip_preferred" if len(same_zip) >= 3 else "nearest_within_radius"
+        pool = pool.sort_values(["distance_to_d_miles", "launch_month"]).reset_index().rename(columns={"index": "site_index"})
+
+        best = None
+        n_pool = len(pool)
+        for left in range(n_pool):
+            for mid in range(left + 1, n_pool):
+                for right in range(mid + 1, n_pool):
+                    s1, s2, s3 = pool.iloc[left], pool.iloc[mid], pool.iloc[right]
+                    gap12 = abs(month_diff(s2["launch_month"], s1["launch_month"]))
+                    gap23 = abs(month_diff(s3["launch_month"], s2["launch_month"]))
+                    if pd.isna(gap12) or pd.isna(gap23) or gap12 < pre_buffer_months or gap23 < pre_buffer_months:
+                        continue
+                    a_row, b_row, c_row = sorted([s1, s2, s3], key=lambda item: item["launch_month"])
+                    score = (
+                        a_row["distance_to_d_miles"] + b_row["distance_to_d_miles"] + c_row["distance_to_d_miles"],
+                        max(a_row["distance_to_d_miles"], b_row["distance_to_d_miles"], c_row["distance_to_d_miles"]),
+                    )
+                    if best is None or score < best[0]:
+                        best = (score, a_row, b_row, c_row)
+
+        if best is None:
+            continue
+
+        _, a_row, b_row, c_row = best
+        quads.append(
+            {
+                "market_zip": d_row["zip"],
+                "selection_rule": selection_rule,
+                "same_zip_quad": bool(a_row["zip"] == b_row["zip"] == c_row["zip"] == d_row["zip"]),
+                "A_site": a_row["client_id_location_id"],
+                "A_start": a_row["start_date"],
+                "A_launch_month": a_row["launch_month"],
+                "A_lat": a_row["lat"],
+                "A_lon": a_row["lon"],
+                "A_zip": a_row["zip"],
+                "B_site": b_row["client_id_location_id"],
+                "B_start": b_row["start_date"],
+                "B_launch_month": b_row["launch_month"],
+                "B_lat": b_row["lat"],
+                "B_lon": b_row["lon"],
+                "B_zip": b_row["zip"],
+                "C_site": c_row["client_id_location_id"],
+                "C_start": c_row["start_date"],
+                "C_launch_month": c_row["launch_month"],
+                "C_lat": c_row["lat"],
+                "C_lon": c_row["lon"],
+                "C_zip": c_row["zip"],
+                "D_site": d_row["client_id_location_id"],
+                "D_start": d_row["start_date"],
+                "D_launch_month": d_row["launch_month"],
+                "D_lat": d_row["lat"],
+                "D_lon": d_row["lon"],
+                "D_zip": d_row["zip"],
+                "A_to_D_miles": float(a_row["distance_to_d_miles"]),
+                "B_to_D_miles": float(b_row["distance_to_d_miles"]),
+                "C_to_D_miles": float(c_row["distance_to_d_miles"]),
+                "AB_miles": float(site_distances[int(a_row["site_index"]), int(b_row["site_index"])]),
+                "AC_miles": float(site_distances[int(a_row["site_index"]), int(c_row["site_index"])]),
+                "BC_miles": float(site_distances[int(b_row["site_index"]), int(c_row["site_index"])]),
+                "state": d_row["state"],
+                "region": d_row["region"],
+                "A_cohort": a_row.get("cohort"),
+                "B_cohort": b_row.get("cohort"),
+                "C_cohort": c_row.get("cohort"),
+                "D_cohort": d_row.get("cohort"),
+            }
+        )
+
+    quads_df = pd.DataFrame(quads)
+    if quads_df.empty:
+        return quads_df
+    return quads_df.sort_values(["A_to_D_miles", "B_to_D_miles", "C_to_D_miles"]).reset_index(drop=True)
+
+
+def build_quad_deltas(
+    panel: pd.DataFrame,
+    quads_df: pd.DataFrame,
+    pre_post_window: int = 6,
+    min_months: int = 3,
+) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for _, quad in quads_df.iterrows():
+        event_month = quad["D_launch_month"]
+        out = {**quad.to_dict(), "event_month": event_month}
+        valid = True
+        for label, site_col in [("A", "A_site"), ("B", "B_site"), ("C", "C_site")]:
+            pre, n_pre = window_mean(panel, quad[site_col], event_month, "pre", pre_post_window)
+            post, n_post = window_mean(panel, quad[site_col], event_month, "post", pre_post_window)
+            out[f"{label}_n_pre"] = n_pre
+            out[f"{label}_n_post"] = n_post
+            if n_pre < min_months or n_post < min_months:
+                valid = False
+            for metric in METRICS:
+                out[f"{label}_pre_{metric}"] = pre[metric]
+                out[f"{label}_post_{metric}"] = post[metric]
+                out[f"{label}_pct_{metric}"] = pct_change(pre[metric], post[metric])
+
+        if not valid:
+            continue
+
+        d_post, d_n_post = window_mean(panel, quad["D_site"], event_month, "post", pre_post_window)
+        out["D_n_post"] = d_n_post
+        for metric in METRICS:
+            out[f"D_post_{metric}"] = d_post[metric]
+            out[f"region_pre_{metric}"] = safe_add(
+                out[f"A_pre_{metric}"],
+                out[f"B_pre_{metric}"],
+                out[f"C_pre_{metric}"],
+            )
+            out[f"region_post_{metric}"] = safe_add(
+                out[f"A_post_{metric}"],
+                out[f"B_post_{metric}"],
+                out[f"C_post_{metric}"],
+                out[f"D_post_{metric}"],
+            )
+            out[f"region_pct_{metric}"] = pct_change(out[f"region_pre_{metric}"], out[f"region_post_{metric}"])
+        rows.append(out)
+
+    quad_deltas = pd.DataFrame(rows)
+    if quad_deltas.empty:
+        return quad_deltas
+    return quad_deltas.sort_values(["A_to_D_miles", "B_to_D_miles", "C_to_D_miles", "event_month"]).reset_index(drop=True)
+
+
+def summarize_quads(quad_deltas: pd.DataFrame) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for metric in METRICS:
+        rows.append(
+            {
+                "metric": metric,
+                "n_quads": int(len(quad_deltas)),
+                "A_median_pct": quad_deltas[f"A_pct_{metric}"].median(),
+                "B_median_pct": quad_deltas[f"B_pct_{metric}"].median(),
+                "C_median_pct": quad_deltas[f"C_pct_{metric}"].median(),
+                "region_median_pct": quad_deltas[f"region_pct_{metric}"].median(),
+                "A_mean_pct": quad_deltas[f"A_pct_{metric}"].mean(),
+                "B_mean_pct": quad_deltas[f"B_pct_{metric}"].mean(),
+                "C_mean_pct": quad_deltas[f"C_pct_{metric}"].mean(),
+                "region_mean_pct": quad_deltas[f"region_pct_{metric}"].mean(),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def summarize_triples(triple_deltas: pd.DataFrame) -> pd.DataFrame:
@@ -909,10 +1098,14 @@ def plot_pair_examples_all(
         ax.axvline(launch_month, color="black", ls="--", lw=0.9, alpha=0.75)
         ex_type = _site_type_label(panel, pair["existing_site"])
         nw_type = _site_type_label(panel, pair["new_site"])
+        ex_launch = month_floor(pair["existing_launch_month"])
+        ex_cohort = pair.get("existing_cohort", "")
+        nw_cohort = pair.get("new_cohort", "")
         ax.set_title(
-            f"{state} | {pair['market_zip']} | {pair['distance_miles']:.1f} mi | launch {launch_month.strftime('%Y-%m')}\n"
-            f"existing: {ex_type} | new: {nw_type}",
-            fontsize=7,
+            f"{state} | {pair['market_zip']} | {pair['distance_miles']:.1f} mi\n"
+            f"existing start {ex_launch.strftime('%Y-%m')} ({ex_cohort}, {ex_type}) | "
+            f"new start {launch_month.strftime('%Y-%m')} ({nw_cohort}, {nw_type})",
+            fontsize=6,
         )
         ax.tick_params(axis="y", labelsize=6)
         _apply_calendar_xaxis(ax, x_start, x_end, labelsize=5, month_interval=1)
@@ -929,10 +1122,10 @@ def plot_pair_examples_all(
     if suptitle is None:
         suptitle = (
             f"All two-body pairs ({n_pairs}): monthly washes, Jan 2024 – Dec 2025\n"
-            "Blue = existing | Red = new (from launch) | dashed = launch | title shows state + single/multi"
+            "Blue = existing (gt2/lt2) | Red = new (lt2) | dashed = new launch | title = operational start dates"
         )
     fig.suptitle(suptitle, fontsize=14, y=1.02)
-    fig.subplots_adjust(left=0.05, right=0.99, top=0.94, bottom=0.12, hspace=0.72, wspace=0.35)
+    fig.subplots_adjust(left=0.05, right=0.99, top=0.94, bottom=0.12, hspace=0.78, wspace=0.35)
     fig.savefig(out_path, dpi=120, pad_inches=0.15)
     plt.close(fig)
 
@@ -1082,6 +1275,366 @@ def plot_pair_examples_existing_single_new_multi(
     return filtered
 
 
+def filter_triples_newest_type(
+    triple_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    newest_type: str,
+) -> pd.DataFrame:
+    if triple_deltas.empty:
+        return triple_deltas
+    newest_type = newest_type.lower()
+    keep = [_site_type_label(panel, row["C_site"]) == newest_type for _, row in triple_deltas.iterrows()]
+    return triple_deltas.loc[keep].reset_index(drop=True)
+
+
+def build_triple_event_traces(
+    triple_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    window: int = 6,
+) -> pd.DataFrame:
+    rows: list[dict[str, float]] = []
+    for _, triple in triple_deltas.iterrows():
+        event_month = triple["event_month"]
+        pre_a, _ = window_mean(panel, triple["A_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+        pre_b, _ = window_mean(panel, triple["B_site"], event_month, "pre", window, [PAIR_EVENT_METRIC])
+        base = safe_add(pre_a[PAIR_EVENT_METRIC], pre_b[PAIR_EVENT_METRIC])
+        if pd.isna(base) or base <= 0:
+            continue
+
+        traces: dict[str, pd.Series] = {}
+        for label, site_col in [("A", "A_site"), ("B", "B_site"), ("C", "C_site")]:
+            sub = panel.loc[
+                panel["client_id_location_id"] == triple[site_col],
+                ["calendar_month", "site_month_number", PAIR_EVENT_METRIC],
+            ].copy()
+            if label == "C":
+                sub = sub[sub["site_month_number"].ge(1)]
+            sub["relative_month"] = month_diff(sub["calendar_month"], event_month).astype(int)
+            traces[label] = sub.set_index("relative_month")[PAIR_EVENT_METRIC]
+
+        triple_id = f"{triple['A_site']}|{triple['B_site']}|{triple['C_site']}"
+        for relative_month in range(-window, window + 1):
+            a_val = traces["A"].get(relative_month, np.nan)
+            b_val = traces["B"].get(relative_month, np.nan)
+            c_val = traces["C"].get(relative_month, np.nan)
+            if relative_month < 0:
+                c_val = np.nan
+            region_val = safe_add(a_val, b_val, c_val)
+            rows.append(
+                {
+                    "triple_id": triple_id,
+                    "relative_month": relative_month,
+                    "A_index": a_val / base * 100 if pd.notna(a_val) else np.nan,
+                    "B_index": b_val / base * 100 if pd.notna(b_val) else np.nan,
+                    "C_index": c_val / base * 100 if pd.notna(c_val) else np.nan,
+                    "region_index": region_val / base * 100 if pd.notna(region_val) else np.nan,
+                    "region_wash": region_val,
+                }
+            )
+
+    traces_df = pd.DataFrame(rows)
+    if traces_df.empty:
+        return traces_df
+
+    pre_mean = float(base)
+    cum_rows: list[dict[str, float]] = []
+    for triple_id, group in traces_df.groupby("triple_id"):
+        group = group.sort_values("relative_month")
+        running = 0.0
+        for _, row in group.iterrows():
+            wash = row["region_wash"] if pd.notna(row["region_wash"]) else 0.0
+            if row["relative_month"] >= 0:
+                running += float(wash)
+            cum_rows.append(
+                {
+                    "triple_id": triple_id,
+                    "relative_month": int(row["relative_month"]),
+                    "region_cum_index": running / pre_mean * 100 if pre_mean > 0 else np.nan,
+                }
+            )
+    return traces_df.merge(pd.DataFrame(cum_rows), on=["triple_id", "relative_month"], how="left")
+
+
+def _add_pair_cumulative(
+    traces: pd.DataFrame,
+    pair_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    window: int,
+) -> pd.DataFrame:
+    if traces.empty:
+        return traces
+    pre_means: dict[str, float] = {}
+    for _, pair in pair_deltas.iterrows():
+        pre_base, _ = window_mean(panel, pair["existing_site"], pair["event_month"], "pre", window, [PAIR_EVENT_METRIC])
+        pre_means[f"{pair['existing_site']}->{pair['new_site']}"] = float(pre_base[PAIR_EVENT_METRIC])
+
+    cum_rows: list[dict[str, float]] = []
+    for pair_id, group in traces.groupby("pair_id"):
+        base = pre_means.get(pair_id, np.nan)
+        if pd.isna(base) or base <= 0:
+            continue
+        group = group.sort_values("relative_month")
+        running = 0.0
+        for _, row in group.iterrows():
+            existing = row["existing_index"] / 100 * base if pd.notna(row["existing_index"]) else 0.0
+            new = row["new_index"] / 100 * base if pd.notna(row["new_index"]) else 0.0
+            combined = safe_add(existing, new)
+            if row["relative_month"] >= 0:
+                running += float(combined) if pd.notna(combined) else 0.0
+            cum_rows.append(
+                {
+                    "pair_id": pair_id,
+                    "relative_month": int(row["relative_month"]),
+                    "combined_cum_index": running / base * 100,
+                }
+            )
+    return traces.merge(pd.DataFrame(cum_rows), on=["pair_id", "relative_month"], how="left")
+
+
+def plot_aggregate_event_trend(
+    traces: pd.DataFrame,
+    out_path: Path,
+    *,
+    series_specs: list[tuple[str, str, str]],
+    event_id_col: str,
+    title: str,
+    ylabel: str = "Index (pre-launch baseline = 100)",
+    window: int = 6,
+    show_cumulative: str | None = None,
+) -> None:
+    if traces.empty:
+        return
+
+    fig, ax = plt.subplots(figsize=(11, 6.5))
+    for col, color, label in series_specs:
+        for _, group in traces.groupby(event_id_col):
+            sub = group.sort_values("relative_month")
+            ax.plot(sub["relative_month"], sub[col], color=color, alpha=0.1, lw=0.8, zorder=1)
+
+        summary = (
+            traces.groupby("relative_month")[col]
+            .agg(median="median", q25=lambda s: s.quantile(0.25), q75=lambda s: s.quantile(0.75))
+            .reset_index()
+            .sort_values("relative_month")
+        )
+        ax.fill_between(summary["relative_month"], summary["q25"], summary["q75"], color=color, alpha=0.18, zorder=2)
+        ax.plot(
+            summary["relative_month"],
+            summary["median"],
+            color=color,
+            lw=2.8,
+            marker="o",
+            ms=5,
+            label=f"{label} (median)",
+            zorder=3,
+        )
+
+    if show_cumulative and show_cumulative in traces.columns:
+        summary = (
+            traces.groupby("relative_month")[show_cumulative]
+            .agg(median="median")
+            .reset_index()
+            .sort_values("relative_month")
+        )
+        ax.plot(
+            summary["relative_month"],
+            summary["median"],
+            color="#9467bd",
+            lw=2.5,
+            ls="--",
+            marker="s",
+            ms=4,
+            label="Cumulative market (median)",
+            zorder=4,
+        )
+
+    ax.axvline(0, color="black", ls="--", lw=1.2)
+    ax.axhline(100, color="gray", ls=":", lw=1)
+    ax.set_xticks(range(-window, window + 1))
+    ax.set_xlabel("Months relative to newest-site launch (month 0)")
+    ax.set_ylabel(ylabel)
+    n_events = int(traces[event_id_col].nunique())
+    ax.set_title(f"{title}\n(n = {n_events} events)", fontsize=12)
+    ax.legend(loc="upper left", frameon=True)
+    ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120)
+    plt.close(fig)
+
+
+def plot_any_new_operator_effect(
+    pair_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> None:
+    traces = build_pair_event_traces(pair_deltas, panel, window=window)
+    traces = _add_pair_cumulative(traces, pair_deltas, panel, window)
+    traces["combined_index"] = traces["existing_index"] + traces["new_index"].fillna(0)
+    plot_aggregate_event_trend(
+        traces,
+        out_path,
+        series_specs=[
+            ("existing_index", "#1f77b4", "Incumbent site"),
+            ("new_index", "#d62728", "New site"),
+            ("combined_index", "#ff7f0e", "Combined market (monthly)"),
+        ],
+        event_id_col="pair_id",
+        title="Effect of any new nearby operator on running sites (all two-body pairs)",
+        show_cumulative="combined_cum_index",
+        window=window,
+    )
+
+
+def plot_existing_single_new_multi_trend(
+    pair_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    filtered = filter_pairs_by_site_types(pair_deltas, panel, existing_type="single", new_type="multi")
+    traces = build_pair_event_traces(filtered, panel, window=window)
+    traces = _add_pair_cumulative(traces, filtered, panel, window)
+    traces["combined_index"] = traces["existing_index"] + traces["new_index"].fillna(0)
+    plot_aggregate_event_trend(
+        traces,
+        out_path,
+        series_specs=[
+            ("existing_index", "#1f77b4", "Existing (single)"),
+            ("new_index", "#d62728", "New (multi)"),
+            ("combined_index", "#ff7f0e", "Combined (monthly)"),
+        ],
+        event_id_col="pair_id",
+        title="Existing single vs new multi: pooled event-time trend",
+        show_cumulative="combined_cum_index",
+        window=window,
+    )
+    return filtered
+
+
+def plot_new_multi_three_body_trend(
+    triple_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    window: int = 6,
+) -> pd.DataFrame:
+    filtered = filter_triples_newest_type(triple_deltas, panel, "multi")
+    traces = build_triple_event_traces(filtered, panel, window=window)
+    plot_aggregate_event_trend(
+        traces,
+        out_path,
+        series_specs=[
+            ("A_index", "#1f77b4", "Oldest site (A)"),
+            ("B_index", "#2ca02c", "Middle site (B)"),
+            ("C_index", "#d62728", "New multi site (C)"),
+            ("region_index", "#ff7f0e", "A+B+C market (monthly)"),
+        ],
+        event_id_col="triple_id",
+        title="Three-body: introduction of a new multi site (A/B type any)",
+        show_cumulative="region_cum_index",
+        window=window,
+    )
+    return filtered
+
+
+def plot_market_saturation(pair_deltas: pd.DataFrame, out_path: Path) -> None:
+    df = pair_deltas.copy()
+    df["regime"] = df.apply(pair_regime, axis=1)
+    df["loss_making"] = (df["existing_pct_wash_count_total"] <= -5) & (df["combined_pct_wash_count_total"] <= 5)
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 5.2))
+    colors = {
+        "mostly cannibalization": "#d62728",
+        "cannibalization plus expansion": "#ff7f0e",
+        "market expansion": "#2ca02c",
+        "flat to mixed": "#7f7f7f",
+    }
+
+    ax = axes[0]
+    for regime, group in df.groupby("regime"):
+        ax.scatter(
+            group["distance_miles"],
+            group["existing_pct_wash_count_total"],
+            c=colors.get(regime, "#333333"),
+            alpha=0.65,
+            s=28,
+            label=regime,
+        )
+    ax.axhline(-5, color="black", ls=":", lw=1)
+    ax.axhline(-10, color="gray", ls=":", lw=1)
+    ax.set_xlabel("Distance (miles)")
+    ax.set_ylabel("Incumbent % change (6mo post vs pre)")
+    ax.set_title("Incumbent impact vs distance")
+    ax.legend(fontsize=7, loc="lower left")
+
+    ax = axes[1]
+    ax.scatter(
+        df["existing_pct_wash_count_total"],
+        df["combined_pct_wash_count_total"],
+        c=df["loss_making"].map({True: "#d62728", False: "#1f77b4"}),
+        alpha=0.65,
+        s=32,
+    )
+    ax.axvline(-5, color="black", ls=":", lw=1)
+    ax.axhline(5, color="black", ls=":", lw=1)
+    xlim = (
+        float(df["existing_pct_wash_count_total"].quantile(0.02) - 5),
+        float(df["existing_pct_wash_count_total"].quantile(0.98) + 5),
+    )
+    ylim = (
+        float(min(-20, df["combined_pct_wash_count_total"].min() - 10)),
+        float(df["combined_pct_wash_count_total"].quantile(0.98) + 10),
+    )
+    ax.fill_between([xlim[0], -5], ylim[0], 5, alpha=0.12, color="#d62728", label="Loss-making zone\n(existing ≤ −5%, combined ≤ +5%)")
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    ax.set_xlabel("Incumbent % change")
+    ax.set_ylabel("Combined market % change")
+    n_loss = int(df["loss_making"].sum())
+    ax.set_title(f"Saturation / loss-making map ({n_loss}/{len(df)} pairs)")
+    ax.legend(loc="upper right", fontsize=8)
+
+    ax = axes[2]
+    band_stats = []
+    for band in ["0-3 mi", "3-5 mi", "5-8 mi", "8-10 mi"]:
+        sub = df[df["distance_band"] == band]
+        if sub.empty:
+            continue
+        band_stats.append(
+            {
+                "band": band,
+                "median_existing": sub["existing_pct_wash_count_total"].median(),
+                "median_combined": sub["combined_pct_wash_count_total"].median(),
+                "pct_loss_making": 100 * sub["loss_making"].mean(),
+                "n": len(sub),
+            }
+        )
+    stats = pd.DataFrame(band_stats)
+    x = np.arange(len(stats))
+    w = 0.35
+    ax.bar(x - w / 2, stats["median_existing"], width=w, label="Median incumbent %", color="#1f77b4")
+    ax.bar(x + w / 2, stats["median_combined"], width=w, label="Median combined %", color="#ff7f0e")
+    ax.axhline(5, color="black", ls=":", lw=1)
+    ax.axhline(-5, color="gray", ls=":", lw=1)
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{r['band']}\n(n={int(r['n'])})" for _, r in stats.iterrows()])
+    ax.set_ylabel("% change (6mo post vs pre)")
+    ax.set_title("Medians by distance band")
+    ax.legend(fontsize=8)
+    for i, row in stats.iterrows():
+        ax.text(i, ax.get_ylim()[1] * 0.92, f"{row['pct_loss_making']:.0f}% loss-making", ha="center", fontsize=7)
+
+    fig.suptitle(
+        "Market saturation: when is a new site loss-making for the incumbent?\n"
+        "Red zone ≈ incumbent down >5% and local market barely grows (≤+5%)",
+        fontsize=13,
+        y=1.02,
+    )
+    fig.tight_layout()
+    fig.savefig(out_path, bbox_inches="tight", dpi=120)
+    plt.close(fig)
+
+
 def plot_triple_examples_all(
     triple_deltas: pd.DataFrame,
     panel: pd.DataFrame,
@@ -1139,11 +1692,17 @@ def plot_triple_examples_all(
         a_type = _site_type_label(panel, triple["A_site"])
         b_type = _site_type_label(panel, triple["B_site"])
         c_type = _site_type_label(panel, triple["C_site"])
+        a_launch = month_floor(triple["A_launch_month"])
+        a_cohort = triple.get("A_cohort", "")
+        b_cohort = triple.get("B_cohort", "")
+        c_cohort = triple.get("C_cohort", "")
         ax.set_title(
-            f"{state} | {triple['market_zip']} | B launch {b_launch.strftime('%Y-%m')} | C launch {c_launch.strftime('%Y-%m')}\n"
-            f"A: {a_type} | B: {b_type} | C: {c_type}\n"
+            f"{state} | {triple['market_zip']}\n"
+            f"A start {a_launch.strftime('%Y-%m')} ({a_cohort}, {a_type}) | "
+            f"B start {b_launch.strftime('%Y-%m')} ({b_cohort}, {b_type}) | "
+            f"C start {c_launch.strftime('%Y-%m')} ({c_cohort}, {c_type})\n"
             f"A–C {triple['A_to_C_miles']:.1f} mi | B–C {triple['B_to_C_miles']:.1f} mi",
-            fontsize=6.5,
+            fontsize=5.5,
         )
         ax.tick_params(axis="y", labelsize=6)
         _apply_calendar_xaxis(ax, x_start, x_end, labelsize=5, month_interval=1)
@@ -1159,11 +1718,105 @@ def plot_triple_examples_all(
     fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False, fontsize=10, bbox_to_anchor=(0.5, 1.01))
     fig.suptitle(
         f"All three-body triples ({n_triples}): monthly washes, Jan 2024 – Dec 2025\n"
-        "Blue = A | Green = B | Red = C | dashed = B/C launch | title shows single/multi per site",
+        "Blue = A | Green = B | Red = C | dashed = B/C launch | title = start dates (gt2/lt2) + single/multi",
         fontsize=14,
         y=1.02,
     )
-    fig.subplots_adjust(left=0.06, right=0.99, top=0.92, bottom=0.12, hspace=0.82, wspace=0.38)
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.91, bottom=0.12, hspace=0.88, wspace=0.38)
+    fig.savefig(out_path, dpi=120, pad_inches=0.15)
+    plt.close(fig)
+
+
+def plot_quad_examples_all(
+    quad_deltas: pd.DataFrame,
+    panel: pd.DataFrame,
+    out_path: Path,
+    x_start: pd.Timestamp = CALENDAR_X_START,
+    x_end: pd.Timestamp = CALENDAR_X_END,
+    ncols: int = 6,
+) -> None:
+    """One subplot per quad: A/B/C/D monthly washes on a shared calendar axis."""
+    quads = quad_deltas.sort_values(["event_month", "A_to_D_miles", "B_to_D_miles", "C_to_D_miles"]).reset_index(drop=True)
+    n_quads = len(quads)
+    if n_quads == 0:
+        return
+
+    nrows = int(np.ceil(n_quads / ncols))
+    fig_w = max(24.0, ncols * 4.0)
+    fig_h = max(20.0, nrows * 3.4)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(fig_w, fig_h), sharex=False, sharey=False)
+    axes_flat = np.atleast_1d(axes).ravel()
+
+    site_styles = [
+        ("A (oldest)", "A_site", "A_launch_month", "#1f77b4", False, None),
+        ("B", "B_site", "B_launch_month", "#2ca02c", True, "B_launch_month"),
+        ("C", "C_site", "C_launch_month", "#ff7f0e", True, "C_launch_month"),
+        ("D (newest)", "D_site", "D_launch_month", "#d62728", True, "D_launch_month"),
+    ]
+
+    for ax in axes_flat[n_quads:]:
+        ax.set_visible(False)
+
+    for ax, (_, quad) in zip(axes_flat, quads.iterrows()):
+        b_launch = month_floor(quad["B_launch_month"])
+        c_launch = month_floor(quad["C_launch_month"])
+        d_launch = month_floor(quad["D_launch_month"])
+        state = quad.get("state") or _site_state_label(panel, quad["D_site"])
+        for label, site_col, launch_col, color, from_launch, _ in site_styles:
+            min_month = month_floor(quad[launch_col]) if from_launch else None
+            series = _site_calendar_series(
+                panel,
+                quad[site_col],
+                x_start,
+                x_end,
+                from_launch=from_launch,
+                min_calendar_month=min_month,
+            )
+            ax.plot(
+                series["calendar_month"],
+                series[PAIR_EVENT_METRIC],
+                marker="o",
+                ms=2.0,
+                lw=1.1,
+                color=color,
+                label=label,
+            )
+        ax.axvline(b_launch, color="#2ca02c", ls="--", lw=1.0, alpha=0.85)
+        ax.axvline(c_launch, color="#ff7f0e", ls="--", lw=1.0, alpha=0.85)
+        ax.axvline(d_launch, color="#d62728", ls="--", lw=1.0, alpha=0.85)
+        a_type = _site_type_label(panel, quad["A_site"])
+        b_type = _site_type_label(panel, quad["B_site"])
+        c_type = _site_type_label(panel, quad["C_site"])
+        d_type = _site_type_label(panel, quad["D_site"])
+        a_launch = month_floor(quad["A_launch_month"])
+        ax.set_title(
+            f"{state} | {quad['market_zip']}\n"
+            f"A {a_launch.strftime('%Y-%m')} ({quad.get('A_cohort', '')}, {a_type}) | "
+            f"B {b_launch.strftime('%Y-%m')} ({quad.get('B_cohort', '')}, {b_type}) | "
+            f"C {c_launch.strftime('%Y-%m')} ({quad.get('C_cohort', '')}, {c_type}) | "
+            f"D {d_launch.strftime('%Y-%m')} ({quad.get('D_cohort', '')}, {d_type})\n"
+            f"A–D {quad['A_to_D_miles']:.1f} mi | B–D {quad['B_to_D_miles']:.1f} mi | C–D {quad['C_to_D_miles']:.1f} mi",
+            fontsize=5.0,
+        )
+        ax.tick_params(axis="y", labelsize=6)
+        _apply_calendar_xaxis(ax, x_start, x_end, labelsize=5, month_interval=1)
+
+    for ax in axes_flat[:n_quads]:
+        ax.set_xlabel("Month", fontsize=6)
+
+    for ax in axes_flat[::ncols]:
+        if ax.get_visible():
+            ax.set_ylabel("Car washes", fontsize=7)
+
+    handles, labels = axes_flat[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper center", ncol=4, frameon=False, fontsize=10, bbox_to_anchor=(0.5, 1.01))
+    fig.suptitle(
+        f"All four-body quads ({n_quads}): monthly washes, Jan 2024 – Dec 2025\n"
+        "Blue = A | Green = B | Orange = C | Red = D | dashed = B/C/D launch | title = start dates + single/multi",
+        fontsize=14,
+        y=1.02,
+    )
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.90, bottom=0.12, hspace=0.95, wspace=0.38)
     fig.savefig(out_path, dpi=120, pad_inches=0.15)
     plt.close(fig)
 
@@ -1313,8 +1966,11 @@ def write_report(
     report = f"""# Site Interaction Report
 
 ## Method
-- Data used: `less_than-2yrs.csv` and `more_than-2yrs_monthly.csv`.
-- Monthly panel coverage: {validation['month_min'].date()} to {validation['month_max'].date()} across {validation['sites']} sites and {validation['rows']:,} site-month rows.
+- Data used (unified monthly panel):
+  - `less_than-2yrs.csv`: {validation['lt2_sites']} sites, {validation['lt2_rows']:,} site-month rows ({validation['lt2_month_min'].date()} to {validation['lt2_month_max'].date()}).
+  - `more_than-2yrs_monthly.csv`: {validation['gt2_sites']} sites, {validation['gt2_rows']:,} site-month rows ({validation['gt2_month_min'].date()} to {validation['gt2_month_max'].date()}).
+- Combined panel: {validation['sites']} unique sites, {validation['rows']:,} site-month rows, calendar span {validation['month_min'].date()} to {validation['month_max'].date()}.
+- Typical roles: newer launches from lt2; older neighbors from gt2 monthly (true calendar months in `year_month`).
 - Month indexing fix: the launch month is now the month that contains `operational_start_date`, so launch month = 1, the month before launch = 0, and earlier months are negative.
 - Rows impacted by that correction in `less_than-2yrs.csv`: {validation['lt2_rows_with_changed_month_number']:,} rows across {validation['lt2_sites_with_changed_month_number']} sites.
 - Prelaunch rows still present in the raw less-than-2-years panel: {validation['lt2_prelaunch_rows']:,}. These rows stay in the data for transparency but are excluded from new-site launch visuals before month 1.
@@ -1323,6 +1979,8 @@ def write_report(
 
 ## Two-body findings
 - Usable nearby pairs: {len(pair_deltas)}.
+- Existing-site source: {(pair_deltas['existing_cohort'] == 'gt2').sum() if 'existing_cohort' in pair_deltas.columns else 'n/a'} from gt2 monthly, {(pair_deltas['existing_cohort'] == 'lt2').sum() if 'existing_cohort' in pair_deltas.columns else 'n/a'} from lt2.
+- New-site source: {(pair_deltas['new_cohort'] == 'lt2').sum() if 'new_cohort' in pair_deltas.columns else 'n/a'} from lt2, {(pair_deltas['new_cohort'] == 'gt2').sum() if 'new_cohort' in pair_deltas.columns else 'n/a'} from gt2 monthly.
 - Median existing-site total change: {fmt_pct(pair_deltas['existing_pct_wash_count_total'].median())}.
 - Median combined-market total change: {fmt_pct(pair_deltas['combined_pct_wash_count_total'].median())}.
 - Same-ZIP share among usable pairs: {(pair_deltas['zip_match'].mean() * 100):.0f}%.
@@ -1341,12 +1999,89 @@ def write_report(
 - Nearby launches usually pressure the closest older site, but the local market often still expands once the new site is added.
 - The cleaner event-time plots are the easiest way to read the result: blue and green older-site lines soften after launch, while the orange combined-market line usually stays above the pre-launch baseline.
 """
-    report_path = out_dir / "site_interaction_report.md"
+    report_dir = out_dir / "report"
+    report_dir.mkdir(parents=True, exist_ok=True)
+    report_path = report_dir / "site_interaction_report.md"
     report_path.write_text(report)
     return report_path
 
 
-def curate_outputs(out_dir: Path, keep: set[str]) -> None:
-    for path in out_dir.iterdir():
-        if path.is_file() and path.name not in keep:
+INTERACTION_README = """# Site interaction outputs
+
+## plots/two_body/
+- `examples_all_sites.png` — every usable pair (calendar grid)
+- `avg_existing_single_new_multi_trend.png` — pooled median when existing=single, new=multi
+
+## plots/three_body/
+- `examples_all_sites.png` — every usable triple
+- `avg_new_multi_intro_trend.png` — pooled trend when newest site (C) is multi
+
+## plots/four_body/
+- `examples_all_sites.png` — every usable quad
+
+## plots/aggregate/
+- `any_new_operator_effect.png` — all pairs: incumbent + combined market
+- `market_saturation_threshold.png` — loss-making zone (incumbent ≤−5%, combined ≤+5%)
+
+## data/
+- `two_body_pair_deltas.csv`, `three_body_triple_deltas.csv`, `four_body_quad_deltas.csv`
+
+## report/
+- `site_interaction_report.md`
+
+Re-run `site_interaction_analysis.ipynb` or `python run_site_interaction_plots.py`.
+"""
+
+
+def prepare_interaction_dirs(out_dir: Path) -> dict[str, Path]:
+    plots = out_dir / "plots"
+    dirs = {
+        "plots": plots,
+        "two_body": plots / "two_body",
+        "three_body": plots / "three_body",
+        "four_body": plots / "four_body",
+        "aggregate": plots / "aggregate",
+        "data": out_dir / "data",
+        "report": out_dir / "report",
+    }
+    for path in dirs.values():
+        path.mkdir(parents=True, exist_ok=True)
+    return dirs
+
+
+def write_interaction_readme(out_dir: Path) -> Path:
+    readme_path = out_dir / "README.md"
+    readme_path.write_text(INTERACTION_README)
+    return readme_path
+
+
+def interaction_keep_set() -> set[str]:
+    return {
+        "README.md",
+        "plots/two_body/examples_all_sites.png",
+        "plots/two_body/avg_existing_single_new_multi_trend.png",
+        "plots/three_body/examples_all_sites.png",
+        "plots/three_body/avg_new_multi_intro_trend.png",
+        "plots/four_body/examples_all_sites.png",
+        "plots/aggregate/any_new_operator_effect.png",
+        "plots/aggregate/market_saturation_threshold.png",
+        "data/two_body_pair_deltas.csv",
+        "data/three_body_triple_deltas.csv",
+        "data/four_body_quad_deltas.csv",
+        "report/site_interaction_report.md",
+    }
+
+
+def curate_outputs(out_dir: Path, keep: set[str] | None = None) -> None:
+    keep_relative = interaction_keep_set() if keep is None else {p.replace("\\", "/") for p in keep}
+    if not out_dir.exists():
+        return
+    for path in sorted(out_dir.rglob("*"), key=lambda item: len(item.parts), reverse=True):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(out_dir).as_posix()
+        if rel not in keep_relative:
             path.unlink()
+    for path in sorted(out_dir.rglob("*"), reverse=True):
+        if path.is_dir() and path != out_dir and not any(path.iterdir()):
+            path.rmdir()
