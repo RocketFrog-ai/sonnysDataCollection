@@ -126,7 +126,8 @@ def load_backtesting() -> pd.DataFrame:
     return bt
 
 
-def site_directory(panel: pd.DataFrame) -> pd.DataFrame:
+def load_panel_address_directory() -> pd.DataFrame:
+    """Exact Address match lookup from lt2 + gt2 monthly CSVs."""
     keep = [
         "client_id_location_id",
         "client_id",
@@ -137,16 +138,64 @@ def site_directory(panel: pd.DataFrame) -> pd.DataFrame:
         "zip",
         "latitude",
         "longitude",
+        "operational_start_date",
     ]
     lt2 = pd.read_csv(DATA_DIR / "less_than-2yrs.csv", usecols=keep + ["client_type"], low_memory=False)
     gt2 = pd.read_csv(DATA_DIR / "more_than-2yrs_monthly.csv", usecols=keep, low_memory=False)
     gt2["client_type"] = np.nan
     raw = pd.concat([lt2, gt2], ignore_index=True)
-    return (
-        raw.drop_duplicates("client_id_location_id")
-        .merge(panel[["client_id_location_id", "cohort"]].drop_duplicates(), on="client_id_location_id", how="left")
-        .assign(addr_norm=lambda df: df["Address"].map(norm_addr))
+    raw["addr_norm"] = raw["Address"].map(norm_addr)
+    raw["operational_start_date"] = pd.to_datetime(raw["operational_start_date"], errors="coerce")
+    raw["source_cohort"] = np.where(raw["client_type"].notna(), "lt2", "gt2")
+    raw = raw.sort_values(["addr_norm", "source_cohort"])
+    return raw.drop_duplicates("addr_norm", keep="first")
+
+
+def site_directory(panel: pd.DataFrame) -> pd.DataFrame:
+    sites = load_panel_address_directory()
+    return sites.merge(
+        panel[["client_id_location_id", "cohort"]].drop_duplicates(),
+        on="client_id_location_id",
+        how="left",
+        suffixes=("", "_panel"),
     )
+
+
+def format_start_label(value: object) -> str:
+    ts = pd.to_datetime(value, errors="coerce")
+    if pd.isna(ts):
+        return "n/a"
+    return ts.strftime("%Y-%m-%d")
+
+
+def build_address_match_table(bt: pd.DataFrame, sites: pd.DataFrame) -> pd.DataFrame:
+    """Report exact address match + operational_start_date from panel CSVs."""
+    rows: list[dict[str, object]] = []
+    for _, row in bt.iterrows():
+        addr_norm = row["addr_norm"]
+        hit = sites[sites["addr_norm"] == addr_norm]
+        if hit.empty and addr_norm in MANUAL_SITE_IDS:
+            hit = sites[sites["client_id_location_id"] == MANUAL_SITE_IDS[addr_norm]]
+        matched = not hit.empty
+        panel_addr = hit.iloc[0]["Address"] if matched else None
+        exact = matched and panel_addr == row["Address"]
+        rows.append(
+            {
+                "backtesting_address": row["Address"],
+                "addr_norm": addr_norm,
+                "localisation": row.get("localisation"),
+                "address_match": matched,
+                "address_exact_string": exact if matched else False,
+                "panel_address": panel_addr,
+                "client_id_location_id": hit.iloc[0]["client_id_location_id"] if matched else None,
+                "operational_start_date": hit.iloc[0]["operational_start_date"] if matched else pd.NaT,
+                "panel_cohort": hit.iloc[0].get("source_cohort") if matched else None,
+            }
+        )
+    out = pd.DataFrame(rows)
+    out["operational_start_date"] = pd.to_datetime(out["operational_start_date"], errors="coerce")
+    out["start_label"] = out["operational_start_date"].map(format_start_label)
+    return out
 
 
 def annual_washes_from_panel(panel: pd.DataFrame) -> pd.DataFrame:
@@ -209,6 +258,9 @@ def build_matched_table() -> pd.DataFrame:
     panel, _ = build_panel(DATA_DIR)
     sites = site_directory(panel)
     bt = load_backtesting()
+    address_match = build_address_match_table(bt, sites)
+    address_match.to_csv(DATA_OUT_DIR / "backtesting_address_match.csv", index=False)
+
     matched = match_backtesting(bt, sites)
     annual = annual_washes_from_panel(panel)
     matched = matched.merge(annual, on="client_id_location_id", how="left")
@@ -221,19 +273,27 @@ def build_matched_table() -> pd.DataFrame:
     matched["wash_2025"] = pd.to_numeric(matched["wash_2025_bt"], errors="coerce")
     matched["wash_plot"] = matched["wash_2024"]
     matched["wash_best"] = matched["wash_2024"]
+    matched["operational_start_date"] = pd.to_datetime(matched["operational_start_date"], errors="coerce")
+    matched["start_label"] = matched["operational_start_date"].map(format_start_label)
     matched["short_label"] = matched.apply(
         lambda r: f"{r.get('client_id', str(r['Address']).split(',')[0])} ({r.get('city', '')})",
+        axis=1,
+    )
+    matched["plot_label"] = matched.apply(
+        lambda r: f"{r['short_label']}\nstart {r['start_label']}",
         axis=1,
     )
     matched["cluster_label"] = matched["localisation"].map(LOCALISATION_LABELS)
     matched["site_tag"] = matched.apply(
         lambda r: (
-            f"{r['retail_anchor']} | {r.get('Accessibility', '?')} | "
-            f"traffic {r['traffic_n']:,.0f}" if pd.notna(r.get("traffic_n")) else f"{r['retail_anchor']} | {r.get('Accessibility', '?')}"
+            f"{r['retail_anchor']} | start {r['start_label']} | {r.get('Accessibility', '?')} | "
+            f"traffic {r['traffic_n']:,.0f}"
+            if pd.notna(r.get("traffic_n"))
+            else f"{r['retail_anchor']} | start {r['start_label']} | {r.get('Accessibility', '?')}"
         ),
         axis=1,
     )
-    return matched
+    return matched, address_match
 
 
 def _retail_color(anchor: str) -> str:
@@ -267,10 +327,16 @@ def _scatter_labeled(
             edgecolors="black",
             linewidths=0.4,
         )
+        start = row.get("start_label", "n/a")
+        label = (
+            f"{_site_short_name(row['short_label'])}\nstart {start}"
+            if start != "n/a"
+            else _site_short_name(row["short_label"])
+        )
         ax.annotate(
-            _site_short_name(row["short_label"]),
+            label,
             (x * 100 if x_pct else x, row[y_col]),
-            fontsize=6.5,
+            fontsize=6 if start == "n/a" else 5.5,
             xytext=(4, 3),
             textcoords="offset points",
         )
@@ -287,16 +353,23 @@ def _categorical_washes(
     title: str,
     *,
     color: str = "#4C78A8",
+    annotate_start: bool = False,
 ) -> None:
     order = sub.groupby(col)["wash_plot"].median().sort_values(ascending=False).index.tolist()
     for i, cat in enumerate(order):
         pts = sub.loc[sub[col] == cat]
         ax.scatter([i] * len(pts), pts["wash_plot"], s=100, c=color, zorder=3, edgecolors="black", linewidth=0.4)
         for _, row in pts.iterrows():
+            if annotate_start:
+                text = f"{_site_short_name(row['short_label'])}\nstart {row['start_label']}"
+                fs = 5.5
+            else:
+                text = _site_short_name(row["short_label"])
+                fs = 6
             ax.annotate(
-                _site_short_name(row["short_label"]),
+                text,
                 (i, row["wash_plot"]),
-                fontsize=6,
+                fontsize=fs,
                 ha="center",
                 xytext=(0, 5),
                 textcoords="offset points",
@@ -394,7 +467,7 @@ def plot_localisation_wash_years(cluster_df: pd.DataFrame, loc_id: int, out: Pat
             ax.text(ax.get_xlim()[1] * 0.02, i + height / 2, "no 2025 in sheet", va="center", fontsize=7, color="#888")
 
     ax.set_yticks(y)
-    ax.set_yticklabels([_site_short_name(s) for s in sub["short_label"]])
+    ax.set_yticklabels(sub["plot_label"].tolist(), fontsize=8)
     ax.set_xlabel("Car wash count (backtesting.xlsx)")
     ax.set_title(f"{title}\n2024 vs 2025 car wash count columns from backtesting.xlsx")
     ax.legend(loc="lower right")
@@ -424,10 +497,16 @@ def plot_localisation_dashboard(cluster_df: pd.DataFrame, loc_id: int, out: Path
     ax = axes[0, 0]
     sub_sorted = sub.sort_values("wash_plot", ascending=True)
     colors = [_retail_color(a) for a in sub_sorted["retail_anchor"]]
-    ax.barh(sub_sorted["short_label"], sub_sorted["wash_plot"], color=colors, edgecolor="white", lw=0.5)
+    ax.barh(sub_sorted["plot_label"], sub_sorted["wash_plot"], color=colors, edgecolor="white", lw=0.5)
     xmax = float(sub_sorted["wash_plot"].max()) * 1.28
     for i, (_, row) in enumerate(sub_sorted.iterrows()):
-        ax.text(row["wash_plot"] + xmax * 0.02, i, row["retail_anchor"], va="center", fontsize=7)
+        ax.text(
+            row["wash_plot"] + xmax * 0.02,
+            i,
+            f"{row['retail_anchor']} · start {row['start_label']}",
+            va="center",
+            fontsize=6.5,
+        )
     ax.set_xlim(0, xmax)
     ax.set_xlabel("2024 car wash count (sheet)")
     ax.set_title("Wash volume by site (2024)")
@@ -441,12 +520,18 @@ def plot_localisation_dashboard(cluster_df: pd.DataFrame, loc_id: int, out: Path
         pts = sub.loc[sub["retail_anchor"] == anchor]
         ax.scatter([i] * len(pts), pts["wash_plot"], s=100, c=_retail_color(anchor), zorder=3, edgecolors="black", linewidths=0.4)
         for _, row in pts.iterrows():
-            ax.annotate(_site_short_name(row["short_label"]), (i, row["wash_plot"]), fontsize=6, ha="center", xytext=(0, 5), textcoords="offset points")
+            start = row.get("start_label", "n/a")
+            text = (
+                f"{_site_short_name(row['short_label'])}\nstart {start}"
+                if start != "n/a"
+                else _site_short_name(row["short_label"])
+            )
+            ax.annotate(text, (i, row["wash_plot"]), fontsize=5.5 if start != "n/a" else 6, ha="center", xytext=(0, 5), textcoords="offset points")
     ax.set_xticks(range(len(order)), order, rotation=15, ha="right")
     ax.set_ylabel("Annual washes")
     ax.set_title("Washes by nearby major retail")
 
-    _categorical_washes(axes[1, 1], sub, "Accessibility", "Washes by accessibility")
+    _categorical_washes(axes[1, 1], sub, "Accessibility", "Washes by accessibility", annotate_start=True)
 
     # Row 2: demographics
     _scatter_labeled(
@@ -501,7 +586,10 @@ Retail blank / "None" in Excel → **No major retail** (Colorado sites have no l
 | `wash_vs_traffic.png` | Traffic vs **2024** washes, colored by localisation |
 
 ### Wash counts
-All factor charts use **`2024 car wash count`** from `backtesting.xlsx` (not panel CSV sums). Year comparison charts use **`2024 car wash count`** and **`2025 car wash count`** columns from the same sheet.
+All factor charts use **`2024 car wash count`** from `backtesting.xlsx`. Year comparison uses **`2024`** and **`2025 car wash count`** columns.
+
+### Address match
+`data/backtesting_address_match.csv` — exact normalized `Address` match to `less_than-2yrs.csv` / `more_than-2yrs_monthly.csv` + `operational_start_date` when present in those files.
 
 Re-run: `python backtesting_analysis.py`
 """
@@ -514,7 +602,7 @@ def main() -> None:
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     DATA_OUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    matched = build_matched_table()
+    matched, address_match = build_matched_table()
     meta_rows = []
     for loc, group in matched.groupby("localisation"):
         meta_rows.append(
@@ -529,6 +617,8 @@ def main() -> None:
     matched = matched.merge(cluster_meta, on="localisation", how="left")
 
     matched.to_csv(DATA_OUT_DIR / "backtesting_matched.csv", index=False)
+    print(f"Address match: {address_match['address_match'].sum()}/{len(address_match)} exact norm matches")
+    print(f"  operational_start_date known: {address_match['start_label'].ne('n/a').sum()}/{len(address_match)}")
     cluster_meta.to_csv(DATA_OUT_DIR / "backtesting_clusters.csv", index=False)
 
     plot_correlation_heatmap(matched, PLOTS_DIR / "factor_correlation_heatmap.png")

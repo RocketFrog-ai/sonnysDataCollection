@@ -2856,6 +2856,7 @@ def interaction_keep_set() -> set[str]:
         "backtesting/README.md",
         "backtesting/data/backtesting_matched.csv",
         "backtesting/data/backtesting_clusters.csv",
+        "backtesting/data/backtesting_address_match.csv",
         "backtesting/plots/factor_correlation_heatmap.png",
         "backtesting/plots/wash_vs_traffic.png",
         "backtesting/plots/cluster_localisation_1.png",
