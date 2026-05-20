@@ -1,0 +1,290 @@
+[
+  {
+    "cbsa_name": "Dallas-Fort Worth-Arlington, TX",
+    "cbsa_id": "19100",
+    "peer_level_resolved": "cbsa",
+    "peer_ref_level_per_month": 10527.75,
+    "peer_count": 15,
+    "ramp_month0": 0.8775980943970698,
+    "ramp_month24": 1.0,
+    "seasonal_peak_month": 3,
+    "seasonal_trough_month": 11,
+    "year_totals": [
+      {
+        "year_idx": 1,
+        "predicted_year_total": 149485.78813328483,
+        "predicted_low_total": 64806.95940098651,
+        "predicted_high_total": 344808.66037188534
+      },
+      {
+        "year_idx": 2,
+        "predicted_year_total": 140396.07240857955,
+        "predicted_low_total": 60866.27149149608,
+        "predicted_high_total": 323842.03376921226
+      },
+      {
+        "year_idx": 3,
+        "predicted_year_total": 123977.21777137442,
+        "predicted_low_total": 34285.47854041099,
+        "predicted_high_total": 448304.97285357554
+      },
+      {
+        "year_idx": 4,
+        "predicted_year_total": 124183.0893056364,
+        "predicted_low_total": 34342.41161405874,
+        "predicted_high_total": 449049.40988997393
+      },
+      {
+        "year_idx": 5,
+        "predicted_year_total": 126908.68767454973,
+        "predicted_low_total": 35096.1665866819,
+        "predicted_high_total": 458905.2473151914
+      }
+    ],
+    "5_year_total": 664950.8552934249,
+    "sample_label": "Dallas, TX",
+    "site_lat": 32.7767,
+    "site_lon": -96.797,
+    "state": "TX"
+  },
+  {
+    "cbsa_name": "Atlanta-Sandy Springs-Roswell, GA",
+    "cbsa_id": "12060",
+    "peer_level_resolved": "cbsa",
+    "peer_ref_level_per_month": 10220.322147651006,
+    "peer_count": 30,
+    "ramp_month0": 0.8775980943970698,
+    "ramp_month24": 1.0,
+    "seasonal_peak_month": 4,
+    "seasonal_trough_month": 12,
+    "year_totals": [
+      {
+        "year_idx": 1,
+        "predicted_year_total": 147420.54988963154,
+        "predicted_low_total": 63911.611336925285,
+        "predicted_high_total": 340044.9163328337
+      },
+      {
+        "year_idx": 2,
+        "predicted_year_total": 137410.60409553404,
+        "predicted_low_total": 59571.973711268554,
+        "predicted_high_total": 316955.65786379116
+      },
+      {
+        "year_idx": 3,
+        "predicted_year_total": 122912.19466472752,
+        "predicted_low_total": 33990.95001715182,
+        "predicted_high_total": 444453.82049271
+      },
+      {
+        "year_idx": 4,
+        "predicted_year_total": 123089.18171482095,
+        "predicted_low_total": 34039.895184796245,
+        "predicted_high_total": 445093.8104530743
+      },
+      {
+        "year_idx": 5,
+        "predicted_year_total": 125445.54352812082,
+        "predicted_low_total": 34691.53904191456,
+        "predicted_high_total": 453614.47850591474
+      }
+    ],
+    "5_year_total": 656278.0738928348,
+    "sample_label": "Atlanta, GA",
+    "site_lat": 33.749,
+    "site_lon": -84.388,
+    "state": "GA"
+  },
+  {
+    "cbsa_name": "Phoenix-Mesa-Scottsdale, AZ",
+    "cbsa_id": "38060",
+    "peer_level_resolved": "cbsa",
+    "peer_ref_level_per_month": 4369.275510204082,
+    "peer_count": 6,
+    "ramp_month0": 0.897131560310634,
+    "ramp_month24": 1.01429212330962,
+    "seasonal_peak_month": 5,
+    "seasonal_trough_month": 11,
+    "year_totals": [
+      {
+        "year_idx": 1,
+        "predicted_year_total": 63122.86899628664,
+        "predicted_low_total": 27365.82025221481,
+        "predicted_high_total": 145601.2117889975
+      },
+      {
+        "year_idx": 2,
+        "predicted_year_total": 56905.525033438826,
+        "predicted_low_total": 24670.399083327582,
+        "predicted_high_total": 131260.08899952314
+      },
+      {
+        "year_idx": 3,
+        "predicted_year_total": 52361.02984649645,
+        "predicted_low_total": 14480.264982768307,
+        "predicted_high_total": 189338.9002099286
+      },
+      {
+        "year_idx": 4,
+        "predicted_year_total": 52020.24511061768,
+        "predicted_low_total": 14386.022121386974,
+        "predicted_high_total": 188106.61338729016
+      },
+      {
+        "year_idx": 5,
+        "predicted_year_total": 53524.19852520276,
+        "predicted_low_total": 14801.93533067211,
+        "predicted_high_total": 193544.94961404713
+      }
+    ],
+    "5_year_total": 277933.86751204234,
+    "sample_label": "Phoenix, AZ",
+    "site_lat": 33.4484,
+    "site_lon": -112.074,
+    "state": "AZ"
+  },
+  {
+    "cbsa_name": "Cleveland-Elyria, OH",
+    "cbsa_id": "17460",
+    "peer_level_resolved": "state",
+    "peer_ref_level_per_month": 6285.4051724137935,
+    "peer_count": 6,
+    "ramp_month0": 0.8242798402424918,
+    "ramp_month24": 1.001762936395453,
+    "seasonal_peak_month": 3,
+    "seasonal_trough_month": 1,
+    "year_totals": [
+      {
+        "year_idx": 1,
+        "predicted_year_total": 88145.41104534002,
+        "predicted_low_total": 38213.90746460315,
+        "predicted_high_total": 203319.00095662297
+      },
+      {
+        "year_idx": 2,
+        "predicted_year_total": 83893.14790776465,
+        "predicted_low_total": 36370.41285578155,
+        "predicted_high_total": 193510.59592812083
+      },
+      {
+        "year_idx": 3,
+        "predicted_year_total": 75479.13023590922,
+        "predicted_low_total": 20873.497134968526,
+        "predicted_high_total": 272934.57652696
+      },
+      {
+        "year_idx": 4,
+        "predicted_year_total": 74767.16559160611,
+        "predicted_low_total": 20676.60573046225,
+        "predicted_high_total": 270360.09311561583
+      },
+      {
+        "year_idx": 5,
+        "predicted_year_total": 76383.40310002559,
+        "predicted_low_total": 21123.570724573598,
+        "predicted_high_total": 276204.45166278933
+      }
+    ],
+    "5_year_total": 398668.2578806456,
+    "sample_label": "Cleveland, OH",
+    "site_lat": 41.4993,
+    "site_lon": -81.6944,
+    "state": "OH"
+  },
+  {
+    "cbsa_name": "Tampa-St. Petersburg-Clearwater, FL",
+    "cbsa_id": "45300",
+    "peer_level_resolved": "cbsa",
+    "peer_ref_level_per_month": 16584.455974842767,
+    "peer_count": 19,
+    "ramp_month0": 0.8775980943970698,
+    "ramp_month24": 1.0,
+    "seasonal_peak_month": 3,
+    "seasonal_trough_month": 8,
+    "year_totals": [
+      {
+        "year_idx": 1,
+        "predicted_year_total": 226781.9689563295,
+        "predicted_low_total": 98317.37209643243,
+        "predicted_high_total": 523102.4827765489
+      },
+      {
+        "year_idx": 2,
+        "predicted_year_total": 215571.88677579886,
+        "predicted_low_total": 93457.43624682768,
+        "predicted_high_total": 497244.9516520443
+      },
+      {
+        "year_idx": 3,
+        "predicted_year_total": 197330.0456218515,
+        "predicted_low_total": 54570.953971742034,
+        "predicted_high_total": 713550.782441617
+      },
+      {
+        "year_idx": 4,
+        "predicted_year_total": 195924.00555845496,
+        "predicted_low_total": 54182.11836720832,
+        "predicted_high_total": 708466.5035411627
+      },
+      {
+        "year_idx": 5,
+        "predicted_year_total": 197926.25295405675,
+        "predicted_low_total": 54735.833084706595,
+        "predicted_high_total": 715706.6842813587
+      }
+    ],
+    "5_year_total": 1033534.1598664916,
+    "sample_label": "Tampa, FL",
+    "site_lat": 27.9506,
+    "site_lon": -82.4572,
+    "state": "FL"
+  },
+  {
+    "cbsa_name": "Boise City, ID",
+    "cbsa_id": "14260",
+    "peer_level_resolved": "region",
+    "peer_ref_level_per_month": 7124.340513670257,
+    "peer_count": 73,
+    "ramp_month0": 0.897131560310634,
+    "ramp_month24": 1.01429212330962,
+    "seasonal_peak_month": 7,
+    "seasonal_trough_month": 11,
+    "year_totals": [
+      {
+        "year_idx": 1,
+        "predicted_year_total": 95677.52886809083,
+        "predicted_low_total": 41479.32593707511,
+        "predicted_high_total": 220692.82283399263
+      },
+      {
+        "year_idx": 2,
+        "predicted_year_total": 90183.74616015976,
+        "predicted_low_total": 39097.59214581142,
+        "predicted_high_total": 208020.6893853805
+      },
+      {
+        "year_idx": 3,
+        "predicted_year_total": 83031.16206069678,
+        "predicted_low_total": 22961.9858889486,
+        "predicted_high_total": 300242.9278761902
+      },
+      {
+        "year_idx": 4,
+        "predicted_year_total": 82628.89454423058,
+        "predicted_low_total": 22850.740173395123,
+        "predicted_high_total": 298788.3176559334
+      },
+      {
+        "year_idx": 5,
+        "predicted_year_total": 85646.24038890073,
+        "predicted_low_total": 23685.176919646437,
+        "predicted_high_total": 309699.12184480607
+      }
+    ],
+    "5_year_total": 437167.57202207873,
+    "sample_label": "Boise, ID",
+    "site_lat": 43.615,
+    "site_lon": -116.2023,
+    "state": "ID"
+  }
+]
