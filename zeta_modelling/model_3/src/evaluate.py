@@ -52,6 +52,63 @@ def summarize_hit_miss(hit_df: pd.DataFrame) -> dict:
     }
 
 
+def annual_hit_miss(
+    df: pd.DataFrame,
+    year_col: str,
+    pred_col: str = "pred_wash",
+    actual_col: str = "wash_count_total",
+    band: float = C.HIT_BAND,
+    pct_band: float = C.ANNUAL_PCT_BAND,
+    min_months: int = C.ANNUAL_MIN_MONTHS,
+) -> tuple[dict, pd.DataFrame]:
+    """Aggregate monthly rows to per-(site, year) annual totals and grade them.
+
+    ``year_col`` selects the annual bucket:
+
+    * ``"tenure_year"`` — **site-age aligned** (Year-1 = months 0-11,
+      Year-2 = 12-23 ...). This is the correct bucket for cold-start: the
+      sites in this panel opened across *every* month of 2024, so a calendar
+      year is a meaningless mix of life-stages.
+    * ``"calendar_year"`` — a plain calendar split (2024 / 2025). Only valid
+      for the temporal eval, which is a calendar split by construction.
+
+    Only year-buckets with >= ``min_months`` observed months are graded, so a
+    partial year is never scored as a full-year miss. Each bucket gets two
+    HIT flags: ``hit_abs`` (|err| <= ``band`` washes) and ``hit_pct``
+    (|err| / actual <= ``pct_band``) — the percentage band is fairer across
+    sites of very different size.
+    """
+    g = df.groupby(["client_id_location_id", year_col]).agg(
+        actual=(actual_col, "sum"),
+        predicted=(pred_col, "sum"),
+        n_months=(actual_col, "size"),
+    ).reset_index()
+    full = g[g["n_months"] >= min_months].copy()
+    if len(full) == 0:
+        return {"n_site_years": 0, "by_year": {}}, full
+    full["abs_error"] = (full["actual"] - full["predicted"]).abs()
+    full["pct_error"] = full["abs_error"] / full["actual"].clip(lower=1.0)
+    full["hit_abs"] = (full["abs_error"] <= band).astype(int)
+    full["hit_pct"] = (full["pct_error"] <= pct_band).astype(int)
+
+    def _slice(d: pd.DataFrame) -> dict:
+        return {
+            "n_site_years": int(len(d)),
+            "hit_rate_abs": float(d["hit_abs"].mean()),
+            "hit_rate_pct": float(d["hit_pct"].mean()),
+            "annual_mae": float(d["abs_error"].mean()),
+            "annual_wmape": float(d["abs_error"].sum() / max(d["actual"].sum(), 1.0)),
+            "median_pct_error": float(d["pct_error"].median()),
+        }
+
+    summary = _slice(full)
+    summary["band_abs"] = band
+    summary["band_pct"] = pct_band
+    summary["min_months"] = min_months
+    summary["by_year"] = {int(y): _slice(d) for y, d in full.groupby(year_col)}
+    return summary, full
+
+
 def segment_metrics(eval_df: pd.DataFrame, pred_col: str, actual_col: str) -> dict:
     out = {"overall": regression_metrics(eval_df[actual_col], eval_df[pred_col])}
     for col in ("region", "peer_level_resolved", "maturity_indicator"):

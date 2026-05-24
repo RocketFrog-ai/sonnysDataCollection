@@ -1,23 +1,8 @@
 client_id_location_id,operational_start_date,latitude,longitude,state,region,city,zip,cohort,cbsa_id,cbsa_name,h3_id
 360carwash_1,2024-02-19,32.6466149,-96.5333187,TX,South,Seagoville,75159,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cb94edfffff
 alpineshell_1,2024-02-05,32.835188,-116.765481,CA,West,Alpine,91901,young,41740,"San Diego-Carlsbad, CA",8829a4424bfffff
-amerishinecarwash_0261b387ac69db2e1b0e7d69ea0e4033719134be5fcf4675b677abb289a40971,2024-01-01,32.536298,-92.104572,LA,South,MONROE,71201-3613,young,33740,"Monroe, LA",88444e181bfffff
-amerishinecarwash_16fe06fb9961d5964f1dc53de81393d4ab83b894753cb4065437eb65baf1ce8a,2024-01-01,32.47927,-93.716855,LA,South,SHREVEPORT,71105-2202,young,43340,"Shreveport-Bossier City, LA",88444c3063fffff
-amerishinecarwash_17a520c181f545c3373a8e9c8ffb349f39e1b408585c2a286160b7e2fb6f56ad,2024-01-01,31.2945966,-92.5162082,LA,South,ALEXANDRIA,71303-3735,young,10780,"Alexandria, LA",8844411243fffff
-amerishinecarwash_42bcf4d5e66908109e70a8a8fdd0bbca24f5bc5941ab63aee554065d094b67ef,2024-01-01,32.3997169,-93.8074496,LA,South,SHREVEPORT,71118-3127,young,43340,"Shreveport-Bossier City, LA",88444ca8bbfffff
-amerishinecarwash_7694b30dfbd52c328e5105978d227b74ea19e62b77378e31f304dc272260c33c,2024-01-01,32.4461256,-93.8623978,LA,South,SHREVEPORT,71129-2513,young,43340,"Shreveport-Bossier City, LA",88444cad1bfffff
-amerishinecarwash_87724d3819b5c0d3066b7020ae0810e51fd65f183fe5c31e994ca241fd01b40a,2024-01-01,39.3952576,-81.5000379,LA,South,PINEVILLE,71360,young,31930,"Marietta, OH",882a820445fffff
-anthonyscarcarecenters_4964c97b6f9af421953b95837ed36ece5856c16363d78ca09af68087200e97ba,2024-01-01,35.543434,-89.663313,AL,South,BIRMINGHAM,35216-3782,young,32820,"Memphis, TN-MS-AR",88264a5093fffff
 aquashineexpress_3,2024-11-06,26.646338,-81.9860327,FL,South,Cape Coral,33991,young,15980,"Cape Coral-Fort Myers, FL",8844133807fffff
 bashamagicaltouchcarwash_1,2024-07-18,42.566565,-82.913395,MI,Midwest,Clinton Township,48035,young,19820,"Detroit-Warren-Dearborn, MI",882ab2d751fffff
-bigdans_098a56f462311ae9d6648cae2ba231cbedaa7522be4a60d7c8fe8d5f0fd97690,2024-01-01,28.4684259,-81.3963728,FL,South,ORLANDO,32809-4609,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a90285fffff
-bigdans_90180adbc720f01f42cef4fbed8b696b5c015f6579a6473cb4caef283946b71c,2024-01-01,31.580736,-84.177034,GA,South,ALBANY,31701-1405,young,10500,"Albany, GA",8844e341d7fffff
-bigdans_ae62be4a0415bf3e86e4d73861eebb0e73c3f7c35b224ad8cbd029a2c03079fd,2024-01-01,28.281645,-81.3463469,FL,South,KISSIMMEE,34744-5402,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a91335fffff
-bigdans_bb66a57eccb12aaa9380a9df0a0fc44d433642fd0e9d2e163da8a4c41024a1f9,2024-01-01,34.7296679,-87.6683898,AL,South,MUSCLE SHOALS,35661-3542,young,22520,"Florence-Muscle Shoals, AL",88264bb703fffff
-bigdans_d73b707316144b116fee4cb21d34dc5218da9c1eefa489091e265d64edb43c3b,2024-01-01,27.7730942,-82.6799435,FL,South,SAINT PETERSBURG,33713-8555,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a9197fffff
-bigdans_d87ac3e5ffe9eac82ac18db9613cacd12658c95736eebf0a6b387dc0f3674748,2024-01-01,34.030088,-84.648559,GA,South,KENNESAW,30144-1075,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844ccd8b1fffff
-bigdans_dee755e64dfe4892c80d2940e8db493513d12e9d43d9cf868921bafc4524236a,2024-01-01,42.689116,-71.157979,SC,South,FOUNTAIN INN,29644-9205,young,14460,"Boston-Cambridge-Newton, MA-NH",882a3046bbfffff
-bigdans_f04f90dc2c612ffdf4a1ce5e9e53f59cdd81b098bd1398bc74825a392dc33a5f,2024-01-01,33.938408,-84.120367,FL,South,ORLANDO,32837-5087,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c13913fffff
 bigdripcarwash_1,2024-08-14,33.3500742,-86.6338366,AL,South,Chelsea,35043,young,13820,"Birmingham-Hoover, AL",8844e8311dfffff
 bighorncarwash_1,2024-11-25,46.606317,-112.0200597,MT,West,Helena,59601,young,25740,"Helena, MT",8827926725fffff
 bigpeachcarwash_10,2024-03-11,33.1941083,-84.2833177,GA,South,Griffin,30224,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c19acbfffff
@@ -28,29 +13,6 @@ blastcarwash_1,2024-03-06,32.8908534,-96.4693111,TX,South,Rockwall,75032,young,1
 bluebuffalocarwash_1,2024-11-19,42.0992047,-79.2983729,NY,Northeast,Lakewood,14750,young,27460,"Jamestown-Dunkirk-Fredonia, NY",882aa2da6dfffff
 bluerainexpress_2,2024-09-25,33.3429979,-86.7946528,AL,South,Pelham,35124,young,13820,"Birmingham-Hoover, AL",8844e832dbfffff
 bluewave_65,2024-04-11,26.255522,-98.2316589,TX,South,McAllen,78504,young,32580,"McAllen-Edinburg-Mission, TX",8848b38413fffff
-bluewaveexpress_0341762450b0638b593ea7bcc63529d7ffe2df01801dd8e830338fef78801a92,2024-01-01,29.5318864,-95.5125063,TX,South,MISSOURI CITY,77459-4746,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446cbad7fffff
-bluewaveexpress_2740bab2a1a85382cfca57f6da2e8ce4ac04c31ee0396f378f274c76bf0d101e,2024-01-01,29.504452,-95.111127,TX,South,LEAGUE CITY,77573-2012,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c103bfffff
-bluewaveexpress_27b51eea4fc0b8428e92bc0a76046817b772339efbb29476847431996c25ac4b,2024-01-01,37.3239942,-121.964776,TX,South,HOUSTON,77035-3307,young,41940,"San Jose-Sunnyvale-Santa Clara, CA",8828347045fffff
-bluewaveexpress_28472d418dd99fa85034a9dd45ea0510838b7b3881755b94fb5b738022c1ce71,2024-01-01,32.456287,-97.7267,TX,South,GRANBURY,76049,young,19100,"Dallas-Fort Worth-Arlington, TX",8826ca2e33fffff
-bluewaveexpress_2ae553ae05e6fa39a74883d5a25c61a8bb66c54eef7d920941203463a5f72e88,2024-01-01,36.318523,-86.625336,TX,South,ROSENBERG,77471-6255,young,34980,"Nashville-Davidson--Murfreesboro--Franklin, TN",88264d8131fffff
-bluewaveexpress_34dfe44c16f312d0c7a63b91647c079c57ae66fbc616cc8d135dc9ba326e9b9c,2024-01-01,29.690437,-95.202587,TX,South,PASADENA,77502,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c0755fffff
-bluewaveexpress_423f3584964233287e4b0104f3c20fd3380cf997c740f405cdeaca3ff7221862,2024-01-01,30.068785,-94.132751,TX,South,BEAUMONT,77701-4620,young,13140,"Beaumont-Port Arthur, TX",88446ea95dfffff
-bluewaveexpress_4d9d3969d2fc01f93742ade5a9d17924e24c9090775f5967201e2990eaf9e8ff,2024-01-01,29.9456787,-95.6763916,TX,South,CYPRESS,77433-2289,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446dd9d1fffff
-bluewaveexpress_4f58a5e0392de301de3a4b8212ee1c38b47a0b8b49dc5645535f4220563f60e3,2024-01-01,30.3542302,-95.5844037,TX,South,MONTGOMERY,77356,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446d4311fffff
-bluewaveexpress_598dd6724614af10ccbfd6c4e8ee2fa80b9ff204f21e090a329ba047cf876aa2,2024-01-01,28.1860383,-82.4067407,TX,South,KATY,77494-2002,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a0067fffff
-bluewaveexpress_6c16f621bcd49925e9333931f1311147730236b9163ca3dafac80a18aa703463,2024-01-01,34.8281587,-82.3476092,TX,South,KATY,77494-3428,young,24860,"Greenville-Anderson-Mauldin, SC",8844dd545dfffff
-bluewaveexpress_8d3ac6f965fd5037b61adeb51186f9c1427daf89c076acc1eddad9a7aee578f7,2024-01-01,33.7904146,-84.6218277,TX,South,LUMBERTON,77657-7379,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c1a559fffff
-bluewaveexpress_9402387c3599af4875cb4d3b66ce96ca98a8a411ddc0cffb794984bf15eae342,2024-01-01,29.665756,-95.181168,TX,South,PASADENA,77504-1209,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c074dfffff
-bluewaveexpress_9ff775a6a4fad0d1ad9c8710cb87729fa182a5ad099841659fcb180f19b5f007,2024-01-01,39.352355,-74.456205,TX,South,HOUSTON,77077-1628,young,12100,"Atlantic City-Hammonton, NJ",882a132cb5fffff
-bluewaveexpress_aa98369f050223fbba8f3d37a932dc5f965cc293ce5121de1877ce9483e24472,2024-01-01,33.9967499,-96.3997585,TX,South,GROVES,77619-2907,young,20460,"Durant, OK",8826cc2899fffff
-bluewaveexpress_b764e8508158c1eeccc78b6342ac1e6196cd53a34c123ea1f02fc7b5030c3823,2024-01-01,33.968317,-84.027426,TX,South,SAN ANTONIO,78224-1020,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c176a7fffff
-bluewaveexpress_ba3d1705793e621c17a7a8d9ecd81ff4b50f3d4807913668bd18b101e429c04e,2024-01-01,29.572449,-98.2389819,TX,South,CIBOLO,78108-3122,young,41700,"San Antonio-New Braunfels, TX",88489c54a3fffff
-bluewaveexpress_bade6886bdb5c4828c09db0c9665e3e31b23fb36708493e966d76c296250fe27,2024-01-01,29.4685353,-95.0868765,TX,South,LEAGUE CITY,77573-4968,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c1061fffff
-bluewaveexpress_def56e9b137f843a14bcdffdbf6d52380d91bac32175b3ecef36d95ad63e87ef,2024-01-01,33.7617077,-96.5824205,TX,South,DENISON,75020-3584,young,43300,"Sherman-Denison, TX",8826c8814bfffff
-bluewaveexpress_e21f844696701efac40cc30380e5671663ed1f2aa102fa2fc3ed7d7dd47b5d8f,2024-01-01,29.879263,-95.719304,TX,South,CYPRESS,77433-3329,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446dda33fffff
-bluewaveexpress_e7300b81cfdfd6066249cfb94cf4d7005e9aa97c6bc061d37fed01eaff3d72c7,2024-01-01,29.8031816,-95.486465,TX,South,HOUSTON,77055-3502,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446cad1dfffff
-bluewaveexpress_e7508d6ecf2117c86295b9b71705766eac062d07367191c9e60fa9652e378dc8,2024-01-01,29.801015,-95.409759,TX,South,HOUSTON,77008-3693,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c320bfffff
-bluewaveexpress_ffb141e25e679b0e2821aac1a8f4f56816fc82ebfd16ea282f6af57d5a334336,2024-01-01,29.915706,-95.584965,TX,South,HOUSTON,77065-4305,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446dd927fffff
 blusaharacarwash_1,2024-11-19,36.144831,-115.223724,NV,West,Las Vegas,89146,young,29820,"Las Vegas-Henderson-Paradise, NV",882986b8c7fffff
 bluwavefl_1,2024-03-18,26.493543,-81.8046573,FL,South,Fort Myers,33912,young,15980,"Cape Coral-Fort Myers, FL",8844130891fffff
 bubblebay_1,2024-02-08,42.0653996,-71.016278,MA,Northeast,Brockton,02301,young,14460,"Boston-Cambridge-Newton, MA-NH",882a339537fffff
@@ -59,58 +21,9 @@ bubbledown_6,2024-11-22,28.099303,-82.740366,FL,South,Palm Harbor,34684,young,45
 buffitautowash_4,2024-10-24,35.0684992,-94.627127,OK,South,Poteau,74953,young,22900,"Fort Smith, AR-OK",8826e94d57fffff
 bulldogexpress_1,2024-11-19,34.5679558,-83.3038851,GA,South,Toccoa,30577,young,45740,"Toccoa, GA",8844ce4341fffff
 cadillacexpresscarwash_8,2024-03-29,29.717932,-95.313413,TX,South,Houston,77023,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446ca935fffff
-calibercapital_2837373608458ed51b1d53145da3acbd84bbbcc68b8df09b5aa6f32a41719e75,2024-01-01,28.034077,-80.672085,FL,South,PALM BAY,32907-1109,young,37340,"Palm Bay-Melbourne-Titusville, FL",8844a82169fffff
-calibercapital_30846e4a879f32ab1256b61aef974f4415bbd7f589297279fc5b368628ccd3ea,2024-01-01,27.508429,-81.493523,FL,South,SEBRING,33870-1626,young,42700,"Sebring, FL",8844ad08e3fffff
-calibercapital_5dd76f20cdeaecb477cf7bd3b5ae4e7dd8d3370cc018a92636ebb8564e496f39,2024-01-01,34.0877012,-84.2650764,GA,South,ALPHARETTA,30004-3889,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c1219dfffff
-calibercapital_66efbe1b66590027e7f8290ecb00d373e0a409da2b501ae075176fb32f1d295e,2024-01-01,27.5849206,-80.3773537,FL,South,VERO BEACH,32962,young,42680,"Sebastian-Vero Beach, FL",8844a81921fffff
-calibercapital_7ef47db7efabba1554b8ed6f40037d966a5c04fb3cb150607d2759e9718c5b4e,2024-01-01,28.465182,-81.276232,FL,South,ORLANDO,32822-5530,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a90107fffff
-calibercapital_8876a98bc215f36e7a4eb6dbaf465e8ea16e4355fc44e2cd910635a358e0f79b,2024-01-01,27.4684473,-80.3330603,FL,South,FORT PIERCE,34946,young,38940,"Port St. Lucie, FL",8844a8cc63fffff
 carwashcompany_1,2024-01-18,38.0294787,-85.5923771,KY,South,Mount Washington,40047,young,31140,"Louisville/Jefferson County, KY-IN",882668b51dfffff
 cascadecarwash_3,2024-04-16,31.2087712,-82.3823678,GA,South,Waycross,31501,young,48180,"Waycross, GA",8844f1716dfffff
 centurycarwash_9,2024-05-29,35.01991,-89.840712,TN,South,Memphis,38141,young,32820,"Memphis, TN-MS-AR",882659a45dfffff
-championxpress-paterson_d107d365237e15c03a8bf3c1bbdc38c406b0aae3680de162e291291c36ec64f0,2024-01-01,39.092194,-108.527841,CO,West,GRAND JUNCTION,81506,young,24300,"Grand Junction, CO",88269c1ac1fffff
-championxpress_15b4e22aa9715b215626dc8cbca332ce90eded9bf145bfc591b8573a6e31c65b,2024-01-01,33.1089209,-82.0239966,NM,West,EDGEWOOD,87015,young,12260,"Augusta-Richmond County, GA-SC",8844c20157fffff
-championxpress_1b45b065772d0982d39a46ec4a4dd9a910eadf03ce96091dfaf4fe6bafcc76f2,2024-01-01,36.3816146,-105.5891681,NM,West,TAOS,87571,young,45340,"Taos, NM",8848dbc9d1fffff
-championxpress_1d700c40eb6d957c2cd1477c695d19cc98d16c0b8ce997ef62715880429a4f04,2024-01-01,41.460256,-87.066806,NM,West,ALBUQUERQUE,87112-4433,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",882664a931fffff
-championxpress_22d7f8fe30715a313c2c1053514eb43f13eb6a71c7f02d1235f75dc48d4dae7d,2024-01-01,35.1967273,-106.7040338,NM,West,ALBUQUERQUE,87114-6072,young,10740,"Albuquerque, NM",8848d8b345fffff
-championxpress_3f5a12a6339bc73427b27f9c6d2d00c3cde0b8861a92cbd12e9466a70d206c94,2024-01-01,35.0878992,-106.588358,NM,West,ALBUQUERQUE,87110-6451,young,10740,"Albuquerque, NM",8848d89595fffff
-championxpress_48afa8b2903d27b99e75c3b8034fdc8ddc58853ad92629132541f3858b14b843,2024-01-01,28.827798,-81.886524,NM,West,ALBUQUERQUE,87120-1852,young,36740,"Orlando-Kissimmee-Sanford, FL",8844f4d89bfffff
-championxpress_4cbfd5adef04e7abf821a0a129da0a0c50032c1d1afb4d3570af7d85b22420e0,2024-01-01,37.989728,-84.209236,NM,West,RIO RANCHO,87124-6315,young,30460,"Lexington-Fayette, KY",88266da4bbfffff
-championxpress_58cd6ad1c75d3eaa24d7b011cc64b2daf6ac62e8ea4177a33b7205bf6a51b633,2024-01-01,35.1319325,-106.5505556,NM,West,ALBUQUERQUE,87111-2358,young,10740,"Albuquerque, NM",8848d88703fffff
-championxpress_5a3788a78948efd58445072e4bacb8f94ce5eb1c4e435b651554521cee916633,2024-01-01,35.637909,-106.0123587,NM,West,SANTA FE,87507-4838,young,42140,"Santa Fe, NM",8848d8726dfffff
-championxpress_65dae04943088c007297a8f75899cea52415914de973e4f2f2ef51dd22de81eb,2024-01-01,35.1891635,-106.6160627,NM,West,ALBUQUERQUE,87114-2134,young,10740,"Albuquerque, NM",8848d88411fffff
-championxpress_66f0756f49d2d7d33e25907a5b04c25ed094a146155b78439ece08ddf56203ab,2024-01-01,31.803138,-106.28622,TX,South,EL PASO,79936-1461,young,21340,"El Paso, TX",8848c6c539fffff
-championxpress_679470d644f6d4adfb8cad13d12fe164d8292ff2fcb46acf4d1814dd62ba5b96,2024-01-01,35.0716988,-106.5278692,NM,West,ALBUQUERQUE,87123-2725,young,10740,"Albuquerque, NM",8848d882d1fffff
-championxpress_72fab3e8378fa3d529ef3d87c1d6e369d66534930dc37fdb1edc439d5ec8d01a,2024-01-01,40.439071,-105.076512,CO,West,LOVELAND,80538,young,22660,"Fort Collins, CO",8826aa5a95fffff
-championxpress_7664d544572e2282d273a55ecbec3adcb4fdd96c6e24e8206948b33d223a311f,2024-01-01,36.826306,-108.011873,NM,West,AZTEC,87410,young,22140,"Farmington, NM",88269ba2edfffff
-championxpress_7f1d06d383f3da0e66395f44e40844e2944cc3b12fe4aba6c94c36877fd07ab2,2024-01-01,36.043861,-86.662127,NM,West,BELEN,87002-4033,young,34980,"Nashville-Davidson--Murfreesboro--Franklin, TN",88264d142dfffff
-championxpress_8070f682be4c2669f62574b412826ae8ac1cabba57ce5a6be0ddfed64346e062,2024-01-01,35.0948277,-106.6718713,NM,West,ALBUQUERQUE,87104-1606,young,10740,"Albuquerque, NM",8848dd496dfffff
-championxpress_8a93424a81fb1f43b818d1d83a1284076adbd13f2ad6d25ab4281dd938b9cc64,2024-01-01,31.656119,-106.291424,TX,South,EL PASO,79927-1601,young,21340,"El Paso, TX",8848c6d537fffff
-championxpress_8fdbd5859785d4ac423189ff87543aa19517ec49c1404de19652fb416b86c1fb,2024-01-01,35.6184151,-105.2251685,NM,West,LAS VEGAS,87701-4987,young,29780,"Las Vegas, NM",8848da80d3fffff
-championxpress_9376436f8552692726156a130a2ec99cb465063afef66359c8e933aca5469244,2024-01-01,35.05899,-106.623743,NM,West,ALBUQUERQUE,87106-4174,young,10740,"Albuquerque, NM",8848d894e7fffff
-championxpress_95bc6dd66bb2d0e21ddf249710bb10f2c361d2f1af39172db11a288f11ac3842,2024-01-01,35.642658,-106.013367,NM,West,GALLUP,87301-4932,young,42140,"Santa Fe, NM",8848d87265fffff
-championxpress_a0a9cf9eb53d37f67808db56d1ff21b9de94ec054a827a7a8d717cb0740dde5b,2024-01-01,36.0110015,-106.0633355,NM,West,ESPANOLA,87532-9510,young,21580,"Española, NM",8848d86ec3fffff
-championxpress_a528072b627adb7ee23ac75a3fb241964db1c18f597bf93f47ca76e398110ac5,2024-01-01,38.219339,-104.638418,CO,West,PUEBLO,81005-3167,young,39380,"Pueblo, CO",88268802e1fffff
-championxpress_a8dc29f7a44c51f4703ef394ef79d2e32a30c58a1da1bfec96783ec0e27bf076,2024-01-01,40.073116,-104.816729,CO,West,FORT LUPTON,80621-1220,young,24540,"Greeley, CO",8826aa78e1fffff
-championxpress_b54afd63bc1cd55e545a528fad0ebcbee3328399d2b1dc8c2f6e704b4c2a00d8,2024-01-01,38.4462829,-105.1920469,CO,West,CANON CITY,81212-9326,young,15860,"Cañon City, CO",882688c833fffff
-championxpress_bb0870a5166823d63e81c2e51b88796ddc26aa4a689aadfb2598e342887a128b,2024-01-01,35.53824,-108.758132,NM,West,GALLUP,87301-5354,young,23700,"Gallup, NM",8848ca1563fffff
-championxpress_c18d73959e94e13f52b897642d5807dc97fe449635aad24d4413091d196177c1,2024-01-01,32.7818276,-108.2726762,NM,West,SILVER CITY,88061-7883,young,43500,"Silver City, NM",8848c0aed3fffff
-championxpress_c94e2aad81ff700cfb02226e7f7e1b3917d5e3be57e264c153151f89ba6af0f8,2024-01-01,39.084002,-108.471501,CO,West,GRAND JUNCTION,81504,young,24300,"Grand Junction, CO",88269c11e3fffff
-championxpress_cb885bbbcb23af0d81fb186d714914ae8ff90d679017d8d348d1c1631d219ff8,2024-01-01,34.8069634,-106.7336153,NM,West,LOS LUNAS,87031-7464,young,10740,"Albuquerque, NM",8848dc253bfffff
-championxpress_cf8861263c10dbc09a5c30c9bd94fee1fa6b9b26609eb6186b3bb8830a4a05e5,2024-01-01,31.8632753,-106.5879374,TX,South,EL PASO,79932,young,21340,"El Paso, TX",8848c61285fffff
-championxpress_d0789aade27f20a1ca14376b7e1ffbefead2aa4cb321bd933c27149679c5d1a0,2024-01-01,40.3753805,-80.7046964,NM,West,RIO RANCHO,87144-5618,young,48260,"Weirton-Steubenville, WV-OH",882a86aa07fffff
-championxpress_d0f923a9d7db694c91ecbc07c5134ffc79dc27dcc23f451bfc59fbf2c77dd991,2024-01-01,40.4786853,-104.8884584,CO,West,WINDSOR,80550-3298,young,24540,"Greeley, CO",8826aa5765fffff
-championxpress_d3b652b10642b531693d03aaf7d4cc12e00024cee7c89d9e70d32ee6de2b005b,2024-01-01,31.9212694,-106.4397093,TX,South,EL PASO,79924,young,21340,"El Paso, TX",8848c61addfffff
-championxpress_d5dbb15412218cd90698b99bd10f18750bba2621e7475fc759e6ba9842c000d0,2024-01-01,35.109512,-106.560552,NM,West,ALBUQUERQUE,87110-3637,young,10740,"Albuquerque, NM",8848d8875dfffff
-championxpress_e3cfd10095b2ecd7d8b87c5a7b925cb9d0b24ea9dec5745857ba7bba6d99e323,2024-01-01,40.740348,-73.320643,TX,South,EL PASO,79905,young,35620,"New York-Newark-Jersey City, NY-NJ-PA",882a10a115fffff
-championxpress_eecb6201f11089cd948f4ad030104f379cec548a19a44bc53c575ffbc66a2e8f,2024-01-01,35.0756921,-106.7230234,NM,West,ALBUQUERQUE,87121,young,10740,"Albuquerque, NM",8848dd4b3dfffff
-championxpress_ef28c80b7117809aa3042a88c1673ff971de97c74c0fb871bcc9f744abc44943,2024-01-01,33.577615,-96.1923883,CO,West,ALAMOSA,81101-2273,young,14300,"Bonham, TX",8826c8b207fffff
-championxpress_f4c65eaeaae263eef498998718839593eceb62b399c813f6afd7a01a5fa3739f,2024-01-01,40.9765307,-90.3654912,IL,Midwest,GALESBURG,61401-1222,young,23660,"Galesburg, IL",882675720bfffff
-championxpress_f653b793950a8e4aa57089fe0e6d7c08dea91447b9d1965ec8ceeba45d4b428a,2024-01-01,31.698634,-106.221197,TX,South,EL PASO,79928-6314,young,21340,"El Paso, TX",8848c6c011fffff
-championxpress_f714ba83da4be717584d74fcb4de5b3d1ad42eb7def72371c6cc470b78b10f29,2024-01-01,37.243331,-107.870827,CO,West,DURANGO,81301,young,20420,"Durango, CO",8826994357fffff
-championxpress_fa4cd0e43fb3e5b8174d89f22c30d65bbeb63d8d2920461cb518e40f44b0ec4c,2024-01-01,35.136501,-106.6419371,NM,West,ALBUQUERQUE,87107-5205,young,10740,"Albuquerque, NM",8848d88611fffff
-championxpress_fbe817467f45901f3aeffe41bfc958397e80db4d93d1da53e1e2d10fe640bd8b,2024-01-01,31.781584,-106.21569,TX,South,EL PASO,79938,young,21340,"El Paso, TX",8848c6ce47fffff
-championxpress_fcb7a0634d2dc69682206a2bea3c011ae5f459b6e88aea5bb957314e393acd60,2024-01-01,40.9700414,-90.3823484,IL,Midwest,GALESBURG,61401-1302,young,23660,"Galesburg, IL",8826757207fffff
 circlek_4,2024-05-29,37.0502256,-84.626411,KY,South,Somerset,42501,young,43700,"Somerset, KY",8844cb2eb3fffff
 clean_4,2024-03-20,32.2066453,-98.2326992,TX,South,Stephenville,76401,young,44500,"Stephenville, TX",88489b2b21fffff
 clearwater_16,2024-04-25,29.801015,-95.409759,TX,South,Houston,77008,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c320bfffff
@@ -119,27 +32,18 @@ clearwater_19,2024-08-27,32.456287,-97.7267,TX,South,Granbury,76049,young,19100,
 clearwater_20,2024-10-03,29.665539,-95.463115,TX,South,Houston,77035,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446caacdfffff
 coast2coast_1,2024-08-20,27.446595,-82.474166,FL,South,Bradenton,34203,young,35840,"North Port-Sarasota-Bradenton, FL",88441e631bfffff
 cosmicexpress_1,2024-06-06,29.563413,-97.942892,TX,South,Seguin,78155,young,41700,"San Antonio-New Braunfels, TX",88489c412dfffff
-countrysidecarwash_247470a707c3c8cab837ccc774645b398da8b8daea89cbb086c95b26dd631b4c,2024-01-01,35.5028538,-119.274357,CA,West,SHAFTER,93263-2156,young,12540,"Bakersfield, CA",8829ac6b37fffff
-countrysidecarwash_811335d3c595cbf7a66cc687ca2b16163625777e0d0e8fa07a4f13894a291665,2024-01-01,35.146132,-119.4703459,CA,West,TAFT,93268,young,12540,"Bakersfield, CA",8829ac09c3fffff
 crownamerica_1,2024-01-10,33.859779,-118.126279,CA,West,Lakewood,90712,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a56853fffff
 deepcleancarwash_1,2024-02-01,32.1384443,-81.3176351,GA,South,Bloomingdale,31302,young,42340,"Savannah, GA",8844d51205fffff
 dinoclean_1,2024-04-30,33.1462647,-96.8040187,TX,South,Frisco,75034,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c80dd7fffff
 dinodashwash_4,2024-08-27,37.144259,-113.458937,UT,West,Washington,84780,young,41100,"St. George, UT",8829957095fffff
-dirtydogscarwash_962bc1d43753856a53059737f6b739f924315a1d6c9b6334c6ff32b573b981cd,2024-01-01,28.1202427,-80.7004707,FL,South,MELBOURNE,32934-7217,young,37340,"Palm Bay-Melbourne-Titusville, FL",8844a821bdfffff
-dirtydogscarwash_c25c84e09a2e04574ad7d7111d5c526e587b43e58a76dee7fa0723aec8082540,2024-01-01,30.224516,-81.552353,FL,South,BROOKSVILLE,34601,young,27260,"Jacksonville, FL",8844f055cbfffff
-dirtydogscarwash_ca31ad46a37c09ee0b4bdbb8135d12e4bcfb5cb2741e8a54d24c26bf89ac1db7,2024-01-01,28.330282,-82.699845,FL,South,PORT RICHEY,34668,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441aa8a7fffff
 dragonsedge_1,2024-10-23,36.8450174,-81.4955846,VA,South,Marion,24354,young,14140,"Bluefield, WV-VA (nearest)",882a99b937fffff
-drivenbrands_cdff18930862ec79ca1fb88b2b03249421b0ec654a07c0bb408f86860f85039c,2024-01-01,34.9412627,-80.958123,SC,South,ROCK HILL,29730-8185,young,16740,"Charlotte-Concord-Gastonia, NC-SC",8844d85135fffff
 elitecarwash_1,2024-04-16,38.057274,-121.350366,CA,West,Stockton,95209,young,44700,"Stockton-Lodi, CA",88283620e3fffff
 euclidanaheimcarwash_1,2024-10-31,33.8512745,-117.9412602,CA,West,Anaheim,92801,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a0b4a7fffff
 expresswash_6,2024-09-09,27.9970206,-82.5761059,FL,South,Tampa,33615,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a8d57fffff
-fastlapcarwash_09ea18e025fbb436a8195bf863ce0758f2fcfb26effdd1b7dfc3390f43966c16,2024-01-01,34.166594,-84.177567,AZ,West,PHOENIX,85031-3006,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c12d0dfffff
 fastnfurious_1,2024-02-27,37.7215582,-85.8388727,KY,South,Elizabethtown,42701,young,21060,"Elizabethtown-Fort Knox, KY",8826683407fffff
 feelgreatcarwash_1,2024-06-05,32.7589159,-96.8931161,TX,South,Dallas,75211,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cb9b15fffff
 floriscarwash_3,2024-01-10,28.567093,-81.253742,FL,South,Orlando,32825,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a90f21fffff
-fordautowash_49ae30acd3f6fd9520a5a34f4a258d3b9301d3f3dcb20774b2b38f54cefcd487,2024-01-01,42.3263524,-83.2884476,MI,Midwest,DEARBORN HEIGHTS,48127-3021,young,19820,"Detroit-Warren-Dearborn, MI",882ab2cdedfffff
 fordroadcarwash_1,2024-01-12,42.3263524,-83.2884476,MI,Midwest,Dearborn Heights,48127,young,19820,"Detroit-Warren-Dearborn, MI",882ab2cdedfffff
-fourseasonsautowashexpress_0e8dc9e8d555c8dc56cd1889fccc82569776b21d2a5d905e19bee69ccfa73d97,2024-01-01,33.569785,-83.478895,GA,South,MADISON,30650-4631,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c15991fffff
 freedomexpress_1,2024-08-15,36.5767865,-94.769154,OK,South,Grove,74344,young,33060,"Miami, OK (nearest)",8826ec28a1fffff
 freshwash_3,2024-03-12,34.287202,-83.809828,GA,South,Gainesville,30501,young,23580,"Gainesville, GA",8844ced681fffff
 galaxycarwash_1,2024-11-25,28.6581873,-81.1785821,FL,South,Oviedo,32765,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a972a5fffff
@@ -156,36 +60,23 @@ gateexpress_19,2024-05-08,30.266266,-81.523687,FL,South,Jacksonville,32246,young
 gateexpress_2,2024-01-09,30.0611968,-81.5066026,FL,South,Saint Johns,32259,young,27260,"Jacksonville, FL",8844f05217fffff
 gateexpress_20,2024-05-11,30.2593677,-81.4667972,FL,South,Jacksonville,32224,young,27260,"Jacksonville, FL",8844f042b5fffff
 gateexpress_21,2024-07-31,30.242152,-81.5197215,FL,South,Jacksonville,32256,young,27260,"Jacksonville, FL",8844f055a9fffff
-gateexpress_2d3a55f865294092ad3cae7132f0043540a789db7474a509e48f5942b252211e,2024-01-01,30.2593677,-81.4667972,FL,South,JACKSONVILLE,32224,young,27260,"Jacksonville, FL",8844f042b5fffff
 gateexpress_4,2024-01-03,29.963635,-81.488713,FL,South,St. Augustine,32092,young,27260,"Jacksonville, FL",8844f0c835fffff
 gateexpress_5,2024-01-23,30.1234741,-81.3980103,FL,South,Ponte Vedra Beach,32081,young,27260,"Jacksonville, FL",8844f05adbfffff
 gateexpress_6,2024-01-16,30.2382919,-81.3867508,FL,South,Ponte Vedra Beach,32082,young,27260,"Jacksonville, FL",8844f04025fffff
 gateexpress_7,2024-01-30,30.09541,-81.52176,FL,South,Saint Johns,32259,young,27260,"Jacksonville, FL",8844f05281fffff
 gateexpress_8,2024-02-06,30.163314,-81.5999599,FL,South,Jacksonville,32258,young,27260,"Jacksonville, FL",8844f0563dfffff
 gateexpress_9,2024-02-19,30.287164,-81.450161,FL,South,Jacksonville,32224,young,27260,"Jacksonville, FL",8844f0408bfffff
-gateexpress_9640689cfa04f8f46518b3db07ff1ddb28c67eccd739104881181027fe6b291d,2024-01-01,30.242152,-81.5197215,FL,South,JACKSONVILLE,32256,young,27260,"Jacksonville, FL",8844f055a9fffff
-gateexpress_c01bb6e61741f8a21220a71372394a6372cf04710a033f5cc683572524b1a6f6,2024-01-01,29.9311001,-81.3301191,FL,South,SAINT AUGUSTINE,32084,young,27260,"Jacksonville, FL",8844f6271dfffff
-gateexpress_c312e4075434ef9fda7b53d593be6bf2fc764e99002f77884603d7e04523874f,2024-01-01,30.266266,-81.523687,FL,South,JACKSONVILLE,32246-9999,young,27260,"Jacksonville, FL",8844f055b5fffff
-gfyexpresscarwash_fda23e329009c7c774e89e6143d630df0f4715d087b82ce983a2f7c084b229d7,2024-01-01,30.069256,-95.50916,TX,South,SPRING,77379-3318,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c2605fffff
 gogreennclean1_3,2024-10-01,39.8414799,-74.9633474,NJ,Northeast,Gibbsboro,08056,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882a137b53fffff
 goshine_1,2024-11-19,32.4669702,-90.108616,MS,South,Madison,39110,young,27140,"Jackson, MS",88445c3863fffff
 greenwayautowash_1,2024-03-14,42.790152,-83.7456,MI,Midwest,Fenton,48430,young,22420,"Flint, MI",88274d04e9fffff
 heroescarwash_10,2024-08-20,35.738892,-77.955324,NC,South,Wilson,27896,young,48980,"Wilson, NC",882ad4c9a1fffff
-ishinecarwash_228dc2032fc4a44f282b4b131b9c2a58c3f937941b5b816152f5dfa4d80db8f3,2024-01-01,29.735291,-95.6278394,TX,South,HOUSTON,77077-3403,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446ca563fffff
-ishinecarwash_60502f1753cd26072cd0ea7f801b5737c4a82b6cfd7a2a2b0318087fcadc0e16,2024-01-01,37.2116947,-93.3459477,TX,South,ROSENBERG,77471-2390,young,44180,"Springfield, MO",8826533149fffff
-ishinecarwash_e2ddffa6556f1fa53c5886e04ba392728b2541a54032e4cbe4dd1555937ead48,2024-01-01,26.172691,-98.01465,TX,South,WESLACO,78599-4520,young,32580,"McAllen-Edinburg-Mission, TX",8848b381e1fffff
 jammincarwash_3,2024-04-16,28.210344,-82.354471,FL,South,Wesley Chapel,33544,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a0131fffff
 joehollandexpresscarwash_1,2024-10-02,38.3691698,-81.6986407,WV,South,South Charleston,25303,young,16620,"Charleston, WV",882a9caf19fffff
 jupitergalaxycarwash_1,2024-02-21,26.934891,-80.137243,FL,South,Jupiter,33458,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844aea16dfffff
 kiwicarwash_3,2024-07-23,32.6264407,-85.4037566,AL,South,Opelika,36801,young,12220,"Auburn-Opelika, AL",8844ee755dfffff
-landsharkcarwash_7b5c4fa13243f410f6cbe7e5ecaa951a1743da059a90f8738635de62887c3850,2024-01-01,32.505409,-84.946976,GA,South,COLUMBUS,31909-5248,young,17980,"Columbus, GA-AL",8844c5b2d7fffff
 licketysplitexpress_1,2024-05-21,39.6072578,-119.2244436,NV,West,Fernley,89408,young,22280,"Fernley, NV",88298941a9fffff
 linkscarwash_1,2024-08-16,28.452047,-81.3345029,FL,South,Orlando,32812,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a9006bfffff
-luvcarwash_09c8adb81920ac1c43915c3e7fe2e1bc364a1aee1cb5bef497160ef1321dd309,2024-01-01,33.053915,-117.261008,PA,Northeast,MONTGOMERYVILLE,18936-9601,young,41740,"San Diego-Carlsbad, CA",8829a40ca7fffff
-luvcarwash_0de4539b5084f5f790caf751859cf5c410a542656755c3740bd744b7e4352586,2024-01-01,30.103818,-81.481478,FL,South,SAINT JOHNS,32259-2420,young,27260,"Jacksonville, FL",8844f0501bfffff
-luvcarwash_29280a8e0af8d02eefd0a0c9488c8ac94b17300cb31a8ecb43a169f78a396368,2024-01-01,41.463164,-75.642049,PA,Northeast,SCRANTON,18519-1684,young,42540,"Scranton--Wilkes-Barre--Hazleton, PA",882aa5ac67fffff
 luvcarwash_39,2024-01-12,31.980289,-81.146533,GA,South,Savannah,31419,young,42340,"Savannah, GA",8844d5c29bfffff
-luvcarwash_3e96033de8cf88eb16c13f5cc56bb785b2f34ab2e077fc53d67a106d3ebf8524,2024-01-01,41.3923952,-75.6926622,PA,Northeast,TAYLOR,18517,young,42540,"Scranton--Wilkes-Barre--Hazleton, PA",882aa5adb5fffff
 luvcarwash_44,2024-03-09,41.463164,-75.642049,PA,Northeast,Dickson City,18519,young,42540,"Scranton--Wilkes-Barre--Hazleton, PA",882aa5ac67fffff
 luvcarwash_45,2024-01-12,32.137208,-81.254417,GA,South,Pooler,31322,young,42340,"Savannah, GA",8844d51307fffff
 luvcarwash_46,2024-03-09,41.3923952,-75.6926622,PA,Northeast,Taylor,18517,young,42540,"Scranton--Wilkes-Barre--Hazleton, PA",882aa5adb5fffff
@@ -193,7 +84,6 @@ luvcarwash_47,2024-03-25,40.2460378,-75.2428014,PA,Northeast,Montgomeryville,189
 luvcarwash_49,2024-03-25,31.956633,-81.324565,GA,South,Richmond Hill,31324,young,42340,"Savannah, GA",8844d599b5fffff
 luvcarwash_50,2024-02-03,31.9602019,-81.3043055,GA,South,Richmond Hill,31324,young,42340,"Savannah, GA",8844d58b45fffff
 luvcarwash_51,2024-06-13,34.09821,-118.36309,CA,West,Los Angeles,90046,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a1d691fffff
-luvcarwash_5194addbeb018e58028e9e36d1bf79b7dfae14d55145fb81a37ada1cef2f1a5e,2024-01-01,39.9863188,-75.8072989,PA,Northeast,COATESVILLE,19320-3535,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882aac10e9fffff
 luvcarwash_52,2024-06-28,34.172404,-118.83919,CA,West,Thousand Oaks,91362,young,37100,"Oxnard-Thousand Oaks-Ventura, CA",8829a186b5fffff
 luvcarwash_53,2024-04-17,30.2940283,-81.6082694,FL,South,Jacksonville,32207,young,27260,"Jacksonville, FL",8844f00967fffff
 luvcarwash_54,2024-06-28,33.833923,-84.338848,GA,South,Atlanta,30329,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c1322dfffff
@@ -202,7 +92,6 @@ luvcarwash_56,2024-06-28,34.203789,-118.535853,CA,West,Los Angeles,91335,young,3
 luvcarwash_57,2024-07-11,34.274291,-118.779373,CA,West,Simi Valley,93065,young,37100,"Oxnard-Thousand Oaks-Ventura, CA",8829a1ba2dfffff
 luvcarwash_58,2024-07-24,34.271329,-118.796781,CA,West,Simi Valley,93065,young,37100,"Oxnard-Thousand Oaks-Ventura, CA",8829a1ba05fffff
 luvcarwash_59,2024-07-25,34.1945855,-118.6064073,CA,West,Los Angeles,91303,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a18e2dfffff
-luvcarwash_5be881592d1574b4d342da876bdfd96e4d236b537c7a5809ff6e884fe01cfe3f,2024-01-01,40.0419556,-75.5325945,PA,Northeast,MALVERN,19355-2144,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882aac8e1bfffff
 luvcarwash_60,2024-11-21,40.130566,-75.400818,PA,Northeast,Eagleville,19403,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882aac95adfffff
 luvcarwash_61,2024-07-24,34.2016944,-118.4500576,CA,West,Los Angeles,91405,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a18833fffff
 luvcarwash_62,2024-07-24,30.103818,-81.481478,FL,South,Saint Johns,32259,young,27260,"Jacksonville, FL",8844f0501bfffff
@@ -214,10 +103,6 @@ luvcarwash_67,2024-09-20,38.4452886,-122.7323316,CA,West,Santa Rosa,95401,young,
 luvcarwash_68,2024-10-02,38.4266968,-122.7142944,CA,West,Santa Rosa,95404,young,42220,"Santa Rosa, CA",88283035c3fffff
 luvcarwash_69,2024-10-29,39.9863188,-75.8072989,PA,Northeast,Coatesville,19320,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882aac10e9fffff
 luvcarwash_70,2024-11-15,40.0419556,-75.5325945,PA,Northeast,Frazer,19355,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882aac8e1bfffff
-luvcarwash_728b1259977f18dcbad480ce0870c40bff7f1233aef3e020087ee925ad24dacb,2024-01-01,31.980289,-81.146533,GA,South,SAVANNAH,31419-1825,young,42340,"Savannah, GA",8844d5c29bfffff
-luvcarwash_9c1af8af11c0258b74ccced5e031e45cd0d15862fef95d2b865aa6b926645345,2024-01-01,26.385582,-80.076998,FL,South,GREEN COVE SPRINGS,32043-9320,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844ae935dfffff
-luvcarwash_a64ed1b9b9aa80b1434e74396ab5f35ca92f156fb9ed7f89e60d5d10433f5747,2024-01-01,30.2940283,-81.6082694,FL,South,JACKSONVILLE,32207-5161,young,27260,"Jacksonville, FL",8844f00967fffff
-luvcarwash_df45bb856915950a47cd8f42c941fcc28c1bdb95e8ccda0aeafab6be18bd5580,2024-01-01,39.5215281,-107.7767197,FL,South,JACKSONVILLE,32244-5114,young,24060,"Glenwood Springs, CO",8826835aebfffff
 mach1expresswash_14,2024-02-01,41.7205024,-83.6060366,OH,Midwest,Toledo,43613,young,45780,"Toledo, OH",882a94d34dfffff
 mach1expresswash_18,2024-10-29,34.1542831,-86.8420462,AL,South,Cullman,35055,young,18980,"Cullman, AL",8844ebb6edfffff
 magicmex_1,2024-11-14,40.925118,-74.163713,NJ,Northeast,Paterson,07501,young,35620,"New York-Newark-Jersey City, NY-NJ-PA",882a1055b9fffff
@@ -235,76 +120,17 @@ magnolia_71,2024-10-02,34.8899388,-77.548223,NC,South,Richlands,28574,young,2734
 magnolia_72,2024-10-11,33.9027396,-78.4436843,NC,South,Ocean Isle Beach,28469,young,34820,"Myrtle Beach-Conway-North Myrtle Beach, SC-NC",882ad388d1fffff
 makoexpress_1,2024-11-26,33.6552376,-78.9318203,SC,South,Myrtle Beach,29577,young,34820,"Myrtle Beach-Conway-North Myrtle Beach, SC-NC",882ad34695fffff
 matthewscarwash_1,2024-10-23,35.5171599,-81.0040899,NC,South,Denver,28037,young,16740,"Charlotte-Concord-Gastonia, NC-SC",8844d86d43fffff
-michiganwashcollc_08bfadd342deb167822a4b7776d9d4a63bf2843d103e87d40d9f17a7799ee9fc,2024-01-01,30.1965255,-97.9986917,MI,Midwest,WESTLAND,48185-9122,young,12420,"Austin-Round Rock, TX",884898daebfffff
-michiganwashcollc_0e7f716d6ae9ece39413e878fc6483c5e1ecff75691bf8a385092ef19f4e8e07,2024-01-01,42.367192,-83.397987,MI,Midwest,LIVONIA,48150-1441,young,19820,"Detroit-Warren-Dearborn, MI",882ab25229fffff
-michiganwashcollc_29cfbf06b76c497d2ee0e60a73400f07b54210ac3d7a64a0ce7d38e036fe4704,2024-01-01,42.308144,-84.021722,MI,Midwest,CHELSEA,48118-1331,young,11460,"Ann Arbor, MI",882749826bfffff
-michiganwashcollc_2bc43bee13c23fa06e7708ddb1001cce33d1b777e0d2a00e7b81b57f97fe75fa,2024-01-01,40.047034,-76.293284,MI,Midwest,STERLING HEIGHTS,48313-1955,young,29540,"Lancaster, PA",882aac5725fffff
-michiganwashcollc_3293b70884454cc42b961d781687440138be4bb87d5a13671c844ce7f21b9473,2024-01-01,41.710426,-88.069189,MI,Midwest,LIVONIA,48150-2338,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",8826645827fffff
-michiganwashcollc_35d8ba100df5dc3694d64d73065564025b396a8488e9551ee26172098d5a2663,2024-01-01,42.2386569,-83.2688445,MI,Midwest,TAYLOR,48180-3392,young,19820,"Detroit-Warren-Dearborn, MI",882ab25627fffff
-michiganwashcollc_44465f2da748716b8d8b8c3324d4ebd6b3d43756fe52f92df9b7b830a7af0914,2024-01-01,42.566169,-82.894328,MI,Midwest,CLINTON TOWNSHIP,48035-1723,young,19820,"Detroit-Warren-Dearborn, MI",882ab2d667fffff
-michiganwashcollc_540fa11a6bf835a369a2113f84daac981cd5e381bc0b4d2fc403efa6903aa71c,2024-01-01,32.95192,-117.233639,MI,Midwest,WATERFORD,48327-4112,young,41740,"San Diego-Carlsbad, CA",8829a40e27fffff
-michiganwashcollc_6953db5062e93a6541b0a0daedc7a40225b9fce6f6a5cffa247544c005e0bf5d,2024-01-01,42.528009,-83.759437,MI,Midwest,BRIGHTON,48114-7701,young,19820,"Detroit-Warren-Dearborn, MI",88274d21ebfffff
-michiganwashcollc_839968e591bdf69e13ca77c1a894be1ec3fb83356a912a1bb92ee4d76d92d303,2024-01-01,33.715388,-117.179373,MI,Midwest,YPSILANTI,48197-7451,young,40140,"Riverside-San Bernardino-Ontario, CA",8829a0c699fffff
-michiganwashcollc_b03aada9a9eac64e2bb860f13052a68709663d520f27f749f265ea25bc0b071c,2024-01-01,42.251439,-83.663387,MI,Midwest,ANN ARBOR,48108-3437,young,11460,"Ann Arbor, MI",882ab259d7fffff
-michiganwashcollc_b7efd5139f2e30deb3045bbe7a67004d42ae546ff7863dc704581ac4f36e2340,2024-01-01,42.662886,-83.245314,MI,Midwest,AUBURN HILLS,48326-2651,young,19820,"Detroit-Warren-Dearborn, MI",882ab2da67fffff
-michiganwashcollc_bd4203622b334f672ad64e0f06c2998b1ff8efbfa3160a57c78c1044a4f2d46d,2024-01-01,42.2057273,-83.4874202,MI,Midwest,BELLEVILLE,48111-2737,young,19820,"Detroit-Warren-Dearborn, MI",882ab2404dfffff
-michiganwashcollc_e20ca670f2062804ed949d3b5b3ecadf334996381bf184ae46668c77f698c29b,2024-01-01,48.0620602,-122.1775845,MI,Midwest,CLARKSTON,48346-5110,young,42660,"Seattle-Tacoma-Bellevue, WA",8828d0a093fffff
-mightywash_0ab867cdca43a529ba4cb5c7adb96a31af92e384602be56c13d6dbae4fe38f74,2024-01-01,32.8480834,-104.428894,NM,West,ARTESIA,88210-3717,young,16100,"Carlsbad-Artesia, NM",8848d0ba13fffff
-mightywash_11162d39bb38254ec5832a1b7d98211fdd96a411fd875e4e1ea1ea7bc53f5866,2024-01-01,31.899866,-102.353945,TX,South,ODESSA,79762-4761,young,36220,"Odessa, TX",8848d6d903fffff
-mightywash_20ebede6c51bf5ec2305280724b956c44e7a254e8cea04d92510935d9f04dbca,2024-01-01,33.5326882,-101.9110928,TX,South,LUBBOCK,79414-5005,young,31180,"Lubbock, TX",8826de6b1dfffff
-mightywash_24c34b30ee9e623543aba59d3304a5928784b1e86e4d217232f7a53688238fb6,2024-01-01,32.447626,-104.265337,NM,West,CARLSBAD,88220,young,16100,"Carlsbad-Artesia, NM",8848d09051fffff
-mightywash_27b89e2daafd1e884b82c299fbc85410cff17dc546e9dd927d4291d1dc1a210e,2024-01-01,31.9384358,-102.3828531,TX,South,ODESSA,79765-1325,young,36220,"Odessa, TX",8848d6d985fffff
-mightywash_3be0bbe4bfa98107727740ce5cff41351448b61a56f7bf159755673b8302d652,2024-01-01,27.2288441,-82.4938241,TX,South,BIG SPRING,79720-2956,young,35840,"North Port-Sarasota-Bradenton, FL",88441e09adfffff
-mightywash_3d958e07470700345c18c214a00a8f5cebcdf300c1924e444de71d4a9faa78a6,2024-01-01,32.4085043,-104.2277377,NM,West,CARLSBAD,88220-5517,young,16100,"Carlsbad-Artesia, NM",8848d09353fffff
-mightywash_4329ad575ba1b3aa800f3b8e18a94de2b08ff061949bbb009ea54571232ae311,2024-01-01,33.520203,-101.95768,TX,South,LUBBOCK,79424-7012,young,31180,"Lubbock, TX",8826de6b27fffff
-mightywash_50684e9d71d9ff5d88968c037d1e2ca91194ca4701be027577a53cde3f16f0ee,2024-01-01,32.7263029,-103.1421979,NM,West,HOBBS,88240,young,26020,"Hobbs, NM",8848d62113fffff
-mightywash_52ce0776a66c2ec0ebd510c0836adb830848d36dceb3e26bcb5bca3d5730c9d1,2024-01-01,32.941474,-103.348986,NM,West,LOVINGTON,88260-4717,young,26020,"Hobbs, NM",8848d05a37fffff
-mightywash_57a4d3be4e68ef567031e084c1b0378d46eaefbac3fc088010887baeea825551,2024-01-01,32.5898151,-82.3307688,TX,South,LUBBOCK,79423-2203,young,20140,"Dublin, GA (nearest)",8844c29301fffff
-mightywash_6732193b088e35e30805cdb7b136d2bab8a08a7051767b0c5a3ac98b1c91ac63,2024-01-01,36.3328857,-78.4411011,TX,South,MIDLAND,79707-2525,young,25780,"Henderson, NC",882a891831fffff
-mightywash_68f57d51cda81559514ebdaf9cd8662f79ca2e9a76e6f2bf8584a072ebb8a7e9,2024-01-01,32.7406153,-103.1488185,NM,West,HOBBS,88240-0818,young,26020,"Hobbs, NM",8848d621c7fffff
-mightywash_6d6a7cb45c4439af94ba704adb70364669738503ff2dc5f2e19a6a8b9caab7e6,2024-01-01,32.451736,-100.397116,TX,South,SWEETWATER,79556-7100,young,45020,"Sweetwater, TX",8826db8ac3fffff
-mightywash_72d0846f5f81b8f1f7c8d85409d16a9cd50c8767422cab0dd09c17711683a85b,2024-01-01,32.3174984,-102.5474325,TX,South,ANDREWS,79714-9016,young,11380,"Andrews, TX",8848d65403fffff
-mightywash_785c18b5f5b3b577e9c74487ae5da351aee02ac89bacd17dd204f7dca24f30a5,2024-01-01,32.00078,-102.115792,TX,South,MIDLAND,79701-3826,young,33260,"Midland, TX",88488b22e1fffff
-mightywash_971aca0f664236bfb5ff91280daef6edd34e2396a0bc5bc34cb0e69a0ab8fa25,2024-01-01,34.349355,-84.050752,TX,South,MIDLAND,79707-6007,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844ce8043fffff
-mightywash_9e46e2f34d33b3e7f4145819e98f18a143223e256af12080cd76796adf8c4d53,2024-01-01,31.8879213,-102.3518482,TX,South,ODESSA,79762-6213,young,36220,"Odessa, TX",8848d6d901fffff
-mightywash_a8a30dc823a5f33e25ba2bff4aa3c61d67707ad8c6556e8afa806280126d9fbf,2024-01-01,36.203392,-81.666641,TX,South,MIDLAND,79705,young,14380,"Boone, NC",8844d96923fffff
-mightywash_a973352da75d914229871cf4a35fafd580450821f8cd31dae325d358bccf3003,2024-01-01,33.4909899,-101.907432,TX,South,LUBBOCK,79424-7460,young,31180,"Lubbock, TX",8826de6829fffff
-mightywash_aa59038c8445df51cdd0ccc43f6e9ee211e67b2dfc1a85d91a696b9a699d0654,2024-01-01,33.578839,-101.9519413,TX,South,LUBBOCK,79407,young,31180,"Lubbock, TX",8848d24961fffff
-mightywash_b92c0272ca1fe0018ff31f45b1bc892413d77ee5770ef64892601e570f026e40,2024-01-01,29.665452,-95.193657,TX,South,ODESSA,79764-7306,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c0749fffff
-mightywash_cf1c1c178ad35e4c62b7b78fdbb32183579e5096e4e1902f1a98fa2ebd80dc77,2024-01-01,33.548659,-101.8792835,TX,South,LUBBOCK,79413-4101,young,31180,"Lubbock, TX",8826de6a67fffff
 mintexpresscarwash_4,2024-10-15,29.5703956,-95.3915468,TX,South,Pearland,77584,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446cb9c7fffff
 missioncarwash_1,2024-11-11,33.190045,-87.4617332,AL,South,Cottondale,35401,young,46220,"Tuscaloosa, AL",8844ed6299fffff
 mrcleancarwash_19,2024-02-15,34.377375,-84.92847,GA,South,Adairsville,30103,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844cc030dfffff
 mrsudsexpresscarwash_1,2024-06-20,26.187159,-80.252533,FL,South,Lauderhill,33351,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844a1234dfffff
-oilstop_349e3d24a5ff0238ef3a93d7a60d3c953ee1006f4748472eaf65d3c9545a58ae,2024-01-01,34.721783,-82.2524319,OR,West,ALBANY,97321-1432,young,24860,"Greenville-Anderson-Mauldin, SC",8844dd52e1fffff
-oilstop_aa79b8d07ee9fe541c12784960200bc07e14b0dd484180b3d936b701e870cd16,2024-01-01,46.2830888,-119.2747996,WA,West,VANCOUVER,98685-2747,young,28420,"Kennewick-Richland, WA",882888a181fffff
-oilstop_b8849068a00b4ad5d448fc3586ee426a9bb3107fbb76f975d9b4cc03d79853e6,2024-01-01,44.534915,-73.249656,OR,West,MEDFORD,97501-2013,young,15540,"Burlington-South Burlington, VT",882b8cb0e7fffff
 orcaexpress_1,2024-01-23,47.167013,-122.143434,WA,West,Bonney Lake,98391,young,42660,"Seattle-Tacoma-Bellevue, WA",8828d4ae9bfffff
 pinkbirdcarwash_1,2024-11-14,26.7199475,-80.0870623,FL,South,West Palm Beach,33401,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844ae8539fffff
-quicknclean_33df2206b6d193b9af50d1841681e33009e11dd07834cbe60db3528b0a36ed62,2024-01-01,35.99125,-95.887226,OK,South,BIXBY,74008-2028,young,46140,"Tulsa, OK",8826ea96b5fffff
-quicknclean_3b3a98ad7c2dbd94198614579538e6aa8512e37d25d378182e7f839de62badc7,2024-01-01,36.101094,-95.976118,OK,South,TULSA,74105-7615,young,46140,"Tulsa, OK",8826ee2da3fffff
-quicknclean_6def2d6423643f5693f521057d5edcf063aa4de8599ef190d7dc74860f5999c4,2024-01-01,35.45019,-97.41598,OK,South,OKLAHOMA CITY,73110-2621,young,36420,"Oklahoma City, OK",8826c18e31fffff
-quicknclean_cad71e60cd99c26fb984d365628abe5e62a535428125f5ebb21ebc75364d8c8c,2024-01-01,33.847285,-84.610263,OK,South,BROKEN ARROW,74014,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c1a5e3fffff
-quicknclean_da71772e6d0af388e68a7b1f6d3a56f71385f0e891707c19d22a257ad328bb14,2024-01-01,36.061543,-95.784887,OK,South,BROKEN ARROW,74012-1919,young,46140,"Tulsa, OK",8826e85829fffff
-quicknclean_eeb2f94899bafe111beec046b87f1f74bc375284f059c2c1b2b4fe7139a0e56e,2024-01-01,29.4864818,-95.2150591,OK,South,OKLAHOMA CITY,73127,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c8da5fffff
-quickquack_4b70a922e6409c88f5fd310fd5d856fba13e1b053ce34e3c3ed493aa94f368bc,2024-01-01,33.429578,-79.148296,CA,West,ROCKLIN,95765-4299,young,23860,"Georgetown, SC",882ad36867fffff
-quickquack_c60ae970a25b0124145943e42664015b92fe712abde5263983dd2b781c63db00,2024-01-01,32.705339,-96.839619,CA,West,FOLSOM,95630-6346,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cb981bfffff
-racer/allamericancarwash_12c6950b4c6dcf403e1412339013984953c7155c2bea0379da67c90b9ef84a1d,2024-01-01,29.87038,-95.395886,TX,South,SAN ANTONIO,78249,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c301bfffff
-racer/allamericancarwash_24b3251ef522f8ea8fdb271a3794c87147fa4dba83a62fff4de8824d0325bac3,2024-01-01,38.0870386,-97.9110651,TX,South,UNIVERSAL CITY,78148-3792,young,26740,"Hutchinson, KS",8826e2a1e1fffff
-racer/allamericancarwash_2fd5f0393ddb4541ec849cf1fe52db50d820997ae8e92a013bcf349ccd86b5b4,2024-01-01,37.101642,-84.589963,TX,South,BOERNE,78006-2822,young,43700,"Somerset, KY",882669a69bfffff
-racer/allamericancarwash_39a0b063f357572fe54ac43e430260c86dd5a0dd20cfd99e3c2c77879d833701,2024-01-01,42.88706,-87.913636,TX,South,SAN ANTONIO,78257-4501,young,33340,"Milwaukee-Waukesha-West Allis, WI",88275d28a7fffff
-racer/allamericancarwash_a99ad841c19b137c7c32fde07883c961e576534e395887ce7146f87424044653,2024-01-01,29.6482086,-98.427436,TX,South,SAN ANTONIO,78261-2026,young,41700,"San Antonio-New Braunfels, TX",88489c08d1fffff
-racer/allamericancarwash_e500eb1c9a5993a4694cd7182f90c92e8702c8dfeb128de8c5422dea88070c4d,2024-01-01,29.5148766,-98.5356014,TX,South,SAN ANTONIO,78230-5372,young,41700,"San Antonio-New Braunfels, TX",88489c0045fffff
-racer/allamericancarwash_f70e472ea48318faff6b5737d235b158c15d893625aa83af31722029a74d26f0,2024-01-01,32.2325917,-101.462369,TX,South,BIG SPRING,79720,young,13700,"Big Spring, TX",88488b6d39fffff
 racewaycarwash_1,2024-04-25,42.043359,-88.277576,IL,Midwest,Elgin,60120,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",88275939dbfffff
 racewaycarwash_2,2024-11-08,42.115524,-87.986045,IL,Midwest,Arlington Heights,60004,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",882759328dfffff
 racewaycarwash_3,2024-09-03,42.397505,-88.184202,IL,Midwest,Fox Lake,60020,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",8827591733fffff
-racewaycarwash_3373a2d0ef0457583cf26ec9e262b1535106c5955ba5bc2b0ed24de7ae559a38,2024-01-01,27.5153194,-97.8615725,TX,South,IRVING,75060-2110,young,28780,"Kingsville, TX",8848958d91fffff
-racewaycarwash_45bc2af5cd0288d2a00f92c68baa4db77e2f4c22c147b176bf0c02d1da47e49f,2024-01-01,35.0491648,-89.8282628,TX,South,PLANO,75074-8515,young,32820,"Memphis, TN-MS-AR",882659a603fffff
-racewaycarwash_da35005b30a892baa69861797b9670a6eef488f119252f680a0e0f988e6ec2f6,2024-01-01,33.7547889,-78.9634199,TX,South,CARROLLTON,75006-2904,young,34820,"Myrtle Beach-Conway-North Myrtle Beach, SC-NC",882ad3559dfffff
 radiantexpresscarwash_8,2024-01-26,27.9958305,-82.4862386,FL,South,Tampa,33614,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a1229fffff
 radiantexpresscarwash_9,2024-08-28,28.193328,-82.590251,FL,South,Odessa,33556,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a14e1fffff
-rapidsexpresscarwash_6fe5befe9c366a08df2386f9cc7a25992e85c5ceedd0dd782e4f06bd453acbad,2024-01-01,33.809284,-117.866587,CA,West,ORANGE,92867-3523,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a0b51dfffff
 ridethru_1,2024-03-20,33.975085,-118.122414,CA,West,Montebello,90640,young,31080,"Los Angeles-Long Beach-Anaheim, CA",8829a1d207fffff
 rinsemyride_4,2024-02-28,33.5971226,-112.1348587,AZ,West,Phoenix,85029,young,38060,"Phoenix-Mesa-Scottsdale, AZ",8829b6c255fffff
 riptide_11,2024-03-20,33.9838152,-78.3677888,NC,South,Shallotte,28470,young,34820,"Myrtle Beach-Conway-North Myrtle Beach, SC-NC",882ad38147fffff
@@ -312,53 +138,27 @@ riptide_12,2024-09-10,37.07233,-76.473289,VA,South,Newport News,23606,young,4726
 riptide_14,2024-10-30,35.9587881,-86.8062696,TN,South,Franklin,37067,young,34980,"Nashville-Davidson--Murfreesboro--Franklin, TN",88264d01dbfffff
 riptide_15,2024-11-19,35.9091264,-86.8308782,TN,South,Franklin,37064,young,34980,"Nashville-Davidson--Murfreesboro--Franklin, TN",88264d0e67fffff
 riptide_9,2024-03-07,34.7242705,-76.7443341,NC,South,Morehead City,28557,young,33980,"Morehead City, NC",882ad510e7fffff
-riptidecarwash_2f5c1ff297e9bd14161dbeff1390130ade28d69a5a69ae712a54c8e80449f171,2024-01-01,34.549285,-82.673258,NC,South,MOREHEAD CITY,28557,young,24860,"Greenville-Anderson-Mauldin, SC",8844dd8b4dfffff
-riptidecarwash_4fb09851655edc2adb6f530fb005b79a97a8c4ad9a5be2026f2aeac7f6497b5c,2024-01-01,33.9838152,-78.3677888,NC,South,SHALLOTTE,28470-4451,young,34820,"Myrtle Beach-Conway-North Myrtle Beach, SC-NC",882ad38147fffff
-riptidecarwash_ea7bf2b0dcd7da4042204dc5cd18bf43433544e1d425fe75b1927df11ab3c5a6,2024-01-01,37.072021,-76.473099,VA,South,NEWPORT NEWS,23606-1903,young,47260,"Virginia Beach-Norfolk-Newport News, VA-NC",882af60c15fffff
 roadrunnerexpress_4,2024-09-06,37.283468,-79.923973,VA,South,Roanoke,24012,young,40220,"Roanoke, VA",882a8a970bfffff
-rocketcarwash_300b4535901dc7e55e24c7d6c2030b967a7809987c50b9f608de6786de1fcdfd,2024-01-01,33.0181571,-117.0751321,UT,West,RIVERTON,84065-8017,young,41740,"San Diego-Carlsbad, CA",8829a47229fffff
-rocketcarwash_3993854397a2abf7e18e33aaa567602ca540a15a88f846b16054ebe324472f4d,2024-01-01,40.540109,-111.937857,UT,West,SOUTH JORDAN,84095-7808,young,41620,"Salt Lake City, UT",882696312dfffff
-rocketcarwash_4a368357015caf0983845d7268c485f97c318c6b09f9b82b2da4b8cabe8ff927,2024-01-01,40.7345237,-96.6018554,NE,Midwest,LINCOLN,68526-9701,young,30700,"Lincoln, NE",88260a1081fffff
-rowlettcarwash_ad03ba50edfa621b329d1e60235ca227db721295110a20f506bf92a444c65da6,2024-01-01,32.9182523,-96.5145077,TX,South,ROWLETT,75088-4505,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c821bbfffff
 scrubblesstl_11,2024-07-17,38.6700002,-90.6085959,MO,Midwest,Chesterfield,63005,young,41180,"St. Louis, MO-IL",8826462a89fffff
 scrubblesstl_12,2024-09-17,38.8090099,-90.8770201,MO,Midwest,Wentzville,63385,young,41180,"St. Louis, MO-IL",8826467739fffff
-scrubhubcarwash_1997af881f264f423eb95ae213e436c643794a1795e210e4dc8860e06547ca71,2024-01-01,31.8216019,-81.5994386,GA,South,HINESVILLE,31313-4405,young,25980,"Hinesville, GA",8844f32d25fffff
 shaftercarwash_1,2024-10-14,35.5017576,-119.2730227,CA,West,Shafter,93263,young,12540,"Bakersfield, CA",8829ac6b37fffff
-shammycarwash_02c6da1a8c9eee466edcf4a04cede223706a646df31418866390e697e350c6e7,2024-01-01,32.853475,-97.213417,TX,South,NORTH RICHLAND HILLS,76180-6243,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c869b1fffff
-shammycarwash_61a9517f9ab5c189d910d9238fd93e590b521d3aff717178f795d3bbc66a9441,2024-01-01,32.6383308,-97.3701352,TX,South,FORT WORTH,76133-7297,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cbd8a7fffff
-shammycarwash_72c03e6ed4bfe145dd3bdeeef7a52dc9737e141c7d2b7cd0437d2a8544bcb63a,2024-01-01,35.654461,-80.456657,TX,South,FORT WORTH,76179-9414,young,16740,"Charlotte-Concord-Gastonia, NC-SC",8844da266dfffff
 sharkbaycarwash_1,2024-08-28,30.928691,-83.245584,GA,South,Valdosta,31605,young,46660,"Valdosta, GA",8844e24d33fffff
 shineycarwash_1,2024-08-14,39.3979453,-76.9310934,MD,South,Sykesville,21784,young,12580,"Baltimore-Columbia-Towson, MD",882aa8cb6dfffff
 shortmancarwash_4,2024-07-19,36.0308366,-95.867917,OK,South,Tulsa,74133,young,46140,"Tulsa, OK",8826ea96c1fffff
 snapclean_5,2024-06-26,32.4837293,-97.0059181,TX,South,Midlothian,76065,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cbc6b1fffff
 snapclean_6,2024-06-11,32.708644,-97.132958,TX,South,Arlington,76013,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cbd099fffff
-soapyjoes_387b6fa6e0cb77130fdfcc320615886e0203af5607882163e0450928291d8b22,2024-01-01,33.193118,-117.254108,CA,West,VISTA,92081-6539,young,41740,"San Diego-Carlsbad, CA",8829a474e5fffff
-soapyjoes_8a43473c70cc64c656a5b0494a4dda42daa6a20b76476dbb7e1209281884b5dd,2024-01-01,35.3392525,-77.9190192,CA,West,CHULA VISTA,91911-6502,young,24140,"Goldsboro, NC",882ad444b3fffff
-soapyjoes_abccbd348d79f7e91dbf6083468ccd152c9385d130dc7b8c1c11d0c568f3faa3,2024-01-01,33.189975,-117.276818,CA,West,VISTA,92083-6150,young,41740,"San Diego-Carlsbad, CA",8829a4748dfffff
-soapyjoes_ed2390fa119b375b09232d18a13e85003fdb13c687e7f54df2fb3a86c583b05f,2024-01-01,32.83195,-116.98328,CA,West,SANTEE,92071-4215,young,41740,"San Diego-Carlsbad, CA",8829a45695fffff
-sourceonecarwashadvisors_234de8168ad707816d38830e2bdcfc826c36d039f44a969710b3294bf2ee37f5,2024-01-01,32.2066453,-98.2326992,TX,South,STEPHENVILLE,76401-3811,young,44500,"Stephenville, TX",88489b2b21fffff
 southernshineexpress_1,2024-10-30,34.9627359,-82.4319032,SC,South,Travelers Rest,29690,young,24860,"Greenville-Anderson-Mauldin, SC",8844dd0823fffff
 splash_4,2024-02-02,29.2799998,-81.0815648,FL,South,Ormond Beach,32174,young,19660,"Deltona-Daytona Beach-Ormond Beach, FL",8844f6135dfffff
-splashcarwash_24c78aad788421f23961f617e56cf7f6ab468a0f219729992108f94bb4c60e5f,2024-01-01,42.582425,-71.196087,FL,South,ORMOND BEACH,32174-5119,young,14460,"Boston-Cambridge-Newton, MA-NH",882a3071edfffff
 splashzonecarwash_3,2024-04-30,31.6423397,-84.2539721,GA,South,Leesburg,31763,young,10500,"Albany, GA",8844e34501fffff
-stewardcwopco_88c7927e0b636641f64ea563fe5fd57f19f796384a7ed60cfd6416fa79d71120,2024-01-01,37.4759997,-120.8493861,TX,South,WHARTON,77488-2711,young,33700,"Modesto, CA",882836c6c7fffff
 sudsdeluxe_10,2024-07-10,29.8504544,-97.9609079,TX,South,San Marcos,78666,young,12420,"Austin-Round Rock, TX",88489eb715fffff
 sudstop_1,2024-03-21,27.448146,-82.533542,FL,South,Bradenton,34203,young,35840,"North Port-Sarasota-Bradenton, FL",88441e621bfffff
 sudstop_10,2024-06-27,32.3830288,-86.207026,AL,South,Montgomery,36117,young,33860,"Montgomery, AL",8844eeb4d5fffff
 sudstop_3,2024-04-29,33.9357467,-84.1847587,GA,South,Norcross,30071,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c1381bfffff
-sudstop_36bbd421ab196548f16cdc676b706ce50ccb390ce657bfa398cd15f106617e07,2024-01-01,35.374643,-77.944051,AL,South,MONTGOMERY,36117-2172,young,24140,"Goldsboro, NC",882ad445dbfffff
-sudstop_3c951639ba64aaddd0880688487f279a344c7416ac262624185eb2f0ed4125ab,2024-01-01,30.683075,-86.123384,FL,South,DEFUNIAK SPRINGS,32435,young,18880,"Crestview-Fort Walton Beach-Destin, FL",8844e528adfffff
 sudstop_4,2024-09-10,34.922906,-81.978752,SC,South,Spartanburg,29301,young,43900,"Spartanburg, SC",8844dd4835fffff
 sudstop_6,2024-05-22,34.8309749,-86.5712452,AL,South,Meridianville,35759,young,26620,"Huntsville, AL",882649ae59fffff
-sudstop_76a874ca1db3e9d78311b07ae756d0c0e6d0efd5a13b1fab744098bf79d5e465,2024-01-01,25.9847704,-80.1762101,FL,South,HOLLYWOOD,33023,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844a10733fffff
 sudstop_8,2024-06-06,30.2307399,-85.8916138,FL,South,Panama City Beach,32413,young,37460,"Panama City, FL",8844e50b17fffff
 sudstop_9,2024-07-18,30.683075,-86.123384,FL,South,DeFuniak Springs,32435,young,18880,"Crestview-Fort Walton Beach-Destin, FL",8844e528adfffff
-sudstop_a6e746104ed0d43aad1478381fc4ff6776a613a87354c6df4f8fa17a15c9164b,2024-01-01,39.676744,-104.7703692,AL,South,MERIDIANVILLE,35759-2102,young,19740,"Denver-Aurora-Lakewood, CO",88268cd5edfffff
-sudstop_d0ce8a350692a47293268e5a353c77b4cdb40d191ed77738cb6050a2a079d1f9,2024-01-01,37.2944489,-83.1976694,AL,South,JACKSONVILLE,36265-2732,young,NON_CBSA_AL,Non-CBSA AL,882a986827fffff
-sudstop_d61dd6f92bb11bfd9f6ec746cea13cc7489766c9de986032e86f77352f40511d,2024-01-01,30.2302706,-85.8912321,FL,South,PANAMA CITY BEACH,32413-5229,young,37460,"Panama City, FL",8844e50b17fffff
-summitwashholdings_3738002845e8d59fa6b1853ac82f3badeb45c1c4b8374648461c4d2595f8d814,2024-01-01,35.7978173,-78.5746952,FL,South,DELAND,32720,young,39580,"Raleigh, NC",882ad69a4dfffff
 texaspridecarwash_1,2024-03-12,32.6977577,-96.4538761,TX,South,Heartland,75126,young,19100,"Dallas-Fort Worth-Arlington, TX",8826cb96cbfffff
-thecarwashdepot_0914b761296708001b2fa361255d953bcc284dc9c2e1288a23fb7d82e3e9bee7,2024-01-01,26.8824789,-80.1134695,LA,South,PONCHATOULA,70454,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844aeb8edfffff
 thoroughbred_19,2024-02-23,38.7751801,-85.4066432,IN,Midwest,Madison,47250,young,31500,"Madison, IN",88266cad85fffff
 thoroughbred_20,2024-02-21,45.665691,-118.809255,OR,West,Pendleton,97801,young,25840,"Hermiston-Pendleton, OR",88288c7493fffff
 thoroughbred_21,2024-03-19,38.9874878,-85.6113892,IN,Midwest,North Vernon,47265,young,35860,"North Vernon, IN",88266c14a1fffff
@@ -367,69 +167,6 @@ thoroughbred_24,2024-06-19,46.584069,-120.595448,WA,West,Yakima,98908,young,4942
 thoroughbred_25,2024-07-02,46.56265,-120.493242,WA,West,Union Gap,98903,young,49420,"Yakima, WA",882889ba37fffff
 thoroughbred_27,2024-11-19,38.33967,-82.9436302,KY,South,Grayson,41143,young,26580,"Huntington-Ashland, WV-KY-OH (nearest)",882a9ea2e9fffff
 thoroughbred_28,2024-11-06,43.223406,-123.347571,OR,West,Roseburg,97470,young,40700,"Roseburg, OR",8828187903fffff
-tidalwave_0572faf0b1f626c14f4209cd5819d353be34139a81503e0e9e1c136071195c93,2024-01-01,34.216794,-86.158345,AL,South,BOAZ,35957-1272,young,10700,"Albertville, AL",8844eb00e5fffff
-tidalwave_06a79c7b97bbba95d9df43207a7a88c2d9113a0451a481ddf05130cfd5c5bc99,2024-01-01,36.186518,-82.7621609,TN,South,GREENEVILLE,37745-0971,young,24620,"Greeneville, TN",882a9b26b3fffff
-tidalwave_09a5bb822a97f2fa3439a18cb027cd67be5d38029756be3094eea33ae7f9dd1e,2024-01-01,36.7381727,-97.0749898,OK,South,PONCA CITY,74601-1627,young,38620,"Ponca City, OK",8826c5955bfffff
-tidalwave_0be107cf306f7a59c57f78ce22fa055369996ef9bfb47eacfc8a6f37c6f21ede,2024-01-01,42.7336211,-90.4421579,WI,Midwest,PLATTEVILLE,53818,young,38420,"Platteville, WI",88275aaf25fffff
-tidalwave_11f7210c9fd702a2b4a22c2f01d3931cb1e54a12c29b54e10628d3c5cdfa5a5a,2024-01-01,31.992093,-81.130847,GA,South,SAVANNAH,31406-4562,young,42340,"Savannah, GA",8844d5c76dfffff
-tidalwave_171ae34547ba9b7dd4c67ae9fd5d2ffbef1194fec9eb5792a3ec38084f5f3849,2024-01-01,29.073926,-82.073863,FL,South,BELLEVIEW,34420-2810,young,36100,"Ocala, FL",8844f41a55fffff
-tidalwave_1bbd2841ed9b6059d36384d4dfeb52438faed3f801f07dee7c59ebf0e4ac22fa,2024-01-01,32.008839,-97.099273,TX,South,HILLSBORO,76645,young,NON_CBSA_TX,Non-CBSA TX,8826cb72abfffff
-tidalwave_1eeb862214058f34d53a8d310cf8722c5fb6c4d1e21dab3ebf3a309a06bb921b,2024-01-01,37.361978,-81.045064,WV,South,PRINCETON,24739-6916,young,14140,"Bluefield, WV-VA",882a9d2283fffff
-tidalwave_27b771ee0bfe5bca5c891d7cc012f998627f4a504b963149e099d460c86a59b1,2024-01-01,39.82588,-76.973423,PA,Northeast,HANOVER,17331-5222,young,49620,"York-Hanover, PA",882aaeb827fffff
-tidalwave_2b08f93b15981c156508403939051dad25dda45e310499417027dfb478308c74,2024-01-01,33.520758,-81.727512,SC,South,AIKEN,29803-6081,young,12260,"Augusta-Richmond County, GA-SC",8844c26f67fffff
-tidalwave_2b0b251eedf29874263a6041816ee4a926599049e531a8c8122df2ba46e1feef,2024-01-01,30.1111135,-95.6418508,IL,Midwest,BOURBONNAIS,60914,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446dc9d5fffff
-tidalwave_2ffa45a2697919b8aa6029c471876e0f751aa35e6eea75527818c46250ad90ca,2024-01-01,36.087056,-83.93918,TN,South,KNOXVILLE,37938,young,28940,"Knoxville, TN",8844cbcb6dfffff
-tidalwave_3040e088700c12030d6620ab608d9a371094680a3178fd0e5e7531564c4a01f2,2024-01-01,35.158971,-83.392801,FL,South,NEW PORT RICHEY,34654-9999,young,19000,"Cullowhee, NC (nearest)",8844ce6d25fffff
-tidalwave_3372613b5371bd74eb9441ad03ef7f59d6c623c4ed9caa1ff5e060a1dbb71c70,2024-01-01,32.3368142,-90.1041036,MS,South,FLOWOOD,39232-9999,young,27140,"Jackson, MS",88445c0517fffff
-tidalwave_357c4c1275fd465a5e32b9249e73503edb841f88d0bcd9f7184ff4b645951ca6,2024-01-01,29.863781,-97.960194,MO,Midwest,INDEPENDENCE,64055-3869,young,12420,"Austin-Round Rock, TX",88489eb73bfffff
-tidalwave_376f5ff0b1fd16725f96e7cd8cda0d657b40054d0ea5fe08eba1651b7b2e0164,2024-01-01,31.62351,-84.218607,GA,South,ALBANY,31707-1275,young,10500,"Albany, GA",8844e34e59fffff
-tidalwave_37b37e4342f6f50b1073636e6a2a804f3c2ed80562ffd41e80b3a5ece4eed6a3,2024-01-01,41.5652456,-70.595585,AL,South,MADISON,35758-9558,young,12700,"Barnstable Town, MA",882a316105fffff
-tidalwave_3ee124d31da9d58909fe18e11da5f7bad3ef5791f7044d3943fe368b57348ef2,2024-01-01,26.0657126,-80.259735,TX,South,LIBERTY,77575-3916,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844a104d3fffff
-tidalwave_4238943e10ba952c1d613d619a0c166df45eda1a57fd997d1723ba4c2e119098,2024-01-01,40.1577449,-89.3973065,IL,Midwest,LINCOLN,62656-9705,young,30660,"Lincoln, IL",8826627031fffff
-tidalwave_42fa47daa5b9d2defc6b33c3338fa3d7d7dbfad7f6c7157cb3a8f4c9f2adf94e,2024-01-01,35.825251,-90.677168,AR,South,JONESBORO,72401-5310,young,27860,"Jonesboro, AR",88265d6847fffff
-tidalwave_496eca5de76b336ce6324ba1d91edc5c675c585c75f7451f750e25b23eeee026,2024-01-01,44.900228,-89.607835,WI,Midwest,SCHOFIELD,54476-3806,young,48140,"Wausau, WI",882751a10bfffff
-tidalwave_4f756e4b6d7321698897833997ab50b41fe6411f3805f8b00c2d562dd0017fe4,2024-01-01,40.9238117,-72.6984423,VA,South,CHRISTIANSBURG,24073,young,35620,"New York-Newark-Jersey City, NY-NJ-PA",882a154629fffff
-tidalwave_532e4fcdeedf50071bc46f33e38e8c323a95c1d9e36b28afa263036f25d1bb4b,2024-01-01,26.526895,-80.098917,NM,West,ALBUQUERQUE,87114-6490,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844ae90b1fffff
-tidalwave_537ceb12c8ce33cc2dca6d935bbad6c51ad99f911a39a4cc2ea0b071eef09504,2024-01-01,26.5885719,-80.0660999,FL,South,LAKE WORTH,33462-1555,young,33100,"Miami-Fort Lauderdale-West Palm Beach, FL",8844ae8059fffff
-tidalwave_539150e28932e15be197849fe8ccd582d686d9106990b3055f9e5d9061a441ae,2024-01-01,27.7368325,-82.6800166,WI,Midwest,BEAVER DAM,53916,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a91c3fffff
-tidalwave_56d5cdc2ce8546aaea9ae89aa00bffe8a14aeb1a345d8b870e7f8f1abb3715b3,2024-01-01,42.296541,-88.425729,IL,Midwest,WOODSTOCK,60098,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",88275901a9fffff
-tidalwave_587131d1742e5607ee037bc9700e7f7714e9dcab727bd9b6834751b0bad82ead,2024-01-01,33.852156,-84.039738,GA,South,SNELLVILLE,30078-7416,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c10cadfffff
-tidalwave_5b0888aceaec1d3eedf3c970b783c76433d3b46b013df53b782c975aacbcca12,2024-01-01,36.162596,-84.089892,TN,South,CLINTON,37716,young,28940,"Knoxville, TN",8844cbcad1fffff
-tidalwave_616bd23fa0a8bf4ba7c0d998f6a5efe3bf77a832c00654a5ff7d86c882220854,2024-01-01,27.7117577,-82.3330877,AL,South,MONTGOMERY,36116-6811,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441ad0d9fffff
-tidalwave_65cecf5f59e8f6e137d84d7e3037ba893b07145728cc96436440a38adf42a8a5,2024-01-01,36.742123,-95.948317,OK,South,BARTLESVILLE,74006,young,12780,"Bartlesville, OK",8826ee16adfffff
-tidalwave_66db20bac405109a0a6690d877129d3cb5887a452a71e2d33e60acfa2d1b4203,2024-01-01,33.657595,-84.002192,NY,Northeast,NIAGARA FALLS,14304,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844c1012bfffff
-tidalwave_67f77e3f8462935edd1dd99772fd39e808b3ee24f2bba98d13be64bae120d1c6,2024-01-01,41.860828,-88.007947,IL,Midwest,LOMBARD,60148-4628,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",8827592425fffff
-tidalwave_69e469e5886e2f932934051c80f27bdc2e299512dd42477c30d1c33a57ba5d08,2024-01-01,34.6482864,-120.4571269,PA,Northeast,WASHINGTON,15301-2702,young,42200,"Santa Maria-Santa Barbara, CA",88291345bdfffff
-tidalwave_6ccd957dfc101da3df60f383e5db994a8b4d1726e3a3ba4ea861f7b761545c99,2024-01-01,32.3825989,-86.1772153,AL,South,MONTGOMERY,36117-4211,young,33860,"Montgomery, AL",8844eeb4e3fffff
-tidalwave_7198c5d5f11a817da22053501d43b1bd32c68513b0df041fa30abdddb73cd414,2024-01-01,38.014725,-84.459854,KY,South,LEXINGTON,40502,young,30460,"Lexington-Fayette, KY",88266dadcbfffff
-tidalwave_7cd722065231a261a39c7901f8e7ba9827b25db35e24ed108b20a5931e37f846,2024-01-01,34.3024025,-88.7080749,MS,South,TUPELO,38804-1050,young,46180,"Tupelo, MS",88264b6841fffff
-tidalwave_7e3e2ffc4aaea0b23da3ee5a92614f9720b76cb34b524a47781135aee497c5d6,2024-01-01,42.55869,-113.7944914,ID,West,BURLEY,83318-3484,young,15420,"Burley, ID",8828b03197fffff
-tidalwave_7f54e4c000a0633ea0f10499016d2ed58842e61953d089efd4f539c3c286a267,2024-01-01,27.7613697,-98.0489109,TX,South,ALICE,78332,young,10860,"Alice, TX",884895a8d5fffff
-tidalwave_80e2659056142dfd3b841c5b9eeba786a5d4c07db194d077fc60b6105b890d0f,2024-01-01,29.090616,-82.244598,FL,South,OCALA,34476,young,36100,"Ocala, FL",8844f41281fffff
-tidalwave_8609e156a39d4663503efd05e3ddc630b22c2e523668a5eeb68911b6b306430e,2024-01-01,34.963159,-90.0195839,TX,South,EL PASO,79938,young,32820,"Memphis, TN-MS-AR",882659ac57fffff
-tidalwave_89b03e4c3be9cb3eacb0c2c51f35c968d387407ec7638ee906de0b162389130a,2024-01-01,32.8677631,-117.2153321,IN,Midwest,LAWRENCEBURG,47025,young,41740,"San Diego-Carlsbad, CA",8829a401c3fffff
-tidalwave_8cb27787c8ce3568088ebac567062c8d9eae5762503f457b52f8562ff9955af1,2024-01-01,39.9830529,-75.2421422,AL,South,TUSCALOOSA,35405-8465,young,37980,"Philadelphia-Camden-Wilmington, PA-NJ-DE-MD",882a134991fffff
-tidalwave_8ee288fb235aaea627bfb911d24d5a6920da368bdcfd60a3706c8e6d0b97b3b8,2024-01-01,42.841572,-85.674812,WV,South,MORGANTOWN,26501,young,24340,"Grand Rapids-Wyoming, MI",8827485689fffff
-tidalwave_904dba3b5f32ffa2691f8a92d3d794b0ad01c43877297502cc0dbc172e9d64b7,2024-01-01,39.6917582,-105.0812664,ID,West,MOUNTAIN HOME,83647-3200,young,19740,"Denver-Aurora-Lakewood, CO",88268cd9d5fffff
-tidalwave_946529664dc8041d3dc297256848b3bce4e5514787d7732827ad6f39e25698b5,2024-01-01,42.8921747,-112.4517133,ID,West,POCATELLO,83201-4416,young,38540,"Pocatello, ID",8828b2a9c9fffff
-tidalwave_98a318acf4d41b64e8fce4d2ff6e6871fdcce61d85369901351e90cf9ad07756,2024-01-01,33.939241,-83.45165,GA,South,ATHENS,30606-3330,young,12020,"Athens-Clarke County, GA",8844c3a2ddfffff
-tidalwave_9cd848954ed404135bc9bd9a79a8f537afa0707df881ccd021ae04a2a5d52a58,2024-01-01,41.8282134,-87.7044561,SC,South,MYRTLE BEACH,29575-5510,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",882664c899fffff
-tidalwave_a196b20ce21f13027c2013299fa2060e1fa8b918796a993c2c9083ead41850d2,2024-01-01,28.8882371,-82.4864951,FL,South,LECANTO,34461,young,26140,"Homosassa Springs, FL",8844f495e9fffff
-tidalwave_a6e2470c528e435417d6f25de857c03f788cd8de12360e7a1a32f18187d06221,2024-01-01,38.0645795,-78.9353187,VA,South,WAYNESBORO,22980-3258,young,44420,"Staunton-Waynesboro, VA",882a8c5507fffff
-tidalwave_ad637b020282b8d6140b92c023a8fcf0e142328f024b754c7a1cfbc558d51845,2024-01-01,33.4580893,-94.0434876,TX,South,TEXARKANA,75503-3136,young,45500,"Texarkana, TX-AR",88444d6831fffff
-tidalwave_aeb76b2c5519bc2669e4f2f347f709c67418822fa9f3862ddf33095ecb74a737,2024-01-01,31.902387,-110.986987,GA,South,STATESBORO,30461-0852,young,46060,"Tucson, AZ",8848e8c057fffff
-tidalwave_b0677973654002c1a1beda28ad045c79c96fc3f19d30a83b807974d08a58475f,2024-01-01,38.4828225,-77.9726804,VA,South,CULPEPER,22701-2516,young,47900,"Washington-Arlington-Alexandria, DC-VA-MD-WV",882aaa2aa5fffff
-tidalwave_b4c87a635030240b66007d70dc11ecde74e8c9c77c71f4b604f72ae158bb90b5,2024-01-01,45.3492556,-84.9686737,MI,Midwest,PETOSKEY,49770-8785,young,NON_CBSA_MI,Non-CBSA MI,882745ad95fffff
-tidalwave_bbc3385c668ac8f2f212affb18bb67951d867bf6332a76d1ff796d61116717d6,2024-01-01,33.94529,-83.439461,MN,Midwest,WACONIA,55387,young,12020,"Athens-Clarke County, GA",8844c3a289fffff
-tidalwave_be84011bf81660e0463040ece1e65fe314b6a5c00c3c898679081182c618d5a6,2024-01-01,38.216972,-85.581459,WI,Midwest,MARSHFIELD,54449-1513,young,31140,"Louisville/Jefferson County, KY-IN",88266d48bdfffff
-tidalwave_c0435ff85781c9951671684673ad4290855c2f2b6c38d5a332250c5128ba434a,2024-01-01,34.1806077,-86.8480362,AL,South,CULLMAN,35055-2848,young,18980,"Cullman, AL",8844ebb6abfffff
-tidalwave_c67c9c858f2392079cf8f428bbfa1ce5e4f171c56b0b4b1d3d46f291cd41e564,2024-01-01,39.919209,-86.225267,IN,Midwest,INDIANAPOLIS,46268-1149,young,26900,"Indianapolis-Carmel-Anderson, IN",882661b321fffff
-tidalwave_cf53194150c5bffdf8741a4cba068a38df03cf4fabc2da2204ff1ece4b370600,2024-01-01,30.1420232,-81.7681602,AL,South,MOBILE,36695-9804,young,27260,"Jacksonville, FL",8844f01aedfffff
-tidalwave_d20a36c7a85f2c65ac3cdc0b1e587863f73ebe0d8606f35f0b6aafe4d05e7b1d,2024-01-01,30.068153,-95.2278537,SC,South,CLOVER,29710-8015,young,26420,"Houston-The Woodlands-Sugar Land, TX",88446c2a8dfffff
-tidalwave_e601dd0e1716f9eb1d58ed8f58fb5f8805d1a634a88a5452aaffb0ee3eae912f,2024-01-01,37.1351509,-93.2720378,TX,South,SILSBEE,77656-4926,young,44180,"Springfield, MO",88265330e7fffff
-tidalwave_ef22bf69524222d2347328c3b48af437497a83f0036dc090f303415113e5dd98,2024-01-01,41.628196,-86.736398,GA,South,DOUGLASVILLE,30135-9999,young,33140,"Michigan City-La Porte, IN",882664b1c9fffff
-tidalwave_f086648086b4733afe349c95a12fe098dd04e59fa13e53bf792fd150433d534f,2024-01-01,44.792028,-93.208379,MN,Midwest,SAINT PAUL,55122-2314,young,33460,"Minneapolis-St. Paul-Bloomington, MN-WI",88262cd447fffff
-tidalwave_fa9f42f95298721ec5f53de27bdfedba00edce3bcd689369c96f78655437709f,2024-01-01,42.6907784,-88.2685457,WI,Midwest,BURLINGTON,53105-7948,young,39540,"Racine, WI",8827598b09fffff
 tigerwash_1,2024-03-12,38.0359448,-78.4611265,VA,South,Charlottesville,22901,young,16820,"Charlottesville, VA",882a8c10a1fffff
 tigerwash_3,2024-09-10,38.2328398,-78.3700792,VA,South,Ruckersville,22968,young,16820,"Charlottesville, VA",882a8c8847fffff
 tiptopcarwash_1,2024-10-08,39.9180602,-85.3836432,IN,Midwest,New Castle,47362,young,35220,"New Castle, IN",882a92019bfffff
@@ -442,12 +179,9 @@ tsunamicarwash_13,2024-04-30,45.021885,-93.171377,MN,Midwest,Roseville,55113,you
 tsunamicarwash_16,2024-07-23,43.090759,-87.978454,WI,Midwest,Milwaukee,53216,young,33340,"Milwaukee-Waukesha-West Allis, WI",88275d761bfffff
 unclecharlies_1,2024-04-01,34.184053,-84.1454499,GA,South,Cumming,30041,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844ce921bfffff
 unrivaledcarwash_1,2024-09-15,38.29612,-85.55558,KY,South,Louisville,40241,young,31140,"Louisville/Jefferson County, KY-IN",88266d4a3bfffff
-vibecarwash_34fd3e0f76f21b4622e29ed1c476e1162fc63e04445d0e53bd3d8e05f6b9172e,2024-01-01,33.196077,-96.66811,TX,South,MCKINNEY,75071-5374,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c805a1fffff
 vibecarwash_4,2024-07-11,32.962663,-96.737539,TX,South,Richardson,75080,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c82941fffff
-vibecarwash_4ef0e743c71d4387ac3fbc0ba712d848ca60c6def50a8cb03ed220b9fd1c6ed3,2024-01-01,33.0570132,-96.7086449,TX,South,PLANO,75023-4606,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c876dbfffff
 vibecarwash_5,2024-08-06,32.93957,-96.753698,TX,South,Dallas,75240,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c82929fffff
 wash37135_5,2024-08-13,35.5685802,-88.8154247,TN,South,Jackson,38301,young,27180,"Jackson, TN",88264ab105fffff
-washcity_1c2b3d6a82515abc924de887acf27b87dc0ac1e6a64b004066d4e4235e7f1cc6,2024-01-01,28.597897,-81.283844,FL,South,WINTER PARK,32792-8816,young,36740,"Orlando-Kissimmee-Sanford, FL",8844a90c61fffff
 washrite_10,2024-09-04,39.334405,-82.051496,OH,Midwest,Athens,45071,young,11900,"Athens, OH",882a827a3bfffff
 washrite_9,2024-02-05,40.3930566,-80.5484624,WV,South,Weirton,26062,young,48260,"Weirton-Steubenville, WV-OH",882a86a311fffff
 whitecap_3,2024-06-26,34.0150238,-84.5553181,GA,South,Marietta,30066,young,12060,"Atlanta-Sandy Springs-Roswell, GA",8844ccd9a7fffff
@@ -455,10 +189,6 @@ whitecap_4,2024-07-24,34.00494,-83.908725,GA,South,Dacula,30019,young,12060,"Atl
 whitecap_5,2024-08-05,33.531277,-86.718864,AL,South,Birmingham,35210,young,13820,"Birmingham-Hoover, AL",8844e822b3fffff
 whitecap_6,2024-09-09,36.0381391,-75.6759189,NC,South,Kill Devil Hills,27948,young,28620,"Kill Devil Hills, NC",882af02a31fffff
 woodies_20,2024-07-02,27.8535652,-82.2303191,FL,South,Lithia,33547,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441ac037fffff
-woodies_37a6299ebcf29e343027c85503cbe926c42fefd8a85335040215c1735debe5b2,2024-01-01,28.530828,-82.511058,FL,South,LITHIA,33547-3930,young,45300,"Tampa-St. Petersburg-Clearwater, FL",88441a2a4bfffff
-zips_3ea8ab4c526e0e0b3fe379c51c98614a876289c906415fa29a1e4360b520cf26,2024-01-01,41.858836,-88.0735209,IL,Midwest,GLEN ELLYN,60137,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",8827592523fffff
-zips_5837dadb32ee372b9272f3cd9499b3830cf530476da8c255fb0656cdc0905025,2024-01-01,41.786924,-88.281289,IL,Midwest,AURORA,60505-1611,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",88266692d7fffff
-zips_c079d9e0602e58d1bf28bcf085957357d0a360b9c939b1cf75c68ff8ddd570b1,2024-01-01,41.6927453,-88.1217497,IL,Midwest,BOLINGBROOK,60490-1549,young,16980,"Chicago-Naperville-Elgin, IL-IN-WI",88266696d9fffff
 zipsexpresscarwash_20,2024-11-13,32.8080078,-96.7747821,TX,South,Dallas,75206,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c86493fffff
 zipsexpresscarwash_21,2024-11-07,32.823422,-96.818473,TX,South,Dallas,75209,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c864abfffff
 zipsexpresscarwash_22,2024-11-05,33.1777155,-96.8646649,TX,South,Frisco,75033,young,19100,"Dallas-Fort Worth-Arlington, TX",8826c80d31fffff

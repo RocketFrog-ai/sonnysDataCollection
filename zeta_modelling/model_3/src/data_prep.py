@@ -60,8 +60,11 @@ def _fix_lt_year_month(df: pd.DataFrame) -> pd.DataFrame:
 def _impute_lt_op_start(df: pd.DataFrame) -> pd.DataFrame:
     """For LT sites missing operational_start_date, use the first observed month.
 
-    LT is constructed so month_number=1 is the open month, so the earliest
-    observed year_month is a reliable proxy.
+    NOTE: this is a weak fallback. The LT file is a *calendar* snapshot —
+    month_number=1 is Jan-2024 for every site, NOT the site's open month — so
+    the earliest observed year_month is only a lower-bound proxy for the open
+    date. With EXCLUDE_CHEM=True every surviving LT (control) site already has
+    a real operational_start_date, so this path should not fire.
     """
     missing = df["operational_start_date"].isna()
     if not missing.any():
@@ -100,6 +103,15 @@ def _load_lt() -> pd.DataFrame:
         "city", "zip", "source", "year_number", "month_number",
     ]
     df = df[[c for c in keep if c in df.columns]].copy()
+    # Drop the chem-source cohort: those rows have no operational_start_date,
+    # are duplicated, and their wash volumes are confounded by the chemical
+    # program. Only the control cohort is a clean baseline for forecasting.
+    if C.EXCLUDE_CHEM and "source" in df.columns:
+        before = df["client_id_location_id"].nunique()
+        df = df[df["source"] != "chem"].copy()
+        after = df["client_id_location_id"].nunique()
+        print(f"[data_prep] EXCLUDE_CHEM: LT sites {before} -> {after} "
+              f"(dropped {before - after} chem-source sites)")
     # Fix mislabelled year before any further processing.
     df = _fix_lt_year_month(df)
     df["cohort"] = "young"

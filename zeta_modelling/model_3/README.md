@@ -38,15 +38,15 @@ data_prep ─► geo_markets (CBSA + H3) ─► peer_groups (CBSA + H3 + rollups
 
 | File | Job |
 |---|---|
-| `data_prep.py` | Load LT (<2 yr) + MT (≥2 yr); dedupe; filter; **impute the missing 2025 calendar year per-site** by log-linear interpolation between 2024 and 2026 same-calendar-month anchors. |
+| `data_prep.py` | Load LT (<2 yr) + MT (≥2 yr); **drop the LT `chem`-source cohort** (`EXCLUDE_CHEM` — those rows have no open date, are duplicated, and the chemical program confounds wash volume); dedupe; filter; relabel mislabelled LT year-2 months. |
 | `geo_markets.py` | CBSA polygon containment via `geopandas.sjoin`; rural points snap to nearest CBSA centroid within 50 km. Adds `h3_id` at r=8 for every site. |
 | `peer_groups.py` | Winsorized-mean CBSA references; **H3-disk (1-ring) local references** anchored at every cell touched by a peer; rollups to state/region/national for thin markets. |
 | `lifecycle.py` | Empirical ramp curves anchored at `ramp(24) = 1.0`. National + regional, extended to 60 months. |
 | `features.py` | Single feature schema usable at both training and cold-start inference (every feature has a peer-imputed fallback). |
 | `train.py` | Two LightGBM regressors (young / mature) predict the **log-space residual on top of the peer anchor**, then a calibration multiplier corrects log/expm1 bias. Site-level GroupKFold CV. |
 | `forecast_engine.py` | 60-month walk-forward forecast with 80% bands + `explain_forecast`. |
-| `evaluate.py` | MAE / RMSE / WMAPE / bias + annual HIT/MISS at ±20k + segment slices. |
-| `pipeline.py` | End-to-end runner producing all artifacts, plots, and summaries. |
+| `evaluate.py` | MAE / RMSE / WMAPE / bias + **`annual_hit_miss`** — annual HIT/MISS on either calendar or **tenure** years, with an absolute (±20k) and a percentage (±20%) band. |
+| `pipeline.py` | End-to-end runner. Trains the production booster, runs the temporal eval, and runs the **k-fold cold-start cross-validation** (`coldstart_kfold_eval`). |
 
 ## How peer markets are formed
 
@@ -84,58 +84,98 @@ For a candidate site at `(lat, lon)` with optional `state` and
 
 ## Results (final pipeline)
 
-The pipeline runs **two evaluations** with disjoint methodologies:
+The pipeline runs **two evaluations** with disjoint methodologies. Both
+exclude the LT `chem`-source cohort (`EXCLUDE_CHEM`).
 
-### 1) Temporal split — known sites, 2025+ months (matches model_1 / model_2 reports)
+### 1) Temporal split — known sites, 2025 months
 
-Train on 2024 rows, test on 2025+ rows. Same sites in both periods —
-the booster gets to see each site's training-window stats as features.
+Train on 2024 rows, test on 2025 rows. Same sites in both periods — the
+booster has each site's 2024 history as features. Graded on calendar-year
+annual totals (a calendar split by construction).
 
-| | model_3 | model_1 (Phase 3 P50) | model_2 |
+| metric | model_3 |
+|---|---:|
+| Monthly MAE | **1,857** |
+| Monthly RMSE | **3,347** |
+| Monthly WMAPE | **0.189** |
+| Annual HIT% **±20%** | **78.4%** |
+| Annual HIT% **±20k** | **76.0%** |
+| Median annual abs % error | **10.2%** |
+
+### 2) Cold-start — k-fold cross-validation, never-before-seen sites
+
+`COLD_START_KFOLDS`-fold CV: **every site is held out exactly once** and
+scored as brand-new (full-coverage metric, not a single 15% slice). For
+each fold the held-out sites' CBSA / H3 references are rebuilt from the
+*other* folds only (**leave-fold-out** — a site never sees itself as a
+peer) and from the **2024 training window only** — i.e. a new site is
+predicted purely from the *temporal trend of its neighbours*. A booster is
+retrained per fold on the other folds. Site-level features are imputed from
+peers and `cbsa_code = 0`, matching how the production engine scores a
+brand-new market.
+
+Graded on **tenure years** (Year-1 = site age 0-11 months) — **not**
+calendar years. The sites open across all 12 months of 2024, so a calendar
+year mixes life-stages and a partial first calendar year would be scored as
+a full-year miss. Tenure grading aligns Year-1 with the actual first 12
+months of operation.
+
+| metric | model_3 cold-start |
+|---|---:|
+| Monthly MAE | 4,810 |
+| Monthly WMAPE | 0.509 |
+| Annual HIT% ±20% | 24.8% |
+| Annual HIT% ±20k | 25.3% |
+| Median annual abs % error | 42.8% |
+
+Tenure-year breakdown (833 full site-years across all 673 sites):
+
+| tenure year | n | HIT ±20% | median abs % error |
 |---|---:|---:|---:|
-| Monthly MAE | **1,887** | 2,090 | 1,506 (>2y) / 3,240 (<2y) |
-| Monthly RMSE | **3,310** | 3,605 | — |
-| Monthly WMAPE | **0.195** | — | 0.16 / 0.23 |
-| Annual HIT% **±20k** | **78.8%** | 79.6% (±25k band) | — |
+| Year 1 | 129 | 17.1% | 39.6% |
+| Year 2 | 176 | 25.0% | 42.2% |
+| Year 3 | 165 | 27.3% | 42.8% |
+| Year 4 | 86 | 26.7% | 41.4% |
+| Year 5 | 56 | 35.7% | 40.3% |
 
-So on the same evaluation methodology as model_1, model_3 lands at
-**78.8% annual HIT% at ±20k** (model_1 reported 79.6% at the **wider**
-±25k band — model_3 hits the same accuracy at a tighter tolerance).
+### Segment slices
 
-### 2) Cold-start split — never-before-seen sites
+* Temporal split, by region — all regions WMAPE ≈ 0.18–0.21
+* Temporal split, by maturity — young (<24 mo) WMAPE 0.24; mature 0.17
+* Cold-start, by region — Northeast WMAPE 0.41 (best), West 0.66 (worst)
 
-Hold out 15% of sites entirely. Site-level features fall back to
-peer-imputed values, so this measures *true* cold-start performance.
+## Why is cold-start "only" ~25% HIT and ~40% median error?
 
-| | model_3 | model_2 cold-holdout |
-|---|---:|---:|
-| Monthly MAE | **3,934** | 4,501 |
-| Monthly WMAPE | **0.428** | — |
-| Annual HIT% **±20k** | 31.1% | — |
+This is close to the **ceiling of the cold-start problem**. A new site has
+no own history, so it is predicted from `(lat, lon)`, CBSA, H3 disk and the
+peer references derived from them. A site producing 200k washes/year can
+swing ±40% on operator, building, traffic, brand and marketing — none of
+which is observable from location alone. The booster barely beats the raw
+peer anchor at cold-start (MAE 4,810 vs 4,903) because every site-level
+feature collapses to a peer-imputed value.
 
-Cold-start is genuinely harder because the booster has no per-site
-identity to anchor on — only `(lat, lon)`, CBSA, H3 disk, and the peer
-references derived from them. The H3 layer helps (cold-start MAE was
-4,111 with CBSA only; **3,934 with CBSA + H3**) because local
-neighbourhoods inside the same CBSA differ.
+Two things that were *not* a true ceiling and have been fixed:
 
-### Segment slices (temporal split)
+1. **Calendar-year grading was wrong.** The earlier report graded
+   cold-start "Year 1" as calendar-year 2024. The sites are a 2024–2025
+   monthly snapshot and open across *every* month of 2024 — so calendar
+   2024 is a partial, pre-stabilisation slice for most sites and calendar
+   2025 blends two life-years. Cold-start is now graded on **tenure years**
+   (Year-1 = site age 0-11 months).
+2. **The old single 15% holdout leaked.** Peer references were built from
+   the full panel, so a held-out site appeared in its own CBSA/H3 peer
+   pool (badly so for 2-peer H3 disks). The k-fold CV rebuilds every
+   reference leave-fold-out and from the neighbours' 2024 window only.
 
-* By region — Northeast WMAPE 0.16; West WMAPE 0.21
-* By peer-resolution — CBSA-direct sites are the bulk; H3-fallback sites perform slightly better
-* By maturity — young (<24 mo) WMAPE 0.24; mature (≥24 mo) WMAPE 0.17
-
-## Why is cold-start "only" ~30% HIT at ±20k?
-
-This is the **ceiling of the cold-start problem**, not a model
-limitation. A site producing 250k washes/year can vary by ±50k easily
-based on operator, building, traffic, brand, marketing — none of which
-is observable from `(lat, lon)` alone. The ±20k band is ~8% of a
-typical site's annual volume, which is tighter than the natural site-
-to-site variance within a single CBSA. Both model_1 and model_2 used
-**known-site temporal evaluation** for their headline numbers — they
-do not publish a 30%-style number because they don't run the harder
-test. We do both so the comparison is honest.
+What *remains* a real, fixable error source — **carwash-format mix**.
+The CBSA peer reference pools all formats, but the MT panel is a mix of
+high-throughput Express Tunnels and low-volume legacy formats (Full
+Service, Self-Serve, Hand Wash). New builds are almost all Express
+Tunnels, so the pooled reference is dragged *down* and new sites are
+**systematically under-predicted** (Year-1 cold bias is negative); very
+old legacy sites are over-predicted (tenure Year-12+ shows >100% error).
+A **format-aware peer reference** (restrict the mature anchor to Express
+Tunnel peers) is the highest-value next step for cold-start accuracy.
 
 ## Outputs
 
@@ -146,8 +186,8 @@ outputs/
 │   ├── metrics.json                    # both eval modes + segments + HIT/MISS
 │   ├── feature_importance.json
 │   ├── market_level_metrics.csv
-│   ├── temporal_site_year_hits.csv     # per-(site, year) hit/miss rows
-│   └── coldstart_site_year_hits.csv
+│   ├── temporal_site_year_hits.csv     # per-(site, calendar-year) hit/miss rows
+│   └── coldstart_site_year_hits.csv    # per-(site, TENURE-year) cold-start hit/miss
 ├── plots/
 │   ├── sample_forecasts.png
 │   ├── ramp_curves.png
@@ -172,29 +212,48 @@ outputs/
 python -m zeta_modelling.model_3.src.pipeline
 ```
 
-End-to-end run ≈ 30 seconds. Config knobs in `src/config.py`:
+End-to-end run ≈ 2-3 minutes (the cold-start k-fold retrains a booster per
+fold). Config knobs in `src/config.py`:
 
 | knob | default | meaning |
 |---|---|---|
-| `OBSERVED_CUTOFF_YM` | `2026-05` | drop rows after this (future-projections) |
+| `EXCLUDE_CHEM` | `True` | drop the LT `chem`-source cohort (no open date, duplicated, confounded) |
+| `OBSERVED_CUTOFF_YM` | `2025-12` | drop rows after this (future-projections) |
 | `TRAIN_END_YM` | `2024-12` | temporal split boundary |
-| `COLD_START_HOLDOUT_FRAC` | `0.15` | fraction of sites for cold-start eval |
+| `COLD_START_KFOLDS` | `5` | folds for the cold-start cross-validation (every site held out once) |
+| `COLD_REF_LEAVE_SITE_OUT` | `True` | cold-start refs exclude the held-out fold |
+| `COLD_REF_TRAIN_WINDOW_ONLY` | `True` | cold-start ref *levels* use the neighbours' 2024 window only |
 | `MATURITY_MONTHS` | `24` | young/mature cohort boundary |
 | `MIN_PEERS_PER_MARKET` | `3` | CBSA peer-count floor before rollup |
 | `H3_RES` | `8` | H3 resolution (~0.7 km² hexes) |
 | `H3_DISK_RINGS` | `1` | k-ring expansion around the candidate hex |
 | `MIN_PEERS_PER_H3` | `2` | H3 disk peer-count floor before falling back to CBSA |
-| `HIT_BAND` | `20_000` | annual HIT/MISS tolerance (washes) |
+| `HIT_BAND` | `20_000` | annual HIT/MISS absolute tolerance (washes) |
+| `ANNUAL_PCT_BAND` | `0.20` | annual HIT/MISS percentage tolerance |
 | `FORECAST_HORIZON_MONTHS` | `60` | output horizon |
 
 ## Data quality and imputation decisions
 
-* **Dropped 2 Australian sites** that leaked into LT (`hang5carwash_1`, `rapidwash_1`) via the US bounding-box filter.
-* **Dropped 3,948 exact-duplicate rows** in the LT `chem` source (same site/month/wash count).
-* **Dropped future-dated rows** strictly after `OBSERVED_CUTOFF_YM = 2026-05`.
-* **Missing 2025 calendar year** in the LT panel is **imputed per-site**: for each site that has both 2024 and 2026 observations of the same calendar month, we log-linearly interpolate the 2025 value (preserves both seasonality and year-on-year growth). Sites with only one anchor side use the median national YoY growth multiplier per calendar month. Imputed rows carry `_imputed=True` and are **excluded from the test set** so we don't grade the imputer.
-* **`operational_start_date` missing** rows get the start imputed from the earliest observed month.
-* **Partial first month** (op date day ≥ 15 in the open month) is dropped so the ramp curve isn't biased downward.
+* **Dropped the LT `chem`-source cohort** (`EXCLUDE_CHEM=True`) — 270 of 491
+  LT sites. Those rows have **no `operational_start_date`** (so site age,
+  and therefore the ramp, cannot be trusted), are exact-duplicated, and
+  belong to a chemical-program cohort whose wash volumes are confounded by
+  the program. The 221 surviving LT `control` sites all carry a real,
+  dated open month in 2024.
+* **The LT file is a calendar snapshot**, not an open-aligned panel:
+  `month_number=1` is Jan-2024 for *every* site regardless of when it
+  opened. LT year-2 months are mislabelled `2026` in the raw file and are
+  relabelled to `2025` from `month_number`.
+* **US-only** — points outside the US bounding box (e.g. Australian sites
+  that leaked in) are dropped.
+* **Dropped future-dated rows** strictly after `OBSERVED_CUTOFF_YM = 2025-12`.
+* **`operational_start_date`** — MT missing dates are back-calculated from
+  `age_on_30_sep_25`; LT missing dates fall back to the first observed
+  month (should not fire once chem is excluded).
+* **Partial first month** (op date day ≥ 15 in the open month) is dropped
+  so the ramp curve isn't biased downward.
+* **Floor** the bottom 0.5% of wash counts; **drop sites with < 3 months**;
+  short interior gaps (≤ 2 months) are linearly patched.
 
 ## Scoring a new site from the saved artifact
 

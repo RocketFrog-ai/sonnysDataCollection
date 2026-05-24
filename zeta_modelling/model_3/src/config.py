@@ -40,6 +40,36 @@ FORECAST_HORIZON_MONTHS = 60
 
 # HIT/MISS threshold for annual totals (washes).
 HIT_BAND = 20_000
+# Percentage-based annual tolerance — fairer than a flat band because ±20k is
+# ~8% of a 250k-wash site but ~33% of a 60k-wash site.
+ANNUAL_PCT_BAND = 0.20
+# An annual (site, year) bucket is only graded if it has at least this many
+# observed months — a partial year is never scored as a full-year miss.
+ANNUAL_MIN_MONTHS = 10
+
+# ----------------------------------------------------------------------------
+# Source filtering.
+# The LT (<2yr) file carries a `source` column: "chem" vs "control". The
+# chem-source rows have NO operational_start_date (so site age cannot be
+# trusted), are duplicated, and belong to a chemical-program cohort whose wash
+# volumes are confounded by the program. EXCLUDE_CHEM drops them entirely so
+# every modelled LT site has a real, dated open month.
+EXCLUDE_CHEM = True
+
+# ----------------------------------------------------------------------------
+# Cold-start evaluation protocol.
+# A cold-start site has zero own history — it is predicted purely from its
+# CBSA / H3 neighbours. To grade that honestly:
+#   * COLD_REF_LEAVE_SITE_OUT — the held-out sites are removed from every peer
+#     reference, so a cold site never sees itself in its own peer pool.
+#   * COLD_REF_TRAIN_WINDOW_ONLY — the CBSA/H3 reference *levels* are built
+#     only from neighbours' rows in the temporal training window
+#     (year_month <= TRAIN_END_YM). This is the "temporal split of the
+#     neighbours" — the same 2024 data the temporal split trains on.
+# Cold-start accuracy is then graded on TENURE years (Year-1 = site age
+# 0-11 months), never calendar years, because sites open across all of 2024.
+COLD_REF_LEAVE_SITE_OUT = True
+COLD_REF_TRAIN_WINDOW_ONLY = True
 
 # Random seed used for splits and model training.
 SEED = 7
@@ -50,7 +80,11 @@ SEED = 7
 # 2024-train / 2025+test methodology of model_1 and model_2.
 TRAIN_END_YM = "2024-12"
 
-# Fraction of sites held out for the cold-start (never-seen) evaluation.
+# Cold-start evaluation is done as a K-fold cross-validation: every site is
+# held out (treated as never-seen) exactly once, so the cold-start metric
+# covers all sites instead of a single ~15% slice. COLD_START_HOLDOUT_FRAC is
+# retained only for backward compatibility and is no longer used.
+COLD_START_KFOLDS = 5
 COLD_START_HOLDOUT_FRAC = 0.15
 
 # H3 hex resolution used for sub-CBSA "local submarket" assignment.
