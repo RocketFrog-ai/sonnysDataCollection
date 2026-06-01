@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ' *)",
+      "Bash(python run_nochem_v2_analysis.py)"
+    ]
+  }
+}
