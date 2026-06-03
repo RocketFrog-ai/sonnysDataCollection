@@ -1,0 +1,8 @@
+pandas
+numpy
+scikit-learn>=1.4
+scipy
+plotly
+folium
+streamlit
+streamlit-folium
