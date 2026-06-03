@@ -9,7 +9,7 @@ All heavy work is pure pandas/numpy so it is reusable by evaluate.py and app.py.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -123,6 +123,107 @@ def get_cohort(sites: pd.DataFrame, min_months=C.COHORT_MIN_MONTHS) -> set:
 
 
 # --------------------------------------------------------------------------- #
+# Membership vs retail share panels
+# --------------------------------------------------------------------------- #
+def load_pct_panels(path=C.PCT_DATA_PATH, month_axis=None) -> dict:
+    """Build site-month panels for the 4 membership/retail share KPIs.
+
+    `monthly_withpackage.csv` is split one row per package_name, so the raw
+    share columns are per-package (sales) or repeated (washes). We aggregate to
+    a true site-month level and recompute each share from the underlying totals:
+
+        membership_pct_sales = mem_sales / (mem_sales + retail_sales) * 100
+        membership_pct_wash  = mem_wash  / (mem_wash  + retail_wash)  * 100
+
+    with the retail_* share as the 100-complement. Returns PCT_KPIS -> panel
+    (site_uid x month), reindexed onto `month_axis` when given so the columns
+    line up with the rest of the model.
+    """
+    raw = pd.read_csv(path)
+    raw["site_uid"] = raw["client_id"].astype(str) + "__" + raw["site_id"].astype(str)
+
+    df = raw[raw["package_plan"] == C.PCT_PACKAGE_PLAN].copy()
+    df["ym"] = pd.to_datetime(dict(year=df["year"], month=df["month"], day=1))
+
+    # membership_sales_amount is per-package (summed); retail and wash counts are
+    # site-level constants within a site-month (first is enough).
+    for col in ("membership_sales_amount", "retail_sales_amount",
+                "membership_wash_count", "retail_wash_count"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    g = (
+        df.groupby(["site_uid", "ym"])
+        .agg(
+            mem_sales=("membership_sales_amount", "sum"),
+            ret_sales=("retail_sales_amount", "first"),
+            mem_wash=("membership_wash_count", "first"),
+            ret_wash=("retail_wash_count", "first"),
+        )
+        .reset_index()
+    )
+
+    sales_tot = g["mem_sales"] + g["ret_sales"]
+    wash_tot = g["mem_wash"] + g["ret_wash"]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        g["membership_pct_sales"] = np.where(sales_tot > 0, g["mem_sales"] / sales_tot * 100, np.nan)
+        g["membership_pct_wash"] = np.where(wash_tot > 0, g["mem_wash"] / wash_tot * 100, np.nan)
+    g["retail_pct_sales"] = 100 - g["membership_pct_sales"]
+    g["retail_pct_wash"] = 100 - g["membership_pct_wash"]
+
+    panels = {}
+    for kpi in C.PCT_KPIS:
+        p = g.pivot_table(index="site_uid", columns="ym", values=kpi, aggfunc="mean")
+        p.columns = pd.PeriodIndex(p.columns, freq="M")
+        panels[kpi] = p.reindex(columns=month_axis) if month_axis is not None else p
+    return panels
+
+
+def load_pct_breakdowns(path=C.PCT_DATA_PATH) -> dict:
+    """Per-site membership-vs-retail totals behind the share pies.
+
+    Aggregated at the package_plan level (all Monthly-Recurring packages summed
+    together), over all available months:
+        wash  : DataFrame[site_uid] -> membership_wash, retail_wash counts
+        sales : DataFrame[site_uid] -> membership_sales, retail_sales dollars
+
+    Wash counts and retail sales are site-level (constant within a site-month),
+    so they are taken once per month then summed. Membership sales are split per
+    package, so they are summed across every package row.
+    """
+    raw = pd.read_csv(path)
+    raw["site_uid"] = raw["client_id"].astype(str) + "__" + raw["site_id"].astype(str)
+
+    df = raw[raw["package_plan"] == C.PCT_PACKAGE_PLAN].copy()
+    df["ym"] = pd.to_datetime(dict(year=df["year"], month=df["month"], day=1))
+    for col in ("membership_sales_amount", "retail_sales_amount",
+                "membership_wash_count", "retail_wash_count"):
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # Membership sales: sum every package row per site.
+    mem_sales = df.groupby("site_uid")["membership_sales_amount"].sum()
+
+    # Site-level columns: take once per site-month, then sum across months.
+    per_sm = (
+        df.groupby(["site_uid", "ym"])
+        .agg(
+            mem_wash=("membership_wash_count", "first"),
+            ret_wash=("retail_wash_count", "first"),
+            ret_sales=("retail_sales_amount", "first"),
+        )
+        .reset_index()
+    )
+    wash = per_sm.groupby("site_uid")[["mem_wash", "ret_wash"]].sum()
+    wash.columns = ["membership_wash", "retail_wash"]
+
+    sales = per_sm.groupby("site_uid")[["ret_sales"]].sum()
+    sales.columns = ["retail_sales"]
+    sales["membership_sales"] = mem_sales
+    sales = sales[["membership_sales", "retail_sales"]]
+
+    return {"wash": wash, "sales": sales}
+
+
+# --------------------------------------------------------------------------- #
 # Convenience bundle
 # --------------------------------------------------------------------------- #
 @dataclass
@@ -132,6 +233,8 @@ class Dataset:
     panels: dict
     month_axis: pd.PeriodIndex
     cohort: set
+    pct_panels: dict = field(default_factory=dict)
+    pct_breakdowns: dict = field(default_factory=dict)
 
 
 def load_all(path=C.DATA_PATH) -> Dataset:
@@ -140,7 +243,15 @@ def load_all(path=C.DATA_PATH) -> Dataset:
     sites = build_sites_table(df)
     panels, month_axis = build_panels(df)
     cohort = get_cohort(sites)
-    return Dataset(df=df, sites=sites, panels=panels, month_axis=month_axis, cohort=cohort)
+    try:
+        pct_panels = load_pct_panels(month_axis=month_axis)
+        pct_breakdowns = load_pct_breakdowns()
+    except FileNotFoundError:
+        pct_panels, pct_breakdowns = {}, {}
+    return Dataset(
+        df=df, sites=sites, panels=panels, month_axis=month_axis,
+        cohort=cohort, pct_panels=pct_panels, pct_breakdowns=pct_breakdowns,
+    )
 
 
 if __name__ == "__main__":

@@ -8,12 +8,18 @@ from pathlib import Path
 # --- Paths ---
 ROOT = Path(__file__).resolve().parents[1]          # final_modelling/
 DATA_PATH = ROOT / "data" / "monthly_kpi.csv"
+# Per-package file (one row per package_name) that also carries the
+# membership/retail share columns — full export covering all sites.
+PCT_DATA_PATH = ROOT / "data" / "monthly_kpi_agg.csv"
 ARTIFACTS_DIR = ROOT / "artifacts"
 BBOX_PATH = ARTIFACTS_DIR / "cluster_bboxes.json"
 EVAL_PATH = ARTIFACTS_DIR / "eval_results.csv"
 
 # --- Data filtering (matches the notebook) ---
 PACKAGE = "Monthly Recurring Plan"
+# In monthly_withpackage.csv the recurring-plan category lives in `package_plan`
+# (one row per package_name underneath it), so the share file filters on that.
+PCT_PACKAGE_PLAN = "Monthly Recurring Plan"
 
 # --- Geography ---
 EARTH_KM = 6371.0088          # mean Earth radius for haversine (notebook constant)
@@ -47,6 +53,24 @@ KPI_LABELS = {
     "asp_per_membership": "ASP / membership ($)",
     "retail_wash_count": "Retail washes",
     "asp_per_retail_wash": "ASP / retail wash ($)",
+}
+
+# --- Membership vs retail share (%) ---
+# Monthly percentage-share metrics, recomputed at site-month level from the
+# underlying amounts/counts (see data_loader.load_pct_panels). Each pair sums to
+# 100: sales share splits membership vs retail dollars, wash share splits washes.
+PCT_KPIS = [
+    "membership_pct_sales",
+    "retail_pct_sales",
+    "membership_pct_wash",
+    "retail_pct_wash",
+]
+
+PCT_KPI_LABELS = {
+    "membership_pct_sales": "Membership % of sales",
+    "retail_pct_sales": "Retail % of sales",
+    "membership_pct_wash": "Membership % of washes",
+    "retail_pct_wash": "Retail % of washes",
 }
 
 # --- Data cleaning ---
