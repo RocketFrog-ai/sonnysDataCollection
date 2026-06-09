@@ -19,7 +19,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from streamlit_folium import st_folium
 
-DATA_PATH = "data/new_aggregated_data_final.csv"
+DATA_PATH = "data/final-6yr-final.csv"
 COORDS_PATH = "data/six_yearly_monthly_agg.csv"   # supplies lat/lon (new file has none)
 FULL_YEARS = range(2020, 2026)   # "full 6 years" = a record in each of 2020-2025
 RADIUS_KM = 20.0            # same neighbourhood radius proven to co-move (app.py)
@@ -63,13 +63,15 @@ st.set_page_config(page_title="6-Year Site KPI Explorer", layout="wide")
 def load_data() -> pd.DataFrame:
     df = pd.read_csv(DATA_PATH, low_memory=False)
 
-    # lat/lon live only in the old aggregate — join them on client_id + site_id
+    # lat/lon live only in the old aggregate — join on client_id + client_name +
+    # site_id (site_id is essential: many clients are multi-site at different
+    # locations, so client+name alone would mis-locate ~29% of clients).
     coords = (
         pd.read_csv(COORDS_PATH, low_memory=False)[
-            ["client_id", "site_id", "lat", "lon"]
-        ].drop_duplicates(["client_id", "site_id"])
+            ["client_id", "client_name", "site_id", "lat", "lon"]
+        ].drop_duplicates(["client_id", "client_name", "site_id"])
     )
-    df = df.merge(coords, on=["client_id", "site_id"], how="left")
+    df = df.merge(coords, on=["client_id", "client_name", "site_id"], how="left")
 
     # keep only sites with a record in every one of the FULL_YEARS ("full 6 years")
     have = (
@@ -518,3 +520,97 @@ if pts:
     st.plotly_chart(jfig, use_container_width=True, key="sus_journey")
 else:
     st.info("Click a dot above to see that site's 6-year total-revenue journey.")
+
+
+# --------------------------------------------------------------------------- #
+# Animated demo — how the X (bumpiness) and Y (growth) axes are derived
+# --------------------------------------------------------------------------- #
+st.markdown("---")
+st.subheader("🎬 How the two axes are built — animated demo")
+st.caption(
+    "One real site's 6 yearly total-revenue points become the **Y (growth)** "
+    "and **X (bumpiness)** used in the scatter above. Press ▶ Play to step through it."
+)
+
+# pick an illustrative sustainable site (smooth + clearly growing)
+_cand = sus[sus.sustainable].sort_values("bumpy")
+ex_uid = _cand.index[len(_cand) // 4] if len(_cand) else sus.index[0]
+_yv = (df[df.uid == ex_uid].groupby("year").total_rev.sum()
+       .reindex(range(2020, 2026)))
+yr_lbl = [str(y) for y in _yv.index]
+yv = _yv.to_numpy(dtype=float)
+xi = np.arange(len(yv))
+_slope, _intc = np.polyfit(xi, yv, 1)
+fit = _slope * xi + _intc
+mrev = yv.mean()
+ex_growth = _slope / mrev * 100.0
+ex_bumpy = np.std(yv - fit) / mrev * 100.0
+
+# residual segments (vertical gaps from each point to the trend line)
+rx, ry = [], []
+for lbl, a_, f_ in zip(yr_lbl, yv, fit):
+    rx += [lbl, lbl, None]
+    ry += [a_, f_, None]
+
+# 3 fixed traces: points (always), trend line, residuals
+pts_tr = go.Scatter(x=yr_lbl, y=yv, mode="markers+lines", name="actual revenue",
+                    marker=dict(size=13, color="#2C3E50"),
+                    line=dict(color="rgba(44,62,80,0.25)", width=1))
+trend_tr = go.Scatter(x=yr_lbl, y=fit, mode="lines", name="trend line (slope = growth)",
+                      line=dict(color=SUS_GREEN, width=4), visible=False)
+resid_tr = go.Scatter(x=rx, y=ry, mode="lines", name="residuals (gap to trend)",
+                      line=dict(color="#FF5A4D", width=3, dash="dot"), visible=False)
+
+_formula = (f"<b>Y · growth</b> = slope ÷ mean revenue = <b>{ex_growth:+.1f}%/yr</b><br>"
+            f"<b>X · bumpiness</b> = std(residuals) ÷ mean revenue = <b>{ex_bumpy:.1f}%</b>")
+_box = dict(xref="paper", yref="paper", x=0.02, y=0.97, xanchor="left", yanchor="top",
+            align="left", showarrow=False, bordercolor="#FFFFFF", borderwidth=1,
+            borderpad=10, bgcolor="rgba(20,24,28,0.92)",
+            font=dict(size=15, color="#FFFFFF"))
+
+frames = [
+    go.Frame(name="1", traces=[1, 2],
+             data=[go.Scatter(visible=False), go.Scatter(visible=False)],
+             layout=go.Layout(title="Step 1 · Plot the 6 yearly total-revenue points")),
+    go.Frame(name="2", traces=[1, 2],
+             data=[go.Scatter(visible=True), go.Scatter(visible=False)],
+             layout=go.Layout(title="Step 2 · Fit the trend line — its slope is the GROWTH (Y)")),
+    go.Frame(name="3", traces=[1, 2],
+             data=[go.Scatter(visible=True), go.Scatter(visible=True)],
+             layout=go.Layout(title="Step 3 · Residuals = vertical gap from each point to the line")),
+    go.Frame(name="4", traces=[1, 2],
+             data=[go.Scatter(visible=True), go.Scatter(visible=True)],
+             layout=go.Layout(
+                 title="Step 4 · Y = growth from the slope · X = bumpiness from the residual spread",
+                 annotations=[{**_box, "text": _formula}])),
+]
+
+play = dict(
+    type="buttons", showactive=False, x=0.0, y=-0.18, xanchor="left",
+    buttons=[
+        dict(label="▶ Play", method="animate",
+             args=[None, dict(frame=dict(duration=1400, redraw=True),
+                              fromcurrent=True, transition=dict(duration=500))]),
+        dict(label="⟲ Reset", method="animate",
+             args=[["1"], dict(frame=dict(duration=0, redraw=True), mode="immediate")]),
+    ],
+)
+slider = dict(active=0, x=0.18, len=0.8, y=-0.16,
+              currentvalue=dict(prefix="Step "),
+              steps=[dict(label=f.name, method="animate",
+                          args=[[f.name], dict(frame=dict(duration=0, redraw=True),
+                                               mode="immediate")]) for f in frames])
+
+demo = go.Figure(data=[pts_tr, trend_tr, resid_tr], frames=frames)
+demo.update_layout(
+    title=dict(text="Step 1 · Plot the 6 yearly total-revenue points",
+               x=0.0, xanchor="left", y=0.97, font=dict(size=18)),
+    height=560, margin=dict(l=10, r=10, t=110, b=80),
+    yaxis_title="total revenue ($)", xaxis_title="year",
+    updatemenus=[play], sliders=[slider],
+    legend=dict(orientation="h", yanchor="bottom", y=1.04, x=0.0,
+                bgcolor="rgba(0,0,0,0)"),
+)
+cn_ex = "" if pd.isna(sus.loc[ex_uid].client_name) else f"{sus.loc[ex_uid].client_name} — "
+st.caption(f"Example site: **{cn_ex}{ex_uid}**")
+st.plotly_chart(demo, use_container_width=True, key="axis_demo")
