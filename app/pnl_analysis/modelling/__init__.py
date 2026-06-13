@@ -1,2 +1,0 @@
-"""PnL modelling tasks (Celery)."""
-
