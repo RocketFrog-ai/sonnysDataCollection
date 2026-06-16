@@ -20,13 +20,6 @@ CELERY_RESULT_BACKEND = calib.CELERY_RESULT_BACKEND
 
 
 # -----------------------------------------------------------------------------
-# Profiling dimensions
-# -----------------------------------------------------------------------------
-
-DIMENSIONS = ("Weather", "Gas", "Retail Proximity", "Competition")
-
-
-# -----------------------------------------------------------------------------
 # Weather data API — metric keys and mapping to climate fields
 # -----------------------------------------------------------------------------
 # Used by POST /weather/data/{metric_key}.
@@ -55,25 +48,10 @@ WEATHER_METRIC_DISPLAY: dict = {
     "shutdown-risk-days": ("Shutdown Risk Days", "Days Below Freezing (< 32°F)"),
 }
 
-# Map weather metric_key (API) → v3 feature_analysis key (quantile_result)
-WEATHER_METRIC_TO_V3_FEATURE: dict = {
-    "dirt-trigger-days": "weather_rainy_days",
-    "dirt-deposit-severity": "weather_total_snowfall_cm",
-    "comfortable-washing-days": "weather_days_pleasant_temp",
-    "shutdown-risk-days": "weather_days_below_freezing",
-}
 
-
-# Competition (nearby car washes within 4 miles): API metric keys and v3 mapping
+# Competition (nearby car washes within 4 miles)
 COMPETITION_RADIUS_MILES = 4.0
 
-COMPETITION_METRIC_TO_V3_FEATURE: dict = {
-    "same-format-count": "competitors_count_4miles",
-    "distance-to-nearest": "competitor_1_distance_miles",
-    "nearest-google-rating": "competitor_1_google_rating",
-    "nearest-review-count": "competitor_1_rating_count",
-    "nearest-brand-strength": "competition_quality",
-}
 COMPETITION_METRIC_DISPLAY: dict = {
     "same-format-count": ("Nearby Same-format Car Washes", "Within 4 miles"),
     "distance-to-nearest": ("Distance to Nearest Same-format Car Wash", "miles"),
@@ -83,47 +61,12 @@ COMPETITION_METRIC_DISPLAY: dict = {
 }
 
 
-def nearest_brand_strength_from_quantile(
-    category: Optional[str] = None,
-    wash_q: Optional[float] = None,
-) -> str:
-    """
-    Derive High/Medium/Low from v3 predictor quartile/category for nearest competitor
-    (competition_quality = rating × log(review_count+1)). Uses v3 output, not raw rating/review thresholds.
-    """
-    if category:
-        m = {"Strong": "High", "Good": "Medium", "Fair": "Medium", "Poor": "Low"}
-        out = m.get(category)
-        if out:
-            return out
-    if wash_q is not None and 1 <= wash_q <= 4:
-        return {4: "High", 3: "Medium", 2: "Medium", 1: "Low"}.get(int(wash_q), "Unknown")
-    return "Unknown"
-
-
 # -----------------------------------------------------------------------------
 # Retail proximity: anchor retailers within 1 and 3 miles
 # -----------------------------------------------------------------------------
 
 RETAIL_RADIUS_NEAR_MILES = 1.0
 RETAIL_RADIUS_FAR_MILES = 3.0
-
-# Map retail metric_key (API) → v3 feature_analysis key
-RETAIL_METRIC_TO_V3_FEATURE: dict = {
-    "costco-distance": "costco_enc",
-    "walmart-distance": "distance_nearest_walmart(5 mile)",
-    "target-distance": "distance_nearest_target (5 mile)",
-    "grocery-count": "other_grocery_count_1mile",
-    "food-joint-count": "count_food_joints_0_5miles (0.5 mile)",
-}
-
-# For retail_score: percentiles from these v3 keys
-RETAIL_SCORE_V3_KEYS = [
-    "costco_enc",
-    "distance_nearest_walmart(5 mile)",
-    "distance_nearest_target (5 mile)",
-    "other_grocery_count_1mile",
-]
 
 # Anchor type by keyword in name (lower-case)
 ANCHOR_TYPE_BY_KEYWORD: dict = {
@@ -176,19 +119,6 @@ def anchor_type_from_name_or_category(name: Optional[str], category: Optional[st
 GAS_RADIUS_NEAR_MILES = 1.0
 GAS_RADIUS_FAR_MILES = 3.0
 
-# Map gas metric_key → v3 feature_analysis key
-GAS_METRIC_TO_V3_FEATURE: dict = {
-    "gas-distance": "nearest_gas_station_distance_miles",
-    "gas-rating": "nearest_gas_station_rating",
-    "gas-review-count": "nearest_gas_station_rating_count",
-}
-
-# For gas_score: percentiles from these v3 keys
-GAS_SCORE_V3_KEYS = [
-    "nearest_gas_station_distance_miles",
-    "nearest_gas_station_rating",
-]
-
 # High-traffic fuel brands (lower-case keywords)
 HIGH_TRAFFIC_GAS_BRANDS = frozenset({
     "shell", "chevron", "exxon", "bp", "sunoco", "arco",
@@ -204,78 +134,6 @@ def is_high_traffic_gas_brand(name: Optional[str]) -> bool:
         return False
     name_lower = name.lower()
     return any(brand in name_lower for brand in HIGH_TRAFFIC_GAS_BRANDS)
-
-
-# -----------------------------------------------------------------------------
-# Site score: business-logic feature weights
-# Maps v3 feature_analysis key → absolute weight (all weights sum to 1.0).
-# Formula: site_score = Σ (adjusted_percentile_i × weight_i) / 100  → result 0–100.
-#
-# Weight derivation:
-#   Weather 0.25:  sunshine hrs 0.035 (0.015 avg + 0.02 total sunny days merged),
-#                  precipitation 0.02, snowfall 0.09 (0.05 snowfall + 0.04 snowy days merged),
-#                  days_below_freezing 0.02, pleasant_temp 0.03, wind_speed 0.005, rainy_days 0.05
-#   Competition 0.35: count 0.12, rating 0.07, distance 0.10, reviews 0.06
-#   Retail 0.30:  costco 0.08, walmart 0.06, target 0.04, grocery_count 0.07, food_count 0.05
-#   Gas 0.10:     distance 0.04, draw_score 0.03, rating_count 0.025, rating 0.005
-# -----------------------------------------------------------------------------
-
-SITE_SCORE_WEIGHTS: dict = {
-    # Weather
-    "weather_total_sunshine_hours":           0.035,
-    "weather_total_precipitation_mm":         0.020,
-    "weather_total_snowfall_cm":              0.090,
-    "weather_days_below_freezing":            0.020,
-    "weather_days_pleasant_temp":             0.030,
-    "weather_avg_daily_max_windspeed_ms":     0.005,
-    "weather_rainy_days":                     0.050,
-    # Competition
-    "competitors_count_4miles":               0.120,
-    "competitor_1_google_rating":             0.070,
-    "competitor_1_distance_miles":            0.100,
-    "competitor_1_rating_count":              0.060,
-    # Retail
-    "costco_enc":                             0.080,
-    "distance_nearest_walmart(5 mile)":       0.060,
-    "distance_nearest_target (5 mile)":       0.040,
-    "other_grocery_count_1mile":              0.070,
-    "count_food_joints_0_5miles (0.5 mile)":  0.050,
-    # Gas
-    "nearest_gas_station_distance_miles":     0.040,
-    "gas_station_draw":                       0.030,
-    "nearest_gas_station_rating_count":       0.025,
-    "nearest_gas_station_rating":             0.005,
-}
-
-SITE_SCORE_CATEGORY_WEIGHTS: dict = {
-    "Weather":     0.25,
-    "Competition": 0.35,
-    "Retail":      0.30,
-    "Gas":         0.10,
-}
-
-SITE_SCORE_FEATURE_CATEGORY: dict = {
-    "weather_total_sunshine_hours":           "Weather",
-    "weather_total_precipitation_mm":         "Weather",
-    "weather_total_snowfall_cm":              "Weather",
-    "weather_days_below_freezing":            "Weather",
-    "weather_days_pleasant_temp":             "Weather",
-    "weather_avg_daily_max_windspeed_ms":     "Weather",
-    "weather_rainy_days":                     "Weather",
-    "competitors_count_4miles":               "Competition",
-    "competitor_1_google_rating":             "Competition",
-    "competitor_1_distance_miles":            "Competition",
-    "competitor_1_rating_count":              "Competition",
-    "costco_enc":                             "Retail",
-    "distance_nearest_walmart(5 mile)":       "Retail",
-    "distance_nearest_target (5 mile)":       "Retail",
-    "other_grocery_count_1mile":              "Retail",
-    "count_food_joints_0_5miles (0.5 mile)":  "Retail",
-    "nearest_gas_station_distance_miles":     "Gas",
-    "gas_station_draw":                       "Gas",
-    "nearest_gas_station_rating_count":       "Gas",
-    "nearest_gas_station_rating":             "Gas",
-}
 
 
 def get_weather_metric_value_from_climate(
