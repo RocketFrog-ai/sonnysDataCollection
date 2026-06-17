@@ -52,6 +52,7 @@ REPO_ROOT = os.path.dirname(HERE)
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 
 JINA_API_KEY = os.getenv("JINA_API_KEY")
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
 # NOTE: the working type_car_wash/analyzer.py hardcodes this endpoint and the
 # AZURE_OPENAI_API_KEY in .env belongs to THIS resource -- not the talktodocs
@@ -75,7 +76,10 @@ OUTPUT_FIELDS = [
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                          "(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
 BLOCKED_DOMAINS = ["yelp.com", "facebook.com", "instagram.com", "linkedin.com",
-                   "mapquest.com", "tripadvisor.com", "yellowpages.com", "bbb.org"]
+                   "mapquest.com", "tripadvisor.com", "yellowpages.com", "bbb.org",
+                   # auto-generated business-listing microsites with no service content
+                   "edan.io", "business.site", "g.page", "goo.gl", "sites.google.com",
+                   "godaddysites.com", "negocio.site"]
 
 
 # --------------------------------------------------------------------------
@@ -158,6 +162,50 @@ def find_official_website(name: str, address: Optional[str] = None):
     if best_score >= 30:
         return best, best_score
     return None, best_score
+
+
+# --------------------------------------------------------------------------
+# 1b. WEBSITE FINDER via Google Places API v1 (more accurate, per-location)
+# --------------------------------------------------------------------------
+def find_website_google_places(name, address, lat=None, lon=None):
+    """
+    Look up the specific physical location on Google Places (Text Search New)
+    and return its official websiteUri. Biased to the site's lat/lon so the
+    correct location of a multi-site brand is picked. Returns (url, conf) where
+    conf is 90 for a Places hit, or (None, 0) if nothing usable.
+    """
+    if not GOOGLE_MAPS_API_KEY:
+        return None, 0
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.websiteUri,places.formattedAddress",
+    }
+    payload = {
+        "textQuery": f"{name} {address}".strip(),
+        "includedType": "car_wash",
+        "maxResultCount": 1,
+    }
+    try:
+        if lat is not None and lon is not None and not (pd.isna(lat) or pd.isna(lon)):
+            payload["locationBias"] = {"circle": {
+                "center": {"latitude": float(lat), "longitude": float(lon)},
+                "radius": 5000.0}}
+    except (TypeError, ValueError):
+        pass
+    try:
+        r = requests.post("https://places.googleapis.com/v1/places:searchText",
+                          headers=headers, data=json.dumps(payload), timeout=15)
+        r.raise_for_status()
+        places = r.json().get("places", [])
+    except Exception:
+        return None, 0
+    if not places:
+        return None, 0
+    url = places[0].get("websiteUri")
+    if not url or _blocked(url):
+        return None, 0
+    return url, 90
 
 
 # --------------------------------------------------------------------------
@@ -271,12 +319,15 @@ def _address(rec) -> str:
     return (f"{a}, {tail}".strip().rstrip(",")) if a and a != "nan" else tail
 
 
-def _resolve(name, address):
+def _resolve(name, address, lat=None, lon=None):
     key = (name.lower(), (address or "").lower())
     with _url_lock:
         if key in _url_cache:
             return _url_cache[key]
-    val = find_official_website(name, address)
+    # Prefer Google Places (per-location, official website); fall back to DuckDuckGo.
+    val = find_website_google_places(name, address, lat, lon)
+    if not val[0]:
+        val = find_official_website(name, address)
     with _url_lock:
         _url_cache[key] = val
     return val
@@ -299,7 +350,7 @@ def process_site(rec) -> dict:
            "primary_carwash_type": "Unknown", "classify_confidence": 0.0,
            "secondary_types": "", "reasoning": ""}
     try:
-        url, conf = _resolve(name, _address(rec))
+        url, conf = _resolve(name, _address(rec), rec.get("lat"), rec.get("lon"))
         row["website_confidence"] = conf
         if not url:
             row["reasoning"] = "no confident website found"
@@ -336,7 +387,7 @@ def main():
     df = pd.read_csv(args.input, low_memory=False)
     sites = (df.dropna(subset=["client_name"])
              .drop_duplicates(subset=["client_id", "site_id"])
-             [["client_id", "site_id", "client_name", "address1", "state", "postal_code"]]
+             [["client_id", "site_id", "client_name", "address1", "state", "postal_code", "lat", "lon"]]
              .to_dict("records"))
 
     done = _load_done(args.output)
