@@ -469,6 +469,188 @@ def campaign_months_by_site():
     return out
 
 
+@st.cache_data(show_spinner=False)
+def _campaign_data():
+    """`data` for the book_v4 campaign plots — opex-data.csv with site_key = client_id::site_id."""
+    d = pd.read_csv(PNL, low_memory=False)
+    d["site_key"] = d.client_id.astype(str) + "::" + d.site_id.astype(str)
+    return d
+
+
+@st.cache_data(show_spinner=False)
+def _campaigns_df():
+    """`campaigns_df` for the book_v4 plots — detect OPEX spikes (true_opex > 1.2× trailing-6mo mean) and
+    cluster consecutive spike months (gap ≤ 1) into campaigns (site_key / campaign_start / duration_months)."""
+    data = _campaign_data()
+    sub = data.sort_values(["site_key", "report_date"]).copy()
+    sub["report_date"] = pd.to_datetime(sub["report_date"])
+    sub["true_opex"] = sub["cogs"] + sub["expenses"]
+    sub["opex_baseline"] = (sub.groupby("site_key")["true_opex"]
+                            .transform(lambda s: s.shift(1).rolling(6, min_periods=4).mean()))
+    sub["opex_vs_baseline"] = sub["true_opex"] / sub["opex_baseline"]
+    spikes = sub[sub["opex_vs_baseline"] > 1.2].copy()
+    records = []
+    for site_key, grp in spikes.sort_values("report_date").groupby("site_key"):
+        rows = grp.reset_index(drop=True); i = 0
+        while i < len(rows):
+            start_date = rows.loc[i, "report_date"]; months = [rows.loc[i, "report_date"]]; j = i + 1
+            while j < len(rows):
+                gap = ((rows.loc[j, "report_date"].year - rows.loc[j-1, "report_date"].year) * 12 +
+                       (rows.loc[j, "report_date"].month - rows.loc[j-1, "report_date"].month))
+                if gap <= 1:
+                    months.append(rows.loc[j, "report_date"]); j += 1
+                else:
+                    break
+            records.append({"site_key": site_key, "campaign_start": start_date, "duration_months": len(months)}); i = j
+    return pd.DataFrame(records)
+
+
+def render_campaign_snapshot():
+    """OPEX / Revenue / Profit / Mem Purchases — 3 separate plots, exactly as in book_v4.ipynb."""
+    data = _campaign_data()
+    campaigns_df = _campaigns_df().copy()
+
+    # ── OPEX / Revenue / Profit / Mem Purchases — 3 separate plots ───────────────  [book_v4.ipynb]
+    _rd = data.copy()
+    _rd["report_date"] = pd.to_datetime(_rd["report_date"])
+    _rd["true_opex"]   = _rd["cogs"] + _rd["expenses"]
+    _rd_by_site = {sk: grp.sort_values("report_date")
+                   for sk, grp in _rd.groupby("site_key")}
+
+    def reclassify(d):
+        if d == 1: return "1 month"
+        if d == 2: return "2 months"
+        return "3+ months"
+
+    campaigns_df["dur_bucket2"] = campaigns_df["duration_months"].apply(reclassify)
+
+    _records = []
+    for _, camp in campaigns_df.iterrows():
+        sk     = camp["site_key"]
+        anchor = pd.to_datetime(camp["campaign_start"])
+        bucket = camp["dur_bucket2"]
+        dur    = int(camp["duration_months"])
+        if sk not in _rd_by_site:
+            continue
+        ts = _rd_by_site[sk].copy()
+        ts["mfs"] = (
+            (ts["report_date"].dt.year  - anchor.year)  * 12 +
+            (ts["report_date"].dt.month - anchor.month)
+        )
+        for _, row in ts[(ts["mfs"] >= -3) & (ts["mfs"] <= 6)].iterrows():
+            _records.append({
+                "bucket":           bucket,
+                "duration":         dur,
+                "mfs":              int(row["mfs"]),
+                "opex":             row["true_opex"],
+                "revenue":          row["total_income"],
+                "profit":           row["total_income"] - row["true_opex"],
+                "mem_purchases":    row["mem_purchase_count"],
+            })
+
+    snap_df2 = pd.DataFrame(_records)
+
+    OPEX_COLOR    = "#4FC3F7"
+    REV_COLOR     = "#FFA726"
+    PROFIT_COLOR  = "#66BB6A"
+    MEM_COLOR     = "#CE93D8"   # purple — membership purchases
+    CAMP_SHADE    = "#FFF9C4"
+
+    BUCKET_CONFIG = {
+        "1 month":   {"camp_months": [0],       "title": "1-Month Campaigns"},
+        "2 months":  {"camp_months": [0, 1],    "title": "2-Month Campaigns"},
+        "3+ months": {"camp_months": [0, 1, 2], "title": "3+ Month Campaigns"},
+    }
+
+    for bucket, cfg in BUCKET_CONFIG.items():
+        sub = snap_df2[snap_df2["bucket"] == bucket]
+        if len(sub) == 0:
+            continue
+
+        agg = (
+            sub.groupby("mfs")[["opex", "revenue", "profit", "mem_purchases"]]
+            .median()
+            .reset_index()
+        )
+        n_camps     = campaigns_df[campaigns_df["dur_bucket2"] == bucket].shape[0]
+        camp_months = cfg["camp_months"]
+        month_list  = list(agg["mfs"])
+
+        x_labels = []
+        for m in month_list:
+            if m in camp_months:
+                x_labels.append(f"T={m}<br><b>📍 Campaign</b>")
+            else:
+                x_labels.append(f"T={m}")
+
+        fig = go.Figure()
+
+        # Shade campaign months
+        for cm in camp_months:
+            if cm in month_list:
+                pos = month_list.index(cm)
+                fig.add_vrect(
+                    x0=pos - 0.5, x1=pos + 0.5,
+                    fillcolor=CAMP_SHADE, opacity=0.55,
+                    layer="below", line_width=0,
+                )
+
+        fig.add_trace(go.Bar(
+            name="OPEX", x=x_labels, y=agg["opex"],
+            marker_color=OPEX_COLOR,
+            hovertemplate="T=%{x}<br>OPEX: $%{y:,.0f}<extra></extra>",
+        ))
+        fig.add_trace(go.Bar(
+            name="Revenue", x=x_labels, y=agg["revenue"],
+            marker_color=REV_COLOR,
+            hovertemplate="T=%{x}<br>Revenue: $%{y:,.0f}<extra></extra>",
+        ))
+        fig.add_trace(go.Bar(
+            name="Profit (Rev − OPEX)", x=x_labels, y=agg["profit"],
+            marker_color=PROFIT_COLOR,
+            hovertemplate="T=%{x}<br>Profit: $%{y:,.0f}<extra></extra>",
+        ))
+        fig.add_trace(go.Bar(
+            name="Membership Purchases", x=x_labels, y=agg["mem_purchases"],
+            marker_color=MEM_COLOR,
+            hovertemplate="T=%{x}<br>Mem Purchases: %{y:,.0f}<extra></extra>",
+        ))
+
+        camp_label = (
+            "T=0 = campaign month"
+            if len(camp_months) == 1
+            else f"T={camp_months[0]}–T={camp_months[-1]} = campaign months (yellow)"
+        )
+
+        fig.update_layout(
+            barmode="group",
+            title=dict(
+                text=(
+                    f"<b>OPEX · Revenue · Profit · Membership Purchases — {cfg['title']}</b>"
+                    f"<br><sub>n={n_camps} campaigns · {camp_label} · "
+                    "median values · T=-3 to T=-1 = pre-campaign baseline</sub>"
+                ),
+                x=0.02, xanchor="left",
+            ),
+            xaxis=dict(
+                title="Month Offset from Campaign Start",
+                showgrid=False, showline=True, linecolor="#CCC",
+            ),
+            yaxis=dict(
+                title="Median Value",
+                tickformat=",.0f",
+                gridcolor="#EEE",
+            ),
+            legend=dict(orientation="h", x=0.02, y=1.01, xanchor="left"),
+            plot_bgcolor="white",
+            height=470,
+            margin=dict(l=90, r=40, t=120, b=60),
+            bargap=0.18,
+            bargroupgap=0.04,
+        )
+        st.plotly_chart(fig, width="stretch", theme=None, key=f"camp_snap_{bucket}")
+
+
 def campaign_cluster_panel(df, site, lat, lon, radius, demo=False):
     """Real per-site line charts for the local-market cluster, with detected campaign months marked — so
     you can SEE the retail→membership conversion in actual nearby sites (the evidence behind the model)."""
@@ -745,6 +927,9 @@ def drop_pin_ui(df, site, art, demo=False):
     WIN = 6                                                            # campaign impact window (months)
     mem_mult, ret_mult, opex_mult_c = (campaign_effect(c_launch, ms, c_int, window=WIN) if camp_on
                                        else (np.ones(61), np.ones(61), np.ones(61)))
+    if camp_on:                                                        # additional info: the real OPEX/Rev/Profit/Mem breakdown
+        with st.popover("Additional info — what a campaign does to OPEX / Revenue / Profit / Membership", width=1000):
+            render_campaign_snapshot()
 
     opex_grow = (1 + og / 100.0) ** (months / 12.0)                    # cost escalation (slider) over the horizon
     opex_base_m = mature_opex * ramp_o[:61] * opex_grow                # LEARNED ramp (hot early) × growth — no campaign
