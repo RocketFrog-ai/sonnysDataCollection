@@ -1,0 +1,42 @@
+# Conda env for running the earnest-proforma-2.0 Streamlit app on Python 3.11
+# (the base `sonnysDataCollection` env is Python 3.9, which caps Streamlit at 1.50).
+# Versions mirror the known-good dev venv that runs the full app (forecast + campaign + maps),
+# so the trained model artifact (notebooks/artifacts) unpickles cleanly.
+#
+# Create:   conda env create -f environment-proforma311.yml
+# Activate: conda activate proforma311
+# Run:      streamlit run earnest-proforma-2.0/streamlits/app.py \
+#               --server.port 8080 --server.address 0.0.0.0 --server.headless true
+
+name: proforma311
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pip
+
+  - pip:
+    # --- Streamlit + viz stack ---
+    - streamlit==1.58.0
+    - plotly==6.6.0
+    - folium==0.20.0
+    - streamlit-folium==0.27.2
+    - pyarrow==24.0.0
+    - altair==6.1.0
+
+    # --- data / model stack (these versions unpickle the saved model) ---
+    - numpy==2.4.4
+    - pandas==3.0.2
+    - scipy==1.17.1
+    - scikit-learn==1.8.0
+    - lightgbm==4.6.0
+    - joblib==1.5.3
+    - openpyxl==3.1.5
+
+    # --- backend modules imported by site_analysis_page (lightweight; heavy AI deps are lazy) ---
+    - requests==2.32.5
+    - python-dotenv==1.2.2
+    - geopandas==1.1.3
