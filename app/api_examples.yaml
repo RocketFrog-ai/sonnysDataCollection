@@ -1,0 +1,465 @@
+# =============================================================================
+# Earnest Proforma backend — API examples (request input + response output)
+# =============================================================================
+# Serves the 3 Streamlit modes (earnest-proforma-2.0/streamlits/app.py):
+#   🗺️  Explore markets  ·  📍 Forecast  ·  🔎 Site analysis
+#
+# Run (conda env `sonnysDataCollection`, from the repo root):
+#   uvicorn app.site_analysis.server.main:app --host 0.0.0.0 --port 8002
+# Interactive docs: http://<host>:8002/docs   ·   OpenAPI: /openapi.json
+#
+# Conventions:
+#   • Every pin endpoint takes `latitude`+`longitude` OR `address` (geocoded server-side).
+#   • Series are PARALLEL arrays: x[i] pairs with y[i], months[i] with total_med[i], …
+#   • Missing months come through as null (gap them — do not plot as 0).
+#   • Long arrays below are truncated with "# … N total" — real responses return the full series.
+#   • Example values are real outputs for the Atlanta GA pin (33.7489, -84.3879).
+# =============================================================================
+
+base_url: http://localhost:8002
+prefixes:
+  pnl_analysis: /v1/pnl_analysis    # Explore markets + Forecast
+  site_analysis: /v1                # Site analysis
+
+# =============================================================================
+# LOOKUPS
+# =============================================================================
+lookups:
+
+  list_operators:
+    method: GET
+    path: /v1/pnl_analysis/operators
+    description: Operator/brand NAMES for the Explore-markets "highlight operator" dropdown.
+    response:
+      n_operators: 780
+      operators: ["1003339carnutz", "Aloha Car Wash", "BlueWave"]   # … 780 total, alphabetical
+
+  list_brands:
+    method: GET
+    path: /v1/pnl_analysis/brands
+    description: >
+      Operator/brand dropdown for the Forecast tab. `client_id` is the value `brand` keys on
+      (strongest plateau predictor); `model_known` = the cold-start model has a learned prior.
+    response:
+      n_brands: 780
+      brands:
+        - { client_id: "bluewave_000567", client_name: "BlueWave", n_sites: 92, model_known: true }
+        - { client_id: "luvcarwash_000457", client_name: "Luv Car Wash", n_sites: 71, model_known: true }
+        # … 780 total, sorted by n_sites desc
+
+# =============================================================================
+# 1. EXPLORE MARKETS
+# =============================================================================
+explore_markets:
+
+  explore_market:
+    method: POST
+    path: /v1/pnl_analysis/explore-market
+    description: The local-market MAP + 4 header metric cards. No time series (those are the 8 KPI panels).
+    request:
+      latitude: 28.929
+      longitude: -82.038
+      # address: "Wildwood, FL"      # alternative to latitude/longitude
+      radius_km: 20                  # 2–40 (the local market)
+      max_sites: 10                  # in-market markers drawn (every entrant always kept)
+      min_months: 36                 # keep rich-history sites (≥3 yrs; the Explore view)
+      operator: null                 # client_name (from GET /operators) to plot its whole footprint
+      demo: false                    # anonymize: hide names, shade cluster regions
+    response:
+      lat: 28.929
+      lon: -82.038
+      radius_km: 20
+      min_months: 36
+      n_sites_in_market: 3           # → "Sites in market" card
+      n_entrants: 1                  # → "New entrants" card
+      n_shown: 3                     # markers actually drawn (capped by max_sites)
+      focal_site_key: "bigdans_000378::9"   # the newest entrant / nearest site (red)
+      operator: null
+      map:
+        center: { lat: 28.929, lon: -82.038 }
+        radius_km: 20
+        markers:                     # the in-market sites ("cluster points")
+          - site_key: "mrclean_000xx::1"
+            name: "Mr Clean Car Wash"
+            lat: 28.81
+            lon: -81.88
+            dist_km: 15.6
+            op_start: "2021-03"
+            role: incumbent          # focal | entrant | incumbent
+            is_entrant: false
+            color: "#5b8db8"         # focal #e6194B · entrant #f58231 · incumbent #5b8db8
+          - site_key: "bigdans_000378::9"
+            name: "Big Dan's"
+            lat: 28.93
+            lon: -81.92
+            dist_km: 11.1
+            op_start: "2022-07"
+            role: focal
+            is_entrant: true
+            color: "#e6194B"
+        reference_dots:              # other rich-history sites ≤50 km (purple, outside the market)
+          - { site_key: "caliberocala_000153::6", name: "Caliber Car Wash", lat: 29.18, lon: -82.14, dist_km: 28.4 }
+        cluster_regions: []          # demo mode only: [{cluster, lat, lon, radius_km, n_sites}]
+        operator_footprint: []       # when `operator` set: [{site_key, name, lat, lon}] for every site of that brand
+
+  explore_market_kpis:
+    method: POST
+    path: /v1/pnl_analysis/explore-market/kpis
+    description: The 6 grouped per-site KPI series for the whole local market ("KPIs over time" panels).
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      radius_km: 20
+      smoothing: 1
+      min_months: 36                 # rich-history filter (≥3 full years)
+      demo: false
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      radius_km: 20
+      smoothing: 1
+      min_months: 36
+      n_sites: 4
+      focal_site_key: null
+      sites:                         # legend order (focal drawn last)
+        - { site_key: "caliberocala_000153::6", name: "Caliber Car Wash", is_focal: false, dist_km: 19.22, op_start: "2020-05" }
+      groups:
+        - name: Washes               # 3 groups: Washes / Revenue / ASPs
+          panels:
+            - col: tot_wash_count
+              label: "Total washes"
+              unit: count             # count | $
+              series:
+                - site_key: "caliberocala_000153::6"
+                  name: "Caliber Car Wash"
+                  is_focal: false
+                  x: ["2020-05-01", "2020-06-01", "2020-07-01"]
+                  y: [60.0, 5256.0, 5586.0]
+            # … panels: ret_wash_count, mem_wash_count
+        # … groups: Revenue (tot/ret/mem_revenue), ASPs (asp_ret, asp_mem)
+
+# =============================================================================
+# 2. FORECAST
+# =============================================================================
+forecast:
+
+  # pinpoint-forecast and market-forecast take the SAME request body.
+  pinpoint_forecast:
+    method: POST
+    path: /v1/pnl_analysis/pinpoint-forecast
+    description: The NEW SITE's own 5-yr trajectory + summary KPI cards (the "Predicted 5-year trajectory" chart).
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      brand: null                   # client_id from GET /brands (null = location-only prior)
+      plateau_override: null        # override mature total washes/mo (null = model)
+      mem_growth_pct: 0             # extra yr3–5 membership drift %/yr (-15..25)
+      ret_growth_pct: 0             # extra yr3–5 retail drift %/yr (-20..15)
+      horizon_months: 60            # 12..60
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      brand: null
+      summary:
+        plateau_med: 6465.17
+        plateau_lo: 3005.35
+        plateau_hi: 10231.81
+        mem_share: 0.516
+        n_neighbours_20km: 10
+        brand_known: false
+        ramp_source: "region: South"
+        region: South
+        state: GA
+        mem_growth: 0.0018           # applied (market trend + slider), decimal/yr
+        ret_growth: -0.0656
+      trajectory:                    # the new site's own curve, x = months 0..H
+        months: [0, 1, 2]            # … 0..60
+        total_med: [2931.0, 3574.9, 4755.4]
+        total_lo: []                 # P10 band (parallel)
+        total_hi: []                 # P90 band (parallel)
+        mem_med: []                  # membership split
+        ret_med: []                  # retail split
+
+  market_forecast:
+    method: POST
+    path: /v1/pnl_analysis/market-forecast
+    description: The TOTAL local-market wash count — actual history + 5-year growth forecast (separate plot).
+    request:                         # SAME body as pinpoint-forecast
+      latitude: 33.7489
+      longitude: -84.3879
+      brand: null
+      plateau_override: null
+      mem_growth_pct: 0
+      ret_growth_pct: 0
+      horizon_months: 60
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      brand: null
+      open_date: "2026-07-01"
+      has_neighbours: true
+      history:
+        dates: ["2020-01-01", "2020-02-01", "2020-03-01"]   # actuals (parallel with values)
+        values: [1053.0, 1125.0, 278.0]                      # may contain null
+      forecast:
+        dates: ["2026-07-01", "2026-08-01", "2026-09-01"]    # … 60 future months
+        with_new_site: []            # market incl. entrant, net of cannibalization (applied internally)
+        without_new_site: []         # baseline if nothing opens
+        band_lo: []                  # trend-CI band around with_new_site
+        band_hi: []
+        new_entrant_journey: []      # the entrant's contribution alone (= pinpoint trajectory.total_med)
+      net_change_year5: 6017.7       # headline: (with − without) washes at horizon
+    notes:
+      empty_market: >
+        For a pin with no neighbours: has_neighbours=false, history empty, without_new_site all 0,
+        and with_new_site == new_entrant_journey.
+
+  pnl_forecast:
+    method: POST
+    path: /v1/pnl_analysis/pnl-forecast
+    description: 💰 Monthly revenue vs operating expense vs net (5 yr), with an optional campaign overlay.
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      brand: null
+      plateau_override: null
+      mem_growth_pct: 0
+      ret_growth_pct: 0
+      asp_override: null            # blended $/wash (null = cluster average); 1..30
+      opex_growth_pct: 0            # opex cost escalation %/yr on top of the learned ramp (-10..15)
+      campaign_on: false            # apply a retail→membership conversion campaign
+      campaign_launch: 13           # months after opening (1..48)
+      campaign_intensity: 1.0       # × a typical observed campaign (0.5..1.5)
+      window: 6                     # campaign impact window months (1..12)
+      horizon_months: 60
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      brand: null
+      horizon_months: 60
+      months: [0, 1, 2]             # … 0..60
+      asp:
+        mem: 12.51
+        ret: 15.81
+        blend: 14.10                 # cluster average blended $/wash
+        used: 14.10                  # = asp_override when provided, else blend
+        scope: "cluster <=20 km · 10 sites"
+        refs:                        # reference ASPs to mark on the price slider
+          ov_mem: 9.74
+          ov_ret: 14.77
+          cl_mem: 11.00
+          cl_ret: 17.19
+          scope: "state GA"
+      opex:
+        mature_opex: 6538.99         # settled monthly opex $ = $/wash × plateau washes
+        ramp_scope: "region South"   # scope of the learned new-site opex ramp
+        opw_scope: "state GA"        # scope of the mature $/wash
+        ramp_hage: 30                # last age with real P&L support (beyond = volume-driven)
+        hist_yoy: -0.264             # historical opex YoY (context only; default is flat)
+      scopes: { opex: "state GA" }
+      series:                        # all parallel with `months`
+        revenue_base: []             # revenue without campaign
+        revenue: [43970.1, 52939.8, 69521.1]   # with campaign overlay (== revenue_base when off)
+        opex_base: []                # opex without campaign
+        opex: []                     # with promo spend over the window
+        net: []                      # revenue − opex
+        net_base: []
+      campaign:
+        applied: false
+        launch: 13
+        intensity: 1.0
+        window: 6
+        conv_pct: 0.3                # membership-wash lift (share-scaled retail headroom)
+        mem_share_settled: 0.572     # this site's settled (mo 36–60) membership share
+      summary:
+        plateau_med: 6465.17
+        mem_share: 0.516
+        state: GA
+        region: South
+        total_revenue_5yr: 5128064.33
+        total_opex_5yr: 339058.70
+        net_5yr: 4789005.64
+        breakeven_month: 0           # first month cumulative net > 0 (null if never)
+
+# =============================================================================
+# 2b. FORECAST — CAMPAIGN decision & evidence
+# =============================================================================
+campaign:
+
+  verdict:
+    method: POST
+    path: /v1/pnl_analysis/campaign/verdict
+    description: 🎯 "Should this site run a promotion?" recommendation + the 3 supporting metrics.
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      radius_km: 20
+      brand: null
+      plateau_override: null
+      mem_growth_pct: 0
+      ret_growth_pct: 0
+    response:
+      ok: true
+      verdict_level: recommended    # recommended | marginal | not_recommended
+      verdict_text: "Recommended. 5 established incumbents within 20 km at 60% membership."
+      neighbours_mem_share: 0.602   # null when no incumbent has recent wash data
+      n_established_incumbents: 5
+      this_site_mem_share: 0.572
+      conv_pct: 0.3
+      radius_km: 20.0
+
+  eating_the_market:
+    method: POST
+    path: /v1/pnl_analysis/campaign/eating-the-market
+    description: 📈 Your site vs each incumbent forecast forward 5 yr; campaign steals their share.
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      radius_km: 20
+      brand: null
+      plateau_override: null
+      mem_growth_pct: 0
+      ret_growth_pct: 0
+      campaign_on: true
+      campaign_launch: 13
+      campaign_intensity: 1.0
+      window: 6
+      max_incumbents: 6
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      radius_km: 20
+      months: [0, 1, 2]             # … 0..60
+      your_site:
+        base: [2931.0, 3574.9, 4755.4]   # washes/mo (no campaign)
+        with_campaign: []                 # with the conversion lift
+      incumbents:
+        - site_key: "luvcarwash_000457::54"
+          name: "Luv Car Wash"
+          expected: [13672.0, 13672.0, 14074.08]   # its own forward forecast (m0 = last actual)
+          with_campaign: []                          # drifts down as your promo steals retail
+        # … up to max_incumbents (largest by recent volume)
+      n_incumbents: 5
+      n_shown: 5
+      steal_peak: 0.06              # peak retail share stolen (scales with density × intensity)
+      campaign: { applied: true, launch: 13, intensity: 1.0, window: 6 }
+
+  snapshot:
+    method: GET
+    path: /v1/pnl_analysis/campaign/snapshot
+    description: >
+      What a campaign does to OPEX/Revenue/Profit/Membership from the real P&L event study (book_v4).
+      NOT pin-specific. Medians by month-offset (mfs −3..6) for 1 / 2 / 3+-month campaigns.
+    response:
+      buckets:
+        - bucket: "1 month"
+          title: "1-Month Campaigns"
+          n_campaigns: 141
+          camp_months: [0]           # which mfs are inside the campaign window
+          mfs: [-3, -2, -1]          # … −3..6 (parallel with the metric arrays)
+          opex: [71047.51, 75836.78, 75743.92]
+          revenue: [109153.96, 104778.89, 114198.58]
+          profit: [34181.60, 26645.00, 33678.88]
+          mem_purchases: [2753.0, 2642.5, 2605.0]
+        # … buckets: "2 months" (n=23), "3+ months" (n=20)
+
+  local_evidence:
+    method: POST
+    path: /v1/pnl_analysis/campaign/local-evidence
+    description: Real in-market sites' series with detected promo-OPEX-spike months marked (the evidence).
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      radius_km: 20
+      metric: mem_share_wash        # mem_share_wash | mem_wash_count | ret_wash_count
+      max_sites: 8
+      demo: false                   # anonymize → "Site N" by opening order
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      radius_km: 20
+      metric: mem_share_wash
+      sites:
+        - site_key: "luvcarwash_000457::54"
+          name: "Luv Car Wash"
+          x: ["2024-02-01", "2024-03-01", "2024-04-01"]
+          y: [0.192, 0.487, 0.548]
+          campaign_months: []        # ISO dates of detected promo OPEX spikes for this site
+
+# =============================================================================
+# 3. SITE ANALYSIS
+# =============================================================================
+site_analysis:
+
+  site_context:
+    method: POST
+    path: /v1/site-context
+    description: >
+      Synchronous "what surrounds this location" for the shared lat/lon pin — weather, competing car
+      washes, retail anchors, gas stations + map markers + rule-based insights, in ONE response.
+      Needs GOOGLE_MAPS_API_KEY (competitor/retail/gas); weather (Open-Meteo) needs no key.
+    request:
+      latitude: 33.7489
+      longitude: -84.3879
+      # address: "1 Peachtree St NE, Atlanta, GA"   # alternative
+      include_ai: false             # also rewrite each insight with the internal LLM (if reachable)
+      demo: false                   # hide the origin address on the markers
+    response:
+      lat: 33.7489
+      lon: -84.3879
+      address: null
+      has_api_key: true
+      metrics:
+        competitors_4mi: 19
+        nearest_competitor_mi: 0.56
+        retail_anchors_3mi: 25
+        gas_stations_3mi: 20
+        comfortable_days: 172
+      markers:                       # origin + gas_station + car_wash + retail
+        - { category: origin, name: "Site", lat: 33.7489, lon: -84.3879, distance_miles: 0.0, address: null }
+        - { category: car_wash, name: "Example Express Wash", lat: 33.75, lon: -84.39, distance_miles: 0.56, rating: 4.3, user_rating_count: 412, primary_type: "car_wash", address: "…" }
+        # … 65 markers total
+      dimensions:
+        competition:
+          count: 19
+          radius_miles: 4.0
+          nearest: { name: "…", distance_miles: 0.56, rating: 4.3, user_rating_count: 412, primary_type: "car_wash", address: "…" }
+          competitors: []            # [{name, distance_miles, rating, user_rating_count, primary_type, address}]
+          insight: { insight: "19 competing car washes within 4 miles; nearest is 0.6 mi away (4.3★).", pro: "…", con: "…", conclusion: "Crowded — differentiation matters." }
+          # ai_insight: {…}          # present only when include_ai=true AND the LLM is reachable
+        retail:
+          anchors: []                # [{name, type, distance_miles, address}]
+          key_distances: { costco: 5.1, walmart: 1.2, target: 2.4 }
+          grocery_1mi: 3
+          food_0_5mi: 8
+          insight: { insight: "…", pro: "…", con: "…", conclusion: "Good retail co-tenancy." }
+        gas:
+          count: 20
+          radius_miles: 3.0
+          stations: []               # [{name, distance_miles, rating, user_rating_count, high_traffic, address}]
+          insight: { insight: "…", pro: "…", con: "…", conclusion: "Strong fuel-driven traffic." }
+        weather:
+          metrics: []                # [{key, display, subtitle, value, unit}]
+          insight: { insight: "…", pro: "…", con: "…", conclusion: "Weather is favorable for steady wash demand." }
+
+  analyze_site_async:
+    method: POST
+    path: /v1/analyze-site
+    description: >
+      ASYNC counterpart — keys on an address, returns a task_id. Poll GET /v1/task/{task_id} until
+      status=SUCCESS, then read /v1/{weather|competition|retail|gas}/data-by-task/{task_id} and
+      /v1/map/data-by-task/{task_id}. Use for the queued/batch flow.
+    request:
+      address: "1 Peachtree St NE, Atlanta, GA"
+    response:
+      task_id: "a1b2c3d4-…"
+      status: PENDING
+      message: "Site successfully submitted for analysis"
+
+# =============================================================================
+# ERRORS
+# =============================================================================
+errors:
+  - { status: 400, when: "neither latitude/longitude nor address provided", detail: "Provide either latitude/longitude or address." }
+  - { status: 400, when: "unknown metric / x_axis", detail: "metric must be one of: …" }
+  - { status: 422, when: "request body fails validation (out-of-range slider, wrong type)", detail: "FastAPI/pydantic validation error" }

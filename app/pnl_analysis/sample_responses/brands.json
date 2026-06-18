@@ -1,0 +1,66 @@
+{
+  "n_brands": 780,
+  "brands": [
+    {
+      "client_id": "bluewave_000567",
+      "client_name": "BlueWave",
+      "n_sites": 92,
+      "model_known": true
+    },
+    {
+      "client_id": "luvcarwash_000457",
+      "client_name": "Luv Car Wash",
+      "n_sites": 84,
+      "model_known": true
+    },
+    {
+      "client_id": "magnolia_000414",
+      "client_name": "Magnolia",
+      "n_sites": 62,
+      "model_known": true
+    },
+    {
+      "client_id": "championxpresscw_000216",
+      "client_name": "Champion Xpress CW",
+      "n_sites": 60,
+      "model_known": true
+    },
+    {
+      "client_id": "thoroughbredcw_000304",
+      "client_name": "Thoroughbred",
+      "n_sites": 33,
+      "model_known": true
+    },
+    {
+      "client_id": "bigdans_000378",
+      "client_name": "Big Dan's",
+      "n_sites": 29,
+      "model_known": true
+    },
+    {
+      "client_id": "caliberocala_000153",
+      "client_name": "Caliber Car Wash",
+      "n_sites": 28,
+      "model_known": true
+    },
+    {
+      "client_id": "clearwater_000397",
+      "client_name": "ClearWater",
+      "n_sites": 22,
+      "model_known": true
+    },
+    {
+      "client_id": "tsunamicarwash_000122",
+      "client_name": "Tsunami Car Wash",
+      "n_sites": 22,
+      "model_known": true
+    },
+    {
+      "client_id": "riptideneuse_000337",
+      "client_name": "Riptide",
+      "n_sites": 22,
+      "model_known": true
+    }
+  ],
+  "_note": "truncated to first 10 of 780 (sorted by site count)"
+}

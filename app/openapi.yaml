@@ -1,0 +1,1965 @@
+# Auto-generated from the live FastAPI app, enriched with request/response examples.
+# Regenerate from the repo root as a MODULE (so app/celery does not shadow the real celery):
+#   python -m app.gen_openapi   (conda env sonnysDataCollection)
+openapi: 3.1.0
+info:
+  title: Earnest Proforma backend
+  version: '2.0'
+  description: 'Backend for the Earnest Proforma Streamlit app — three modes:
+
+    - **Explore markets** (`/v1/pnl_analysis/explore-market*`, `/operators`)
+
+    - **Forecast** (`/v1/pnl_analysis/pinpoint-forecast`, `/pnl-forecast`, `/campaign/*`, `/brands`)
+
+    - **Site analysis** — synchronous `/v1/site-context` and the async `/v1/analyze-site` pipeline.
+
+
+    Every pin endpoint accepts `latitude`+`longitude` **OR** `address` (geocoded server-side).
+
+    Series are parallel arrays; missing months come through as `null`. Example values are real outputs for the Atlanta GA
+    pin (33.7489, -84.3879); long series are trimmed for readability.'
+paths:
+  /v1/analyze-site:
+    post:
+      summary: Analyze Site Endpoint
+      description: 'Enqueue the fetch pipeline: geocode → fetch weather / competitors / gas / retail (in parallel).
+
+        Returns task_id; poll GET /task/{task_id} until success, then read the per-dimension
+
+        /{dimension}/data-by-task endpoints (fast) and /{dimension}/summary-by-task endpoints (LLM).'
+      operationId: analyze_site_endpoint_v1_analyze_site_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyseRequest'
+            example:
+              address: 1 Peachtree St NE, Atlanta, GA
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-7b6e-4c2d-9a1e-1b2c3d4e5f60
+                status: PENDING
+                message: Site successfully submitted for analysis
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/weather/data-by-task/{task_id}:
+    get:
+      summary: Get Weather Data By Task
+      description: Raw weather metrics (rainy days, snowfall, comfortable days, freezing days) from the fetch.
+      operationId: get_weather_data_by_task_v1_weather_data_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                address: 1 Peachtree St NE, Atlanta, GA
+                complete: true
+                metrics:
+                - metric_key: rainy_days
+                  display_name: Rainy days
+                  subtitle: per year
+                  value: 113.0
+                  unit: days
+                - metric_key: days_pleasant_temp
+                  display_name: Comfortable days
+                  subtitle: per year
+                  value: 172.0
+                  unit: days
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/competition/data-by-task/{task_id}:
+    get:
+      summary: Get Competition Data By Task
+      description: Raw nearby same-format car washes (within 4 miles) from the fetch.
+      operationId: get_competition_data_by_task_v1_competition_data_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                address: 1 Peachtree St NE, Atlanta, GA
+                complete: true
+                nearby_car_washes:
+                  count: 19
+                  list:
+                  - name: Express Wash
+                    rating: 4.3
+                    user_rating_count: 412
+                    address: …
+                    distance_miles: 0.56
+                    official_website: https://…
+                    primary_carwash_type: Express Tunnel
+                nearest:
+                  name: Express Wash
+                  distance_miles: 0.56
+                  rating: 4.3
+                  user_rating_count: 412
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/retail/data-by-task/{task_id}:
+    get:
+      summary: Get Retail Data By Task
+      description: Raw nearby retail anchors (within 1 and 3 miles) from the fetch.
+      operationId: get_retail_data_by_task_v1_retail_data_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                address: 1 Peachtree St NE, Atlanta, GA
+                complete: true
+                nearest_anchor:
+                  name: Walmart Supercenter
+                  type: Supercenter
+                  distance_miles: 1.2
+                key_anchors:
+                  warehouse_club:
+                    name: Costco
+                    type: Warehouse Club
+                    distance_miles: 5.1
+                  big_box:
+                    name: Walmart Supercenter
+                    type: Supercenter
+                    distance_miles: 1.2
+                  grocery:
+                    name: Kroger
+                    type: Grocery Anchor
+                    distance_miles: 0.8
+                  food_beverage:
+                    name: Starbucks
+                    type: Food & Beverage
+                    distance_miles: 0.3
+                retail_anchors:
+                  within_1_mile:
+                    count: 6
+                    list:
+                    - name: Kroger
+                      type: Grocery Anchor
+                      distance_miles: 0.8
+                  within_3_miles:
+                    count: 19
+                    list: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/gas/data-by-task/{task_id}:
+    get:
+      summary: Get Gas Data By Task
+      description: Raw nearby gas stations (within 1 and 3 miles) from the fetch.
+      operationId: get_gas_data_by_task_v1_gas_data_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                address: 1 Peachtree St NE, Atlanta, GA
+                complete: true
+                nearest:
+                  name: QuikTrip
+                  distance_miles: 0.4
+                  high_traffic_brand: true
+                gas_stations:
+                  within_1_mile:
+                    count: 5
+                    list:
+                    - name: QuikTrip
+                      distance_miles: 0.4
+                      rating: 4.1
+                      user_rating_count: 230
+                      high_traffic_brand: true
+                  within_3_miles:
+                    count: 15
+                    list: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/weather/summary-by-task/{task_id}:
+    get:
+      summary: Get Weather Summary By Task
+      operationId: get_weather_summary_by_task_v1_weather_summary_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                summary:
+                  insight: …
+                  pro: …
+                  con: …
+                  conclusion: …
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/competition/summary-by-task/{task_id}:
+    get:
+      summary: Get Competition Summary By Task
+      operationId: get_competition_summary_by_task_v1_competition_summary_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                summary:
+                  insight: …
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/retail/summary-by-task/{task_id}:
+    get:
+      summary: Get Retail Summary By Task
+      operationId: get_retail_summary_by_task_v1_retail_summary_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                summary:
+                  insight: …
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/gas/summary-by-task/{task_id}:
+    get:
+      summary: Get Gas Summary By Task
+      operationId: get_gas_summary_by_task_v1_gas_summary_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                summary:
+                  insight: …
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/map/data-by-task/{task_id}:
+    get:
+      summary: Get Map Data By Task
+      description: 'Map-ready markers: origin site + nearby gas stations, competitors, and retail anchors.'
+      operationId: get_map_data_by_task_v1_map_data_by_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-…
+                address: 1 Peachtree St NE, Atlanta, GA
+                lat: 33.7489
+                lon: -84.3879
+                complete: true
+                counts:
+                  markers_total: 45
+                  gas_stations: 15
+                  competitors: 19
+                  retail_anchors: 10
+                markers:
+                - id: origin
+                  name: Input Site
+                  category: origin
+                  latitude: 33.7489
+                  longitude: -84.3879
+                  distance_miles: 0.0
+                  address: 1 Peachtree St NE, Atlanta, GA
+                - id: ChIJ…
+                  name: Express Wash
+                  category: car_wash
+                  latitude: 33.75
+                  longitude: -84.39
+                  distance_miles: 0.56
+                  rating: 4.3
+                  user_rating_count: 412
+                  address: …
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/site-context:
+    post:
+      summary: Get Site Context
+      description: 'Synchronous "what surrounds this location" for a lat/lon pin (or address): weather, competing car washes,
+
+        retail anchors and gas stations + map markers + rule-based insights (optionally LLM-rewritten), all in ONE
+
+        response. The lat/lon counterpart to the async /analyze-site pipeline; mirrors the Streamlit Site-analysis page.'
+      operationId: get_site_context_v1_site_context_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteContextRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              include_ai: false
+              demo: false
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 33.7489
+                lon: -84.3879
+                address: null
+                has_api_key: true
+                metrics:
+                  competitors_4mi: 19
+                  nearest_competitor_mi: 0.56
+                  retail_anchors_3mi: 25
+                  gas_stations_3mi: 20
+                  comfortable_days: 172
+                markers:
+                - category: origin
+                  name: Site
+                  lat: 33.7489
+                  lon: -84.3879
+                  distance_miles: 0.0
+                  address: null
+                - category: car_wash
+                  name: Express Wash
+                  lat: 33.75
+                  lon: -84.39
+                  distance_miles: 0.56
+                  rating: 4.3
+                  user_rating_count: 412
+                  primary_type: car_wash
+                  address: …
+                dimensions:
+                  competition:
+                    count: 19
+                    radius_miles: 4.0
+                    nearest:
+                      name: Express Wash
+                      distance_miles: 0.56
+                      rating: 4.3
+                      user_rating_count: 412
+                      primary_type: car_wash
+                      address: …
+                    competitors: []
+                    insight:
+                      insight: 19 competing car washes within 4 miles…
+                      pro: A proven car-wash market…
+                      con: Several competitors share the local demand.
+                      conclusion: Crowded — differentiation matters.
+                  retail:
+                    anchors: []
+                    key_distances:
+                      costco: 5.1
+                      walmart: 1.2
+                      target: 2.4
+                    grocery_1mi: 3
+                    food_0_5mi: 8
+                    insight:
+                      insight: 25 retail anchors within 3 miles…
+                      pro: …
+                      con: …
+                      conclusion: Good retail co-tenancy.
+                  gas:
+                    count: 20
+                    radius_miles: 3.0
+                    stations: []
+                    insight:
+                      insight: 20 gas stations within 3 miles…
+                      pro: …
+                      con: …
+                      conclusion: Strong fuel-driven traffic.
+                  weather:
+                    metrics:
+                    - key: rainy_days
+                      display: Rainy days
+                      subtitle: per year
+                      value: 113.0
+                      unit: days
+                    insight:
+                      insight: 'Weather here: 113 rainy days/yr…'
+                      pro: …
+                      con: …
+                      conclusion: Weather is favorable for steady wash demand.
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (sync)
+  /v1/traffic-lights:
+    post:
+      summary: Get Traffic Lights Endpoint
+      operationId: get_traffic_lights_endpoint_v1_traffic_lights_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyseRequest'
+            example:
+              address: 1 Peachtree St NE, Atlanta, GA
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                address: 1 Peachtree St NE, Atlanta, GA
+                lat: 33.7489
+                lon: -84.3879
+                data:
+                  traffic_lights_count: 7
+                  radius_miles: 1.0
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Utilities
+  /v1/nearby-stores:
+    post:
+      summary: Get Nearby Stores Endpoint
+      operationId: get_nearby_stores_endpoint_v1_nearby_stores_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyseRequest'
+            example:
+              address: 1 Peachtree St NE, Atlanta, GA
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                address: 1 Peachtree St NE, Atlanta, GA
+                lat: 33.7489
+                lon: -84.3879
+                data:
+                  walmart:
+                  - name: Walmart Supercenter
+                    distance_miles: 1.2
+                  target: []
+                  costco:
+                  - name: Costco
+                    distance_miles: 5.1
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Utilities
+  /v1/task/{task_id}:
+    get:
+      summary: Get Task Status
+      description: Task status and result from Celery. Full `result` is present only when status is success.
+      operationId: get_task_status_v1_task__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStatusResponse'
+              example:
+                task_id: 3f2c1a90-7b6e-4c2d-9a1e-1b2c3d4e5f60
+                status: SUCCESS
+                result:
+                  address: 1 Peachtree St NE, Atlanta, GA
+                  lat: 33.7489
+                  lon: -84.3879
+                  fetched:
+                    climate:
+                      rainy_days: 113
+                    gas_stations: []
+                    retail_anchors: {}
+                    competitors_data:
+                      count: 19
+                      competitors: []
+                error: null
+                created_at: null
+                completed_at: null
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/result/{task_id}:
+    get:
+      summary: Get Result By Task
+      description: Get analyse-site result by task_id. Poll until status = success.
+      operationId: get_result_by_task_v1_result__task_id__get
+      parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Task Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                task_id: 3f2c1a90-7b6e-4c2d-9a1e-1b2c3d4e5f60
+                status: success
+                result:
+                  address: 1 Peachtree St NE, Atlanta, GA
+                  lat: 33.7489
+                  lon: -84.3879
+                  fetched: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Site analysis (async)
+  /v1/health:
+    get:
+      summary: Health Check
+      operationId: health_check_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                status: healthy
+                service: site-analysis-pipeline
+      tags:
+      - Utilities
+  /v1/cache/site-analysis/all:
+    get:
+      summary: Get Site Analysis Cache All
+      operationId: get_site_analysis_cache_all_v1_cache_site_analysis_all_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                page: 1
+                page_size: 50
+                total: 0
+                items: []
+      tags:
+      - Utilities
+  /v1/pnl_analysis/brands:
+    get:
+      summary: Get Brands
+      description: 'Operator/brand dropdown for the Forecast tab: client_id (model key) + client_name + site count +
+
+        whether the cold-start model has a learned prior for it.'
+      operationId: get_brands_v1_pnl_analysis_brands_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                n_brands: 780
+                brands:
+                - client_id: bluewave_000567
+                  client_name: BlueWave
+                  n_sites: 92
+                  model_known: true
+                - client_id: luvcarwash_000457
+                  client_name: Luv Car Wash
+                  n_sites: 71
+                  model_known: true
+      tags:
+      - Lookups
+  /v1/pnl_analysis/operators:
+    get:
+      summary: Get Operators
+      description: Operator/brand names for the Explore-markets 'highlight operator' dropdown (client_name, alphabetical).
+      operationId: get_operators_v1_pnl_analysis_operators_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                n_operators: 780
+                operators:
+                - 1003339carnutz
+                - Aloha Car Wash
+                - BlueWave
+      tags:
+      - Lookups
+  /v1/pnl_analysis/explore-market:
+    post:
+      summary: Explore Market
+      description: 'Tab 1 — the local-market MAP + header counts. Returns the in-market site markers (role-tagged
+
+        focal/entrant/incumbent), geographic reference dots, and the highlighted operator''s footprint — no
+
+        time series (those come from /explore-market/kpis). Backs the map + the 4 header metric cards.'
+      operationId: explore_market_v1_pnl_analysis_explore_market_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExploreMarketRequest'
+            example:
+              latitude: 28.929
+              longitude: -82.038
+              radius_km: 20
+              max_sites: 10
+              min_months: 36
+              operator: null
+              demo: false
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 28.929
+                lon: -82.038
+                radius_km: 20
+                min_months: 36
+                n_sites_in_market: 3
+                n_entrants: 1
+                n_shown: 3
+                focal_site_key: bigdans_000378::9
+                operator: null
+                map:
+                  center:
+                    lat: 28.929
+                    lon: -82.038
+                  radius_km: 20
+                  markers:
+                  - site_key: mrclean_000xx::1
+                    name: Mr Clean Car Wash
+                    lat: 28.81
+                    lon: -81.88
+                    dist_km: 15.6
+                    op_start: 2021-03
+                    role: incumbent
+                    is_entrant: false
+                    color: '#5b8db8'
+                  - site_key: bigdans_000378::9
+                    name: Big Dan's
+                    lat: 28.93
+                    lon: -81.92
+                    dist_km: 11.1
+                    op_start: 2022-07
+                    role: focal
+                    is_entrant: true
+                    color: '#e6194B'
+                  reference_dots:
+                  - site_key: caliberocala_000153::6
+                    name: Caliber Car Wash
+                    lat: 29.18
+                    lon: -82.14
+                    dist_km: 28.4
+                  cluster_regions: []
+                  operator_footprint: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Explore markets
+  /v1/pnl_analysis/explore-market/kpis:
+    post:
+      summary: Explore Market Kpis
+      description: 'Tab 1 — the 6 grouped per-site KPI series (washes x3 / revenue x3 / ASP x2) for the whole local market
+
+        (every in-radius site with >= `min_months` of history). Backs the ''Local-market KPIs over time'' panels.'
+      operationId: explore_market_kpis_v1_pnl_analysis_explore_market_kpis_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExploreKpisRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              radius_km: 20
+              smoothing: 1
+              min_months: 36
+              demo: false
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 28.929
+                lon: -82.038
+                radius_km: 20
+                smoothing: 1
+                min_months: 36
+                n_sites: 3
+                focal_site_key: bigdans_000378::9
+                sites:
+                - site_key: mrclean_000xx::1
+                  name: Mr Clean Car Wash
+                  is_focal: false
+                  is_entrant: false
+                  dist_km: 15.6
+                  op_start: 2021-03
+                - site_key: bigdans_000378::9
+                  name: Big Dan's
+                  is_focal: true
+                  is_entrant: true
+                  dist_km: 11.1
+                  op_start: 2022-07
+                groups:
+                - name: Washes
+                  panels:
+                  - col: tot_wash_count
+                    label: Total washes
+                    unit: count
+                    series:
+                    - site_key: bigdans_000378::9
+                      name: Big Dan's
+                      is_focal: true
+                      is_entrant: true
+                      x:
+                      - '2022-07-01'
+                      - '2022-08-01'
+                      - '2022-09-01'
+                      y:
+                      - 1523.0
+                      - 8201.0
+                      - 9544.0
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Explore markets
+  /v1/pnl_analysis/pinpoint-forecast:
+    post:
+      summary: Pinpoint Forecast
+      description: 'Tab 2 — the NEW SITE''s own predicted 5-year monthly trajectory (total/membership/retail with P10-P90
+
+        bands) + the summary KPI cards. The whole-market growth plot is a separate call: POST /market-forecast.'
+      operationId: pinpoint_forecast_v1_pnl_analysis_pinpoint_forecast_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinpointForecastRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              brand: null
+              plateau_override: null
+              mem_growth_pct: 0
+              ret_growth_pct: 0
+              horizon_months: 60
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 33.7489
+                lon: -84.3879
+                brand: null
+                summary:
+                  plateau_med: 6465.17
+                  plateau_lo: 3005.35
+                  plateau_hi: 10231.81
+                  mem_share: 0.516
+                  n_neighbours_20km: 10
+                  brand_known: false
+                  ramp_source: 'region: South'
+                  region: South
+                  state: GA
+                  mem_growth: 0.0018
+                  ret_growth: -0.0656
+                trajectory:
+                  months:
+                  - 0
+                  - 1
+                  - 2
+                  total_med:
+                  - 2931.0
+                  - 3574.9
+                  - 4755.4
+                  total_lo: []
+                  total_hi: []
+                  mem_med: []
+                  ret_med: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Forecast
+  /v1/pnl_analysis/market-forecast:
+    post:
+      summary: Market Forecast
+      description: 'Tab 2 — the TOTAL LOCAL-MARKET wash count: actual history + 5-year forecast (with vs without the new
+
+        site, a trend-CI band, and the entrant''s own journey). Same inputs as /pinpoint-forecast.'
+      operationId: market_forecast_v1_pnl_analysis_market_forecast_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PinpointForecastRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              brand: null
+              plateau_override: null
+              mem_growth_pct: 0
+              ret_growth_pct: 0
+              horizon_months: 60
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 33.7489
+                lon: -84.3879
+                brand: null
+                open_date: '2026-07-01'
+                has_neighbours: true
+                history:
+                  dates:
+                  - '2020-01-01'
+                  - '2020-02-01'
+                  values:
+                  - 1053.0
+                  - 1125.0
+                forecast:
+                  dates:
+                  - '2026-07-01'
+                  - '2026-08-01'
+                  with_new_site: []
+                  without_new_site: []
+                  band_lo: []
+                  band_hi: []
+                  new_entrant_journey: []
+                net_change_year5: 6017.7
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Forecast
+  /v1/pnl_analysis/pnl-forecast:
+    post:
+      summary: Pnl Forecast
+      description: 'Tab 2 — the 💰 P&L chart: monthly revenue vs operating expense vs net over the 5-year horizon, with an
+
+        optional retail→membership conversion campaign overlay. Revenue = forecast washes × cluster ASP; opex = the
+
+        learned new-site ramp × mature $/wash (scope-aware), escalated by the cost-growth input.'
+      operationId: pnl_forecast_v1_pnl_analysis_pnl_forecast_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PnlForecastRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              brand: null
+              plateau_override: null
+              mem_growth_pct: 0
+              ret_growth_pct: 0
+              asp_override: null
+              opex_growth_pct: 0
+              campaign_on: false
+              campaign_launch: 13
+              campaign_intensity: 1.0
+              window: 6
+              horizon_months: 60
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 33.7489
+                lon: -84.3879
+                brand: null
+                horizon_months: 60
+                months:
+                - 0
+                - 1
+                - 2
+                asp:
+                  mem: 12.51
+                  ret: 15.81
+                  blend: 14.1
+                  used: 14.1
+                  scope: cluster <=20 km · 10 sites
+                  refs:
+                    ov_mem: 9.74
+                    ov_ret: 14.77
+                    cl_mem: 11.0
+                    cl_ret: 17.19
+                    scope: state GA
+                opex:
+                  mature_opex: 6538.99
+                  ramp_scope: region South
+                  opw_scope: state GA
+                  ramp_hage: 30
+                  hist_yoy: -0.264
+                scopes:
+                  opex: state GA
+                series:
+                  revenue_base: []
+                  revenue:
+                  - 43970.1
+                  - 52939.8
+                  - 69521.1
+                  opex_base: []
+                  opex: []
+                  net: []
+                  net_base: []
+                campaign:
+                  applied: false
+                  launch: 13
+                  intensity: 1.0
+                  window: 6
+                  conv_pct: 0.3
+                  mem_share_settled: 0.572
+                summary:
+                  plateau_med: 6465.17
+                  mem_share: 0.516
+                  state: GA
+                  region: South
+                  total_revenue_5yr: 5128064.33
+                  total_opex_5yr: 339058.7
+                  net_5yr: 4789005.64
+                  breakeven_month: 0
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Forecast
+  /v1/pnl_analysis/campaign/verdict:
+    post:
+      summary: Campaign Verdict
+      description: 'Tab 2 — 🎯 the campaign recommendation + the 3 supporting metrics (neighbours'' membership share, established
+
+        incumbents, this site''s predicted membership). Only recommends a promo where the membership market is proven.'
+      operationId: campaign_verdict_v1_pnl_analysis_campaign_verdict_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CampaignVerdictRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              radius_km: 20
+              brand: null
+              plateau_override: null
+              mem_growth_pct: 0
+              ret_growth_pct: 0
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                ok: true
+                verdict_level: recommended
+                verdict_text: Recommended. 5 established incumbents within 20 km at 60% membership.
+                neighbours_mem_share: 0.602
+                n_established_incumbents: 5
+                this_site_mem_share: 0.572
+                conv_pct: 0.3
+                radius_km: 20.0
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Campaign
+  /v1/pnl_analysis/campaign/eating-the-market:
+    post:
+      summary: Eating The Market
+      description: 'Tab 2 — 📈 your site vs each incumbent, each forecast forward 5 years; with a campaign, the incumbents
+        drift
+
+        down as your promo steals their retail share (theft scales with market density, recovers as the promo fades).'
+      operationId: eating_the_market_v1_pnl_analysis_campaign_eating_the_market_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EatingMarketRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              radius_km: 20
+              brand: null
+              plateau_override: null
+              mem_growth_pct: 0
+              ret_growth_pct: 0
+              campaign_on: true
+              campaign_launch: 13
+              campaign_intensity: 1.0
+              window: 6
+              max_incumbents: 6
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 33.7489
+                lon: -84.3879
+                radius_km: 20
+                months:
+                - 0
+                - 1
+                - 2
+                your_site:
+                  base:
+                  - 2931.0
+                  - 3574.9
+                  - 4755.4
+                  with_campaign: []
+                incumbents:
+                - site_key: luvcarwash_000457::54
+                  name: Luv Car Wash
+                  expected:
+                  - 13672.0
+                  - 13672.0
+                  - 14074.08
+                  with_campaign: []
+                n_incumbents: 5
+                n_shown: 5
+                steal_peak: 0.06
+                campaign:
+                  applied: true
+                  launch: 13
+                  intensity: 1.0
+                  window: 6
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Campaign
+  /v1/pnl_analysis/campaign/snapshot:
+    get:
+      summary: Campaign Snapshot
+      description: 'Tab 2 — what a campaign does to OPEX / Revenue / Profit / Membership purchases, from the real P&L event
+
+        study (book_v4): median values by month-offset for 1-month / 2-month / 3+-month campaigns. Not pin-specific.'
+      operationId: campaign_snapshot_v1_pnl_analysis_campaign_snapshot_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                buckets:
+                - bucket: 1 month
+                  title: 1-Month Campaigns
+                  n_campaigns: 141
+                  camp_months:
+                  - 0
+                  mfs:
+                  - -3
+                  - -2
+                  - -1
+                  opex:
+                  - 71047.51
+                  - 75836.78
+                  - 75743.92
+                  revenue:
+                  - 109153.96
+                  - 104778.89
+                  - 114198.58
+                  profit:
+                  - 34181.6
+                  - 26645.0
+                  - 33678.88
+                  mem_purchases:
+                  - 2753.0
+                  - 2642.5
+                  - 2605.0
+      tags:
+      - Campaign
+  /v1/pnl_analysis/campaign/local-evidence:
+    post:
+      summary: Local Campaign Evidence
+      description: 'Tab 2 — real campaigns in this local market: the nearest in-radius sites'' monthly series for the chosen
+
+        metric, with each site''s detected promo-OPEX-spike months marked — the evidence behind the campaign model.'
+      operationId: local_campaign_evidence_v1_pnl_analysis_campaign_local_evidence_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocalCampaignsRequest'
+            example:
+              latitude: 33.7489
+              longitude: -84.3879
+              radius_km: 20
+              metric: mem_share_wash
+              max_sites: 8
+              demo: false
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                lat: 33.7489
+                lon: -84.3879
+                radius_km: 20
+                metric: mem_share_wash
+                sites:
+                - site_key: luvcarwash_000457::54
+                  name: Luv Car Wash
+                  x:
+                  - '2024-02-01'
+                  - '2024-03-01'
+                  - '2024-04-01'
+                  y:
+                  - 0.192
+                  - 0.487
+                  - 0.548
+                  campaign_months: []
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      tags:
+      - Campaign
+  /:
+    get:
+      summary: Root
+      description: Root endpoint with basic service information
+      operationId: root__get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+              example:
+                status: running
+      tags:
+      - Utilities
+components:
+  schemas:
+    AnalyseRequest:
+      properties:
+        address:
+          type: string
+          title: Address
+          description: Site address to geocode and fetch nearby data for.
+      type: object
+      required:
+      - address
+      title: AnalyseRequest
+      description: Kickoff for the external-data fetch pipeline (also used by /traffic-lights, /nearby-stores).
+    CampaignVerdictRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        radius_km:
+          type: number
+          maximum: 40.0
+          minimum: 2.0
+          title: Radius Km
+          description: Local-market radius in km.
+          default: 20.0
+        brand:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Brand
+          description: Operator/brand client_id.
+        plateau_override:
+          anyOf:
+          - type: number
+            minimum: 0.0
+          - type: 'null'
+          title: Plateau Override
+          description: Override mature total washes/mo.
+        mem_growth_pct:
+          type: number
+          maximum: 25.0
+          minimum: -15.0
+          title: Mem Growth Pct
+          description: Extra membership drift (%/yr).
+          default: 0.0
+        ret_growth_pct:
+          type: number
+          maximum: 15.0
+          minimum: -20.0
+          title: Ret Growth Pct
+          description: Extra retail drift (%/yr).
+          default: 0.0
+      type: object
+      title: CampaignVerdictRequest
+      description: Tab 2 — the 🎯 campaign recommendation + supporting metrics for this pin's local market.
+    EatingMarketRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        radius_km:
+          type: number
+          maximum: 40.0
+          minimum: 2.0
+          title: Radius Km
+          description: Local-market radius in km.
+          default: 20.0
+        brand:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Brand
+          description: Operator/brand client_id.
+        plateau_override:
+          anyOf:
+          - type: number
+            minimum: 0.0
+          - type: 'null'
+          title: Plateau Override
+          description: Override mature total washes/mo.
+        mem_growth_pct:
+          type: number
+          maximum: 25.0
+          minimum: -15.0
+          title: Mem Growth Pct
+          description: Extra membership drift (%/yr).
+          default: 0.0
+        ret_growth_pct:
+          type: number
+          maximum: 15.0
+          minimum: -20.0
+          title: Ret Growth Pct
+          description: Extra retail drift (%/yr).
+          default: 0.0
+        campaign_on:
+          type: boolean
+          title: Campaign On
+          description: Apply the campaign (drives the share theft).
+          default: false
+        campaign_launch:
+          type: integer
+          maximum: 48.0
+          minimum: 1.0
+          title: Campaign Launch
+          description: Campaign launch — months after opening.
+          default: 13
+        campaign_intensity:
+          type: number
+          maximum: 1.5
+          minimum: 0.5
+          title: Campaign Intensity
+          description: Campaign intensity.
+          default: 1.0
+        window:
+          type: integer
+          maximum: 12.0
+          minimum: 1.0
+          title: Window
+          description: Campaign impact window in months.
+          default: 6
+        max_incumbents:
+          type: integer
+          maximum: 12.0
+          minimum: 1.0
+          title: Max Incumbents
+          description: Max incumbents drawn (largest by recent volume).
+          default: 6
+      type: object
+      title: EatingMarketRequest
+      description: 'Tab 2 — 📈 eating-the-market: your site vs each incumbent forecast forward, with the campaign''s share
+        theft.'
+    ExploreKpisRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        radius_km:
+          type: number
+          maximum: 40.0
+          minimum: 2.0
+          title: Radius Km
+          description: Neighbour radius in km (the local market).
+          default: 20.0
+        smoothing:
+          type: integer
+          maximum: 12.0
+          minimum: 1.0
+          title: Smoothing
+          description: Centered rolling-mean window in months (1 = none).
+          default: 1
+        min_months:
+          type: integer
+          maximum: 72.0
+          minimum: 1.0
+          title: Min Months
+          description: Keep only sites with >= this many monthly records (rich-history filter).
+          default: 36
+        demo:
+          type: boolean
+          title: Demo
+          description: 'Anonymized client demo: sites become ''Site N'' by opening order.'
+          default: false
+      type: object
+      title: ExploreKpisRequest
+      description: Tab 1 — the 6 grouped per-site KPI panels (washes x3 / revenue x3 / ASP x2) for the local market.
+    ExploreMarketRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        radius_km:
+          type: number
+          maximum: 40.0
+          minimum: 2.0
+          title: Radius Km
+          description: Neighbour radius in km (the local market).
+          default: 20.0
+        max_sites:
+          type: integer
+          maximum: 50.0
+          minimum: 1.0
+          title: Max Sites
+          description: Max in-market site markers drawn; every entrant is always kept.
+          default: 10
+        min_months:
+          type: integer
+          maximum: 72.0
+          minimum: 1.0
+          title: Min Months
+          description: Keep rich-history sites (>= this many monthly records). 36 = the Explore view (≥3 yrs).
+          default: 36
+        operator:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Operator
+          description: Operator client_name (see GET /operators) to plot its whole footprint on the map.
+        demo:
+          type: boolean
+          title: Demo
+          description: 'Anonymized client demo: hide names, drop exact site dots, shade cluster regions.'
+          default: false
+      type: object
+      title: ExploreMarketRequest
+      description: 'Tab 1 — the local-market MAP + header counts (markers, reference dots, operator footprint). No time
+
+        series — the per-site KPI series are served by /explore-market/kpis. Provide lat/lon OR an address.'
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    LocalCampaignsRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        radius_km:
+          type: number
+          maximum: 40.0
+          minimum: 2.0
+          title: Radius Km
+          description: Local-market radius in km.
+          default: 20.0
+        metric:
+          type: string
+          title: Metric
+          description: 'Series: mem_share_wash | mem_wash_count | ret_wash_count.'
+          default: mem_share_wash
+        max_sites:
+          type: integer
+          maximum: 20.0
+          minimum: 1.0
+          title: Max Sites
+          description: Max (nearest) in-market sites drawn.
+          default: 8
+        demo:
+          type: boolean
+          title: Demo
+          description: 'Anonymized client demo: sites become ''Site N'' by opening order.'
+          default: false
+      type: object
+      title: LocalCampaignsRequest
+      description: 'Tab 2 — real campaigns in this local market: per-site series + detected promo months (the evidence).'
+    PinpointForecastRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        brand:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Brand
+          description: Operator/brand client_id (see GET /pnl_analysis/brands). Strongest predictor of scale.
+        plateau_override:
+          anyOf:
+          - type: number
+            minimum: 0.0
+          - type: 'null'
+          title: Plateau Override
+          description: Override mature total washes/mo (0/None = use model).
+        mem_growth_pct:
+          type: number
+          maximum: 25.0
+          minimum: -15.0
+          title: Mem Growth Pct
+          description: Extra yr3-5 membership drift (%/yr) on top of the market trend.
+          default: 0.0
+        ret_growth_pct:
+          type: number
+          maximum: 15.0
+          minimum: -20.0
+          title: Ret Growth Pct
+          description: Extra yr3-5 retail drift (%/yr) on top of the market trend.
+          default: 0.0
+        horizon_months:
+          type: integer
+          maximum: 60.0
+          minimum: 12.0
+          title: Horizon Months
+          description: Forecast horizon in months (<=60).
+          default: 60
+      type: object
+      title: PinpointForecastRequest
+      description: Tab 2 — drop-a-pin 5-year forecast (new site's trajectory + local market history/forecast).
+    PnlForecastRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        brand:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Brand
+          description: Operator/brand client_id (see GET /pnl_analysis/brands).
+        plateau_override:
+          anyOf:
+          - type: number
+            minimum: 0.0
+          - type: 'null'
+          title: Plateau Override
+          description: Override mature total washes/mo (0/None = use model).
+        mem_growth_pct:
+          type: number
+          maximum: 25.0
+          minimum: -15.0
+          title: Mem Growth Pct
+          description: Extra yr3-5 membership drift (%/yr).
+          default: 0.0
+        ret_growth_pct:
+          type: number
+          maximum: 15.0
+          minimum: -20.0
+          title: Ret Growth Pct
+          description: Extra yr3-5 retail drift (%/yr).
+          default: 0.0
+        asp_override:
+          anyOf:
+          - type: number
+            maximum: 30.0
+            minimum: 1.0
+          - type: 'null'
+          title: Asp Override
+          description: Blended $/wash. None = cluster average (the ≤20 km neighbours' last 12 months).
+        opex_growth_pct:
+          type: number
+          maximum: 15.0
+          minimum: -10.0
+          title: Opex Growth Pct
+          description: Opex cost escalation (%/yr) on top of the learned new-site ramp. Default flat.
+          default: 0.0
+        campaign_on:
+          type: boolean
+          title: Campaign On
+          description: Apply a retail→membership conversion campaign.
+          default: false
+        campaign_launch:
+          type: integer
+          maximum: 48.0
+          minimum: 1.0
+          title: Campaign Launch
+          description: Campaign launch — months after opening.
+          default: 13
+        campaign_intensity:
+          type: number
+          maximum: 1.5
+          minimum: 0.5
+          title: Campaign Intensity
+          description: Campaign intensity (× a typical observed campaign).
+          default: 1.0
+        window:
+          type: integer
+          maximum: 12.0
+          minimum: 1.0
+          title: Window
+          description: Campaign impact window in months.
+          default: 6
+        horizon_months:
+          type: integer
+          maximum: 60.0
+          minimum: 12.0
+          title: Horizon Months
+          description: Forecast horizon in months (<=60).
+          default: 60
+      type: object
+      title: PnlForecastRequest
+      description: 'Tab 2 — the 💰 P&L chart: monthly revenue vs operating expense vs net, with an optional campaign overlay.'
+    SiteContextRequest:
+      properties:
+        address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Address
+          description: Site address. Optional if latitude/longitude provided.
+        latitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Latitude
+          description: Pin latitude.
+        longitude:
+          anyOf:
+          - type: number
+          - type: 'null'
+          title: Longitude
+          description: Pin longitude.
+        include_ai:
+          type: boolean
+          title: Include Ai
+          description: Also rewrite each dimension's insight with the internal LLM (skipped if unreachable).
+          default: false
+        demo:
+          type: boolean
+          title: Demo
+          description: 'Anonymized demo: hide the origin address on the markers.'
+          default: false
+      type: object
+      title: SiteContextRequest
+      description: 'Synchronous lat/lon site-analysis (the shared map pin). Provide latitude+longitude OR an address.
+
+
+        Returns weather / competitors / retail anchors / gas stations + map markers + rule-based insights in ONE
+
+        response (no task polling) — the lat/lon counterpart to the async /analyze-site pipeline.'
+    TaskStatus:
+      type: string
+      enum:
+      - PENDING
+      - STARTED
+      - SUCCESS
+      - FAILURE
+      - RETRY
+      - REVOKED
+      title: TaskStatus
+      description: Task status enumeration
+    TaskStatusResponse:
+      properties:
+        task_id:
+          type: string
+          title: Task Id
+          description: Unique task identifier
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TaskStatus'
+          description: Current task status
+        result:
+          anyOf:
+          - {}
+          - type: 'null'
+          title: Result
+          description: Task result if completed
+        error:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Error
+          description: Error message if failed
+        created_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Created At
+          description: Task creation timestamp
+        completed_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Completed At
+          description: Task completion timestamp
+      type: object
+      required:
+      - task_id
+      - status
+      title: TaskStatusResponse
+      description: Response model for task status check
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+servers:
+- url: http://localhost:8002
+  description: Local dev (uvicorn)
+tags:
+- name: Lookups
+  description: Dropdown values (operators / brands).
+- name: Explore markets
+  description: Local-market line explorer + map + KPI panels.
+- name: Forecast
+  description: Drop-a-pin 5-year wash & P&L forecast.
+- name: Campaign
+  description: Promotion decision, share-theft and real-market evidence.
+- name: Site analysis (sync)
+  description: One-call lat/lon location context.
+- name: Site analysis (async)
+  description: Queued address pipeline — submit, poll, read by task_id.
+- name: Utilities
+  description: Health, geocoded single-fetch helpers, cache.

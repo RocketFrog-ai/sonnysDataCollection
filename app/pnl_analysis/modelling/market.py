@@ -1,263 +1,243 @@
 """
-Local-market engine for the P&L explorer backend.
+Local-market engine for the Explore-markets + Forecast backend.
 
-Wraps the cold-start forecaster (earnest-proforma-2.0/streamlits/coldstart_model.py) and
-re-implements the pure data/trend/forecast helpers from that app's Streamlit UI so the FastAPI
-routes can return plot-ready data for two tabs:
+Plot-ready data for the Streamlit app's first two modes (earnest-proforma-2.0/streamlits/app.py):
 
-  1. explore_market(...)     — per-site monthly series within a neighbour radius (line charts).
-  2. pinpoint_forecast(...)  — a dropped pin's 5-year trajectory + the local market's history-plus-forecast.
+  explore_market(...)        — header counts + role-tagged map markers + per-site monthly series for one
+                               metric, for every site within `radius_km` of the pin (the line explorer).
+  explore_market_kpis(...)   — the 6 grouped per-site KPI series (washes ×3, revenue ×3, ASP ×2) for the
+                               whole local market — the "Local-market KPIs over time" panels.
+  compute_trajectory(...)    — the shared cold-start 5-yr trajectory for a pin (used by pinpoint_forecast,
+                               pnl and campaign so every Forecast-tab section agrees on the same curve).
+  pinpoint_forecast(...)     — the new site's trajectory + the local market's history-plus-forecast total.
+  list_brands(...)           — operator/brand dropdown values for the Forecast tab.
 
-The cold-start artifacts (LightGBM plateau models + empirical ramp curves + learned cannibalization)
-are loaded once and cached; the monthly panel (main-ds.csv) is loaded + clustered once and cached.
+All heavy artifacts come from `data.py` (loaded once, shared) and the trend math from `trend.py`.
 """
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
 
-ROOT = Path(__file__).resolve().parents[3]
-COLDSTART_DIR = ROOT / "earnest-proforma-2.0" / "streamlits"
-CSV = ROOT / "earnest-proforma-2.0" / "data" / "main-ds.csv"
-EARTH_KM = 6371.0088
+from app.pnl_analysis.modelling import data as D
+from app.pnl_analysis.modelling.data import cm, haversine_km
+from app.pnl_analysis.modelling.trend import forecast_series, market_trend
 
-# import the cold-start model module (lives alongside the Streamlit app)
-if str(COLDSTART_DIR) not in sys.path:
-    sys.path.insert(0, str(COLDSTART_DIR))
-import coldstart_model as cm  # noqa: E402
+# role -> marker colour (mirrors the Explore-markets map in app.py)
+ROLE_COLOR = {"focal": "#e6194B", "entrant": "#f58231", "incumbent": "#5b8db8"}
+MIN_MONTHS_RICH = 36   # Explore "rich-history" filter — ≥3 full years, so no half-drawn KPI lines
 
-# tab-1 metrics: label -> dataframe column
-METRICS: Dict[str, str] = {
-    "Total washes": "tot_wash_count",
-    "Membership washes": "mem_wash_count",
-    "Retail washes": "ret_wash_count",
-    "Total revenue ($)": "tot_revenue",
-    "Membership share of washes": "mem_share_wash",
-}
-METRIC_LABEL_BY_COL = {v: k for k, v in METRICS.items()}
-
-_PANEL_CACHE: Dict[str, Any] = {}
-_MODEL_CACHE: Dict[str, Any] = {}
+# the 6 KPIs grouped into 3 figures (col, label, unit) — matches the GROUPS in app.py
+KPI_GROUPS: List[Tuple[str, List[Tuple[str, str, str]]]] = [
+    ("Washes", [("tot_wash_count", "Total washes", "count"), ("ret_wash_count", "Retail washes", "count"),
+                ("mem_wash_count", "Membership washes", "count")]),
+    ("Revenue", [("tot_revenue", "Total revenue ($)", "$"), ("ret_revenue", "Retail revenue ($)", "$"),
+                 ("mem_revenue", "Membership revenue ($)", "$")]),
+    ("ASPs", [("asp_ret", "ASP per wash — retail ($)", "$"), ("asp_mem", "ASP per wash — membership ($)", "$")]),
+]
 
 
-# ─────────────────────────── data ───────────────────────────
-def _load_panel():
-    """Monthly site-level panel + per-site table (with adaptive local-market clusters). Cached."""
-    if "df" in _PANEL_CACHE:
-        return _PANEL_CACHE["df"], _PANEL_CACHE["site"]
-
-    raw = pd.read_csv(CSV, low_memory=False)
-    raw["date"] = pd.to_datetime(dict(year=raw.year, month=raw.month, day=1))
-    raw["op_start"] = pd.to_datetime(raw["operational_start"], format="%m-%Y", errors="coerce")
-    raw["site_key"] = raw.client_id.astype(str) + "::" + raw.site_id.astype(str)
-
-    df = raw.copy()
-    asp_r = np.where(df.ret_wash_count > 0, df.ret_revenue / df.ret_wash_count, np.nan)
-    asp_m = np.where(df.mem_wash_count > 0, df.mem_revenue / df.mem_wash_count, np.nan)
-    df.loc[asp_r > 200, "ret_revenue"] = np.nan
-    df.loc[asp_m > 200, "mem_revenue"] = np.nan
-    df["tot_wash_count"] = df.mem_wash_count + df.ret_wash_count
-    df["tot_revenue"] = df[["mem_revenue", "ret_revenue"]].sum(axis=1, min_count=1)
-    df["mem_share_wash"] = np.where(df.tot_wash_count > 0, df.mem_wash_count / df.tot_wash_count, np.nan)
-
-    site = (
-        df.groupby("site_key")
-        .agg(client_name=("client_name", "first"), lat=("lat", "first"), lon=("lon", "first"),
-             state=("state", "first"), region=("region", "first"), op_start=("op_start", "first"),
-             first_obs=("date", "min"), last_obs=("date", "max"), n_obs=("date", "size"))
-        .reset_index()
-    )
-    site["left_censored"] = site.op_start <= pd.Timestamp("2020-01-01")
-    site["has_coords"] = site[["lat", "lon"]].notna().all(axis=1)
-    site["cluster"] = cm.assign_clusters(site, "adaptive")
-
-    _PANEL_CACHE["df"] = df
-    _PANEL_CACHE["site"] = site
-    return df, site
-
-
-def _load_model():
-    if "art" not in _MODEL_CACHE:
-        _MODEL_CACHE["art"] = cm.load()
-    return _MODEL_CACHE["art"]
-
-
-def haversine_km(lat1, lon1, lat2, lon2):
-    r = np.radians
-    lat1, lon1, lat2, lon2 = r(lat1), r(lon1), r(lat2), r(lon2)
-    a = np.sin((lat2 - lat1) / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
-    return 2 * EARTH_KM * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
-
-
-# ─────────────────────────── trend / forecast helpers (from the Streamlit app) ───────────────────────────
-TAU_Y = 2.0   # post-maturity growth saturates over ~2 yr (sites plateau ~24 mo empirically)
-
-
-def _sat_years(years):
-    """Saturating 'effective years' of drift: ≈ linear near 0, asymptotes to TAU_Y (booms decelerate)."""
-    return TAU_Y * (1.0 - np.exp(-np.asarray(years, dtype=float) / TAU_Y))
-
-
-def _robust_slope(arr):
-    """Per-month log-growth slope (Theil-Sen on 6-mo-smoothed log level, last ~30 mo) + its SE."""
-    arr = np.asarray(arr, dtype=float); arr = arr[np.isfinite(arr)]
-    if len(arr) < 18:
-        return None
-    sm = pd.Series(arr).rolling(6, min_periods=3).mean().dropna().to_numpy()
-    K = min(30, len(sm))
-    if K < 8:
-        return None
-    yv = np.log(np.clip(sm[-K:], 1.0, None)); xv = np.arange(K, dtype=float)
-    try:
-        from scipy.stats import theilslopes
-        sl, _, lo, hi = theilslopes(yv, xv)
-    except Exception:
-        sl = float(np.polyfit(xv, yv, 1)[0]); lo = hi = sl
-    se = max((hi - lo) / (2 * 1.96), 1e-9) * np.sqrt(6.0)
-    return float(sl), float(se)
-
-
-def _shrink_annualize(sl, se):
-    """Shrink a per-month slope toward 0 by its signal-to-noise t²/(1+t²), annualize → (g, g_lo, g_hi)."""
-    SANE = lambda r: float(np.clip(r, -0.40, 0.40))
-    t = abs(sl) / se
-    sl_c = sl * (t * t / (1.0 + t * t))
-    return SANE(np.exp(sl_c * 12) - 1), SANE(np.exp((sl - 1.96 * se) * 12) - 1), SANE(np.exp((sl + 1.96 * se) * 12) - 1)
-
-
-def robust_growth(arr):
-    """Annual growth (central + data-based CI band) for one series."""
-    g = _robust_slope(arr)
-    return _shrink_annualize(*g) if g else (0.0, 0.0, 0.0)
-
-
-def market_trend(piv):
-    """Composition-robust market trend from a date×site pivot: each site's own slope, pooled by median."""
-    slopes, ses = [], []
-    for col in getattr(piv, "columns", []):
-        r = _robust_slope(piv[col].dropna().to_numpy())
-        if r:
-            slopes.append(r[0]); ses.append(r[1])
-    if not slopes:
-        return 0.0, 0.0, 0.0
-    slopes = np.asarray(slopes); ses = np.asarray(ses); n = len(slopes)
-    sl = float(np.median(slopes))
-    between = float(np.std(slopes, ddof=1)) if n >= 2 else 0.0
-    se = max(np.hypot(between, float(np.median(ses))) / np.sqrt(n), 1e-9)
-    return _shrink_annualize(sl, se)
-
-
-def forecast_series(s, H, g=None):
-    """Smooth 5-yr expected-trend forecast: starts at the last actual, blends into a trend line at the recent
-    deseasonalized level, growing at a robust annual rate that saturates over ~2 yr."""
-    s = pd.Series(s).astype(float).dropna()
-    n = len(s)
-    if n == 0:
-        return np.zeros(H)
-    arr = s.to_numpy()
-    last = float(arr[-1])
-    level = float(arr[-min(12, n):].mean())
-    if g is None:
-        g = robust_growth(arr)[0]
-    t = np.arange(1, H + 1)
-    trend = level * (1 + g) ** _sat_years(t / 12.0)
-    w = np.exp(-(t - 1) / 3.0)
-    return np.clip(last * w + trend * (1 - w), 0, None)
-
-
-# ─────────────────────────── tab 1: explore market ───────────────────────────
-def explore_market(lat: float, lon: float, metric_col: str, radius_km: float,
-                   smoothing: int, max_sites: int, x_axis: str) -> Dict[str, Any]:
-    """Per-site monthly series for every site within `radius_km` of the pin (the local market).
-
-    `x_axis` ∈ {"date", "months_since_open"}. Series are role-tagged (entrant vs incumbent);
-    an entrant is a genuinely-observed opening that came after the market's earliest site.
-    """
-    df, site = _load_panel()
-    metric_label = METRIC_LABEL_BY_COL.get(metric_col, metric_col)
-
+# ─────────────────────────── neighbourhood helpers ───────────────────────────
+def _neighbourhood(site: pd.DataFrame, lat: float, lon: float, radius_km: float) -> pd.DataFrame:
+    """Sites within `radius_km` of the pin, with `dist_km` and an `is_entrant` tag (opened after the
+    market's earliest site AND a genuinely-observed, non-left-censored opening)."""
     d = haversine_km(lat, lon, site.lat.values, site.lon.values)
     in_radius = (d <= radius_km) & site.has_coords.values
     nb = site.loc[in_radius].copy()
     nb["dist_km"] = d[in_radius]
     nb = nb.sort_values("op_start")
-    n_in_market = len(nb)
-
-    if n_in_market:
+    if len(nb):
         earliest = nb.op_start.min()
         nb["is_entrant"] = (~nb.left_censored) & (nb.op_start > earliest)
     else:
         nb["is_entrant"] = False
+    return nb.reset_index(drop=True)
 
-    # cap clutter: always keep every entrant, fill the rest with the nearest incumbents
-    entrants = nb[nb.is_entrant]
+
+def _focal_key(nb: pd.DataFrame) -> Optional[str]:
+    """The focal new site = the newest entrant, falling back to the nearest site to the pin."""
+    if nb.empty:
+        return None
+    ent = nb[nb.is_entrant]
+    if len(ent):
+        return str(ent.sort_values("op_start").site_key.iloc[-1])
+    return str(nb.sort_values("dist_km").site_key.iloc[0])
+
+
+def _cluster_regions(site: pd.DataFrame, plat: float, plon: float, max_km: float) -> List[Dict[str, Any]]:
+    """Shaded local-market circles (demo mode): each clustered footprint within `max_km` of the pin,
+    hugging its own spread (centroid → farthest member, min 2 / cap 20 km). Mirrors add_cluster_regions."""
+    area = site[site.has_coords & (site.cluster >= 0)].copy()
+    area = area[area.lat.between(-89, 89) & area.lon.between(-179, 179)
+                & (area.lat.abs() > 1e-3) & (area.lon.abs() > 1e-3)]
+    area["d"] = haversine_km(plat, plon, area.lat.values, area.lon.values)
+    area = area[area.d <= max_km]
+    out = []
+    for cid, cg in area.groupby("cluster"):
+        clat, clon = float(cg.lat.mean()), float(cg.lon.mean())
+        spread = float(haversine_km(clat, clon, cg.lat.values, cg.lon.values).max())
+        r_km = min(max(spread + 1.0, 2.0), 20.0)
+        out.append({"cluster": int(cid), "lat": clat, "lon": clon,
+                    "radius_km": round(r_km, 2), "n_sites": int(len(cg))})
+    return out
+
+
+# ─────────────────────────── tab 1a: explore market (the map + header counts) ───────────────────────────
+def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: int = 10,
+                   min_months: int = MIN_MONTHS_RICH, operator: Optional[str] = None,
+                   demo: bool = False) -> Dict[str, Any]:
+    """The Explore-markets MAP + header counts for the pin's local market (NO time series — that's the
+    job of explore_market_kpis, the 8 KPI panels).
+
+    Returns the header metrics (sites-in-market, new-entrants) and the map layers:
+      • markers          — the in-market sites, role-tagged focal / entrant / incumbent (the "cluster points").
+      • reference_dots   — geographic reference: other rich-history sites ≤50 km of the pin (outside the market).
+      • operator_footprint — when an `operator` (client_name) is highlighted, ALL of its sites nationwide.
+      • cluster_regions  — demo mode only: shaded local-market footprints instead of exact dots.
+    `min_months` keeps rich-history sites (≥3 yrs, matching the Explore view — that's why the count is small).
+    """
+    df, site = D.load_panel()
+    pool = site[site.n_obs >= min_months] if min_months > 1 else site
+
+    nb_full = _neighbourhood(pool, lat, lon, radius_km)
+    n_in_market = len(nb_full)
+    n_entrants = int(nb_full.is_entrant.sum()) if n_in_market else 0
+    focal_key = _focal_key(nb_full)
+
+    # cap markers for legibility: keep every entrant, fill the rest with the nearest incumbents
+    entrants = nb_full[nb_full.is_entrant]
     n_inc = max(0, max_sites - len(entrants))
-    inc = nb[~nb.is_entrant].nsmallest(n_inc, "dist_km")
+    inc = nb_full[~nb_full.is_entrant].nsmallest(n_inc, "dist_km")
     shown = pd.concat([entrants, inc]).drop_duplicates("site_key").sort_values("op_start")
 
-    series: List[Dict[str, Any]] = []
+    markers: List[Dict[str, Any]] = []
     for _, s in shown.iterrows():
-        ts = df.loc[df.site_key == s.site_key].set_index("date")[metric_col].sort_index()
-        if ts.dropna().empty:
-            continue
-        ts = ts.reindex(pd.date_range(ts.index.min(), ts.index.max(), freq="MS"))
-        if smoothing and smoothing > 1:
-            ts = ts.rolling(smoothing, center=True, min_periods=1).mean()
-        if x_axis == "months_since_open":
-            x = ((ts.index.year - s.op_start.year) * 12 + (ts.index.month - s.op_start.month)).tolist()
-        else:
-            x = [d.strftime("%Y-%m-%d") for d in ts.index]
-        y = [None if pd.isna(v) else float(v) for v in ts.values]
-        series.append({
-            "site_key": s.site_key,
-            "name": s.client_name,
-            "role": "entrant" if s.is_entrant else "incumbent",
-            "dist_km": round(float(s.dist_km), 2),
+        role = "focal" if s.site_key == focal_key else ("entrant" if s.is_entrant else "incumbent")
+        markers.append({
+            "site_key": s.site_key, "name": None if demo else s.client_name,
+            "lat": float(s.lat), "lon": float(s.lon), "dist_km": round(float(s.dist_km), 2),
             "op_start": s.op_start.strftime("%Y-%m") if pd.notna(s.op_start) else None,
-            "x": x,
-            "y": y,
+            "role": role, "is_entrant": bool(s.is_entrant), "color": ROLE_COLOR[role],
         })
 
-    entry_markers = [
-        {"site_key": s.site_key, "name": s.client_name, "op_start": s.op_start.strftime("%Y-%m-%d")}
-        for _, s in entrants.iterrows() if pd.notna(s.op_start)
+    # geographic reference: rich-history sites ≤50 km of the pin that are NOT already in-market markers
+    pool_ref = site[site.n_obs >= MIN_MONTHS_RICH]
+    dref = haversine_km(lat, lon, pool_ref.lat.values, pool_ref.lon.values)
+    keep_ref = (dref <= 50) & pool_ref.has_coords.values
+    ref = pool_ref.loc[keep_ref].copy(); ref["d"] = dref[keep_ref]
+    shown_keys = set(shown.site_key)
+    reference_dots = [] if demo else [
+        {"site_key": r.site_key, "name": r.client_name, "lat": float(r.lat), "lon": float(r.lon),
+         "dist_km": round(float(r.d), 2)}
+        for _, r in ref.iterrows() if r.site_key not in shown_keys
     ]
 
+    operator_footprint = []
+    if operator and not demo:
+        of = site[site.has_coords & (site.client_name == operator)]
+        operator_footprint = [{"site_key": s.site_key, "name": s.client_name,
+                               "lat": float(s.lat), "lon": float(s.lon)} for _, s in of.iterrows()]
+
     return {
-        "lat": lat, "lon": lon,
-        "metric": metric_col, "metric_label": metric_label,
-        "x_axis": x_axis,
-        "x_axis_label": "date" if x_axis == "date" else "months since each site opened",
-        "y_axis_label": metric_label,
-        "radius_km": radius_km, "smoothing": smoothing,
-        "n_sites_in_market": int(n_in_market),
-        "n_shown": len(series),
-        "n_entrants": int(len(entrants)),
-        "series": series,
-        "entry_markers": entry_markers,
+        "lat": lat, "lon": lon, "radius_km": radius_km, "min_months": min_months,
+        "n_sites_in_market": int(n_in_market), "n_entrants": n_entrants, "n_shown": len(markers),
+        "focal_site_key": focal_key, "operator": operator,
+        "map": {
+            "center": {"lat": lat, "lon": lon},
+            "radius_km": radius_km,
+            "markers": markers,
+            "reference_dots": reference_dots,
+            "cluster_regions": _cluster_regions(site, lat, lon, max_km=200) if demo else [],
+            "operator_footprint": operator_footprint,
+        },
     }
 
 
-# ─────────────────────────── tab 2: pin-point forecast ───────────────────────────
-def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
-                      mem_growth_pct: float, ret_growth_pct: float, horizon_months: int) -> Dict[str, Any]:
-    """A dropped pin's 5-year trajectory + the local market's history-and-forecast total wash count.
+# ─────────────────────────── tab 1b: local-market KPI panels ───────────────────────────
+def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int,
+                        min_months: int = MIN_MONTHS_RICH, demo: bool = False) -> Dict[str, Any]:
+    """The 6 grouped per-site KPI series (Washes ×3 / Revenue ×3 / ASP ×2) for the whole local market —
+    every in-radius site with ≥`min_months` of history. Mirrors the "Local-market KPIs over time" panels."""
+    df, site = D.load_panel()
+    pool = site[site.n_obs >= min_months] if min_months > 1 else site
+    nb_full = _neighbourhood(pool, lat, lon, radius_km)
+    focal_key = _focal_key(nb_full)
+    ckeys = nb_full.site_key.tolist()
 
-    `mem_growth_pct` / `ret_growth_pct` are extra yr3-5 drift (%/yr) added on top of the market's own trend.
+    sub = df[df.site_key.isin(ckeys)].copy()
+    sub["asp_ret"] = sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan)
+    sub["asp_mem"] = sub.mem_revenue / sub.mem_wash_count.replace(0, np.nan)
+
+    # anonymized "Site N" labels by opening order (demo), else client_name
+    order_for_label = nb_full.sort_values("op_start").site_key.tolist()
+    anon = {k: f"Site {i + 1}" for i, k in enumerate(order_for_label)}
+    name_of = {k: (anon[k] if demo else str(site.loc[site.site_key == k, "client_name"].iloc[0])) for k in ckeys}
+
+    # even monthly grid per site, reused across groups; focal drawn last (legend order)
+    order = [k for k in ckeys if k != focal_key] + ([focal_key] if focal_key in ckeys else [])
+    entrant_of = dict(zip(nb_full.site_key, nb_full.is_entrant))
+    gframes: Dict[str, pd.DataFrame] = {}
+    for k in order:
+        g = sub[sub.site_key == k].set_index("date").sort_index()
+        gframes[k] = g.reindex(pd.date_range(g.index.min(), g.index.max(), freq="MS")) if len(g) else g
+
+    sites_meta = [
+        {"site_key": k, "name": name_of.get(k), "is_focal": k == focal_key,
+         "is_entrant": bool(entrant_of.get(k, False)),
+         "dist_km": round(float(nb_full.loc[nb_full.site_key == k, "dist_km"].iloc[0]), 2),
+         "op_start": (nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0].strftime("%Y-%m")
+                      if pd.notna(nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0]) else None)}
+        for k in order
+    ]
+
+    groups: List[Dict[str, Any]] = []
+    for gname, panels in KPI_GROUPS:
+        gpanels = []
+        for col, label, unit in panels:
+            pser = []
+            for k in order:
+                g = gframes[k]
+                if not len(g) or col not in g:
+                    continue
+                y = g[col].rolling(smoothing, center=True, min_periods=1).mean() if (smoothing and smoothing > 1) else g[col]
+                if y.dropna().empty:
+                    continue
+                pser.append({"site_key": k, "name": name_of.get(k), "is_focal": k == focal_key,
+                             "is_entrant": bool(entrant_of.get(k, False)),
+                             "x": [d.strftime("%Y-%m-%d") for d in g.index],
+                             "y": [None if pd.isna(v) else float(v) for v in y.values]})
+            gpanels.append({"col": col, "label": label, "unit": unit, "series": pser})
+        groups.append({"name": gname, "panels": gpanels})
+
+    return {
+        "lat": lat, "lon": lon, "radius_km": radius_km, "smoothing": smoothing, "min_months": min_months,
+        "n_sites": len(ckeys), "focal_site_key": focal_key,
+        "sites": sites_meta, "groups": groups,
+    }
+
+
+# ─────────────────────────── shared trajectory ───────────────────────────
+def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
+                       plateau_override: Optional[float] = None, mem_growth_pct: float = 0.0,
+                       ret_growth_pct: float = 0.0, horizon_months: int = 60,
+                       radius_km: float = 20.0) -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
+    """The cold-start 5-yr monthly trajectory for a pin + the local-market per-component trends it used.
+
+    Learns this market's membership / retail trends from the ≤`radius_km` neighbours' own series
+    (composition-robust), then runs the cold-start model with those drifts plus the user's extra sliders.
+    Returns (traj_df, info, trends). `trends` carries the RAW market trend (no slider) + the applied
+    slider fractions, so callers can reuse them consistently (e.g. the market baseline forecast uses the
+    raw trend while the entrant's trajectory uses raw+slider). Shared by pinpoint_forecast / pnl / campaign.
     """
-    df, site = _load_panel()
-    art = _load_model()
-    gm = mem_growth_pct / 100.0
-    gr = ret_growth_pct / 100.0
+    df, site = D.load_panel()
+    art = D.load_model()
+    gm, gr = mem_growth_pct / 100.0, ret_growth_pct / 100.0
 
-    # learn this local market's per-component trend (membership vs retail) from neighbours' own series
     nb = site[site.has_coords]
     d = haversine_km(lat, lon, nb.lat.values, nb.lon.values)
-    keys = nb.site_key[(d <= 20) & (d > 1e-6)].tolist()
+    keys = nb.site_key[(d <= radius_km) & (d > 1e-6)].tolist()
     if keys:
         sub = df[df.site_key.isin(keys)]
         pm = sub.pivot_table(index="date", columns="site_key", values="mem_wash_count")
@@ -270,38 +250,78 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
     traj, info = cm.predict_site(
         lat, lon, brand=brand, plateau_override=(plateau_override or None),
         annual_mem_growth=mem_g + gm, annual_ret_change=ret_g + gr,
-        mem_growth_band=(mem_lo + gm, mem_hi + gm),
-        ret_change_band=(ret_lo + gr, ret_hi + gr),
+        mem_growth_band=(mem_lo + gm, mem_hi + gm), ret_change_band=(ret_lo + gr, ret_hi + gr),
         horizon=horizon_months, art=art,
     )
-    g = traj.set_index("month")
-    months = [int(m) for m in g.index]
+    trends = {"mem_g": mem_g, "mem_lo": mem_lo, "mem_hi": mem_hi,
+              "ret_g": ret_g, "ret_lo": ret_lo, "ret_hi": ret_hi,
+              "gm": gm, "gr": gr, "neighbour_keys": keys}
+    return traj, info, trends
 
-    trajectory = {
-        "months": months,
-        "total_med": [float(v) for v in g.total_med],
-        "total_lo": [float(v) for v in g.total_lo],
-        "total_hi": [float(v) for v in g.total_hi],
-        "mem_med": [float(v) for v in g.mem_med],
-        "ret_med": [float(v) for v in g.ret_med],
+
+# ─────────────────────────── tab 2a: the new site's 5-year trajectory ───────────────────────────
+def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
+                      mem_growth_pct: float, ret_growth_pct: float, horizon_months: int) -> Dict[str, Any]:
+    """The NEW SITE's own 5-year monthly trajectory (the "Predicted 5-year trajectory" chart) + the summary
+    KPI cards. Total / membership / retail washes with a P10–P90 band.
+
+    `mem_growth_pct` / `ret_growth_pct` are extra yr3-5 drift (%/yr) on top of the market's own trend.
+    The whole-market history+forecast plot is a SEPARATE endpoint — see `market_forecast`.
+    """
+    traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
+                                            mem_growth_pct, ret_growth_pct, horizon_months)
+    mem_g, ret_g = trends["mem_g"], trends["ret_g"]
+    g = traj.set_index("month")
+    return {
+        "lat": lat, "lon": lon, "brand": brand,
+        "summary": {
+            "plateau_med": float(info["plateau_med"]), "plateau_lo": float(info["plateau_lo"]),
+            "plateau_hi": float(info["plateau_hi"]), "mem_share": float(info["mem_share"]),
+            "n_neighbours_20km": int(info["n_neighbours_20km"]), "brand_known": bool(info["brand_known"]),
+            "ramp_source": info["ramp_source"], "region": info.get("region"), "state": info.get("state"),
+            "mem_growth": float(mem_g + trends["gm"]), "ret_growth": float(ret_g + trends["gr"]),
+        },
+        "trajectory": {
+            "months": [int(m) for m in g.index],
+            "total_med": [float(v) for v in g.total_med], "total_lo": [float(v) for v in g.total_lo],
+            "total_hi": [float(v) for v in g.total_hi],
+            "mem_med": [float(v) for v in g.mem_med], "ret_med": [float(v) for v in g.ret_med],
+        },
     }
 
-    # ── total local-market wash count — history + 5-year forecast ──
+
+# ─────────────────────────── tab 2b: total local-market wash count (history + forecast) ───────────────────────────
+def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
+                    mem_growth_pct: float, ret_growth_pct: float, horizon_months: int) -> Dict[str, Any]:
+    """The TOTAL LOCAL-MARKET wash count: actual history + 5-year forecast (the "Total local-market wash
+    count" growth plot). The forecast carries every neighbour forward at the local trend, subtracts the new
+    site's (distance-learned, retail) cannibalization phased over the first year, and adds the entrant's own
+    journey. Returns history + four forecast series; the cannibalization params themselves are internal.
+    """
+    df, site = D.load_panel()
+    art = D.load_model()
+    traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
+                                            mem_growth_pct, ret_growth_pct, horizon_months)
+    keys = trends["neighbour_keys"]
+    mem_g, mem_lo, mem_hi = trends["mem_g"], trends["mem_lo"], trends["mem_hi"]
+    ret_g, ret_lo, ret_hi = trends["ret_g"], trends["ret_lo"], trends["ret_hi"]
+
+    g = traj.set_index("month")
     today = pd.Timestamp(df.date.max())
     H = horizon_months
     fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
-    _tj = traj.set_index("month")
-    new_traj = _tj["total_med"].reindex(range(H)).to_numpy()
-    new_lo = _tj["total_lo"].reindex(range(H)).to_numpy()
-    new_hi = _tj["total_hi"].reindex(range(H)).to_numpy()
-
+    new_traj = g["total_med"].reindex(range(H)).to_numpy()
+    new_lo = g["total_lo"].reindex(range(H)).to_numpy()
+    new_hi = g["total_hi"].reindex(range(H)).to_numpy()
     cp = cm.cannib_params(art, lat, lon)
-    market_forecast: Dict[str, Any] = {
+
+    out: Dict[str, Any] = {
+        "lat": lat, "lon": lon, "brand": brand,
         "open_date": (today + pd.DateOffset(months=1)).strftime("%Y-%m-%d"),
-        "cannib": {"a": float(cp["a"]), "L": float(cp["L"]), "fallback": bool(cp.get("fallback", False))},
     }
 
     if keys:
+        nb = site[site.has_coords]
         comp = df[df.site_key.isin(keys)].groupby("date")[["mem_wash_count", "ret_wash_count"]].sum()
         idx = pd.date_range(comp.index.min(), today, freq="MS")
         hist_mem = comp["mem_wash_count"].reindex(idx)
@@ -314,7 +334,6 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
         base_mem_lo = forecast_series(hist_mem, H, g=mem_lo); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi)
         base_ret_lo = forecast_series(hist_ret, H, g=ret_lo); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi)
 
-        # cannibalization hits retail (learned a·exp(-d/L) for this region), phased over the 1st year
         nb_keyed = nb.set_index("site_key").loc[keys]
         dist_by_key = pd.Series(haversine_km(lat, lon, nb_keyed.lat.values, nb_keyed.lon.values), index=keys)
         rec_ret = (df[df.site_key.isin(keys)].sort_values("date").groupby("site_key").tail(12)
@@ -326,50 +345,47 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
 
-        market_forecast.update({
+        out.update({
             "has_neighbours": True,
-            "history": {
-                "dates": [d.strftime("%Y-%m-%d") for d in hist.index],
-                "values": [None if pd.isna(v) else float(v) for v in hist.values],
-            },
-            "forecast": {
-                "dates": [d.strftime("%Y-%m-%d") for d in fdates],
-                "with_new_site": [float(v) for v in with_fc],
-                "without_new_site": [float(v) for v in base_fc],
-                "band_lo": [float(v) for v in with_lo],
-                "band_hi": [float(v) for v in with_hi],
-                "new_entrant_journey": [float(v) for v in new_traj],
-            },
+            "history": {"dates": [d.strftime("%Y-%m-%d") for d in hist.index],
+                        "values": [None if pd.isna(v) else float(v) for v in hist.values]},
+            "forecast": {"dates": [d.strftime("%Y-%m-%d") for d in fdates],
+                         "with_new_site": [float(v) for v in with_fc],
+                         "without_new_site": [float(v) for v in base_fc],
+                         "band_lo": [float(v) for v in with_lo], "band_hi": [float(v) for v in with_hi],
+                         "new_entrant_journey": [float(v) for v in new_traj]},
             "net_change_year5": float(with_fc[-1] - base_fc[-1]),
         })
     else:
-        market_forecast.update({
+        out.update({
             "has_neighbours": False,
             "history": {"dates": [], "values": []},
-            "forecast": {
-                "dates": [d.strftime("%Y-%m-%d") for d in fdates],
-                "with_new_site": [float(v) for v in new_traj],
-                "without_new_site": [0.0] * H,
-                "band_lo": [float(v) for v in new_lo],
-                "band_hi": [float(v) for v in new_hi],
-                "new_entrant_journey": [float(v) for v in new_traj],
-            },
+            "forecast": {"dates": [d.strftime("%Y-%m-%d") for d in fdates],
+                         "with_new_site": [float(v) for v in new_traj], "without_new_site": [0.0] * H,
+                         "band_lo": [float(v) for v in new_lo], "band_hi": [float(v) for v in new_hi],
+                         "new_entrant_journey": [float(v) for v in new_traj]},
             "net_change_year5": float(new_traj[-1]),
         })
+    return out
 
-    return {
-        "lat": lat, "lon": lon, "brand": brand,
-        "summary": {
-            "plateau_med": float(info["plateau_med"]),
-            "plateau_lo": float(info["plateau_lo"]),
-            "plateau_hi": float(info["plateau_hi"]),
-            "mem_share": float(info["mem_share"]),
-            "n_neighbours_20km": int(info["n_neighbours_20km"]),
-            "brand_known": bool(info["brand_known"]),
-            "ramp_source": info["ramp_source"],
-            "mem_growth": float(mem_g + gm),
-            "ret_growth": float(ret_g + gr),
-        },
-        "trajectory": trajectory,
-        "market_forecast": market_forecast,
-    }
+
+# ─────────────────────────── brand / operator lookups ───────────────────────────
+def list_brands() -> Dict[str, Any]:
+    """Operator/brand dropdown values for the Forecast tab. `client_id` is the value the model keys on
+    (its leave-one-out mature volume is the strongest plateau predictor); `client_name` is the label."""
+    df, site = D.load_panel()
+    art = D.load_model()
+    known = set(str(k) for k in art.get("brand_mean", {}).keys())
+    g = (site.dropna(subset=["client_id"]).groupby("client_id")
+         .agg(client_name=("client_name", "first"), n_sites=("site_key", "nunique")).reset_index())
+    brands = [{"client_id": str(r.client_id), "client_name": r.client_name,
+               "n_sites": int(r.n_sites), "model_known": str(r.client_id) in known}
+              for _, r in g.sort_values("n_sites", ascending=False).iterrows()]
+    return {"n_brands": len(brands), "brands": brands}
+
+
+def list_operators() -> Dict[str, Any]:
+    """Operator/brand NAMES for the Explore-markets highlight dropdown (client_name, alphabetical)."""
+    df, site = D.load_panel()
+    names = sorted(site.client_name.dropna().unique().tolist())
+    return {"n_operators": len(names), "operators": names}
