@@ -18,6 +18,7 @@ from app.site_analysis.server.config import (
 )
 from app.site_analysis.server.models import (
     AnalyseRequest,
+    SiteContextRequest,
     TaskResponse,
     TaskStatus,
     TaskStatusResponse,
@@ -453,6 +454,34 @@ def get_map_data_by_task(task_id: str):
         },
         "markers": markers,
     }
+
+
+# -----------------------------------------------------------------------------
+# Synchronous lat/lon site analysis (the shared map pin) — one call, no task polling
+# -----------------------------------------------------------------------------
+
+@router.post("/site-context")
+def get_site_context(req: SiteContextRequest):
+    """
+    Synchronous "what surrounds this location" for a lat/lon pin (or address): weather, competing car washes,
+    retail anchors and gas stations + map markers + rule-based insights (optionally LLM-rewritten), all in ONE
+    response. The lat/lon counterpart to the async /analyze-site pipeline; mirrors the Streamlit Site-analysis page.
+    """
+    from app.site_analysis.modelling.site_context import analyze_site_context
+
+    if req.latitude is not None and req.longitude is not None:
+        lat, lon = float(req.latitude), float(req.longitude)
+        address = req.address
+    elif req.address:
+        lat, lon = _lat_lon_from_address_or_400(req.address)
+        address = req.address
+    else:
+        raise HTTPException(status_code=400, detail="Provide either latitude/longitude or address.")
+    try:
+        return analyze_site_context(lat, lon, address=address, include_ai=req.include_ai, demo=req.demo)
+    except Exception as e:
+        logger.exception("Site context fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -----------------------------------------------------------------------------

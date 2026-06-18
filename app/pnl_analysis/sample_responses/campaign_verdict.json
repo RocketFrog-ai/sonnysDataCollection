@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "verdict_level": "recommended",
+  "verdict_text": "Recommended. 5 established incumbents within 20 km at 60% membership.",
+  "neighbours_mem_share": 0.6021702515393323,
+  "n_established_incumbents": 5,
+  "this_site_mem_share": 0.5720445080197722,
+  "conv_pct": 0.3,
+  "radius_km": 20.0
+}

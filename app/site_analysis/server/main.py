@@ -1,7 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
 from app.site_analysis.server.routes import router as site_analysis_router
-from app.pnl_analysis.server.central_routes import router as central_input_router
 from app.pnl_analysis.server.routes import router as pnl_analysis_router
 from app.utils import common as calib
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,8 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 FAST_API_HOST = calib.FAST_API_HOST
 FAST_API_PORT = calib.FAST_API_PORT
 
-# Create FastAPI application
-app = FastAPI()
+# Create FastAPI application — serves all three Streamlit features:
+#   • site_analysis_router → /v1/...                (Site analysis: async analyze-site + sync /site-context)
+#   • pnl_analysis_router  → /v1/pnl_analysis/...    (Explore-markets + Forecast)
+app = FastAPI(title="Earnest Proforma backend", version="2.0")
 
 # Add CORS middleware
 app.add_middleware(
@@ -24,7 +25,6 @@ app.add_middleware(
 
 # Include routes
 app.include_router(site_analysis_router, prefix="/v1")
-app.include_router(central_input_router, prefix="/v1")
 app.include_router(pnl_analysis_router, prefix="/v1")
 
 # Root endpoint
