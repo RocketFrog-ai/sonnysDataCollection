@@ -280,6 +280,83 @@ def opex_ramp(pm, art, state=None, region=None, min_sites=8):
     return ramp, scope, hage
 
 
+def opex_pct_curve(months, hot_end=9, mat_start=30, hot_hi=0.62, hot_lo=0.55, mat=0.45):
+    """Opex as a % of revenue for the forecast P&L orange line.
+    HOT launch: ~50–62% of revenue over the first ~hot_end months (declines gently 0.62→0.55,
+    staying inside the 50–62% band), then a smooth ease down to a mature ~40–50% (settles at
+    `mat`) by month `mat_start`, held flat thereafter."""
+    m = np.asarray(months, float)
+    pct = np.full(m.shape, float(mat))
+    hot = m <= hot_end
+    pct[hot] = hot_hi + (hot_lo - hot_hi) * (m[hot] / max(hot_end, 1))     # 50–62% band, first ~8–10 months
+    mid = (m > hot_end) & (m < mat_start)
+    f = (m[mid] - hot_end) / (mat_start - hot_end)
+    f = 0.5 - 0.5 * np.cos(np.pi * f)                                      # smoothstep ease
+    pct[mid] = hot_lo + (mat - hot_lo) * f                                 # glide down into the 40–50% band
+    return pct
+
+
+# ── per-plot time-granularity (Monthly / Quarterly / Yearly window, summed into period totals) ──
+GRAN_OPTS = {"Monthly": "M", "Quarterly": "Q", "Yearly": "Y"}
+GRAN_RULE = {"M": "MS", "Q": "QS", "Y": "YS"}      # resample to period START so x stays a real date
+GRAN_STEP = {"M": 1, "Q": 3, "Y": 12}              # months per bucket for months-since-open series
+GRAN_UNIT = {"M": "month", "Q": "quarter", "Y": "year"}
+
+
+def gran_picker(key, label="Window", default="Monthly"):
+    """Per-plot Monthly/Quarterly/Yearly selector rendered right above its chart. Returns 'M' | 'Q' | 'Y'."""
+    return GRAN_OPTS[st.radio(label, list(GRAN_OPTS), horizontal=True,
+                              index=list(GRAN_OPTS).index(default), key=key)]
+
+
+def rs_dates(obj, gran, how="sum"):
+    """Resample a datetime-indexed Series/DataFrame to period-START buckets (Q/Y). Monthly = unchanged.
+    sum uses min_count=1 so all-NaN periods stay NaN (a real data gap) instead of becoming a fake 0.
+    Drops an incomplete TRAILING period (e.g. a partial current year) so the line doesn't crater at the end."""
+    if gran == "M" or obj is None or len(obj) == 0:
+        return obj
+    r = obj.resample(GRAN_RULE[gran])
+    out = r.sum(min_count=1) if how == "sum" else getattr(r, how)()
+    cnt = r.size()
+    if len(out) > 1 and int(cnt.iloc[-1]) < GRAN_STEP[gran]:
+        out = out.iloc[:-1]
+    return out
+
+
+def agg_months(y, gran, how="sum", start=0):
+    """Aggregate a months-since-open array (positions = months 0,1,2,…) into Q/Y buckets.
+    Keeps x in MONTH units (each bucket plotted at its start month) so vlines/vrects in months still align.
+    Returns (x_months, y_agg)."""
+    y = np.asarray(y, dtype=float)
+    if gran == "M":
+        return np.arange(start, start + len(y)), y
+    step = GRAN_STEP[gran]
+    xs, ys = [], []
+    for i in range(0, len(y), step):
+        chunk = y[i:i + step]
+        if len(chunk) < step:          # drop the incomplete trailing bucket (e.g. lone month 60) — no fake end-crash
+            break
+        xs.append(start + i)
+        ys.append(np.nansum(chunk) if how == "sum" else np.nanmean(chunk))
+    return np.array(xs), np.array(ys)
+
+
+def gran_xaxes_months(fig, gran, xb, noun="open"):
+    """Relabel a months-since-open x-axis to quarter/year buckets (data x stays in months so vlines still align):
+    Monthly → 'months since …'; Quarterly → Q1,Q2,…; Yearly → Yr1,Yr2,…"""
+    if gran == "M":
+        fig.update_xaxes(title_text=f"months since {noun}")
+        return
+    step, u = GRAN_STEP[gran], {"Q": "Q", "Y": "Yr"}[gran]
+    fig.update_xaxes(title_text=f"{GRAN_UNIT[gran]}s since {noun}",
+                     tickvals=list(xb), ticktext=[f"{u}{int(i) // step + 1}" for i in xb])
+
+
+def gran_date_tickformat(gran):
+    """d3 tick format for a real-date x-axis at the chosen granularity."""
+    return {"M": "%b %Y", "Q": "%b %Y", "Y": "%Y"}[gran]
+
+
 def opex_trend_hist(pnl, art, state, region, min_sites=5):
     """Median per-site YoY opex growth for the pin's scope — the historical opex 'pattern' (context for the
     cost-growth slider). NOTE: on this data it's strongly negative & noisy (likely a reporting artifact), so it's
@@ -666,6 +743,8 @@ def campaign_cluster_panel(df, site, lat, lon, radius, demo=False):
                           horizontal=True, key="camp_cluster_metric")
     col = {"Membership share of washes": "mem_share_wash", "Membership washes": "mem_wash_count",
            "Retail washes": "ret_wash_count"}[metric_opt]
+    gcl = gran_picker("gran_cluster")
+    how = "mean" if col == "mem_share_wash" else "sum"            # share is a rate → average; washes → sum
     label = (anon_names(site, set(keys)) if demo
              else {k: str(site.loc[site.site_key == k, "client_name"].iloc[0])[:22] for k in keys})
     PAL = ["#2E86DE", "#16a085", "#8e44ad", "#e67e22", "#27ae60", "#c0392b", "#2c3e50", "#f39c12"]
@@ -674,6 +753,7 @@ def campaign_cluster_panel(df, site, lat, lon, radius, demo=False):
         s = df[df.site_key == k].set_index("date")[col].sort_index()
         if s.dropna().empty:
             continue
+        s = rs_dates(s.dropna(), gcl, how)
         c = PAL[i % len(PAL)]
         fmt = "%{y:.0%}" if col == "mem_share_wash" else "%{y:,.0f}"
         fig.add_trace(go.Scatter(x=s.index, y=s.values, mode="lines", name=label.get(k, "site"),
@@ -684,8 +764,9 @@ def campaign_cluster_panel(df, site, lat, lon, radius, demo=False):
     if col == "mem_share_wash":
         fig.update_yaxes(tickformat=".0%")
     fig.update_layout(height=400, template="plotly_white", hovermode="closest",
-                      xaxis_title="date", yaxis_title=metric_opt, margin=dict(l=10, r=10, t=20, b=10),
-                      legend=dict(orientation="h", y=-0.22, font=dict(size=10)))
+                      xaxis_title="date", yaxis_title=(metric_opt if how == "mean" else f"{metric_opt} / {GRAN_UNIT[gcl]}"),
+                      margin=dict(l=10, r=10, t=20, b=10), legend=dict(orientation="h", y=-0.22, font=dict(size=10)))
+    fig.update_xaxes(tickformat=gran_date_tickformat(gcl))
     st.plotly_chart(fig, width="stretch", key="camp_cluster_chart")
 
 
@@ -701,6 +782,14 @@ def drop_pin_ui(df, site, art, demo=False):
         st.session_state.pin = (float(r.lat), float(r.lon))
     with st.sidebar:
         ov = st.number_input("Plateau override — total washes/mo (0 = use model)", min_value=0, value=0, step=500)
+        # Separate, self-contained level strategies (each leave-one-out backtested; WAPE shown). The ramp-up →
+        # mature → plateau trajectory is the SAME underneath — the models differ only in how the plateau level is set.
+        MODEL_STRATEGIES = {
+            "Model 1": dict(local_anchor=False),
+            "Model 2": dict(local_anchor=True),
+        }
+        strat = MODEL_STRATEGIES[st.radio("Model", list(MODEL_STRATEGIES), index=1)]
+        anchor_on = strat["local_anchor"]
         gm = st.slider("Yr 3–5 membership — extra on top of per-site trend (%/yr)", -15, 25, 0)
         gr = st.slider("Yr 3–5 retail — extra on top of per-site trend (%/yr)", -20, 15, 0)
     lat, lon = st.session_state.pin
@@ -744,7 +833,8 @@ def drop_pin_ui(df, site, art, demo=False):
     traj, info = cm.predict_site(lat, lon, brand=brand, plateau_override=(ov or None),
                                  annual_mem_growth=mem_g + gm / 100, annual_ret_change=ret_g + gr / 100,
                                  mem_growth_band=(mem_lo + gm / 100, mem_hi + gm / 100),
-                                 ret_change_band=(ret_lo + gr / 100, ret_hi + gr / 100), art=art)
+                                 ret_change_band=(ret_lo + gr / 100, ret_hi + gr / 100), art=art,
+                                 local_anchor=anchor_on)
     g = traj.set_index("month")
     # ── big, full-width interactive map: pan/zoom is smooth (no rerun) → click to drop the pin ──
     gco = site[site.has_coords & (site.cluster >= 0)]              # only clustered sites (no orange standalones)
@@ -772,6 +862,7 @@ def drop_pin_ui(df, site, art, demo=False):
                "**Click to drop the pin.** For exact coordinates use the lat/lon boxes in the sidebar.")
 
     st.divider(); st.subheader("📈 Total local-market wash count — history + 5-year forecast")
+    gmk = gran_picker("gran_market")
     today = pd.Timestamp(df.date.max())
     H = 60
     fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
@@ -803,38 +894,65 @@ def drop_pin_ui(df, site, art, demo=False):
         with_fc = np.clip(base_mem + np.clip(base_ret - cannib_full * phase, 0, None) + new_traj, 0, None)
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
-        last = float(hist_disp.dropna().iloc[-1])     # connect forecast to the (smoothed) visible history endpoint
         MKT = "#0a84ff"    # bright blue — one colour for the market total: solid history -> dotted forecast
-        fig.add_trace(go.Scatter(x=[today] + list(fdates) + list(fdates[::-1]) + [today],
-                                 y=[last] + list(with_hi) + list(with_lo[::-1]) + [last],
+        hist_s = rs_dates(hist_disp.dropna(), gmk)                                  # history summed into the chosen window
+        _fc = lambda a: rs_dates(pd.Series(np.asarray(a, float), index=fdates), gmk)
+        wfc, bfc, whi, wlo, ntr = _fc(with_fc), _fc(base_fc), _fc(with_hi), _fc(with_lo), _fc(new_traj)
+        last, last_x = float(hist_s.iloc[-1]), hist_s.index[-1]                     # connect forecast to history endpoint
+        fig.add_trace(go.Scatter(x=[last_x] + list(whi.index) + list(whi.index[::-1]) + [last_x],
+                                 y=[last] + list(whi.values) + list(wlo.values[::-1]) + [last],
                                  fill="toself", fillcolor="rgba(10,132,255,0.12)", line=dict(width=0),
                                  name="forecast band (trend CI)", hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=hist_disp.index, y=hist_disp.values, line=dict(color=MKT, width=3.2), name="market total — actual history"))
-        fig.add_trace(go.Scatter(x=[today] + list(fdates), y=[last] + list(with_fc), line=dict(color=MKT, width=3.2, dash="dot"), name="market total — forecast (with new site)"))
-        fig.add_trace(go.Scatter(x=[today] + list(fdates), y=[last] + list(base_fc), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name="market without the new site"))
-        fig.add_trace(go.Scatter(x=fdates, y=new_traj, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
+        fig.add_trace(go.Scatter(x=hist_s.index, y=hist_s.values, line=dict(color=MKT, width=3.2), name="market total — actual history"))
+        fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name="market total — forecast (with new site)"))
+        fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name="market without the new site"))
+        fig.add_trace(go.Scatter(x=ntr.index, y=ntr.values, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
         fig.add_vline(x=today, line=dict(color="#c0392b", dash="dash", width=1.5))
         fig.add_annotation(x=today, yref="paper", y=1.03, text="new site opens", showarrow=False, font=dict(color="#c0392b", size=11))
         fig.update_layout(height=480, template="plotly_white", hovermode="x unified", xaxis_title="date",
-                          yaxis_title="market total washes / month", margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.28))
+                          yaxis_title=f"market total washes / {GRAN_UNIT[gmk]}", margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.28))
+        fig.update_xaxes(tickformat=gran_date_tickformat(gmk))
         st.plotly_chart(fig, width="stretch")
     else:
-        fig.add_trace(go.Scatter(x=fdates, y=new_traj, line=dict(color="#e6194B", width=3), name="🆕 new site"))
-        fig.update_layout(height=420, template="plotly_white", xaxis_title="date", yaxis_title="washes / month",
+        ntr = rs_dates(pd.Series(np.asarray(new_traj, float), index=fdates), gmk)
+        fig.add_trace(go.Scatter(x=ntr.index, y=ntr.values, line=dict(color="#e6194B", width=3), name="🆕 new site"))
+        fig.update_layout(height=420, template="plotly_white", xaxis_title="date", yaxis_title=f"washes / {GRAN_UNIT[gmk]}",
                           margin=dict(l=10, r=10, t=20, b=10))
+        fig.update_xaxes(tickformat=gran_date_tickformat(gmk))
         st.plotly_chart(fig, width="stretch")
         st.info(f"No existing sites within {radius} km — a fresh market, so the chart shows only the new site's own 5-year journey.")
 
     # the new site's own 5-year trajectory (after the market view)
     st.divider(); st.subheader("Predicted 5-year trajectory")
+    if ov:
+        st.caption(f"🔧 Plateau **manually overridden** to {int(ov):,}/mo (model ignored).")
+    elif anchor_on and info.get("proxy_used"):
+        st.caption(
+            f"🔧 **Model 2:** {info['n_local_mature']} matured sites ≤20 km (median {info['anchor_level']:,.0f}/mo) "
+            f"feed the model's operator-level slot → plateau **{info['plateau_med']:,.0f}/mo** "
+            f"(vs {info['model_plateau']:,.0f}/mo without it).")
+    elif anchor_on and info.get("n_local_mature", 0) > 0:
+        st.caption(
+            f"🔧 **Model 2:** {info['n_local_mature']} local matured sites are too varied "
+            f"(CoV {info['local_cov']:.1f}) to anchor reliably — falling back to the base model "
+            f"(**{info['plateau_med']:,.0f}/mo**).")
+    elif anchor_on:
+        st.caption("🔧 **Model 2** on, but no matured sites within 20 km — same as Model 1 here.")
+    else:
+        st.caption(f"🔧 **Model 1:** plateau **{info['plateau_med']:,.0f}/mo**.")
+    gtr = gran_picker("gran_traj")
+    xb, tot = agg_months(g.total_med.to_numpy(), gtr)
+    _, hi = agg_months(g.total_hi.to_numpy(), gtr); _, lo = agg_months(g.total_lo.to_numpy(), gtr)
+    _, memv = agg_months(g.mem_med.to_numpy(), gtr); _, retv = agg_months(g.ret_med.to_numpy(), gtr)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=list(g.index) + list(g.index[::-1]), y=list(g.total_hi) + list(g.total_lo[::-1]),
+    fig.add_trace(go.Scatter(x=list(xb) + list(xb[::-1]), y=list(hi) + list(lo[::-1]),
                              fill="toself", fillcolor="rgba(41,128,185,0.15)", line=dict(width=0), name="P10–P90", hoverinfo="skip"))
-    fig.add_trace(go.Scatter(x=g.index, y=g.total_med, line=dict(color="#2980b9", width=3), name="total"))
-    fig.add_trace(go.Scatter(x=g.index, y=g.mem_med, line=dict(color="#16a085", width=2), name="membership"))
-    fig.add_trace(go.Scatter(x=g.index, y=g.ret_med, line=dict(color="#c0392b", width=2), name="retail"))
-    fig.update_layout(height=400, xaxis_title="months since open", yaxis_title="washes / month", hovermode="x unified",
+    fig.add_trace(go.Scatter(x=xb, y=tot, line=dict(color="#2980b9", width=3), name="total"))
+    fig.add_trace(go.Scatter(x=xb, y=memv, line=dict(color="#16a085", width=2), name="membership"))
+    fig.add_trace(go.Scatter(x=xb, y=retv, line=dict(color="#c0392b", width=2), name="retail"))
+    fig.update_layout(height=400, yaxis_title=f"washes / {GRAN_UNIT[gtr]}", hovermode="x unified",
                       template="plotly_white", margin=dict(l=10, r=10, t=20, b=10), legend=dict(orientation="h", y=-0.25))
+    gran_xaxes_months(fig, gtr, xb)
     st.plotly_chart(fig, width="stretch")
 
     # ───────── P&L: expected revenue (forecast × ASP) vs regional operating expense ─────────
@@ -857,7 +975,8 @@ def drop_pin_ui(df, site, art, demo=False):
     asp = _sc1.slider(f"ASP ($/wash) — cluster avg ${asp_blend:.1f}", 1.0, 30.0, round(asp_blend, 1), 0.1,
                       help=f"Blended average selling price per wash. Defaults to the {asp_scope} average (${asp_blend:.1f}/wash).")
     og = _sc2.slider("Opex cost growth (%/yr)", -10, 15, 0,
-                     help=f"Escalates opex over the 5 years (on top of the learned new-site ramp). Past P&L opex trend ≈ "
+                     help=f"Escalates opex over the 5 years (on top of the revenue-linked opex curve: ~50–62% of revenue "
+                          f"early, easing to ~40–50%). Past P&L opex trend ≈ "
                           f"{g_hist*100:+.0f}%/yr but it's noisy & likely a reporting artifact, so the default is flat — set ~+3% for inflation.")
     k_asp = asp / max(asp_blend, 1e-9)                                          # one slider scales price; keep the data's mem/retail split
     asp_mem, asp_ret = cl_mem * k_asp, cl_ret * k_asp
@@ -865,20 +984,7 @@ def drop_pin_ui(df, site, art, demo=False):
     months = np.arange(0, 61)
     mem = tj["mem_med"].reindex(months).fillna(0.0).to_numpy()
     ret = tj["ret_med"].reindex(months).fillna(0.0).to_numpy()
-    # opex = LEARNED new-site ramp (shape, REGION-scoped) × this site's mature level (mature $/wash for the SCOPE × plateau)
-    pm_m = load_pnl_monthly()
-    ramp_o, ramp_scope, ramp_hage = opex_ramp(pm_m, art, info.get("state"), info.get("region"))
-    opw_mat, opw_scope = opex_per_wash(pm_m, art, lat, lon, info.get("state"), info.get("region"))
-    mature_opex = opw_mat * float(info["plateau_med"])                            # this site's settled monthly opex $
-    # BEYOND the ~33-mo P&L horizon: don't flat-line — drive opex with the forecast wash volume (opex ≈ $/wash × washes),
-    # so years 3–5 track the volume forecast's secular drift instead of a frozen line.
-    wt = mem + ret
-    H = min(int(ramp_hage), 60)
-    base = wt[H] if (H < len(wt) and wt[H] > 0) else float(np.nanmedian(wt[max(0, H - 3):H + 1]) or 0)
-    if base > 0:
-        for t in range(H + 1, 61):
-            ramp_o[t] = ramp_o[H] * (wt[t] / base)                                # opex follows forecast volume past the data
-        ramp_o = np.clip(ramp_o, 0.3, 3.5)
+    # opex is modelled as a % of revenue (see opex_pct_curve + the P&L block below): hot early, eases to mature.
     # ── CAMPAIGN — promo that converts retail→membership and eats neighbours' share (opex-data.csv + book_v4) ──
     st.markdown("##### 🎯 Campaign — should this site run a promotion?")
     ms = float(info.get("mem_share", 0.6))                       # fallback if the trajectory is empty
@@ -932,33 +1038,42 @@ def drop_pin_ui(df, site, art, demo=False):
             render_campaign_snapshot()
 
     opex_grow = (1 + og / 100.0) ** (months / 12.0)                    # cost escalation (slider) over the horizon
-    opex_base_m = mature_opex * ramp_o[:61] * opex_grow                # LEARNED ramp (hot early) × growth — no campaign
     rev_base = mem * asp_mem + ret * asp_ret                           # revenue without the campaign
     rev_m = mem * mem_mult * asp_mem + ret * ret_mult * asp_ret        # campaign shifts the wash mix retail→membership
+    # orange opex line = a % of revenue: HOT early (~50–62% for the first ~9 months), easing to a mature ~40–50%
+    opex_pct = opex_pct_curve(months)
+    opex_base_m = opex_pct * rev_base * opex_grow                      # opex as % of revenue × cost-growth slider — no campaign
     opex_m = opex_base_m * opex_mult_c                                 # + the promo spend over the window
     net_m = rev_m - opex_m
 
+    gpnl = gran_picker("gran_pnl")
+    xb, rev_a = agg_months(rev_m, gpnl)
+    _, opex_a = agg_months(opex_m, gpnl)
+    _, net_a = agg_months(net_m, gpnl)
     f2 = go.Figure()
-    f2.add_trace(go.Scatter(x=months, y=rev_m, name="revenue", mode="lines", line=dict(color="#16a085", width=3),
+    f2.add_trace(go.Scatter(x=xb, y=rev_a, name="revenue", mode="lines", line=dict(color="#16a085", width=3),
                             fill="tozeroy", fillcolor="rgba(22,160,133,0.12)", hovertemplate="m%{x} · $%{y:,.0f}<extra>revenue</extra>"))
-    f2.add_trace(go.Scatter(x=months, y=opex_m, name="operating expense", mode="lines", line=dict(color="#e67e22", width=2.5),
+    f2.add_trace(go.Scatter(x=xb, y=opex_a, name="operating expense", mode="lines", line=dict(color="#e67e22", width=2.5),
                             hovertemplate="m%{x} · $%{y:,.0f}<extra>opex</extra>"))
-    f2.add_trace(go.Scatter(x=months, y=net_m, name="net operating income", mode="lines", line=dict(color="#0a84ff", width=2, dash="dot"),
+    f2.add_trace(go.Scatter(x=xb, y=net_a, name="net operating income", mode="lines", line=dict(color="#0a84ff", width=2, dash="dot"),
                             hovertemplate="m%{x} · $%{y:,.0f}<extra>net</extra>"))
     if camp_on:
-        f2.add_trace(go.Scatter(x=months, y=rev_base, name="revenue (no campaign)", mode="lines",
+        _, revb_a = agg_months(rev_base, gpnl)
+        f2.add_trace(go.Scatter(x=xb, y=revb_a, name="revenue (no campaign)", mode="lines",
                                 line=dict(color="#9aa6b2", width=1.4, dash="dot"), hovertemplate="m%{x} · $%{y:,.0f}<extra>no campaign</extra>"))
         f2.add_vrect(x0=c_launch, x1=min(60, c_launch + WIN), fillcolor="rgba(230,25,75,0.08)", line_width=0,
                      annotation_text="campaign", annotation_position="top left")
         f2.add_vline(x=c_launch, line=dict(color="#c0392b", dash="dash", width=1.2))
-    f2.update_layout(title="Monthly P&L — revenue vs operating expense (5-year forecast)", height=380,
-                     template="plotly_white", hovermode="x unified", xaxis_title="months since opening",
-                     yaxis_title="$ per month", margin=dict(l=10, r=10, t=44, b=10), legend=dict(orientation="h", y=-0.22))
+    f2.update_layout(title="P&L — revenue vs operating expense (5-year forecast)", height=380,
+                     template="plotly_white", hovermode="x unified",
+                     yaxis_title=f"$ / {GRAN_UNIT[gpnl]}", margin=dict(l=10, r=10, t=44, b=10), legend=dict(orientation="h", y=-0.22))
+    gran_xaxes_months(f2, gpnl, xb, noun="opening")
     st.plotly_chart(f2, width="stretch")
 
     # ── eating the market: your site vs EACH incumbent, each time-series-forecast forward 5 years ──
     if n_inc >= 1:
         st.markdown("##### 📈 Eating the market — your site vs each incumbent (5-year)")
+        geat = gran_picker("gran_eat")
         new_base = mem + ret                                           # new site's washes/mo (no campaign)
         new_camp = mem * mem_mult + ret * ret_mult                     # with the campaign's conversion lift
         steal_peak = 0.06 * min(1.0, n_inc / 4.0) * (c_int if camp_on else 1.0)   # share theft scales with density
@@ -977,6 +1092,7 @@ def drop_pin_ui(df, site, art, demo=False):
         IPAL = ["#5b8db8", "#8e44ad", "#e67e22", "#2c3e50", "#7f8c8d", "#9b59b6"]
         lbl = (anon_names(site, set(shown)) if demo
                else {k: str(site.loc[site.site_key == k, "client_name"].iloc[0])[:18] for k in shown})
+        xb, nb_a = agg_months(new_base, geat)
         sf = go.Figure()
         for i, k in enumerate(shown):                                  # each incumbent = its own forward forecast
             hist = df[df.site_key == k].set_index("date").sort_index()["tot_wash_count"].dropna()
@@ -985,26 +1101,30 @@ def drop_pin_ui(df, site, art, demo=False):
             yb = np.concatenate([[float(hist.iloc[-1])], forecast_series(hist, 60)])   # m0 = last actual, m1..60 = forecast
             col = IPAL[i % len(IPAL)]
             nm = lbl.get(k, "incumbent")
-            sf.add_trace(go.Scatter(x=months, y=yb, name=nm, mode="lines", line=dict(color=col, width=1.8, dash="dot"),
+            _, yb_a = agg_months(yb, geat)
+            sf.add_trace(go.Scatter(x=xb, y=yb_a, name=nm, mode="lines", line=dict(color=col, width=1.8, dash="dot"),
                                     hovertemplate=f"m%{{x}} · %{{y:,.0f}}<extra>{nm} (expected)</extra>"))
             if camp_on:                                                # drifts DOWN as your promo steals its retail
-                sf.add_trace(go.Scatter(x=months, y=yb * (1 - steal), name=f"{nm} (campaign)", mode="lines",
+                _, ybc_a = agg_months(yb * (1 - steal), geat)
+                sf.add_trace(go.Scatter(x=xb, y=ybc_a, name=f"{nm} (campaign)", mode="lines",
                                         line=dict(color=col, width=2.4), showlegend=False,
                                         hovertemplate=f"m%{{x}} · %{{y:,.0f}}<extra>{nm} (with campaign)</extra>"))
         # your site (green): dotted = expected · solid = with campaign (drifts up)
-        sf.add_trace(go.Scatter(x=months, y=new_base, name="your site — expected", mode="lines",
+        sf.add_trace(go.Scatter(x=xb, y=nb_a, name="your site — expected", mode="lines",
                                 line=dict(color="#16a085", width=2.5, dash="dot"),
                                 hovertemplate="m%{x} · %{y:,.0f}<extra>your site (expected)</extra>"))
         if camp_on:
-            sf.add_trace(go.Scatter(x=months, y=new_camp, name="your site — with campaign", mode="lines",
+            _, nc_a = agg_months(new_camp, geat)
+            sf.add_trace(go.Scatter(x=xb, y=nc_a, name="your site — with campaign", mode="lines",
                                     line=dict(color="#16a085", width=3.5),
                                     hovertemplate="m%{x} · %{y:,.0f}<extra>your site (with campaign)</extra>"))
             sf.add_vrect(x0=c_launch, x1=min(60, c_launch + WIN), fillcolor="rgba(230,25,75,0.08)", line_width=0,
                          annotation_text="campaign", annotation_position="top left")
             sf.add_vline(x=c_launch, line=dict(color="#c0392b", dash="dash", width=1.2))
-        sf.update_layout(height=400, template="plotly_white", hovermode="x unified", xaxis_title="months since opening",
-                         yaxis_title="washes / month", margin=dict(l=10, r=10, t=20, b=10),
+        sf.update_layout(height=400, template="plotly_white", hovermode="x unified",
+                         yaxis_title=f"washes / {GRAN_UNIT[geat]}", margin=dict(l=10, r=10, t=20, b=10),
                          legend=dict(orientation="h", y=-0.3, font=dict(size=10)))
+        gran_xaxes_months(sf, geat, xb, noun="opening")
         st.plotly_chart(sf, width="stretch")
         if len(shown) < n_inc:
             st.caption(f"Showing the {len(shown)} largest of {n_inc} incumbents (each forecast forward individually).")
@@ -1180,6 +1300,8 @@ for k in order:
     g = sub[sub.site_key == k].set_index("date").sort_index()
     gframes[k] = g.reindex(pd.date_range(g.index.min(), g.index.max(), freq="MS")) if len(g) else g
 for gi, (gname, panels) in enumerate(GROUPS):
+    gk = gran_picker(f"gran_kpi_{gname}")
+    gk_how = "mean" if gname == "ASPs" else "sum"                 # ASP is a per-wash rate → average; washes/$ → sum
     gfig = make_subplots(rows=1, cols=len(panels), subplot_titles=[p[1] for p in panels], horizontal_spacing=0.06)
     for si, k in enumerate(order):
         g = gframes[k]
@@ -1187,15 +1309,20 @@ for gi, (gname, panels) in enumerate(GROUPS):
         color = "#e6194B" if is_focal else PALETTE[si % len(PALETTE)]
         nm = (str(name_of.get(k, "?"))[:18]) + (" 🆕" if is_focal else "")
         for i, (c, lbl, unit) in enumerate(panels):
-            y = g[c].rolling(smooth, center=True, min_periods=1).mean() if (smooth and smooth > 1) else g[c]   # match the slider
+            ya = rs_dates(g[c], gk, gk_how)
+            if gk == "M" and smooth and smooth > 1:
+                ya = ya.rolling(smooth, center=True, min_periods=1).mean()   # smoothing slider (monthly view only)
             vfmt = "$%{y:,.2f}" if unit == "$" else "%{y:,.0f}"
-            gfig.add_trace(go.Scatter(x=g.index, y=y, mode="lines", name=nm, legendgroup=k, showlegend=(gi == 0 and i == 0),
+            gfig.add_trace(go.Scatter(x=ya.index, y=ya.values, mode="lines", name=nm, legendgroup=k, showlegend=(gi == 0 and i == 0),
                                       line=dict(color=color, width=3 if is_focal else 1.4), opacity=1.0 if is_focal else 0.7,
                                       hovertemplate=f"<b>{nm}</b><br>%{{x|%b %Y}} · {vfmt}<extra></extra>"),
                            row=1, col=i + 1)
     gfig.update_layout(height=340, template="plotly_white", margin=dict(l=8, r=8, t=44, b=10),
                        hovermode="closest", legend=dict(orientation="h", y=-0.25, font=dict(size=10)))
-    gfig.update_xaxes(dtick="M12", tickformat="%Y")
+    if gk == "Y":
+        gfig.update_xaxes(dtick="M12", tickformat="%Y")
+    else:
+        gfig.update_xaxes(tickformat=gran_date_tickformat(gk))
     st.plotly_chart(gfig, width="stretch", key=f"kpi_{gname}")
     st.markdown(f"**Key insights — {gname}**")
     st.caption("_Work in progress._")

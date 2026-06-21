@@ -392,7 +392,7 @@ def load():
 
 
 # ─────────────────────────── inference ───────────────────────────
-def _point_features(art, lat, lon, brand=None):
+def _point_features(art, lat, lon, brand=None, brand_loo_override=None):
     rl = art["sites_rl"]
     d = _haversine(lat, lon, rl.lat.values, rl.lon.values)
     rec = rl.rec_total.fillna(0).values
@@ -413,9 +413,11 @@ def _point_features(art, lat, lon, brand=None):
     row["cluster_size"] = float((d <= 20).sum())
     # region/state inherited from nearest existing site
     row["region"] = rl.region.iloc[nearest]; row["state"] = rl.state.iloc[nearest]
-    # brand
+    # brand_loo (model's strongest feature). Priority: known operator → local-matured proxy → NaN.
     if brand and brand in art["brand_mean"]:
         row["brand_loo"] = float(art["brand_mean"][brand]); row["brand_n"] = float(art["brand_n"][brand])
+    elif brand_loo_override is not None:
+        row["brand_loo"] = float(brand_loo_override[0]); row["brand_n"] = float(brand_loo_override[1])
     else:
         row["brand_loo"] = np.nan; row["brand_n"] = np.nan
     X = pd.DataFrame([row])[FEAT + CAT]
@@ -426,19 +428,48 @@ def _point_features(art, lat, lon, brand=None):
 
 def predict_site(lat, lon, brand=None, plateau_override=None,
                  annual_mem_growth=0.0, annual_ret_change=0.0,
-                 mem_growth_band=None, ret_change_band=None, horizon=H_DEFAULT, art=None):
+                 mem_growth_band=None, ret_change_band=None, horizon=H_DEFAULT, art=None,
+                 local_anchor=True, anchor_radius_km=20.0, anchor_max_cov=0.7):
     """Return DataFrame[month, total_med/lo/hi, mem, ret] — the new site's 5-yr monthly trajectory.
 
     mem_growth_band / ret_change_band = optional (lo, hi) post-maturity drift rates (e.g. the Theil-Sen slope CI).
     When given, the lo/hi trajectory bands drift at those rates, so the band FANS OUT with trend uncertainty on
     top of the plateau P10–P90 — a noisy market self-widens instead of being capped."""
     art = art or load()
-    X = _point_features(art, lat, lon, brand)
+    # ── LOCAL-MATURED LEVEL (Model 2): with no operator/brand given, the model's strongest feature (brand_loo)
+    #    would be NaN. Instead fill it with the mean MATURE level (mat_total) of rich-history sites within
+    #    anchor_radius_km of the pin. Backtest (saved model, 1384 sites): WAPE 46.6%→40.2%, medAPE 40.3%→32.8%
+    #    vs leaving brand_loo NaN — and it beats a post-hoc blend. mat_total is non-null only for sites that
+    #    reached their 18–30-mo window, i.e. genuinely matured sites. ──
+    rl = art["sites_rl"]
+    anchor_level, n_local_mature, local_cov, override, proxy_used = float("nan"), 0, float("nan"), None, False
+    if local_anchor and not (brand and brand in art["brand_mean"]):
+        d = _haversine(lat, lon, rl.lat.values, rl.lon.values)
+        mt = rl.mat_total.values
+        loc = (d <= anchor_radius_km) & np.isfinite(mt) & (mt > 0)
+        n_local_mature = int(loc.sum())
+        if n_local_mature > 0:
+            vals = mt[loc]
+            anchor_level = float(np.median(vals))                        # MEDIAN: robust to one flagship skewing the mean
+            mean_v = float(np.mean(vals))
+            local_cov = float(np.std(vals) / mean_v) if mean_v > 0 else float("inf")
+            if local_cov <= anchor_max_cov:                              # GUARD: skip the proxy when matured sites
+                override = (anchor_level, float(n_local_mature))         # disagree wildly (backtest: it hurts there)
+                proxy_used = True
+
+    X = _point_features(art, lat, lon, brand, brand_loo_override=override)
     p50 = float(np.expm1(art["models"]["q50"].predict(X)[0]))
     p10 = float(np.expm1(art["models"]["q10"].predict(X)[0]))
     p90 = float(np.expm1(art["models"]["q90"].predict(X)[0]))
     p10, p90 = min(p10, p50), max(p90, p50)
     share = float(np.clip(art["models"]["share"].predict(X)[0], 0.05, 0.95))
+    # audit: the plateau WITHOUT the local proxy (brand_loo=NaN), for the UI's before/after caption
+    if override is not None:
+        model_p50 = float(np.expm1(art["models"]["q50"].predict(
+            _point_features(art, lat, lon, brand, brand_loo_override=None))[0]))
+    else:
+        model_p50 = p50
+
     if plateau_override is not None and plateau_override > 0:
         scale = plateau_override / max(p50, 1e-9)
         p50, p10, p90 = plateau_override, p10 * scale, p90 * scale
@@ -465,7 +496,9 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
     out = out.reset_index()
     return out, dict(plateau_med=p50, plateau_lo=p10, plateau_hi=p90, mem_share=share,
                      n_neighbours_20km=int(X["n_nbr_20"].iloc[0]), brand_known=bool(brand and brand in art["brand_mean"]),
-                     ramp_source=ramp_src, region=str(X["region"].iloc[0]), state=str(X["state"].iloc[0]))
+                     ramp_source=ramp_src, region=str(X["region"].iloc[0]), state=str(X["state"].iloc[0]),
+                     model_plateau=model_p50, anchor_level=anchor_level, n_local_mature=n_local_mature,
+                     proxy_used=proxy_used, local_cov=local_cov)
 
 
 def _haversine(lat1, lon1, lat2, lon2):
