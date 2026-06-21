@@ -44,7 +44,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from openai import OpenAI
+from openai import AzureOpenAI
 
 # --------------------------------------------------------------------------
 # CONFIG
@@ -56,11 +56,15 @@ load_dotenv(os.path.join(REPO_ROOT, ".env"))
 JINA_API_KEY = os.getenv("JINA_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
-# NOTE: the working type_car_wash/analyzer.py hardcodes this endpoint and the
-# AZURE_OPENAI_API_KEY in .env belongs to THIS resource -- not the talktodocs
-# AZURE_OPENAI_ENDPOINT value in .env. So we hardcode it here for parity.
-AZURE_ENDPOINT = "https://soneastus2proformaai-dev.openai.azure.com/openai/v1"
-DEPLOYMENT = "gpt-4o-mini"
+# Azure OpenAI resource (eastus2). Endpoint comes from AZURE_OPENAI_ENDPOINT in
+# .env, defaulting to the proforma resource. DEPLOYMENT is the Azure deployment
+# name (passed as the `model` arg), backed by gpt-4o-2024-11-20.
+AZURE_ENDPOINT = os.getenv(
+    "AZURE_OPENAI_ENDPOINT",
+    "https://soneastus2proformaai.openai.azure.com/"
+)
+AZURE_API_VERSION = "2024-02-15-preview"
+DEPLOYMENT = "gpt-4o"
 
 DEFAULT_INPUT = os.path.join(HERE, "data", "main-ds.csv")
 DEFAULT_OUTPUT = os.path.join(HERE, "data", "site_carwash_types.csv")
@@ -374,7 +378,11 @@ _client = None
 def _openai():
     global _client
     if _client is None:
-        _client = OpenAI(base_url=AZURE_ENDPOINT, api_key=AZURE_OPENAI_API_KEY)
+        _client = AzureOpenAI(
+            azure_endpoint=AZURE_ENDPOINT,
+            api_key=AZURE_OPENAI_API_KEY,
+            api_version=AZURE_API_VERSION,
+        )
     return _client
 
 
