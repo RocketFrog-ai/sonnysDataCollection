@@ -143,7 +143,8 @@ def load_pnl_monthly() -> pd.DataFrame:
     p = pd.read_csv(OPEX_CSV, low_memory=False)
     p = p[~p.client_id.astype(str).isin(PNL_EXCLUDE)]
     m = (p.groupby(["location_name", "state", "year", "month"])
-         .agg(opex=("total_expenses", "sum"), mem_wash=("mem_wash_count", "first"),
+         .agg(opex=("total_expenses", "sum"), income=("total_income", "sum"),
+              mem_wash=("mem_wash_count", "first"),
               ret_wash=("ret_wash_count", "first"), lat=("lat", "first"), lon=("lon", "first")).reset_index())
     m = m[m.year.between(2022, 2025)].copy()
     m["date"] = pd.to_datetime(dict(year=m.year, month=m.month, day=1))

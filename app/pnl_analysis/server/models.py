@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Dict, Optional
 
 from pydantic import BaseModel, Field
 
@@ -53,6 +53,27 @@ class PnlForecastRequest(_PinRequest):
     campaign_launch: int = Field(13, ge=1, le=48, description="Campaign launch — months after opening.")
     campaign_intensity: float = Field(1.0, ge=0.5, le=1.5, description="Campaign intensity (× a typical observed campaign).")
     window: int = Field(6, ge=1, le=12, description="Campaign impact window in months.")
+    horizon_months: int = Field(60, ge=12, le=60, description="Forecast horizon in months (<=60).")
+
+
+class ExpensePlanRequest(_PinRequest):
+    """Tab 2 — user-driven EXPENSE PLAN: project monthly OPEX, CAPEX and combined expenses over the horizon.
+
+    `asp`, `opex` and `capex` are all {year: value} maps keyed by year (1, 2, 3, …):
+      • `asp`   — $/wash for that year (e.g. {1: 12.5, 2: 13}); empty/missing years → the cluster average.
+      • `opex`  — OPEX as a % of sales for that year (e.g. {1: 60, 2: 50, 3: 45}), fitted onto the LEARNED new-site
+                  opex pattern (hot early, easing to mature) so the monthly shape is realistic while each year hits
+                  the given average; years past the last supplied one are extrapolated (escalated by `opex_growth_pct`).
+      • `capex` — total CAPEX $ spent in that year (e.g. {1: 500000, 2: 100000}), spread across its months.
+    Sales = the pin's forecast washes × ASP. Provide lat/lon OR an address."""
+    brand: Optional[str] = Field(None, description="Operator/brand client_id (see GET /pnl_analysis/brands).")
+    plateau_override: Optional[float] = Field(None, ge=0, description="Override mature total washes/mo (0/None = use model).")
+    mem_growth_pct: float = Field(0.0, ge=-15.0, le=25.0, description="Extra yr3-5 membership drift (%/yr).")
+    ret_growth_pct: float = Field(0.0, ge=-20.0, le=15.0, description="Extra yr3-5 retail drift (%/yr).")
+    asp: Dict[int, float] = Field(default_factory=dict, description="$/wash per year, e.g. {1: 12.5, 2: 13, 3: 13.5}. Empty = cluster average (≤20 km neighbours' last 12 months); missing years fall back to it.")
+    opex: Dict[int, float] = Field(default_factory=dict, description="OPEX as % of sales per year, e.g. {1: 60, 2: 50, 3: 45}.")
+    capex: Dict[int, float] = Field(default_factory=dict, description="CAPEX $ per year, e.g. {1: 500000, 2: 100000}.")
+    opex_growth_pct: float = Field(0.0, ge=-10.0, le=15.0, description="OPEX %/yr escalation applied to years past the last one supplied in `opex`.")
     horizon_months: int = Field(60, ge=12, le=60, description="Forecast horizon in months (<=60).")
 
 

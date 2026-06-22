@@ -212,7 +212,8 @@ def load_pnl_monthly():
     p = pd.read_csv(PNL, low_memory=False)
     p = p[~p.client_id.astype(str).isin(PNL_EXCLUDE)]
     m = (p.groupby(["location_name", "state", "year", "month"])
-         .agg(opex=("total_expenses", "sum"), mem_wash=("mem_wash_count", "first"), ret_wash=("ret_wash_count", "first"),
+         .agg(opex=("total_expenses", "sum"), income=("total_income", "sum"),
+              mem_wash=("mem_wash_count", "first"), ret_wash=("ret_wash_count", "first"),
               lat=("lat", "first"), lon=("lon", "first")).reset_index())
     m = m[m.year.between(2022, 2025)].copy()
     m["date"] = pd.to_datetime(dict(year=m.year, month=m.month, day=1))
@@ -294,6 +295,137 @@ def opex_pct_curve(months, hot_end=9, mat_start=30, hot_hi=0.62, hot_lo=0.55, ma
     f = 0.5 - 0.5 * np.cos(np.pi * f)                                      # smoothstep ease
     pct[mid] = hot_lo + (mat - hot_lo) * f                                 # glide down into the 40–50% band
     return pct
+
+
+def opex_pct_fit(pm, art, state=None, region=None, min_sites=8, max_age=42):
+    """EMPIRICAL operating-expense ratio (opex ÷ income, %) by months since inception — the data behind the
+    modelled orange opex line, mirroring the reference 'total_expense_pct — normalized by month of inception'.
+    For each scoped site we take its monthly opex%, then the MEDIAN and the 25–75 percentile band across sites
+    by age (age 0 = the site's FIRST P&L row). Scoped to the pin's STATE (≥min_sites), else REGION, else ALL.
+    Returns (ages, median, q25, q75, support_n, scope) or None if there's not enough history."""
+    s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
+           .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
+    d = pm.copy(); d["region"] = d.state.map(s2r)
+    last = d.groupby("location_name").date.transform("max")            # drop each site's LAST month — partial-period export artifact
+    d = d[d.date < last]
+    d = d[(d.age >= 0) & (d.age <= max_age) & (d.opex > 0) & (d.income > 0)].copy()
+    d["pct"] = 100.0 * d.opex / d.income
+    d = d[d.pct.between(0, 500)]                                        # drop export garbage (near-zero income → absurd %)
+
+    def _fit(sub):
+        if sub.location_name.nunique() < min_sites:
+            return None
+        sup = sub.groupby("age").location_name.nunique()
+        keep = sup[sup >= max(4, min_sites // 2)].index                # keep only ages with enough sites
+        g = sub[sub.age.isin(keep)].groupby("age").pct
+        med = g.median()
+        if med.empty:
+            return None
+        return med, g.quantile(0.25), g.quantile(0.75), sup.reindex(med.index)
+
+    res = _fit(d[d.state == state]); scope = f"state {state}"
+    if res is None:
+        res = _fit(d[d.region == region]); scope = f"region {region}"
+    if res is None:
+        res = _fit(d); scope = "all sites"
+    if res is None:
+        return None
+    med, q25, q75, sup = res
+    return med.index.to_numpy(), med.to_numpy(), q25.to_numpy(), q75.to_numpy(), sup.to_numpy(), scope
+
+
+def opex_pct_curve_fit(pm, art, state=None, region=None, months=None, min_sites=8):
+    """Opex-as-%-of-revenue curve FIT to the empirical P&L pattern (median opex ÷ income by month since
+    inception): a HOT launch decaying to a mature level. Fits  mature + (hot − mature)·exp(−age/τ)  to the
+    scoped per-age median (support-weighted, so thin/noisy ages don't drag it), then evaluates over `months`
+    — naturally PROPAGATING forward to month 60, asymptoting to the mature level past the data.
+    Falls back to the hand-set opex_pct_curve if there isn't enough P&L history. Returns a fraction array."""
+    if months is None:
+        months = np.arange(0, 61)
+    months = np.asarray(months, float)
+    fit = opex_pct_fit(pm, art, state, region, min_sites=min_sites, max_age=30)
+    if fit is None:
+        return opex_pct_curve(months)
+    age, med, _q25, _q75, sup, _scope = fit
+    age = age.astype(float)
+    y = med.astype(float) / 100.0                                      # opex% as a fraction of revenue
+    w = np.sqrt(np.clip(sup.astype(float), 1, None))                   # weight ages by how many sites support them
+
+    mat0 = float(np.average(y[age >= 18], weights=w[age >= 18])) if (age >= 18).any() else float(np.median(y))
+    hot0 = float(y[age <= 2].mean()) if (age <= 2).any() else float(y[0])
+    lo, hi = (0.45, 0.25, 1.0), (1.6, 0.70, 36.0)
+    p0 = [min(max(hot0, lo[0]), hi[0]), min(max(mat0, lo[1]), hi[1]), 6.0]   # clip guess into the bounds
+
+    def _decay(a, hot, mat, tau):
+        return mat + (hot - mat) * np.exp(-a / np.maximum(tau, 1e-6))
+
+    try:
+        from scipy.optimize import curve_fit
+        popt, _ = curve_fit(_decay, age, y, p0=p0, sigma=1.0 / w, absolute_sigma=False,
+                            maxfev=10000, bounds=(lo, hi))
+    except Exception:
+        popt = p0
+    return np.clip(_decay(months, *popt), 0.30, 1.5)
+
+
+# ── expense plan: fit user OPEX% (% of sales/yr) onto the learned pattern + spread CAPEX$ (mirrors app/pnl_analysis) ──
+def year_slices(n_months, n_years=5):
+    """Partition month indices 0..n_months-1 into `n_years` yearly buckets of 12, the LAST bucket absorbing any
+    remainder (so a 61-month horizon folds month 60 into year 5, not a 1-month stub year 6)."""
+    out = []
+    for y in range(n_years):
+        start = 12 * y
+        if start >= n_months:
+            break
+        out.append(slice(start, n_months if y == n_years - 1 else min(12 * y + 12, n_months)))
+    return out
+
+
+def fit_opex_pct_to_targets(shape, revenue, opex_pct_by_year, opex_growth_pct=0.0):
+    """Re-scale the learned monthly opex% `shape` so each YEAR's $-weighted opex% (= annual opex$ ÷ annual sales$,
+    sales = ASP × washes) equals the user's per-year target %, while keeping the within-year hot→mature shape.
+    Years past the last supplied inherit the last target escalated by opex_growth_pct/yr.
+    Returns (opex_pct[fraction, len=months], {year: target_fraction})."""
+    shape, revenue = np.asarray(shape, float), np.asarray(revenue, float)
+    targets = {int(y): v / 100.0 for y, v in (opex_pct_by_year or {}).items() if v is not None}
+    last_year = max(targets) if targets else None
+    out = shape.copy()
+    year_targets = {}
+    for y, sl in enumerate(year_slices(len(shape))):
+        seg, seg_rev = shape[sl], revenue[sl]
+        wts = seg_rev if float(np.nansum(seg_rev)) > 0 else np.ones_like(seg)
+        wmean = float(np.average(seg, weights=wts)) or 1.0
+        yr = y + 1
+        if yr in targets:
+            tgt = targets[yr]
+        elif last_year is not None:
+            tgt = targets[last_year] * (1 + opex_growth_pct / 100.0) ** (yr - last_year)
+        else:
+            tgt = wmean
+        year_targets[yr] = tgt
+        out[sl] = seg * (tgt / wmean)
+    return np.clip(out, 0.0, 3.0), year_targets
+
+
+def spread_capex(n_months, capex_by_year):
+    """CAPEX $ per year spread evenly across that year's months → a monthly $ array."""
+    out = np.zeros(n_months)
+    for y, sl in enumerate(year_slices(n_months)):
+        amt = (capex_by_year or {}).get(y + 1)
+        if amt:
+            out[sl] = amt / max(sl.stop - sl.start, 1)
+    return out
+
+
+def per_year_to_monthly(n_months, by_year, default):
+    """Expand a {year: value} map to a length-n_months array — each year's months get that year's value
+    (a step series), missing years fall back to `default`. Used for the year-wise ASP ($/wash)."""
+    out = np.full(n_months, float(default))
+    for y, sl in enumerate(year_slices(n_months)):
+        v = (by_year or {}).get(y + 1)
+        if v is not None:
+            out[sl] = float(v)
+    return out
 
 
 # ── per-plot time-granularity (Monthly / Quarterly / Yearly window, summed into period totals) ──
@@ -955,10 +1087,8 @@ def drop_pin_ui(df, site, art, demo=False):
     gran_xaxes_months(fig, gtr, xb)
     st.plotly_chart(fig, width="stretch")
 
-    # ───────── P&L: expected revenue (forecast × ASP) vs regional operating expense ─────────
-    st.divider(); st.subheader("💰 P&L — expected revenue vs operating expense")
-    pnl = load_pnl()
-    yo, scope = regional_opex(pnl, art, info.get("state"), info.get("region"))
+    # ───────── P&L: expected revenue (forecast × ASP) vs expenses (OPEX % of sales + CAPEX $) ─────────
+    st.divider(); st.subheader("💰 P&L — revenue vs expenses (OPEX + CAPEX)")
     # CLUSTER ASP from the dense operational data (main-ds): the ≤radius km neighbours' last 12 months — a real cluster figure
     _nbk = site[site.has_coords].copy()
     _nbk["d"] = haversine_km(lat, lon, _nbk.lat.values, _nbk.lon.values)
@@ -970,21 +1100,47 @@ def drop_pin_ui(df, site, art, demo=False):
     asp_scope = f"cluster ≤{radius} km · {len(_ck)} sites" if _ck else "default (no neighbours)"
     s_mix = float(info.get("mem_share", 0.6))                                   # this site's membership share of washes
     asp_blend = s_mix * cl_mem + (1 - s_mix) * cl_ret                           # cluster average BLENDED $/wash
-    g_hist = opex_trend_hist(pnl, art, info.get("state"), info.get("region"))   # past opex YoY (noisy → shown, not defaulted)
-    _sc1, _sc2 = st.columns(2)                                                  # two sliders side by side
-    asp = _sc1.slider(f"ASP ($/wash) — cluster avg ${asp_blend:.1f}", 1.0, 30.0, round(asp_blend, 1), 0.1,
-                      help=f"Blended average selling price per wash. Defaults to the {asp_scope} average (${asp_blend:.1f}/wash).")
-    og = _sc2.slider("Opex cost growth (%/yr)", -10, 15, 0,
-                     help=f"Escalates opex over the 5 years (on top of the revenue-linked opex curve: ~50–62% of revenue "
-                          f"early, easing to ~40–50%). Past P&L opex trend ≈ "
-                          f"{g_hist*100:+.0f}%/yr but it's noisy & likely a reporting artifact, so the default is flat — set ~+3% for inflation.")
-    k_asp = asp / max(asp_blend, 1e-9)                                          # one slider scales price; keep the data's mem/retail split
-    asp_mem, asp_ret = cl_mem * k_asp, cl_ret * k_asp
-    tj = traj.set_index("month")
-    months = np.arange(0, 61)
+    tj = traj.set_index("month"); months = np.arange(0, 61)
     mem = tj["mem_med"].reindex(months).fillna(0.0).to_numpy()
     ret = tj["ret_med"].reindex(months).fillna(0.0).to_numpy()
-    # opex is modelled as a % of revenue (see opex_pct_curve + the P&L block below): hot early, eases to mature.
+
+    # ── cost assumptions: one editable Year × {ASP, OPEX %, CAPEX} grid ──
+    opex_shape = opex_pct_curve_fit(load_pnl_monthly(), art, info.get("state"), info.get("region"), months)
+    _yslices = year_slices(len(months))
+    _rev0 = mem * cl_mem + ret * cl_ret                                         # cluster-blend revenue (for the OPEX default weighting)
+    def _learned_pct(sl):                                                       # learned opex% per year → the OPEX defaults (Y4–5 extrapolated)
+        seg, sr = opex_shape[sl], _rev0[sl]
+        w = sr if float(np.nansum(sr)) > 0 else np.ones_like(seg)
+        return int(min(150, max(0, round(100 * float(np.average(seg, weights=w))))))
+    with st.expander("⚙️ Cost assumptions — by year", expanded=True):
+        _plan0 = pd.DataFrame({
+            "Year": [f"Year {i + 1}" for i in range(5)],
+            "ASP ($/wash)": [round(asp_blend, 1)] * 5,
+            "OPEX (% of sales)": [_learned_pct(sl) for sl in _yslices],
+            "CAPEX ($)": [0] * 5,
+        })
+        plan = st.data_editor(
+            _plan0, hide_index=True, width="stretch", num_rows="fixed", disabled=["Year"], key="pnl_plan",
+            column_config={
+                "ASP ($/wash)": st.column_config.NumberColumn(
+                    min_value=1.0, max_value=30.0, step=0.1, format="$%.1f",
+                    help=f"Blended $/wash for the year. Cluster avg ${asp_blend:.1f} ({asp_scope})."),
+                "OPEX (% of sales)": st.column_config.NumberColumn(
+                    min_value=0, max_value=150, step=1, format="%d%%",
+                    help="Operating expense as % of sales; fitted onto the learned hot→mature pattern. Defaults follow the learned curve (Years 4–5 extrapolated)."),
+                "CAPEX ($)": st.column_config.NumberColumn(
+                    min_value=0, step=25000, format="$%d",
+                    help="Build-out / equipment $ spent that year, added into expenses and spread across its months."),
+            },
+        )
+        asp_in = {i + 1: float(plan["ASP ($/wash)"].iloc[i]) for i in range(5)}
+        opex_in = {i + 1: float(plan["OPEX (% of sales)"].iloc[i]) for i in range(5)}
+        capex_in = {i + 1: float(plan["CAPEX ($)"].iloc[i]) for i in range(5) if float(plan["CAPEX ($)"].iloc[i])}
+    asp_month = per_year_to_monthly(len(months), asp_in, asp_blend)             # $/wash per month (year-wise step series)
+    k_asp = asp_month / max(asp_blend, 1e-9)                                    # scale the cluster mem/retail split per month
+    asp_mem, asp_ret = cl_mem * k_asp, cl_ret * k_asp                          # monthly $/wash arrays (membership & retail)
+    rev_base = mem * asp_mem + ret * asp_ret                                    # sales = washes × ASP (no campaign)
+
     # ── CAMPAIGN — promo that converts retail→membership and eats neighbours' share (opex-data.csv + book_v4) ──
     st.markdown("##### 🎯 Campaign — should this site run a promotion?")
     ms = float(info.get("mem_share", 0.6))                       # fallback if the trajectory is empty
@@ -1037,26 +1193,38 @@ def drop_pin_ui(df, site, art, demo=False):
         with st.popover("Additional info — what a campaign does to OPEX / Revenue / Profit / Membership", width=1000):
             render_campaign_snapshot()
 
-    opex_grow = (1 + og / 100.0) ** (months / 12.0)                    # cost escalation (slider) over the horizon
-    rev_base = mem * asp_mem + ret * asp_ret                           # revenue without the campaign
     rev_m = mem * mem_mult * asp_mem + ret * ret_mult * asp_ret        # campaign shifts the wash mix retail→membership
-    # orange opex line = a % of revenue: HOT early (~50–62% for the first ~9 months), easing to a mature ~40–50%
-    opex_pct = opex_pct_curve(months)
-    opex_base_m = opex_pct * rev_base * opex_grow                      # opex as % of revenue × cost-growth slider — no campaign
-    opex_m = opex_base_m * opex_mult_c                                 # + the promo spend over the window
-    net_m = rev_m - opex_m
+    # OPEX line = the user's per-year % of sales, fitted onto the learned hot→mature pattern (shape kept, level set
+    # to each year's target). CAPEX = $ per year spread across its months. Expenses = OPEX + CAPEX; net = sales − both.
+    opex_pct, opex_tgts = fit_opex_pct_to_targets(opex_shape, rev_base, opex_in)
+    opex_base_m = opex_pct * rev_base                                  # OPEX $ (no campaign)
+    opex_m = opex_base_m * opex_mult_c                                 # + the promo spend over the campaign window
+    capex_m = spread_capex(len(months), capex_in)                     # CAPEX $ spread across each year
+    total_exp_base = opex_base_m + capex_m
+    total_exp_m = opex_m + capex_m
+    net_m = rev_m - total_exp_m
 
     gpnl = gran_picker("gran_pnl")
     xb, rev_a = agg_months(rev_m, gpnl)
     _, opex_a = agg_months(opex_m, gpnl)
+    _, capex_a = agg_months(capex_m, gpnl)
+    _, totexp_a = agg_months(total_exp_m, gpnl)
     _, net_a = agg_months(net_m, gpnl)
     f2 = go.Figure()
-    f2.add_trace(go.Scatter(x=xb, y=rev_a, name="revenue", mode="lines", line=dict(color="#16a085", width=3),
-                            fill="tozeroy", fillcolor="rgba(22,160,133,0.12)", hovertemplate="m%{x} · $%{y:,.0f}<extra>revenue</extra>"))
-    f2.add_trace(go.Scatter(x=xb, y=opex_a, name="operating expense", mode="lines", line=dict(color="#e67e22", width=2.5),
-                            hovertemplate="m%{x} · $%{y:,.0f}<extra>opex</extra>"))
-    f2.add_trace(go.Scatter(x=xb, y=net_a, name="net operating income", mode="lines", line=dict(color="#0a84ff", width=2, dash="dot"),
+    # expense composition: OPEX + CAPEX stacked → the top of the filled stack IS total expenses
+    f2.add_trace(go.Scatter(x=xb, y=opex_a, name="OPEX", mode="lines", line=dict(color="#e67e22", width=0.5),
+                            stackgroup="exp", fillcolor="rgba(230,126,34,0.55)",
+                            hovertemplate="m%{x} · $%{y:,.0f}<extra>OPEX</extra>"))
+    f2.add_trace(go.Scatter(x=xb, y=capex_a, name="CAPEX", mode="lines", line=dict(color="#8e44ad", width=0.5),
+                            stackgroup="exp", fillcolor="rgba(142,68,173,0.45)",
+                            hovertemplate="m%{x} · $%{y:,.0f}<extra>CAPEX</extra>"))
+    f2.add_trace(go.Scatter(x=xb, y=totexp_a, name="total expenses", mode="lines", line=dict(color="#c0392b", width=2),
+                            hovertemplate="m%{x} · $%{y:,.0f}<extra>total expenses</extra>"))
+    f2.add_trace(go.Scatter(x=xb, y=rev_a, name="revenue (sales)", mode="lines", line=dict(color="#16a085", width=3),
+                            hovertemplate="m%{x} · $%{y:,.0f}<extra>revenue</extra>"))
+    f2.add_trace(go.Scatter(x=xb, y=net_a, name="net income", mode="lines", line=dict(color="#0a84ff", width=2.6),
                             hovertemplate="m%{x} · $%{y:,.0f}<extra>net</extra>"))
+    f2.add_hline(y=0, line=dict(color="#9aa6b2", width=1, dash="dot"))
     if camp_on:
         _, revb_a = agg_months(rev_base, gpnl)
         f2.add_trace(go.Scatter(x=xb, y=revb_a, name="revenue (no campaign)", mode="lines",
@@ -1064,11 +1232,16 @@ def drop_pin_ui(df, site, art, demo=False):
         f2.add_vrect(x0=c_launch, x1=min(60, c_launch + WIN), fillcolor="rgba(230,25,75,0.08)", line_width=0,
                      annotation_text="campaign", annotation_position="top left")
         f2.add_vline(x=c_launch, line=dict(color="#c0392b", dash="dash", width=1.2))
-    f2.update_layout(title="P&L — revenue vs operating expense (5-year forecast)", height=380,
+    f2.update_layout(title="P&L — revenue vs expenses (OPEX + CAPEX) · net income, 5-year", height=440,
                      template="plotly_white", hovermode="x unified",
-                     yaxis_title=f"$ / {GRAN_UNIT[gpnl]}", margin=dict(l=10, r=10, t=44, b=10), legend=dict(orientation="h", y=-0.22))
+                     yaxis_title=f"$ / {GRAN_UNIT[gpnl]}", margin=dict(l=10, r=10, t=44, b=10), legend=dict(orientation="h", y=-0.24))
     gran_xaxes_months(f2, gpnl, xb, noun="opening")
     st.plotly_chart(f2, width="stretch")
+    _cum = np.cumsum(np.nan_to_num(net_m)); _be = int(np.argmax(_cum > 0)) if (_cum > 0).any() else None
+    st.caption(f"5-yr totals — sales **${np.nansum(rev_base):,.0f}** · OPEX **${np.nansum(opex_base_m):,.0f}** · "
+               f"CAPEX **${np.nansum(capex_m):,.0f}** · net **${np.nansum(rev_base - total_exp_base):,.0f}**"
+               + (f" · breakeven ~month **{_be}**." if _be is not None else " · no breakeven within 5 yrs.")
+               + "  OPEX %/yr (fitted): " + ", ".join(f"Y{y}={t * 100:.0f}%" for y, t in opex_tgts.items()) + ".")
 
     # ── eating the market: your site vs EACH incumbent, each time-series-forecast forward 5 years ──
     if n_inc >= 1:

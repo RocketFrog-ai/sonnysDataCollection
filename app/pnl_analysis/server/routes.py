@@ -14,6 +14,7 @@ from app.pnl_analysis.server.models import (
     ExploreKpisRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
+    ExpensePlanRequest,
     CampaignVerdictRequest,
     EatingMarketRequest,
     LocalCampaignsRequest,
@@ -112,6 +113,20 @@ def pnl_forecast(req: PnlForecastRequest):
         asp_override=req.asp_override, opex_growth_pct=req.opex_growth_pct,
         campaign_on=req.campaign_on, campaign_launch=req.campaign_launch,
         campaign_intensity=req.campaign_intensity, window=req.window, horizon_months=req.horizon_months,
+    )
+
+
+@router.post("/expense-plan")
+def expense_plan(req: ExpensePlanRequest):
+    """Tab 2 — user-driven EXPENSE PLAN: monthly OPEX, CAPEX and combined-expenses lines over the 5-year horizon.
+    `opex` is {year: % of revenue} fitted onto the learned new-site opex pattern; `capex` is {year: $} spread over
+    that year's months. Returns the three lines (+ revenue/net) per month, plus annual rollups and totals."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    return pnl_engine.expense_plan(
+        lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
+        mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
+        asp_by_year=req.asp, opex_pct_by_year=req.opex, capex_by_year=req.capex,
+        opex_growth_pct=req.opex_growth_pct, horizon_months=req.horizon_months,
     )
 
 
