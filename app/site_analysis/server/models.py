@@ -21,6 +21,13 @@ class SiteContextRequest(BaseModel):
     demo: bool = Field(False, description="Anonymized demo: hide the origin address on the markers.")
 
 
+class SiteFeaturesRequest(BaseModel):
+    """Nearest-site feature lookup over the precomputed dataset. Provide a lat/lon pin; the closest
+    site's grouped features are returned (no external calls, no competitor info)."""
+    latitude: float = Field(..., description="Pin latitude.")
+    longitude: float = Field(..., description="Pin longitude.")
+
+
 class TaskStatus(str, Enum):
     """Task status enumeration"""
     PENDING = "PENDING"

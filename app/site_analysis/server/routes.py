@@ -19,10 +19,12 @@ from app.site_analysis.server.config import (
 from app.site_analysis.server.models import (
     AnalyseRequest,
     SiteContextRequest,
+    SiteFeaturesRequest,
     TaskResponse,
     TaskStatus,
     TaskStatusResponse,
 )
+from app.site_analysis.server.site_features import nearest_site_features
 from app.site_analysis.features.active.trafficLights.nearby_traffic_lights import get_traffic_lights_summary
 from app.site_analysis.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.site_analysis.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
@@ -481,6 +483,26 @@ def get_site_context(req: SiteContextRequest):
         return analyze_site_context(lat, lon, address=address, include_ai=req.include_ai, demo=req.demo)
     except Exception as e:
         logger.exception("Site context fetch failed")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# -----------------------------------------------------------------------------
+# Nearest-site features (offline) — lat/lon in, precomputed dataset features out
+# -----------------------------------------------------------------------------
+
+@router.post("/site-features")
+def get_site_features(req: SiteFeaturesRequest):
+    """
+    Look up the single closest site in the precomputed dataset (merged_all_sites.csv) by haversine
+    distance to the given lat/lon, and return its features grouped by theme (demographics, income,
+    vehicles, housing, mass-merchants, retail, traffic). No external calls; competitor info excluded.
+    """
+    try:
+        return nearest_site_features(float(req.latitude), float(req.longitude))
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=500, detail=f"Sites dataset not found: {e}")
+    except Exception as e:
+        logger.exception("Nearest-site feature lookup failed")
         raise HTTPException(status_code=500, detail=str(e))
 
 

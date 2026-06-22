@@ -493,6 +493,7 @@ def _load_done(path) -> set:
 
 
 def main():
+    global LOOKUP_CSV
     ap = argparse.ArgumentParser()
     ap.add_argument("--input", default=DEFAULT_INPUT)
     ap.add_argument("--output", default=DEFAULT_OUTPUT)
@@ -504,7 +505,6 @@ def main():
     args = ap.parse_args()
 
     # Allow overriding the lookup CSV path from the CLI
-    global LOOKUP_CSV
     LOOKUP_CSV = args.lookup
 
     if not AZURE_OPENAI_API_KEY:

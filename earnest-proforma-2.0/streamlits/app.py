@@ -19,7 +19,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import coldstart_model as cm
-import site_analysis_page as sap
+import site_visual_page as svp
 
 HERE = Path(__file__).resolve().parent
 CSV = HERE.parent / "data" / "main-ds.csv"
@@ -1137,7 +1137,7 @@ st.set_page_config(page_title="Local Market Explorer", layout="wide")
 df, site = load_data()
 pins = interesting_pins(site)
 
-MODES = ["🗺️ Explore markets", "📍 Drop-a-pin forecast", "🔎 Site analysis"]
+MODES = ["🗺️ Explore markets", "📍 Drop-a-pin forecast", "🛰️ Site analysis (visual) · beta"]
 with st.sidebar:
     st.header("Controls")
     demo = st.toggle("👔 Client demo (anonymized)", value=False,
@@ -1153,12 +1153,12 @@ with st.sidebar:
 if app_mode.startswith("📍"):
     drop_pin_ui(df, site, get_model(), demo)
     st.stop()
-if app_mode.startswith("🔎"):
+if app_mode.startswith("🛰️"):
     if "pin" not in st.session_state:                        # seed the SAME default point Explore uses
         _k0 = pick_default_pin(site, df, tuple(pins))
         _s0 = site.loc[site.site_key == _k0].iloc[0]
         st.session_state.pin = (float(_s0.lat), float(_s0.lon))
-    sap.render(demo)
+    svp.render(demo)
     st.stop()
 
 st.title("PROFORMA DEMO")
