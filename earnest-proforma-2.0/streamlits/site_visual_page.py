@@ -4,13 +4,13 @@ Site analysis (visual) · beta — an immersive Google-Earth-style site explorer
 Given the shared map pin (the same (lat, lon) used by Explore markets & Forecast) — or a typed
 address / lat-lon — this renders a Google Maps Platform dashboard:
 
-  LEFT  (70%)  Photorealistic 3D tiles centred + tilted on the site, with a site marker, rotate /
-               zoom / pan / tilt, a Street-View toggle, and Nearby-Places overlays (competitors,
+  LEFT  (70%)  Photorealistic 3D tiles centred + tilted on the site, with a "📍 YOU" site marker, rotate /
+               zoom / pan / tilt, a Street-View toggle, and Nearby-Places overlays (wash sites,
                restaurants, gas, shopping, schools, hospitals, gyms, hotels, offices) you can filter.
   RIGHT (30%)  "Site intelligence" — trade-area feature values pulled from
                earnest-proforma-2.0/data/merged_all_sites.csv (matched to the nearest site by lat/lon):
-               population & growth, income, vehicles, hourly traffic, commercial activity & competitor
-               density.  The ONE thing read live from Google (not the CSV) is the *nearest competitor*
+               population & growth, income, vehicles, hourly traffic, and commercial activity.
+               The ONE thing read live from Google (not the CSV) is the *nearest wash-sites*
                list, surfaced in the map's Places layer.
 
 Two API keys (complementary projects), kept separate on purpose:
@@ -61,7 +61,7 @@ FETCH_RADIUS_M = 5000          # fetch once at the widest ring; the UI filters t
 
 # Place categories → Places(New) primary types + marker colour. Shared by Python (fetch) & JS (render).
 CATS = [
-    {"id": "car_wash",   "label": "🏁 Competitors", "types": ["car_wash"], "color": "#e53935", "on": True},
+    {"id": "car_wash",   "label": "🚿 Wash sites", "types": ["car_wash"], "color": "#2979ff", "on": True},
     {"id": "restaurant", "label": "🍔 Restaurants", "types": ["restaurant"], "color": "#fb8c00", "on": False},
     {"id": "mall",       "label": "🛍️ Shopping",    "types": ["shopping_mall", "department_store"], "color": "#8e24aa", "on": False},
     {"id": "gas",        "label": "⛽ Gas",          "types": ["gas_station"], "color": "#00897b", "on": False},
@@ -184,13 +184,6 @@ def build_intelligence(row, dist_km: float) -> list[dict]:
                 {"label": "Department stores", "value": _int(_num(row, "Count of ChainXY VT - Department Store"))},
             ],
         },
-        {
-            "title": "Competition (trade area)", "icon": "🏁",
-            "rows": [
-                {"label": "Car-wash competitors", "value": _int(_num(row, "Count of Car Wash Competitors"))},
-                {"label": "Nearest competitor", "value": "live ↗", "live": True},
-            ],
-        },
     ]
 
 
@@ -227,12 +220,15 @@ def _search_one(types, lat, lon, key):
 
 @st.cache_data(show_spinner="Fetching nearby places…", ttl=60 * 60)
 def fetch_places(lat: float, lon: float, key: str) -> dict:
-    """All categories at FETCH_RADIUS_M, fetched in parallel and cached per (lat, lon). {} on no key."""
+    """Server-fetch ONLY the on-by-default categories (just wash sites) — 1 Places call instead of 9. Other
+    categories are fetched lazily in the browser (Places JS library) the first time their chip is toggled on,
+    so we never pay for overlays nobody looks at. Cached per (lat, lon). {} on no key."""
     if not key:
         return {}
+    on_cats = [c for c in CATS if c["on"]]
     results: dict[str, list] = {}
-    with ThreadPoolExecutor(max_workers=len(CATS)) as ex:
-        futs = {ex.submit(_search_one, c["types"], lat, lon, key): c["id"] for c in CATS}
+    with ThreadPoolExecutor(max_workers=max(1, len(on_cats))) as ex:
+        futs = {ex.submit(_search_one, c["types"], lat, lon, key): c["id"] for c in on_cats}
         for fut, cid in [(f, futs[f]) for f in futs]:
             try:
                 results[cid] = fut.result()
@@ -315,6 +311,7 @@ def dashboard_html(map_key: str, lat: float, lon: float, label: str,
         <div class="btn" id="b2d">🗺️ Satellite</div>
         <div class="btn" id="bsv">🚶 Street View</div>
         <div class="btn" id="brot">↻ Orbit</div>
+        <div class="btn" id="btraffic">🚦 Traffic</div>
       </div>
       <div class="banner" id="banner"></div>
       <div id="fatal" style="display:none;position:absolute;inset:0;z-index:9;background:#0b1726;color:#e7eef9;
@@ -345,7 +342,7 @@ function renderPanel(){
          <div class="sub">${CFG.label}</div>
          <div class="sub">Trade area: <b>${CFG.matchName}</b> · ${CFG.matchDist} km from pin</div>`;
   h+=`<div class="secthead">Nearby (live · Google Places)</div>
-      <div class="card"><div class="ct">Nearest competitors</div><div id="nearComp"></div>
+      <div class="card"><div class="ct">Nearest wash sites</div><div id="nearComp"></div>
       <div class="legend">Live from Google Places — the one layer not read from the CSV.</div></div>`;
   h+=`<div class="secthead">Trade-area features (merged_all_sites.csv)</div>`;
   for(const s of CFG.sections){
@@ -358,6 +355,30 @@ function renderPanel(){
   p.innerHTML=h;
 }
 
+function hav(la1,lo1,la2,lo2){ const R=6371008.8,r=Math.PI/180,
+  s=Math.sin((la2-la1)*r/2)**2+Math.cos(la1*r)*Math.cos(la2*r)*Math.sin((lo2-lo1)*r/2)**2;
+  return 2*R*Math.asin(Math.sqrt(Math.min(1,s))); }
+
+let placesLib=null;
+async function ensureCat(cat){          // lazy: fetch a category's nearby places in the browser, once, on first toggle
+  if(PLACES[cat.id]) return;            // wash sites arrive pre-loaded from the server; other layers fetched here on demand
+  try{
+    if(!placesLib) placesLib=await google.maps.importLibrary("places");
+    const {Place,SearchNearbyRankPreference}=placesLib;
+    const resp=await Place.searchNearby({
+      fields:["displayName","location","rating","userRatingCount","primaryType"],
+      locationRestriction:{center:{lat:SITE.lat,lng:SITE.lng},radius:5000},
+      includedPrimaryTypes:cat.types,maxResultCount:20,
+      rankPreference:SearchNearbyRankPreference.DISTANCE});
+    PLACES[cat.id]=(resp.places||[]).map(p=>{
+      const la=p.location.lat(),lo=p.location.lng();
+      return {name:(p.displayName||'—'),lat:la,lng:lo,m:Math.round(hav(SITE.lat,SITE.lng,la,lo)),
+              rating:p.rating,n:p.userRatingCount,type:p.primaryType};
+    }).sort((a,b)=>a.m-b.m);
+    delete built[cat.id];                // force updateMarkers to (re)build this layer from the new data
+  }catch(e){ PLACES[cat.id]=[]; console.warn('lazy Places fetch failed for',cat.id,e); }
+}
+
 function renderChips(){
   const c=document.getElementById('chips'); let h='';
   for(const cat of CATS){
@@ -366,8 +387,10 @@ function renderChips(){
   }
   h+=`<div class="chip" id="radchip" style="margin-left:auto">◎ ${radius>=1000?radius/1000+' km':radius+' m'}</div>`;
   c.innerHTML=h;
-  c.querySelectorAll('.chip[data-cat]').forEach(el=>el.onclick=()=>{
-    const cat=CATS.find(x=>x.id===el.dataset.cat); cat.on=!cat.on; renderChips(); updateMarkers();
+  c.querySelectorAll('.chip[data-cat]').forEach(el=>el.onclick=async()=>{
+    const cat=CATS.find(x=>x.id===el.dataset.cat); cat.on=!cat.on; renderChips();
+    if(cat.on) await ensureCat(cat);     // pay for a category's Places call only when someone switches it on
+    renderChips(); updateMarkers();
   });
   document.getElementById('radchip').onclick=()=>{
     radius=RADII[(RADII.indexOf(radius)+1)%RADII.length]; renderChips(); updateMarkers();
@@ -385,7 +408,7 @@ function renderNearComp(){
 }
 
 // ── Maps bootstrap ───────────────────────────────────────────────────────────
-let map2d, pano, advLib, the3d, orbiting=false, orbitTimer=null;
+let map2d, pano, advLib, the3d, trafficLayer=null, orbiting=false, orbitTimer=null;
 const built={};   // catId -> [{data, m, am(2D), m3(3D)}]
 
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;
@@ -424,8 +447,11 @@ async function init(){
       the3d.center={lat:SITE.lat,lng:SITE.lng,altitude:0};
       the3d.range=600; the3d.tilt=67; the3d.heading=0;
       const {Marker3DElement}=await google.maps.importLibrary("maps3d");
-      the3d.append(new Marker3DElement({position:{lat:SITE.lat,lng:SITE.lng,altitude:5},
-        altitudeMode:"RELATIVE_TO_GROUND",extruded:true,label:"SITE"}));
+      const youM=new Marker3DElement({position:{lat:SITE.lat,lng:SITE.lng,altitude:6},
+        altitudeMode:"RELATIVE_TO_GROUND",extruded:true,label:"📍 YOU"});
+      try{ if(advLib.PinElement) youM.append(new advLib.PinElement(
+        {background:'#ffd400',borderColor:'#1a1a1a',glyphColor:'#1a1a1a',scale:1.9})); }catch(e){}
+      the3d.append(youM);
     }catch(e){ show3dBanner(); }
   } else { show3dBanner(); }
 
@@ -433,18 +459,17 @@ async function init(){
   map2d=new Map(document.getElementById('map2d'),{
     center:SITE, zoom:18, tilt:47, heading:0, mapTypeId:'hybrid',
     mapId:'DEMO_MAP_ID', streetViewControl:false, mapTypeControl:false, fullscreenControl:false});
-  new advLib.AdvancedMarkerElement({map:map2d,position:SITE,content:pin('#2f6df6','SITE')});
-
-  const {StreetViewPanorama}=await google.maps.importLibrary("streetView");
-  pano=new StreetViewPanorama(document.getElementById('sv'),{position:SITE,pov:{heading:30,pitch:5},zoom:1});
+  new advLib.AdvancedMarkerElement({map:map2d,position:SITE,content:pin('#ffd400','📍 YOU'),zIndex:9999});
+  trafficLayer=new google.maps.TrafficLayer();   // live/typical road congestion — no extra API cost beyond the map load
+  // Street View is loaded lazily on first click (see bsv) so we don't pay for a pano nobody opens.
 
   wireButtons(); updateMarkers();
 }
 
-function pin(color,txt){
+function pin(color,txt){           // the "📍 YOU" site marker — big, dark text on a bright badge with a coloured halo
   const d=document.createElement('div');
-  d.style.cssText=`background:${color};color:#fff;font:700 10px sans-serif;padding:3px 7px;border-radius:14px;
-    border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);white-space:nowrap`;
+  d.style.cssText=`background:${color};color:#1a1a1a;font:900 15px sans-serif;padding:8px 14px;border-radius:18px;
+    border:3px solid #fff;box-shadow:0 0 0 3px ${color},0 3px 12px rgba(0,0,0,.7);white-space:nowrap`;
   d.textContent=txt; return d;
 }
 function dot(color){
@@ -466,13 +491,25 @@ function wireButtons(){
   const setOn=(el)=>{[b3,b2,bs].forEach(x=>x.classList.remove('on'));el.classList.add('on');};
   b3.onclick=()=>{ if(document.getElementById('banner').style.display==='block'){show('map2d');setOn(b2);return;} show('map3d');setOn(b3); };
   b2.onclick=()=>{show('map2d');setOn(b2);};
-  bs.onclick=()=>{show('sv');setOn(bs);};
+  bs.onclick=async()=>{                  // lazy-load Street View only when first opened (saves the $14/1k pano load otherwise)
+    if(!pano){
+      const {StreetViewPanorama}=await google.maps.importLibrary("streetView");
+      pano=new StreetViewPanorama(document.getElementById('sv'),{position:SITE,pov:{heading:30,pitch:5},zoom:1});
+    }
+    show('sv');setOn(bs);
+  };
   document.getElementById('brot').onclick=()=>{
     orbiting=!orbiting; document.getElementById('brot').classList.toggle('on',orbiting);
     if(orbiting){orbitTimer=setInterval(()=>{
       if(the3d&&the3d.style.display!=='none'){the3d.heading=(the3d.heading+0.6)%360;}
       else if(map2d){map2d.setHeading((map2d.getHeading()+1)%360);}
     },60);} else clearInterval(orbitTimer);
+  };
+  const bt=document.getElementById('btraffic');     // 🚦 live/typical road traffic (Google Maps TrafficLayer — no extra cost)
+  bt.onclick=()=>{
+    const on=!bt.classList.contains('on'); bt.classList.toggle('on',on);
+    if(on){ show('map2d'); setOn(b2); if(trafficLayer) trafficLayer.setMap(map2d); }   // traffic only renders on the 2D satellite view
+    else if(trafficLayer){ trafficLayer.setMap(null); }
   };
 }
 
@@ -493,10 +530,12 @@ async function updateMarkers(){
         it.am=new advLib.AdvancedMarkerElement({map:map2d,position:loc,content:dot(cat.color),
           title:`${it.d.name} · ${distLabel(it.m)}`});
       } else if(it.am){ it.am.map = vis ? map2d : null; }
-      // 3D
+      // 3D — colour the pin by category (default 3D markers are red; this gives each category its colour)
       if(vis && !it.m3 && Marker3DElement){
         it.m3=new Marker3DElement({position:{lat:loc.lat,lng:loc.lng,altitude:2},
           altitudeMode:"RELATIVE_TO_GROUND",label:it.d.name});
+        try{ if(advLib.PinElement) it.m3.append(new advLib.PinElement(
+          {background:cat.color,borderColor:'#ffffff',glyphColor:'#ffffff'})); }catch(e){}
         the3d.append(it.m3);
       } else if(!vis && it.m3){ it.m3.remove(); it.m3=null; }
     }
