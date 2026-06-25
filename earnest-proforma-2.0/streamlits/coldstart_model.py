@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import joblib
 from sklearn.neighbors import BallTree
+from sklearn.ensemble import ExtraTreesRegressor
 
 warnings.filterwarnings("ignore")
 
@@ -28,6 +29,7 @@ CSV = HERE.parent / "data" / "main-ds.csv"
 MODEL_PATH = ART / "coldstart_artifacts.joblib"
 EARTH_KM = 6371.0088
 H_DEFAULT = 60
+MODEL_MIN_MONTHS = 24    # train labels + the local-mature level anchor only use sites with ≥24 months of history
 
 FEAT = ["lat", "lon", "n_nbr_5", "n_nbr_10", "n_nbr_20", "mean_nbr_10", "mean_nbr_20",
         "logsum_20", "shr_nbr_20", "dist_nearest_km", "nearest_level", "cluster_size",
@@ -234,7 +236,7 @@ def build_features(panel, site):
 
     def agg(g):
         g = g.sort_values("date"); mat = g[(g.m >= 18) & (g.m <= 30)]; rec = g.tail(6)
-        return pd.Series(dict(mat_n=len(mat), max_m=g.m.max(),
+        return pd.Series(dict(mat_n=len(mat), max_m=g.m.max(), n_months=len(g),
             mat_total=mat.tot_wash_count.mean(), mat_mem=mat.mem_wash_count.mean(), mat_ret=mat.ret_wash_count.mean(),
             rec_total=rec.tot_wash_count.mean(), rec_mem=rec.mem_wash_count.mean(), rec_ret=rec.ret_wash_count.mean()))
     S = p.groupby("site_key").apply(agg, include_groups=False).reset_index()
@@ -349,7 +351,9 @@ def fit(save=True):
     import lightgbm as lgb
     panel, site = load_panel_site()
     S, _ = build_features(panel, site)
-    lab = S[S.mat_n >= 4].copy()
+    # train only on sites with a reliable mature window AND enough total history (≥MODEL_MIN_MONTHS months) so the
+    # mat_total target is well-estimated — better modelling, fewer thin/young sites skewing the level model
+    lab = S[(S.mat_n >= 4) & (S.n_months >= MODEL_MIN_MONTHS)].copy()
     lab["y"] = np.log1p(lab.mat_total)
     lab["share"] = (lab.mat_mem / lab.mat_total).clip(0, 1)
     for c in CAT:
@@ -365,18 +369,25 @@ def fit(save=True):
         m = mk("quantile", a); m.fit(X, lab.y.values, categorical_feature=CAT); models[q] = m
     ms = lgb.LGBMRegressor(n_estimators=400, learning_rate=0.03, num_leaves=31, min_child_samples=20, verbose=-1)
     ms.fit(X, lab.share.values, categorical_feature=CAT); models["share"] = ms
+    # Model 3: ExtraTrees on the numeric features. Bagging beats boosting on this small, noisy cold-start set
+    # (leakage-free backtest: WAPE 43.8→40.3, medAPE 38.3→34.5 vs LightGBM). Needs imputation (no native NaN);
+    # the level comes from ET, the P10/P90 band widths are reused from the LGB quantiles at inference.
+    et_impute = X[FEAT].median()
+    et = ExtraTreesRegressor(n_estimators=600, min_samples_leaf=2, max_features=0.5, n_jobs=-1, random_state=0)
+    et.fit(X[FEAT].fillna(et_impute), lab.y.values); models["et"] = et
 
     ramps = _ramp_curves(panel, site)
     cannib = _fit_cannibalization(panel, site)          # data-fit retail cannibalization a*exp(-d/L)
     brand_mean = S.groupby("client_id").mat_total.mean()
     brand_n = S.groupby("client_id").mat_total.count()
     region_share = lab.groupby("region").share.median().to_dict()
-    # site recent-level table for neighbour features + neighbour-impact at inference
+    # site recent-level table for neighbour features + neighbour-impact at inference (full universe so neighbour
+    # COUNTS stay on the training distribution; n_months lets the anchor restrict to well-observed sites)
     sites_rl = S[["site_key", "client_name", "client_id", "lat", "lon", "region", "state", "cluster",
-                  "rec_total", "rec_mem", "rec_ret", "mat_total"]].copy()
+                  "rec_total", "rec_mem", "rec_ret", "mat_total", "n_months"]].copy()
 
     art = dict(models=models, ramps=ramps, cannib=cannib, FEAT=FEAT, CAT=CAT,
-               cat_values={c: list(lab[c].cat.categories) for c in CAT},
+               cat_values={c: list(lab[c].cat.categories) for c in CAT}, et_impute=et_impute,
                brand_mean=brand_mean.to_dict(), brand_n=brand_n.to_dict(),
                region_share=region_share, global_share=float(lab.share.median()),
                sites_rl=sites_rl, n_train=len(lab))
@@ -429,12 +440,20 @@ def _point_features(art, lat, lon, brand=None, brand_loo_override=None):
 def predict_site(lat, lon, brand=None, plateau_override=None,
                  annual_mem_growth=0.0, annual_ret_change=0.0,
                  mem_growth_band=None, ret_change_band=None, horizon=H_DEFAULT, art=None,
-                 local_anchor=True, anchor_radius_km=20.0, anchor_max_cov=0.7):
+                 local_anchor=True, anchor_radius_km=20.0, anchor_max_cov=0.7, anchor_keys=None,
+                 model_kind="lgb"):
     """Return DataFrame[month, total_med/lo/hi, mem, ret] — the new site's 5-yr monthly trajectory.
 
     mem_growth_band / ret_change_band = optional (lo, hi) post-maturity drift rates (e.g. the Theil-Sen slope CI).
     When given, the lo/hi trajectory bands drift at those rates, so the band FANS OUT with trend uncertainty on
-    top of the plateau P10–P90 — a noisy market self-widens instead of being capped."""
+    top of the plateau P10–P90 — a noisy market self-widens instead of being capped.
+
+    anchor_keys = optional iterable of site_keys to restrict the LOCAL-MATURED level anchor to (e.g. express-only
+    sites). The LightGBM neighbour features are left on the full site set so they stay on the training
+    distribution; only the brand_loo proxy (the level anchor) is computed over the allowed sites.
+
+    model_kind = "lgb" (Models 1/2, LightGBM quantile level) or "et" (Model 3, ExtraTrees level — more accurate on
+    this small/noisy cold-start set; the P10/P90 band widths are still taken from the LightGBM quantiles)."""
     art = art or load()
     # ── LOCAL-MATURED LEVEL (Model 2): with no operator/brand given, the model's strongest feature (brand_loo)
     #    would be NaN. Instead fill it with the mean MATURE level (mat_total) of rich-history sites within
@@ -447,6 +466,10 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
         d = _haversine(lat, lon, rl.lat.values, rl.lon.values)
         mt = rl.mat_total.values
         loc = (d <= anchor_radius_km) & np.isfinite(mt) & (mt > 0)
+        if "n_months" in rl.columns:                                 # anchor only on well-observed sites (≥24 mo)
+            loc &= (rl.n_months.values >= MODEL_MIN_MONTHS)
+        if anchor_keys is not None:                                   # express-only: anchor on express neighbours
+            loc &= rl.site_key.isin(set(anchor_keys)).values
         n_local_mature = int(loc.sum())
         if n_local_mature > 0:
             vals = mt[loc]
@@ -458,15 +481,23 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
                 proxy_used = True
 
     X = _point_features(art, lat, lon, brand, brand_loo_override=override)
-    p50 = float(np.expm1(art["models"]["q50"].predict(X)[0]))
+    use_et = (model_kind == "et" and "et" in art.get("models", {}))
+    p50_lgb = float(np.expm1(art["models"]["q50"].predict(X)[0]))
     p10 = float(np.expm1(art["models"]["q10"].predict(X)[0]))
     p90 = float(np.expm1(art["models"]["q90"].predict(X)[0]))
-    p10, p90 = min(p10, p50), max(p90, p50)
+    if use_et:                                                # Model 3: ExtraTrees level, LGB-quantile band widths
+        p50 = float(np.expm1(art["models"]["et"].predict(X[art["FEAT"]].fillna(art["et_impute"]))[0]))
+        lo = min(p10 / max(p50_lgb, 1e-9), 1.0); hi = max(p90 / max(p50_lgb, 1e-9), 1.0)
+        p10, p90 = p50 * lo, p50 * hi
+    else:
+        p50 = p50_lgb
+        p10, p90 = min(p10, p50), max(p90, p50)
     share = float(np.clip(art["models"]["share"].predict(X)[0], 0.05, 0.95))
     # audit: the plateau WITHOUT the local proxy (brand_loo=NaN), for the UI's before/after caption
     if override is not None:
-        model_p50 = float(np.expm1(art["models"]["q50"].predict(
-            _point_features(art, lat, lon, brand, brand_loo_override=None))[0]))
+        Xna = _point_features(art, lat, lon, brand, brand_loo_override=None)
+        model_p50 = float(np.expm1((art["models"]["et"].predict(Xna[art["FEAT"]].fillna(art["et_impute"]))
+                                    if use_et else art["models"]["q50"].predict(Xna))[0]))
     else:
         model_p50 = p50
 
@@ -498,7 +529,7 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
                      n_neighbours_20km=int(X["n_nbr_20"].iloc[0]), brand_known=bool(brand and brand in art["brand_mean"]),
                      ramp_source=ramp_src, region=str(X["region"].iloc[0]), state=str(X["state"].iloc[0]),
                      model_plateau=model_p50, anchor_level=anchor_level, n_local_mature=n_local_mature,
-                     proxy_used=proxy_used, local_cov=local_cov)
+                     proxy_used=proxy_used, local_cov=local_cov, model_kind=("et" if use_et else "lgb"))
 
 
 def _haversine(lat1, lon1, lat2, lon2):
@@ -535,7 +566,7 @@ def evaluate_trajectory(art=None, n_folds=5, seed=0):
     from sklearn.model_selection import KFold
     panel, site = load_panel_site()
     S, _ = build_features(panel, site)
-    lab = S[S.mat_n >= 4].reset_index(drop=True)
+    lab = S[(S.mat_n >= 4) & (S.n_months >= MODEL_MIN_MONTHS)].reset_index(drop=True)   # same population fit() trains on
     # actual normalized check is covered in the notebook; here report plateau LOSO MAPE quickly
     lab["y"] = np.log1p(lab.mat_total)
     for c in CAT:

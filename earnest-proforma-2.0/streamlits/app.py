@@ -23,12 +23,25 @@ import site_visual_page as svp
 
 HERE = Path(__file__).resolve().parent
 CSV = HERE.parent / "data" / "main-ds.csv"
+TYPES_CSV = HERE.parent / "data" / "site_carwash_types.csv"
 ARTIFACTS = HERE.parent / "notebooks" / "artifacts"
 EARTH_KM = 6371.0088
+EXPRESS_TYPE = "Express Tunnel"          # the "express only" filter keeps just this primary_carwash_type
+EXPRESS_MIN_MONTHS = 30                   # express mode also requires ≥30 monthly records → richer history
 
 # ───────────────────────────── data ─────────────────────────────
+@st.cache_data(show_spinner=False)
+def load_carwash_types():
+    """site_key -> primary_carwash_type, keyed (like main-ds) on client_id::site_id. Sites that were 'Unknown'
+    and later resolved to Express are already written into site_carwash_types.csv as 'Express Tunnel'."""
+    t = pd.read_csv(TYPES_CSV, low_memory=False)
+    t["site_key"] = t.client_id.astype(str) + "::" + t.site_id.astype(str)
+    t = t.dropna(subset=["primary_carwash_type"]).drop_duplicates("site_key", keep="first")
+    return t.set_index("site_key").primary_carwash_type
+
+
 @st.cache_data(show_spinner="Loading & clustering sites…")
-def load_data():
+def load_data(express_only=False):
     raw = pd.read_csv(CSV, low_memory=False)
     raw["date"] = pd.to_datetime(dict(year=raw.year, month=raw.month, day=1))
     raw["op_start"] = pd.to_datetime(raw["operational_start"], format="%m-%Y", errors="coerce")
@@ -43,6 +56,14 @@ def load_data():
     df["tot_revenue"] = df[["mem_revenue", "ret_revenue"]].sum(axis=1, min_count=1)
     df["mem_share_wash"] = np.where(df.tot_wash_count > 0, df.mem_wash_count / df.tot_wash_count, np.nan)
 
+    # car-wash type from the classifier output; "express only" drops Flex / full-service / etc. up front, so the
+    # market/cluster/KPI views and the forecast's wash trajectory + level anchor operate on express sites only.
+    # (The P&L OPEX% curve — scoped by state/region — and the global campaign popover still read all sites.)
+    types = load_carwash_types()
+    df["carwash_type"] = df.site_key.map(types)
+    if express_only:
+        df = df[df.carwash_type == EXPRESS_TYPE].copy()
+
     site = (
         df.groupby("site_key")
         .agg(client_name=("client_name", "first"), lat=("lat", "first"), lon=("lon", "first"),
@@ -50,8 +71,17 @@ def load_data():
              first_obs=("date", "min"), last_obs=("date", "max"), n_obs=("date", "size"))
         .reset_index()
     )
+    site["carwash_type"] = site.site_key.map(types)
+    site["is_express"] = site.carwash_type.eq(EXPRESS_TYPE)
     site["left_censored"] = site.op_start <= pd.Timestamp("2020-01-01")
     site["has_coords"] = site[["lat", "lon"]].notna().all(axis=1)
+
+    # express only: keep just sites with a richer history (≥30 monthly records) so series, clusters and
+    # forecasts are well-grounded — drops thin/young express sites before clustering
+    if express_only:
+        rich_keys = set(site.site_key[site.n_obs >= EXPRESS_MIN_MONTHS])
+        site = site[site.site_key.isin(rich_keys)].reset_index(drop=True)
+        df = df[df.site_key.isin(rich_keys)].copy()
 
     # density-aware "local market" clustering (adaptive 10/20km — won the bake-off vs fixed 20km; see coldstart_forecast.ipynb)
     site["cluster"] = cm.assign_clusters(site, "adaptive")
@@ -95,15 +125,16 @@ def add_cluster_regions(fmap, site, plat, plon, max_km, color="#3b7dd8", fill_op
                       tooltip=f"cluster {int(cid)} · {len(cg)} sites · ~{r_km:.0f} km").add_to(fmap)
 
 
-def add_reference_dots(fmap, sites, plat, plon, max_km=50, color="#7e57c2"):
-    """Muted dots for every site within `max_km` of (plat, plon) — geographic reference so you can pick
-    another region. Kept visually secondary to the in-market role markers."""
-    ref = sites.copy()
-    ref["d"] = haversine_km(plat, plon, ref.lat.values, ref.lon.values)
-    for _, s in ref[ref.d <= max_km].iterrows():
-        folium.CircleMarker([s.lat, s.lon], radius=4, color=color, fill=True, fill_color=color,
-                            fill_opacity=0.75, weight=0,
-                            tooltip=f"{s.client_name} · {s.d:.1f} km").add_to(fmap)
+def add_all_site_dots(fmap, sites, color="#00E5FF", edge="#0086c3"):
+    """Every site in the passed `sites` frame (the active, possibly express-filtered, universe) as a bright,
+    identifiable dot — regardless of distance, so the whole universe is on the map and you can pan/zoom to any
+    market. Junk coords (near-zero / out-of-range) dropped. itertuples + canvas-friendly markers keep ~2k dots fast."""
+    s = sites[sites.has_coords]
+    s = s[s.lat.between(-89, 89) & s.lon.between(-179, 179)
+          & (s.lat.abs() > 1e-3) & (s.lon.abs() > 1e-3)]
+    for r in s.itertuples(index=False):
+        folium.CircleMarker([r.lat, r.lon], radius=4, color=edge, fill=True, fill_color=color,
+                            fill_opacity=0.95, weight=1, tooltip=str(r.client_name)).add_to(fmap)
 
 
 def interesting_pins(site):
@@ -902,9 +933,12 @@ def campaign_cluster_panel(df, site, lat, lon, radius, demo=False):
     st.plotly_chart(fig, width="stretch", key="camp_cluster_chart")
 
 
-def drop_pin_ui(df, site, art, demo=False):
+def drop_pin_ui(df, site, art, demo=False, express_only=False):
     st.title("Forecasting for a new site")
-    brand = None                                          # no operator/brand input — model uses the local-market / region prior
+    if express_only:
+        st.caption("🚿 **Express-only mode** — local-market trends, the cluster gate and the level anchor all use "
+                   "Express Tunnel sites only.")
+    brand = None; op_label = None                         # set by the operator selector (Model 4) in the sidebar below
     # the point is chosen in Explore-markets (or by clicking the map below). Radius is FIXED at the cluster
     # training radius — clusters are trained at ≤20 km, so it can't be widened here — and no smoothing.
     radius = 20
@@ -916,12 +950,33 @@ def drop_pin_ui(df, site, art, demo=False):
         ov = st.number_input("Plateau override — total washes/mo (0 = use model)", min_value=0, value=0, step=500)
         # Separate, self-contained level strategies (each leave-one-out backtested; WAPE shown). The ramp-up →
         # mature → plateau trajectory is the SAME underneath — the models differ only in how the plateau level is set.
+        # leakage-free LOO backtest (1223 sites, ≥24mo): Model 1 WAPE 46.5 · Model 2 43.6 · Model 3 40.2 (cold-start) ·
+        # Model 4 ~34.1 WAPE / 27.7 medAPE when the operator is KNOWN (uses that operator's avg mature level, brand_loo).
         MODEL_STRATEGIES = {
-            "Model 1": dict(local_anchor=False),
-            "Model 2": dict(local_anchor=True),
+            "Model 1": dict(local_anchor=False, model_kind="lgb", use_operator=False),
+            "Model 2": dict(local_anchor=True, model_kind="lgb", use_operator=False),
+            "Model 3": dict(local_anchor=True, model_kind="et", use_operator=False),
+            "Model 4": dict(local_anchor=True, model_kind="et", use_operator=True),
         }
-        strat = MODEL_STRATEGIES[st.radio("Model", list(MODEL_STRATEGIES), index=1)]
+        strat = MODEL_STRATEGIES[st.radio("Model", list(MODEL_STRATEGIES), index=2,
+                                          help="Plateau-level strategy (LOO WAPE): M1 46.5%, M2 43.6%, M3 40.2% "
+                                               "(cold-start, no operator). M4 ≈ 34% — operator-based; pick the operator below.")]
         anchor_on = strat["local_anchor"]
+        model_kind = strat["model_kind"]
+        # Model 4: operator-based — pick a known operator; the model uses that operator's avg mature level (brand_loo)
+        if strat["use_operator"] and not demo:
+            _rl = art["sites_rl"][["client_id", "client_name"]].drop_duplicates("client_id")
+            _bn = art["brand_n"]; _known = set(art["brand_mean"].keys())
+            _rl = _rl[_rl.client_id.isin(_known) & _rl.client_name.notna()].copy()
+            _rl["lab"] = _rl.apply(lambda r: f"{r.client_name} · {int(_bn.get(r.client_id, 0))} sites", axis=1)
+            _id_by = dict(zip(_rl.lab, _rl.client_id))
+            op_label = st.selectbox("Operator (brand)", ["(none — new operator)"] + sorted(_id_by),
+                                    help="Use a known operator's track record (their avg mature level across all their "
+                                         "sites). Leave as 'new operator' for a brand with no history (cold-start).")
+            if op_label and op_label != "(none — new operator)":
+                brand = _id_by.get(op_label)
+        elif strat["use_operator"] and demo:
+            st.caption("Operator selection is hidden in client-demo mode.")
         gm = st.slider("Yr 3–5 membership — extra on top of per-site trend (%/yr)", -15, 25, 0)
         gr = st.slider("Yr 3–5 retail — extra on top of per-site trend (%/yr)", -20, 15, 0)
     lat, lon = st.session_state.pin
@@ -962,11 +1017,13 @@ def drop_pin_ui(df, site, art, demo=False):
         if lc and (round(lc["lat"], 5), round(lc["lng"], 5)) != (round(lat, 5), round(lon, 5)):
             st.session_state.pin = (lc["lat"], lc["lng"]); st.rerun()
         return
+    # express mode: anchor the plateau level on express neighbours only (cluster ∩ matured ∩ express)
+    anchor_keys = set(site.site_key) if express_only else None
     traj, info = cm.predict_site(lat, lon, brand=brand, plateau_override=(ov or None),
                                  annual_mem_growth=mem_g + gm / 100, annual_ret_change=ret_g + gr / 100,
                                  mem_growth_band=(mem_lo + gm / 100, mem_hi + gm / 100),
                                  ret_change_band=(ret_lo + gr / 100, ret_hi + gr / 100), art=art,
-                                 local_anchor=anchor_on)
+                                 local_anchor=anchor_on, anchor_keys=anchor_keys, model_kind=model_kind)
     g = traj.set_index("month")
     # ── big, full-width interactive map: pan/zoom is smooth (no rerun) → click to drop the pin ──
     gco = site[site.has_coords & (site.cluster >= 0)]              # only clustered sites (no orange standalones)
@@ -1056,20 +1113,30 @@ def drop_pin_ui(df, site, art, demo=False):
 
     # the new site's own 5-year trajectory (after the market view)
     st.divider(); st.subheader("Predicted 5-year trajectory")
+    _ml = "Model 3 (ExtraTrees)" if model_kind == "et" else "Model 2"   # both use the local anchor; level model differs
     if ov:
         st.caption(f"🔧 Plateau **manually overridden** to {int(ov):,}/mo (model ignored).")
+    elif info.get("brand_known"):
+        st.caption(f"🏢 **Model 4 (operator):** using **{op_label}** — that operator's avg mature level "
+                   f"({art['brand_mean'][brand]:,.0f}/mo) → plateau **{info['plateau_med']:,.0f}/mo**. "
+                   f"(Operator-known is the most accurate setup: ~34% WAPE vs ~40% cold-start.)")
+    elif strat.get("use_operator"):                                      # Model 4 chosen but no operator selected
+        st.caption("🏢 **Model 4 (operator)** — no operator selected, so this falls back to the cold-start anchor "
+                   "(= Model 3). Pick an operator in the sidebar for the operator-based forecast.")
     elif anchor_on and info.get("proxy_used"):
+        _lvl = "ExtraTrees level" if model_kind == "et" else "model's operator-level slot"
         st.caption(
-            f"🔧 **Model 2:** {info['n_local_mature']} matured sites ≤20 km (median {info['anchor_level']:,.0f}/mo) "
-            f"feed the model's operator-level slot → plateau **{info['plateau_med']:,.0f}/mo** "
+            f"🔧 **{_ml}:** {info['n_local_mature']} matured sites ≤20 km (median {info['anchor_level']:,.0f}/mo) "
+            f"feed the {_lvl} → plateau **{info['plateau_med']:,.0f}/mo** "
             f"(vs {info['model_plateau']:,.0f}/mo without it).")
     elif anchor_on and info.get("n_local_mature", 0) > 0:
         st.caption(
-            f"🔧 **Model 2:** {info['n_local_mature']} local matured sites are too varied "
+            f"🔧 **{_ml}:** {info['n_local_mature']} local matured sites are too varied "
             f"(CoV {info['local_cov']:.1f}) to anchor reliably — falling back to the base model "
             f"(**{info['plateau_med']:,.0f}/mo**).")
     elif anchor_on:
-        st.caption("🔧 **Model 2** on, but no matured sites within 20 km — same as Model 1 here.")
+        _none = "no **express** matured sites" if express_only else "no matured sites"
+        st.caption(f"🔧 **{_ml}** on, but {_none} within 20 km — same as Model 1 here.")
     else:
         st.caption(f"🔧 **Model 1:** plateau **{info['plateau_med']:,.0f}/mo**.")
     gtr = gran_picker("gran_traj")
@@ -1087,27 +1154,30 @@ def drop_pin_ui(df, site, art, demo=False):
     gran_xaxes_months(fig, gtr, xb)
     st.plotly_chart(fig, width="stretch")
 
-    # ───────── P&L: expected revenue (forecast × ASP) vs expenses (OPEX % of sales + CAPEX $) ─────────
+    # ───────── P&L: revenue (membership purchases × $/purchase + retail washes × $/wash) vs expenses ─────────
     st.divider(); st.subheader("💰 P&L — revenue vs expenses (OPEX + CAPEX)")
-    # CLUSTER ASP from the dense operational data (main-ds): the ≤radius km neighbours' last 12 months — a real cluster figure
+    # CLUSTER ASP from the dense operational data (main-ds): the ≤radius km neighbours' last 12 months — a real cluster
+    # figure. Membership ASP = revenue ÷ PURCHASES (per-membership price); retail ASP = revenue ÷ washes. The forecast
+    # projects membership WASHES, so we convert to purchases with the cluster purchases-per-wash ratio before pricing.
     _nbk = site[site.has_coords].copy()
     _nbk["d"] = haversine_km(lat, lon, _nbk.lat.values, _nbk.lon.values)
     _ck = _nbk.site_key[(_nbk.d <= radius) & (_nbk.d > 1e-6)].tolist()
     _rec = df[df.site_key.isin(_ck)].sort_values("date").groupby("site_key").tail(12) if _ck else df.iloc[:0]
     _mm, _rr = _rec.dropna(subset=["mem_revenue"]), _rec.dropna(subset=["ret_revenue"])
-    cl_mem = float(_mm.mem_revenue.sum() / _mm.mem_wash_count.sum()) if _mm.mem_wash_count.sum() > 0 else 10.0
+    _mp, _mw = _mm.mem_purchase_count.sum(), _mm.mem_wash_count.sum()
+    cl_mem_pp = float(_mm.mem_revenue.sum() / _mp) if _mp > 0 else 30.0         # cluster $/membership PURCHASE (the new ASP)
+    purch_per_wash = float(_mp / _mw) if _mw > 0 else 0.33                      # cluster membership purchases per membership wash
     cl_ret = float(_rr.ret_revenue.sum() / _rr.ret_wash_count.sum()) if _rr.ret_wash_count.sum() > 0 else 15.0
     asp_scope = f"cluster ≤{radius} km · {len(_ck)} sites" if _ck else "default (no neighbours)"
-    s_mix = float(info.get("mem_share", 0.6))                                   # this site's membership share of washes
-    asp_blend = s_mix * cl_mem + (1 - s_mix) * cl_ret                           # cluster average BLENDED $/wash
     tj = traj.set_index("month"); months = np.arange(0, 61)
-    mem = tj["mem_med"].reindex(months).fillna(0.0).to_numpy()
-    ret = tj["ret_med"].reindex(months).fillna(0.0).to_numpy()
+    mem = tj["mem_med"].reindex(months).fillna(0.0).to_numpy()                  # projected membership WASHES
+    ret = tj["ret_med"].reindex(months).fillna(0.0).to_numpy()                  # projected retail washes
+    mem_purch = mem * purch_per_wash                                            # → projected membership PURCHASES (revenue basis)
 
     # ── cost assumptions: one editable Year × {ASP, OPEX %, CAPEX} grid ──
     opex_shape = opex_pct_curve_fit(load_pnl_monthly(), art, info.get("state"), info.get("region"), months)
     _yslices = year_slices(len(months))
-    _rev0 = mem * cl_mem + ret * cl_ret                                         # cluster-blend revenue (for the OPEX default weighting)
+    _rev0 = mem_purch * cl_mem_pp + ret * cl_ret                                # cluster-blend revenue (for the OPEX default weighting)
     def _learned_pct(sl):                                                       # learned opex% per year → the OPEX defaults (Y4–5 extrapolated)
         seg, sr = opex_shape[sl], _rev0[sl]
         w = sr if float(np.nansum(sr)) > 0 else np.ones_like(seg)
@@ -1115,16 +1185,20 @@ def drop_pin_ui(df, site, art, demo=False):
     with st.expander("⚙️ Cost assumptions — by year", expanded=True):
         _plan0 = pd.DataFrame({
             "Year": [f"Year {i + 1}" for i in range(5)],
-            "ASP ($/wash)": [round(asp_blend, 1)] * 5,
+            "Mem ASP ($/purchase)": [round(min(cl_mem_pp, 100.0), 1)] * 5,
+            "Retail ASP ($/wash)": [round(min(cl_ret, 60.0), 1)] * 5,
             "OPEX (% of sales)": [_learned_pct(sl) for sl in _yslices],
             "CAPEX ($)": [0] * 5,
         })
         plan = st.data_editor(
             _plan0, hide_index=True, width="stretch", num_rows="fixed", disabled=["Year"], key="pnl_plan",
             column_config={
-                "ASP ($/wash)": st.column_config.NumberColumn(
-                    min_value=1.0, max_value=30.0, step=0.1, format="$%.1f",
-                    help=f"Blended $/wash for the year. Cluster avg ${asp_blend:.1f} ({asp_scope})."),
+                "Mem ASP ($/purchase)": st.column_config.NumberColumn(
+                    min_value=1.0, max_value=100.0, step=0.5, format="$%.1f",
+                    help=f"Membership revenue per PURCHASE for the year. Cluster avg ${cl_mem_pp:.1f} ({asp_scope})."),
+                "Retail ASP ($/wash)": st.column_config.NumberColumn(
+                    min_value=1.0, max_value=60.0, step=0.5, format="$%.1f",
+                    help=f"Retail revenue per WASH for the year. Cluster avg ${cl_ret:.1f} ({asp_scope})."),
                 "OPEX (% of sales)": st.column_config.NumberColumn(
                     min_value=0, max_value=150, step=1, format="%d%%",
                     help="Operating expense as % of sales; fitted onto the learned hot→mature pattern. Defaults follow the learned curve (Years 4–5 extrapolated)."),
@@ -1133,13 +1207,13 @@ def drop_pin_ui(df, site, art, demo=False):
                     help="Build-out / equipment $ spent that year, added into expenses and spread across its months."),
             },
         )
-        asp_in = {i + 1: float(plan["ASP ($/wash)"].iloc[i]) for i in range(5)}
+        mem_asp_in = {i + 1: float(plan["Mem ASP ($/purchase)"].iloc[i]) for i in range(5)}
+        ret_asp_in = {i + 1: float(plan["Retail ASP ($/wash)"].iloc[i]) for i in range(5)}
         opex_in = {i + 1: float(plan["OPEX (% of sales)"].iloc[i]) for i in range(5)}
         capex_in = {i + 1: float(plan["CAPEX ($)"].iloc[i]) for i in range(5) if float(plan["CAPEX ($)"].iloc[i])}
-    asp_month = per_year_to_monthly(len(months), asp_in, asp_blend)             # $/wash per month (year-wise step series)
-    k_asp = asp_month / max(asp_blend, 1e-9)                                    # scale the cluster mem/retail split per month
-    asp_mem, asp_ret = cl_mem * k_asp, cl_ret * k_asp                          # monthly $/wash arrays (membership & retail)
-    rev_base = mem * asp_mem + ret * asp_ret                                    # sales = washes × ASP (no campaign)
+    asp_mem_pp = per_year_to_monthly(len(months), mem_asp_in, cl_mem_pp)        # $/purchase per month (membership)
+    asp_ret = per_year_to_monthly(len(months), ret_asp_in, cl_ret)             # $/wash per month (retail)
+    rev_base = mem_purch * asp_mem_pp + ret * asp_ret                          # sales = mem purchases × $/purchase + retail washes × $/wash
 
     # ── CAMPAIGN — promo that converts retail→membership and eats neighbours' share (opex-data.csv + book_v4) ──
     st.markdown("##### 🎯 Campaign — should this site run a promotion?")
@@ -1193,7 +1267,7 @@ def drop_pin_ui(df, site, art, demo=False):
         with st.popover("Additional info — what a campaign does to OPEX / Revenue / Profit / Membership", width=1000):
             render_campaign_snapshot()
 
-    rev_m = mem * mem_mult * asp_mem + ret * ret_mult * asp_ret        # campaign shifts the wash mix retail→membership
+    rev_m = mem_purch * mem_mult * asp_mem_pp + ret * ret_mult * asp_ret   # campaign shifts the mix retail→membership (purchases scale with mem washes)
     # OPEX line = the user's per-year % of sales, fitted onto the learned hot→mature pattern (shape kept, level set
     # to each year's target). CAPEX = $ per year spread across its months. Expenses = OPEX + CAPEX; net = sales − both.
     opex_pct, opex_tgts = fit_opex_pct_to_targets(opex_shape, rev_base, opex_in)
@@ -1307,15 +1381,20 @@ def drop_pin_ui(df, site, art, demo=False):
 
 # ───────────────────────────── UI ─────────────────────────────
 st.set_page_config(page_title="Local Market Explorer", layout="wide")
-df, site = load_data()
-pins = interesting_pins(site)
-
 MODES = ["🗺️ Explore markets", "📍 Drop-a-pin forecast", "🛰️ Site analysis (visual) · beta"]
 with st.sidebar:
     st.header("Controls")
     demo = st.toggle("👔 Client demo (anonymized)", value=False,
                      help="Hide identities: sites become 'Site 1, 2, 3…' by opening order, operators become "
                           "'Operator N', and the map shows a shaded red region instead of exact dots.")
+    express_only = st.toggle("🚿 Express-only sites", value=False,
+                     help="Restrict markets, clusters, KPIs and the forecast's wash trajectory / level anchor to "
+                          "Express Tunnel car washes (drops Flex, full-service, self-serve, unknown, etc.). The "
+                          "P&L cost curves and the global campaign-evidence popover still use all sites.")
+# load AFTER the express toggle so the whole app (clusters included) reruns on the filtered universe
+df, site = load_data(express_only)
+pins = interesting_pins(site)
+with st.sidebar:
     # mode switcher — segmented control (acts like app tabs)
     app_mode = st.segmented_control("Mode", MODES, default=MODES[0], key="app_mode") or MODES[0]
     if app_mode.startswith("🗺️"):
@@ -1324,7 +1403,7 @@ with st.sidebar:
         radius = st.slider("Neighbour radius (km)", 2, 40, 20, 1, key="radius")
         smooth = st.select_slider("Smoothing (months)", [1, 2, 3, 4, 6], value=1, key="smooth")
 if app_mode.startswith("📍"):
-    drop_pin_ui(df, site, get_model(), demo)
+    drop_pin_ui(df, site, get_model(), demo, express_only)
     st.stop()
 if app_mode.startswith("🛰️"):
     if "pin" not in st.session_state:                        # seed the SAME default point Explore uses
@@ -1335,6 +1414,9 @@ if app_mode.startswith("🛰️"):
     st.stop()
 
 st.title("PROFORMA DEMO")
+if express_only:
+    st.caption(f"🚿 **Express-only sites** — every market, cluster, KPI and forecast below uses only the "
+               f"{len(site):,} Express Tunnel sites with ≥{EXPRESS_MIN_MONTHS} months of history.")
 
 with st.sidebar:
     max_sites = 10  # cap on sites shown; the pin and all new entrants are always kept
@@ -1359,20 +1441,21 @@ with st.sidebar:
 
 pin = st.session_state.pin                                            # (lat, lon) free point
 plat, plon = pin
-# Explore only: rich-history sites — at least 3 full years (36 monthly records) → no half-drawn lines
-MIN_MONTHS = 36
+# Explore: rich-history sites only — ≥30 monthly records (the SAME floor as express) → no half-drawn lines, and
+# we don't dot thin/young sites you can't actually analyze
+MIN_MONTHS = EXPRESS_MIN_MONTHS
 site_rich = site[site.n_obs >= MIN_MONTHS]
 nb_full = neighbourhood(site_rich, plat, plon, radius)
 if nb_full.empty:
-    st.warning(f"No sites with ≥3 years of data within {radius} km of this pin — drop it elsewhere or widen the radius.")
+    st.warning(f"No sites with ≥{MIN_MONTHS} months of data within {radius} km of this pin — drop it elsewhere or widen the radius.")
     # still show the map so you can see where the data actually is and move the pin there
     st.subheader("Map")
-    fmap = folium.Map(location=[plat, plon], zoom_start=9, tiles="cartodbpositron")
+    fmap = folium.Map(location=[plat, plon], zoom_start=9, tiles="cartodbpositron", prefer_canvas=True)
     folium.Circle([plat, plon], radius=radius * 1000, color="#999", weight=1, fill=True, fill_opacity=0.05).add_to(fmap)
     if demo:
         add_cluster_regions(fmap, site, plat, plon, max_km=50)
     else:
-        add_reference_dots(fmap, site_rich, plat, plon, max_km=50)        # nearby rich-history sites for reference
+        add_all_site_dots(fmap, site_rich)                                # rich-history sites (≥30 mo) on the map, pan anywhere
         if hl_client:
             for _, s in site[site.has_coords & (site.client_name == hl_client)].iterrows():
                 folium.CircleMarker([s.lat, s.lon], radius=6, color="#d4a500", fill=True, fill_color="#ffd000",
@@ -1380,9 +1463,10 @@ if nb_full.empty:
     folium.Marker([plat, plon], icon=folium.Icon(color="black", icon="star"), tooltip="📍 pin").add_to(fmap)
     mp = st_folium(fmap, height=500, use_container_width=True, returned_objects=["last_clicked"])
     lc = (mp or {}).get("last_clicked")
-    if lc:
+    if lc and (round(lc["lat"], 5), round(lc["lng"], 5)) != (round(plat, 5), round(plon, 5)):
         st.session_state.pin = (lc["lat"], lc["lng"]); st.rerun()
-    st.caption("Dots = sites with ≥3 years of data within 50 km — click anywhere on the map to move the pin there.")
+    st.caption((f"Dots = every express site" if express_only else "Dots = every site")
+               + f" with ≥{MIN_MONTHS} months of history — click anywhere on the map to move the pin there.")
     st.stop()
 # cap clutter: always keep every entrant, fill the rest with the nearest incumbents
 keep = nb_full[nb_full.is_entrant]
@@ -1405,9 +1489,9 @@ c4.metric("Local market", f"≤{radius} km")
 # ── map, full width left-to-right ──
 st.subheader("Map")
 if hl_client and not demo:                                # an operator is highlighted → USA-level view of its footprint
-    fmap = folium.Map(location=[39.5, -98.35], zoom_start=4, tiles="cartodbpositron")
+    fmap = folium.Map(location=[39.5, -98.35], zoom_start=4, tiles="cartodbpositron", prefer_canvas=True)
 else:
-    fmap = folium.Map(location=[plat, plon], zoom_start=10, tiles="cartodbpositron")
+    fmap = folium.Map(location=[plat, plon], zoom_start=10, tiles="cartodbpositron", prefer_canvas=True)
 if demo:
     # confidential demo: no site dots / no exact pin — nearby cluster regions (≤200 km) shaded by colour,
     # with a soft red blur marking the chosen local market on top
@@ -1422,8 +1506,9 @@ if demo:
 else:
     folium.Circle([plat, plon], radius=radius * 1000, color="#999", weight=1, fill=True,
                   fill_opacity=0.05).add_to(fmap)
-    # reference: every rich-history site within 50 km as a light dot, so you see the wider geography
-    add_reference_dots(fmap, site_rich, plat, plon, max_km=50)
+    # rich-history sites (≥30 mo) as light dots — full footprint, all distances — so you can pan to any market
+    # (thin/young sites are intentionally NOT dotted: they can't be analyzed and would just be clutter)
+    add_all_site_dots(fmap, site_rich)
     for _, s in nb.iterrows():
         if s.site_key == focal_key:
             color, rad = "#e6194B", 9
@@ -1443,7 +1528,7 @@ else:
                   tooltip="📍 pin").add_to(fmap)
     mp = st_folium(fmap, height=500, use_container_width=True, returned_objects=["last_clicked"])
     lc = (mp or {}).get("last_clicked")                          # click ANYWHERE -> drop the pin there
-    if lc:
+    if lc and (round(lc["lat"], 5), round(lc["lng"], 5)) != (round(plat, 5), round(plon, 5)):
         st.session_state.pin = (lc["lat"], lc["lng"]); st.rerun()
     if hl_client:
         st.caption(f"🟡 yellow = every site operated by **{hl_client}**.")
@@ -1456,13 +1541,13 @@ ckeys = nb_full.site_key.tolist()
 cdesc = f"this local market · {len(ckeys)} sites" if demo else f"local market ≤{radius} km · {len(ckeys)} sites"
 st.subheader(f"Local-market KPIs over time — {cdesc}")
 sub = df[df.site_key.isin(ckeys)].copy()
-sub["asp_ret"] = sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan)   # per-SITE ASP = its revenue ÷ its washes
-sub["asp_mem"] = sub.mem_revenue / sub.mem_wash_count.replace(0, np.nan)
+sub["asp_ret"] = sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan)        # retail ASP = revenue ÷ retail washes
+sub["asp_mem"] = sub.mem_revenue / sub.mem_purchase_count.replace(0, np.nan)    # membership ASP = revenue ÷ membership PURCHASES
 # one figure per group (washes → revenue → ASP); each followed by a "Key insights" note
 GROUPS = [
     ("Washes", [("tot_wash_count", "Total washes", "count"), ("ret_wash_count", "Retail washes", "count"), ("mem_wash_count", "Membership washes", "count")]),
     ("Revenue", [("tot_revenue", "Total revenue ($)", "$"), ("ret_revenue", "Retail revenue ($)", "$"), ("mem_revenue", "Membership revenue ($)", "$")]),
-    ("ASPs", [("asp_ret", "ASP per wash — retail ($)", "$"), ("asp_mem", "ASP per wash — membership ($)", "$")]),
+    ("ASPs", [("asp_ret", "ASP per wash — retail ($)", "$"), ("asp_mem", "ASP per membership — membership ($)", "$")]),
 ]
 name_of = demo_label if demo else site.set_index("site_key").client_name.to_dict()
 PALETTE = ["#2E86DE", "#16a085", "#8e44ad", "#e67e22", "#27ae60", "#2980b9", "#c0392b", "#d35400", "#7f8c8d",

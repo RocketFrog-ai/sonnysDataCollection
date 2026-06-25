@@ -222,7 +222,8 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
 def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
                        plateau_override: Optional[float] = None, mem_growth_pct: float = 0.0,
                        ret_growth_pct: float = 0.0, horizon_months: int = 60,
-                       radius_km: float = 20.0) -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
+                       radius_km: float = 20.0,
+                       model_kind: str = "et") -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
     """The cold-start 5-yr monthly trajectory for a pin + the local-market per-component trends it used.
 
     Learns this market's membership / retail trends from the ≤`radius_km` neighbours' own series
@@ -251,7 +252,7 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
         lat, lon, brand=brand, plateau_override=(plateau_override or None),
         annual_mem_growth=mem_g + gm, annual_ret_change=ret_g + gr,
         mem_growth_band=(mem_lo + gm, mem_hi + gm), ret_change_band=(ret_lo + gr, ret_hi + gr),
-        horizon=horizon_months, art=art,
+        horizon=horizon_months, art=art, model_kind=model_kind,   # default "et" = Model 3 (most accurate)
     )
     trends = {"mem_g": mem_g, "mem_lo": mem_lo, "mem_hi": mem_hi,
               "ret_g": ret_g, "ret_lo": ret_lo, "ret_hi": ret_hi,
