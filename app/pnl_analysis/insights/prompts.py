@@ -301,6 +301,11 @@ def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
 
 
 # ─────────────────────────── response parsing (JSON, with a loose fallback) ───────────────────────────
+def _esc_dollars(s: str) -> str:
+    """Escape $ so Streamlit/KaTeX doesn't render $...$ pairs as LaTeX math."""
+    return s.replace("$", "\\$")
+
+
 def _render_group(obj: Any) -> Optional[str]:
     """Render {headline, bullets[], signal} into markdown. Strips stray markdown the model may have added."""
     if not isinstance(obj, dict):
@@ -312,8 +317,8 @@ def _render_group(obj: Any) -> Optional[str]:
     sig = str(obj.get("signal") or "").strip().lower()
     parts: List[str] = []
     if head:
-        parts.append(f"**{head}**")
-    clean = [str(b).strip().lstrip("-•*").strip() for b in bullets if str(b).strip()]
+        parts.append(f"**{_esc_dollars(head)}**")
+    clean = [_esc_dollars(str(b).strip().lstrip("-•*").strip()) for b in bullets if str(b).strip()]
     if clean:
         parts.append("\n".join(f"- {b}" for b in clean))
     if sig in _SIGNAL_EMOJI:
