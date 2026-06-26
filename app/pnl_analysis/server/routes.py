@@ -84,7 +84,7 @@ def explore_market_kpis(req: ExploreKpisRequest):
 def insights(req: InsightsRequest):
     """Tab 1 — AI Key Insights: the 2-node pipeline (compute_metrics -> generate_insights) for the local
     market. Builds the SAME market subset the KPI panels draw (ASP per the Streamlit definitions) and returns
-    {"metrics": ..., "insights": {"Washes","Revenue","ASPs"}}."""
+    {"Washes","Revenue","ASPs"} narrative blocks (the `insights` payload only)."""
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     df, site = D.load_panel()
     site_rich = site[site.n_obs >= req.min_months]
@@ -102,7 +102,7 @@ def insights(req: InsightsRequest):
         meta["name"] = meta.site_key.map(anon)
     else:
         meta["name"] = meta.site_key.map(site.set_index("site_key").client_name.to_dict())
-    return _insights_pipeline(panel, meta, focal, backend=req.backend, last_n_months=req.last_n_months)
+    return _insights_pipeline(panel, meta, focal, backend=req.backend, last_n_months=req.last_n_months)["insights"]
 
 
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────
