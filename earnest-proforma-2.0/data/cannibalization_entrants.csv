@@ -1,0 +1,388 @@
+cluster_id,role,client_name,client_id,site_id,address,state,lat,lon,opened,carwash_type,dist_from_entrant_km,wash_per_mo,wash_before_entry,wash_after_entry,decline_pct,google_maps_all_markers,google_earth
+1.0,entrant,Smitty's Car Wash,smittyscw_000489,10.0,513 S Adams St,TX,30.2687301,-98.8775625,2023-11-01,Express Tunnel,0.0,9602.0,,,,"https://www.google.com/maps/dir/30.2687301,-98.8775625/30.256462,-98.8709079","https://earth.google.com/web/@30.262596,-98.874235,0a,3759d,35y,0h,0t,0r"
+1.0,neighbor,WetnJet Car Wash,59178kustom,1.0,516 Friendship Ln,TX,30.256462,-98.8709079,2020-01-01,Unknown,1.5,,3448.0,425.0,87.7,"https://www.google.com/maps/dir/30.2687301,-98.8775625/30.256462,-98.8709079","https://earth.google.com/web/@30.262596,-98.874235,0a,3759d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+2.0,entrant,Wash N Roll,washnroll_000485,3.0,2640 8th Ave S,TN,36.1196537,-86.7745102,2022-09-01,Express Tunnel,0.0,11425.0,,,,"https://www.google.com/maps/dir/36.1196537,-86.7745102/36.145437,-86.870853","https://earth.google.com/web/@36.132545,-86.822682,0a,15173d,35y,0h,0t,0r"
+2.0,neighbor,Champion CW,championcarwash_000085,4.0,6303 Charlotte Pike,TN,36.145437,-86.870853,2020-01-01,Express Tunnel,9.1,,7584.0,1895.0,75.0,"https://www.google.com/maps/dir/36.1196537,-86.7745102/36.145437,-86.870853","https://earth.google.com/web/@36.132545,-86.822682,0a,15173d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+3.0,entrant,Roadrunner,roadrunner_000462,4.0,N88W15382 Main St,WI,43.1791872,-88.1007516,2022-11-01,Express Tunnel,0.0,6627.0,,,,"https://www.google.com/maps/dir/43.1791872,-88.1007516/43.1792918,-88.1142328","https://earth.google.com/web/@43.179240,-88.107492,0a,3139d,35y,0h,0t,0r"
+3.0,neighbor,River Falls Car Wash,riverfallscarwash_000171,1.0,15382 Main St,WI,43.1792918,-88.1142328,2020-01-01,Express Tunnel,1.1,,6354.0,1692.0,73.4,"https://www.google.com/maps/dir/43.1791872,-88.1007516/43.1792918,-88.1142328","https://earth.google.com/web/@43.179240,-88.107492,0a,3139d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+4.0,entrant,Luv Car Wash,luvcarwash_000457,22.0,5064 Weebers Crossing Dr,FL,30.253554,-81.537669,2022-12-01,Express Tunnel,0.0,9660.0,,,,"https://www.google.com/maps/dir/30.253554,-81.537669/30.324796,-81.410368","https://earth.google.com/web/@30.289175,-81.474018,0a,23351d,35y,0h,0t,0r"
+4.0,neighbor,Scrubbles Express Wash,scrubbles_000069,3.0,835 Atlantic Blvd,FL,30.324796,-81.410368,2020-01-01,Express Tunnel,14.6,,5933.0,1742.0,70.6,"https://www.google.com/maps/dir/30.253554,-81.537669/30.324796,-81.410368","https://earth.google.com/web/@30.289175,-81.474018,0a,23351d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+5.0,entrant,Luv Car Wash,luvcarwash_000457,25.0,11991 Atlantic Blvd,FL,30.320724,-81.490679,2022-12-01,Express Tunnel,0.0,11891.0,,,,"https://www.google.com/maps/dir/30.320724,-81.490679/30.253554,-81.537669/30.324796,-81.410368/30.328619,-81.405916","https://earth.google.com/web/@30.306923,-81.461158,0a,29832d,35y,0h,0t,0r"
+5.0,neighbor,Scrubbles Express Wash,scrubbles_000069,1.0,5064 Weebers Crossing Dr,FL,30.253554,-81.537669,2020-01-01,Express Tunnel,8.7,,10042.0,4352.0,56.7,"https://www.google.com/maps/dir/30.320724,-81.490679/30.253554,-81.537669/30.324796,-81.410368/30.328619,-81.405916","https://earth.google.com/web/@30.306923,-81.461158,0a,29832d,35y,0h,0t,0r"
+5.0,neighbor,Scrubbles Express Wash,scrubbles_000069,3.0,835 Atlantic Blvd,FL,30.324796,-81.410368,2020-01-01,Express Tunnel,7.7,,5933.0,1742.0,70.6,"https://www.google.com/maps/dir/30.320724,-81.490679/30.253554,-81.537669/30.324796,-81.410368/30.328619,-81.405916","https://earth.google.com/web/@30.306923,-81.461158,0a,29832d,35y,0h,0t,0r"
+5.0,neighbor,Scrubbles Express Wash,scrubbles_000069,5.0,11901 Atlantic Blvd,FL,30.328619,-81.405916,2021-10-01,Express Tunnel,8.2,,8983.0,1784.0,80.1,"https://www.google.com/maps/dir/30.320724,-81.490679/30.253554,-81.537669/30.324796,-81.410368/30.328619,-81.405916","https://earth.google.com/web/@30.306923,-81.461158,0a,29832d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+6.0,entrant,Luv Car Wash,luvcarwash_000457,23.0,835 Atlantic Blvd,FL,30.324796,-81.410368,2022-12-01,Express Tunnel,0.0,6084.0,,,,"https://www.google.com/maps/dir/30.324796,-81.410368/30.253554,-81.537669/30.328619,-81.405916","https://earth.google.com/web/@30.302323,-81.451318,0a,31223d,35y,0h,0t,0r"
+6.0,neighbor,Scrubbles Express Wash,scrubbles_000069,1.0,5064 Weebers Crossing Dr,FL,30.253554,-81.537669,2020-01-01,Express Tunnel,14.6,,10042.0,4352.0,56.7,"https://www.google.com/maps/dir/30.324796,-81.410368/30.253554,-81.537669/30.328619,-81.405916","https://earth.google.com/web/@30.302323,-81.451318,0a,31223d,35y,0h,0t,0r"
+6.0,neighbor,Scrubbles Express Wash,scrubbles_000069,5.0,11901 Atlantic Blvd,FL,30.328619,-81.405916,2021-10-01,Express Tunnel,0.6,,8983.0,1784.0,80.1,"https://www.google.com/maps/dir/30.324796,-81.410368/30.253554,-81.537669/30.328619,-81.405916","https://earth.google.com/web/@30.302323,-81.451318,0a,31223d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+7.0,entrant,Big Dan's,bigdans_000378,18.0,5225 24th St E,FL,27.448146,-82.533542,2023-07-01,Express Tunnel,0.0,8481.0,,,,"https://www.google.com/maps/dir/27.448146,-82.533542/27.4621466,-82.567598","https://earth.google.com/web/@27.455146,-82.550570,0a,7055d,35y,0h,0t,0r"
+7.0,neighbor,Car Wash On 5th,bluedolphincw_000185,1.0,505 Cortez Rd W,FL,27.4621466,-82.567598,2020-01-01,Full Service,3.7,,3269.0,1762.0,46.1,"https://www.google.com/maps/dir/27.448146,-82.533542/27.4621466,-82.567598","https://earth.google.com/web/@27.455146,-82.550570,0a,7055d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+8.0,entrant,ClearWater,clearwater_000397,23.0,7310 Union Park Ln,TX,30.161315,-97.723914,2024-12-01,Express Tunnel,0.0,14936.0,,,,"https://www.google.com/maps/dir/30.161315,-97.723914/30.2738504,-97.7629511","https://earth.google.com/web/@30.217583,-97.743433,0a,21095d,35y,0h,0t,0r"
+8.0,neighbor,Complete Auto Detail & Car Wash,completeadcw_000179,1.0,1516 W 5th St,TX,30.2738504,-97.7629511,2020-01-01,Hand Wash / Detail,13.1,,875.0,478.0,45.4,"https://www.google.com/maps/dir/30.161315,-97.723914/30.2738504,-97.7629511","https://earth.google.com/web/@30.217583,-97.743433,0a,21095d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+9.0,entrant,ClearWater,clearwater_000397,19.0,3925 East US Hwy 377,TX,32.456287,-97.7267,2024-08-01,Express Tunnel,0.0,8572.0,,,,"https://www.google.com/maps/dir/32.456287,-97.7267/32.453117,-97.732979","https://earth.google.com/web/@32.454702,-97.729839,0a,2529d,35y,0h,0t,0r"
+9.0,neighbor,Zips Express Car Wash,zips_000468,17.0,3601 E US Hwy 377,TX,32.453117,-97.732979,2022-09-01,Express Tunnel,0.7,,4302.0,2352.0,45.3,"https://www.google.com/maps/dir/32.456287,-97.7267/32.453117,-97.732979","https://earth.google.com/web/@32.454702,-97.729839,0a,2529d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+10.0,entrant,Thoroughbred,thoroughbredcw_000304,8.0,1332 E John Rowan Blvd,KY,37.825304,-85.453567,2022-05-01,Express Tunnel,0.0,6465.0,,,,"https://www.google.com/maps/dir/37.825304,-85.453567/37.8601265,-85.5185246","https://earth.google.com/web/@37.842715,-85.486046,0a,11841d,35y,0h,0t,0r"
+10.0,neighbor,Hurricane Bay Express,000003_hurricane,1.0,30 Patriot Dr,KY,37.8601265,-85.5185246,2020-01-01,Express Tunnel,6.9,,3755.0,2204.0,41.3,"https://www.google.com/maps/dir/37.825304,-85.453567/37.8601265,-85.5185246","https://earth.google.com/web/@37.842715,-85.486046,0a,11841d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+11.0,entrant,Wash N Roll,washnroll_000485,2.0,7128 Hwy 70 S,TN,36.074531,-86.923798,2022-08-01,Express Tunnel,0.0,14874.0,,,,"https://www.google.com/maps/dir/36.074531,-86.923798/36.145437,-86.870853/36.1196537,-86.7745102","https://earth.google.com/web/@36.113207,-86.856387,0a,23785d,35y,0h,0t,0r"
+11.0,neighbor,Champion CW,championcarwash_000085,4.0,6303 Charlotte Pike,TN,36.145437,-86.870853,2020-01-01,Express Tunnel,9.2,,7545.0,4924.0,34.7,"https://www.google.com/maps/dir/36.074531,-86.923798/36.145437,-86.870853/36.1196537,-86.7745102","https://earth.google.com/web/@36.113207,-86.856387,0a,23785d,35y,0h,0t,0r"
+11.0,neighbor,Champion CW,championcarwash_000085,6.0,2640 8th Ave S,TN,36.1196537,-86.7745102,2020-01-01,Express Tunnel,14.3,,10498.0,5500.0,47.6,"https://www.google.com/maps/dir/36.074531,-86.923798/36.145437,-86.870853/36.1196537,-86.7745102","https://earth.google.com/web/@36.113207,-86.856387,0a,23785d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+12.0,entrant,The Auto Spa,mainstreet_000067,3.0,3212 University Blvd,OK,34.0049678,-96.4088824,2023-06-01,Express Tunnel,0.0,6498.0,,,,"https://www.google.com/maps/dir/34.0049678,-96.4088824/34.005524,-96.397396/33.9967499,-96.3997585","https://earth.google.com/web/@34.002414,-96.402012,0a,3582d,35y,0h,0t,0r"
+12.0,neighbor,University Park Auto SPA,cleanmachine,1.0,3005 W University Blvd,OK,34.005524,-96.397396,2020-01-01,Express Tunnel,1.1,,2315.0,1158.0,50.0,"https://www.google.com/maps/dir/34.0049678,-96.4088824/34.005524,-96.397396/33.9967499,-96.3997585","https://earth.google.com/web/@34.002414,-96.402012,0a,3582d,35y,0h,0t,0r"
+12.0,neighbor,The Auto Spa,mainstreet_000067,1.0,2002 W Main St,OK,33.9967499,-96.3997585,2020-01-01,Flex,1.2,,7453.0,5203.0,30.2,"https://www.google.com/maps/dir/34.0049678,-96.4088824/34.005524,-96.397396/33.9967499,-96.3997585","https://earth.google.com/web/@34.002414,-96.402012,0a,3582d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+13.0,entrant,BlueWave,bluewave_000567,69.0,1618 S 77 Sunshine Strip,TX,26.1753183,-97.6762788,2024-12-01,Express Tunnel,0.0,11528.0,,,,"https://www.google.com/maps/dir/26.1753183,-97.6762788/26.1892628,-97.7167139","https://earth.google.com/web/@26.182291,-97.696496,0a,7983d,35y,0h,0t,0r"
+13.0,neighbor,BlueWave,bluewave_000567,18.0,1924 W Tyler Ave,TX,26.1892628,-97.7167139,2023-08-01,Express Tunnel,4.3,,30917.0,19711.0,36.2,"https://www.google.com/maps/dir/26.1753183,-97.6762788/26.1892628,-97.7167139","https://earth.google.com/web/@26.182291,-97.696496,0a,7983d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+14.0,entrant,BlueWave,bluewave_000567,74.0,1601 W Lincoln Ave,TX,26.1829177,-97.7133037,2025-03-01,Express Tunnel,0.0,11279.0,,,,"https://www.google.com/maps/dir/26.1829177,-97.7133037/26.1892628,-97.7167139","https://earth.google.com/web/@26.186090,-97.715009,0a,2674d,35y,0h,0t,0r"
+14.0,neighbor,BlueWave,bluewave_000567,18.0,1924 W Tyler Ave,TX,26.1892628,-97.7167139,2023-08-01,Express Tunnel,0.8,,28989.0,18481.0,36.2,"https://www.google.com/maps/dir/26.1829177,-97.7133037/26.1892628,-97.7167139","https://earth.google.com/web/@26.186090,-97.715009,0a,2674d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+15.0,entrant,Luv Car Wash,luvcarwash_000457,48.0,5702 Ogeechee rd,GA,32.0285226,-81.2226641,2023-11-01,Express Tunnel,0.0,9310.0,,,,"https://www.google.com/maps/dir/32.0285226,-81.2226641/32.081626,-81.279992","https://earth.google.com/web/@32.055074,-81.251328,0a,13506d,35y,0h,0t,0r"
+15.0,neighbor,Magnolia,magnolia_000414,23.0,2001 Pooler Pkwy,GA,32.081626,-81.279992,2022-10-01,Express Tunnel,8.0,,6500.0,8318.0,-28.0,"https://www.google.com/maps/dir/32.0285226,-81.2226641/32.081626,-81.279992","https://earth.google.com/web/@32.055074,-81.251328,0a,13506d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+16.0,entrant,Soapy Nobles,soapynobles_000448,3.0,76 N Rd,CT,41.9321244,-72.5917651,2022-09-01,Express Tunnel,0.0,3348.0,,,,"https://www.google.com/maps/dir/41.9321244,-72.5917651/41.930665,-72.606836","https://earth.google.com/web/@41.931395,-72.599301,0a,3385d,35y,0h,0t,0r"
+16.0,neighbor,Brothers Car Wash,autoshineoil,1.0,168 Bridge St,CT,41.930665,-72.606836,2020-01-01,Unknown,1.3,,1042.0,677.0,35.0,"https://www.google.com/maps/dir/41.9321244,-72.5917651/41.930665,-72.606836","https://earth.google.com/web/@41.931395,-72.599301,0a,3385d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+17.0,entrant,Fast N Furious Speed Wash,fastnfurioussw_000729,1.0,2035 N Riverside Ave,CA,34.137543,-117.369807,2025-01-01,Express Tunnel,0.0,3717.0,,,,"https://www.google.com/maps/dir/34.137543,-117.369807/34.136605,-117.336211/34.181835,-117.342148","https://earth.google.com/web/@34.151994,-117.349389,0a,11653d,35y,0h,0t,0r"
+17.0,neighbor,Magic Brush,magicbrush_000533,3.0,2122 W Highland Ave,CA,34.136605,-117.336211,2023-07-01,Express Tunnel,3.1,,2024.0,1691.0,16.5,"https://www.google.com/maps/dir/34.137543,-117.369807/34.136605,-117.336211/34.181835,-117.342148","https://earth.google.com/web/@34.151994,-117.349389,0a,11653d,35y,0h,0t,0r"
+17.0,neighbor,Magnus Car Wash,magnuscarwash_000376,1.0,Kendall Dr,CA,34.181835,-117.342148,2022-08-01,Unknown,5.5,,2163.0,1046.0,51.7,"https://www.google.com/maps/dir/34.137543,-117.369807/34.136605,-117.336211/34.181835,-117.342148","https://earth.google.com/web/@34.151994,-117.349389,0a,11653d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+18.0,entrant,Ocean Express,oceansexp_000393,1.0,9640 Federal Blvd,CO,39.8716138,-105.0244184,2022-01-01,Express Tunnel,0.0,11044.0,,,,"https://www.google.com/maps/dir/39.8716138,-105.0244184/39.8123306,-105.1342337/39.9581265,-104.9778694/39.785862,-105.006411","https://earth.google.com/web/@39.856983,-105.035733,0a,38345d,35y,0h,0t,0r"
+18.0,neighbor,Colorado Auto Wash,187147colorado,1.0,12110 W 64th Ave,CO,39.8123306,-105.1342337,2020-01-01,Express Tunnel,11.5,,12628.0,13008.0,-3.0,"https://www.google.com/maps/dir/39.8716138,-105.0244184/39.8123306,-105.1342337/39.9581265,-104.9778694/39.785862,-105.006411","https://earth.google.com/web/@39.856983,-105.035733,0a,38345d,35y,0h,0t,0r"
+18.0,neighbor,Living Water,livingwaters_000022,5.0,725 E. 144th Ave.,CO,39.9581265,-104.9778694,2020-11-01,Express Tunnel,10.4,,8962.0,1512.0,83.1,"https://www.google.com/maps/dir/39.8716138,-105.0244184/39.8123306,-105.1342337/39.9581265,-104.9778694/39.785862,-105.006411","https://earth.google.com/web/@39.856983,-105.035733,0a,38345d,35y,0h,0t,0r"
+18.0,neighbor,Mega Car Wash,pcmat,1.0,7170 N Pecos St,CO,39.785862,-105.006411,2020-01-01,Flex,9.7,,3333.0,2607.0,21.8,"https://www.google.com/maps/dir/39.8716138,-105.0244184/39.8123306,-105.1342337/39.9581265,-104.9778694/39.785862,-105.006411","https://earth.google.com/web/@39.856983,-105.035733,0a,38345d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+19.0,entrant,Champion Xpress CW,championxpresscw_000216,22.0,1300 E Historic Hwy 66,NM,35.5297089,-108.722052,2022-11-01,Express Tunnel,0.0,11159.0,,,,"https://www.google.com/maps/dir/35.5297089,-108.722052/35.53824,-108.758132","https://earth.google.com/web/@35.533974,-108.740092,0a,6599d,35y,0h,0t,0r"
+19.0,neighbor,Champion Xpress CW,championxpresscw_000216,2.0,1060 US-491,NM,35.53824,-108.758132,2020-01-01,Express Tunnel,3.4,,16394.0,11179.0,31.8,"https://www.google.com/maps/dir/35.5297089,-108.722052/35.53824,-108.758132","https://earth.google.com/web/@35.533974,-108.740092,0a,6599d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+20.0,entrant,Dirty Dog's Car Wash,dirtydogs_000082,7.0,10 W New Haven Ave,FL,28.078848,-80.621854,2022-06-01,Express Tunnel,0.0,6175.0,,,,"https://www.google.com/maps/dir/28.078848,-80.621854/28.1392348,-80.671077/28.087322,-80.671971","https://earth.google.com/web/@28.101802,-80.654967,0a,14856d,35y,0h,0t,0r"
+20.0,neighbor,Pristine Car Wash,pristine_000034,1.0,1989 N Wickham Rd,FL,28.1392348,-80.671077,2020-01-01,Unknown,8.3,,2089.0,1849.0,11.5,"https://www.google.com/maps/dir/28.078848,-80.621854/28.1392348,-80.671077/28.087322,-80.671971","https://earth.google.com/web/@28.101802,-80.654967,0a,14856d,35y,0h,0t,0r"
+20.0,neighbor,Shine Shack Car Wash,shineshack_000021,1.0,1195 S Wickham Rd,FL,28.087322,-80.671971,2020-01-01,Flex,5.0,,1208.0,683.0,43.5,"https://www.google.com/maps/dir/28.078848,-80.621854/28.1392348,-80.671077/28.087322,-80.671971","https://earth.google.com/web/@28.101802,-80.654967,0a,14856d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+21.0,entrant,Luv Car Wash,luvcarwash_000457,37.0,5909 Ogeechee Rd,GA,31.997837,-81.252005,2023-07-01,Express Tunnel,0.0,5160.0,,,,"https://www.google.com/maps/dir/31.997837,-81.252005/32.081626,-81.279992/32.0931944,-81.2733835","https://earth.google.com/web/@32.057552,-81.268460,0a,21956d,35y,0h,0t,0r"
+21.0,neighbor,Magnolia,magnolia_000414,23.0,2001 Pooler Pkwy,GA,32.081626,-81.279992,2022-10-01,Express Tunnel,9.7,,5887.0,8300.0,-41.0,"https://www.google.com/maps/dir/31.997837,-81.252005/32.081626,-81.279992/32.0931944,-81.2733835","https://earth.google.com/web/@32.057552,-81.268460,0a,21956d,35y,0h,0t,0r"
+21.0,neighbor,Paradise Bay Express,paradisebay_000076,1.0,1545 Pooler Pkwy,GA,32.0931944,-81.2733835,2020-01-01,Express Tunnel,10.8,,5462.0,376.0,93.1,"https://www.google.com/maps/dir/31.997837,-81.252005/32.081626,-81.279992/32.0931944,-81.2733835","https://earth.google.com/web/@32.057552,-81.268460,0a,21956d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+22.0,entrant,Magnolia,magnolia_000414,7.0,4860 N Wickham Rd,FL,28.187874,-80.6726589,2022-07-01,Express Tunnel,0.0,9642.0,,,,"https://www.google.com/maps/dir/28.187874,-80.6726589/28.1392348,-80.671077/28.087322,-80.671971","https://earth.google.com/web/@28.138144,-80.671902,0a,18453d,35y,0h,0t,0r"
+22.0,neighbor,Pristine Car Wash,pristine_000034,1.0,1989 N Wickham Rd,FL,28.1392348,-80.671077,2020-01-01,Unknown,5.4,,2029.0,1880.0,7.3,"https://www.google.com/maps/dir/28.187874,-80.6726589/28.1392348,-80.671077/28.087322,-80.671971","https://earth.google.com/web/@28.138144,-80.671902,0a,18453d,35y,0h,0t,0r"
+22.0,neighbor,Shine Shack Car Wash,shineshack_000021,1.0,1195 S Wickham Rd,FL,28.087322,-80.671971,2020-01-01,Flex,11.2,,1192.0,674.0,43.4,"https://www.google.com/maps/dir/28.187874,-80.6726589/28.1392348,-80.671077/28.087322,-80.671971","https://earth.google.com/web/@28.138144,-80.671902,0a,18453d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+23.0,entrant,Magnolia,magnolia_000414,2.0,2106 Skibo Rd,NC,35.0522632,-78.9744552,2022-04-01,Express Tunnel,0.0,12080.0,,,,"https://www.google.com/maps/dir/35.0522632,-78.9744552/35.1071029,-78.8792549","https://earth.google.com/web/@35.079683,-78.926855,0a,17392d,35y,0h,0t,0r"
+23.0,neighbor,Five Star,fivestar_000150,1.0,3505 Ramsey St,NC,35.1071029,-78.8792549,2020-01-01,Express Tunnel,10.6,,12451.0,9447.0,24.1,"https://www.google.com/maps/dir/35.0522632,-78.9744552/35.1071029,-78.8792549","https://earth.google.com/web/@35.079683,-78.926855,0a,17392d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+24.0,entrant,Luv Car Wash,luvcarwash_000457,45.0,420 Pooler Pkwy,GA,32.137208,-81.254417,2023-12-01,Express Tunnel,0.0,10285.0,,,,"https://www.google.com/maps/dir/32.137208,-81.254417/32.081626,-81.279992/32.197823,-81.198283","https://earth.google.com/web/@32.138886,-81.244231,0a,25055d,35y,0h,0t,0r"
+24.0,neighbor,Magnolia,magnolia_000414,23.0,2001 Pooler Pkwy,GA,32.081626,-81.279992,2022-10-01,Express Tunnel,6.6,,6782.0,8263.0,-21.8,"https://www.google.com/maps/dir/32.137208,-81.254417/32.081626,-81.279992/32.197823,-81.198283","https://earth.google.com/web/@32.138886,-81.244231,0a,25055d,35y,0h,0t,0r"
+24.0,neighbor,Magnolia,magnolia_000414,24.0,38 Magellan Blvd,GA,32.197823,-81.198283,2022-10-01,Express Tunnel,8.6,,8598.0,9131.0,-6.2,"https://www.google.com/maps/dir/32.137208,-81.254417/32.081626,-81.279992/32.197823,-81.198283","https://earth.google.com/web/@32.138886,-81.244231,0a,25055d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+25.0,entrant,Varsity Carwash,varsitycarwash_000227,3.0,1016 S Duff Ave,IA,42.013066,-93.609066,2022-03-01,Express Tunnel,0.0,7193.0,,,,"https://www.google.com/maps/dir/42.013066,-93.609066/42.0232564,-93.669361","https://earth.google.com/web/@42.018161,-93.639213,0a,9162d,35y,0h,0t,0r"
+25.0,neighbor,Varsity Carwash,varsitycarwash_000227,1.0,3705 Lincoln Way,IA,42.0232564,-93.669361,2020-05-01,Express Tunnel,5.1,,9549.0,7285.0,23.7,"https://www.google.com/maps/dir/42.013066,-93.609066/42.0232564,-93.669361","https://earth.google.com/web/@42.018161,-93.639213,0a,9162d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+26.0,entrant,Sud Stop,sudstop_000639,8.0,17235 Panama City Beach Pkwy,FL,30.230715,-85.891628,2024-06-01,Express Tunnel,0.0,5697.0,,,,"https://www.google.com/maps/dir/30.230715,-85.891628/30.1999901,-85.8171218","https://earth.google.com/web/@30.215353,-85.854375,0a,13399d,35y,0h,0t,0r"
+26.0,neighbor,Magnolia,magnolia_000414,12.0,11640 Panama City Beach Pkwy,FL,30.1999901,-85.8171218,2022-07-01,Unknown,7.9,,10070.0,7758.0,23.0,"https://www.google.com/maps/dir/30.230715,-85.891628/30.1999901,-85.8171218","https://earth.google.com/web/@30.215353,-85.854375,0a,13399d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+27.0,entrant,Hogg Wash,hoggwash_000092,3.0,4205 W Broad St,VA,37.574903,-77.485878,2021-09-01,Express Tunnel,0.0,4971.0,,,,"https://www.google.com/maps/dir/37.574903,-77.485878/37.550852,-77.340055","https://earth.google.com/web/@37.562877,-77.412967,0a,21194d,35y,0h,0t,0r"
+27.0,neighbor,Hogg Wash,hoggwash_000092,1.0,6100 Nine Mile Rd,VA,37.550852,-77.340055,2020-01-01,Express Tunnel,13.1,,6673.0,5207.0,22.0,"https://www.google.com/maps/dir/37.574903,-77.485878/37.550852,-77.340055","https://earth.google.com/web/@37.562877,-77.412967,0a,21194d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+28.0,entrant,Magnolia,magnolia_000414,24.0,38 Magellan Blvd,GA,32.197823,-81.198283,2022-10-01,Express Tunnel,0.0,8012.0,,,,"https://www.google.com/maps/dir/32.197823,-81.198283/32.0931944,-81.2733835","https://earth.google.com/web/@32.145509,-81.235833,0a,21922d,35y,0h,0t,0r"
+28.0,neighbor,Paradise Bay Express,paradisebay_000076,1.0,1545 Pooler Pkwy,GA,32.0931944,-81.2733835,2020-01-01,Express Tunnel,13.6,,5899.0,4642.0,21.3,"https://www.google.com/maps/dir/32.197823,-81.198283/32.0931944,-81.2733835","https://earth.google.com/web/@32.145509,-81.235833,0a,21922d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+29.0,entrant,Big Dan's,bigdans_000378,27.0,3400 Woodward Ave,AL,34.7296679,-87.6683898,2024-05-01,Express Tunnel,0.0,5012.0,,,,"https://www.google.com/maps/dir/34.7296679,-87.6683898/34.7205938,-87.6680577","https://earth.google.com/web/@34.725131,-87.668224,0a,3014d,35y,0h,0t,0r"
+29.0,neighbor,Wash N Roll,washnroll_000485,6.0,24925 US-72,AL,34.7205938,-87.6680577,2022-09-01,Express Tunnel,1.0,,4159.0,3288.0,20.9,"https://www.google.com/maps/dir/34.7296679,-87.6683898/34.7205938,-87.6680577","https://earth.google.com/web/@34.725131,-87.668224,0a,3014d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+30.0,entrant,Glacier Express,glacierexpress_000240,3.0,90 24th St W,MT,45.7718269,-108.5772338,2023-05-01,Express Tunnel,0.0,5942.0,,,,"https://www.google.com/maps/dir/45.7718269,-108.5772338/45.7551067,-108.5629406","https://earth.google.com/web/@45.763467,-108.570087,0a,4747d,35y,0h,0t,0r"
+30.0,neighbor,Glacier Express,glacierexpress_000240,1.0,1832 King Ave W,MT,45.7551067,-108.5629406,2020-07-01,Express Tunnel,2.2,,11873.0,9488.0,20.1,"https://www.google.com/maps/dir/45.7718269,-108.5772338/45.7551067,-108.5629406","https://earth.google.com/web/@45.763467,-108.570087,0a,4747d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+31.0,entrant,Waters Car Wash,waterscarwash_000245,6.0,2273 S Tamiami Trail,FL,27.0513381,-82.407791,2022-10-01,Express Tunnel,0.0,4919.0,,,,"https://www.google.com/maps/dir/27.0513381,-82.407791/26.9573955,-82.3525042/27.0473965,-82.2646911/27.0888194,-82.4438975","https://earth.google.com/web/@27.036237,-82.367221,0a,32189d,35y,0h,0t,0r"
+31.0,neighbor,Englewood Car Wash,24036englewood,1.0,287 S Indiana Ave,FL,26.9573955,-82.3525042,2020-01-01,Unknown,11.8,,2509.0,2351.0,6.3,"https://www.google.com/maps/dir/27.0513381,-82.407791/26.9573955,-82.3525042/27.0473965,-82.2646911/27.0888194,-82.4438975","https://earth.google.com/web/@27.036237,-82.367221,0a,32189d,35y,0h,0t,0r"
+31.0,neighbor,North Port Car Wash,northport_000093,1.0,14164 Tamiami Trail,FL,27.0473965,-82.2646911,2020-01-01,Unknown,14.2,,3274.0,2566.0,21.6,"https://www.google.com/maps/dir/27.0513381,-82.407791/26.9573955,-82.3525042/27.0473965,-82.2646911/27.0888194,-82.4438975","https://earth.google.com/web/@27.036237,-82.367221,0a,32189d,35y,0h,0t,0r"
+31.0,neighbor,Venice Car Wash,venicecarwash,1.0,700 S Tamiami Trail,FL,27.0888194,-82.4438975,2020-01-01,Hand Wash / Detail,5.5,,1803.0,1237.0,31.4,"https://www.google.com/maps/dir/27.0513381,-82.407791/26.9573955,-82.3525042/27.0473965,-82.2646911/27.0888194,-82.4438975","https://earth.google.com/web/@27.036237,-82.367221,0a,32189d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+32.0,entrant,Smitty's Car Wash,smittyscw_000489,4.0,13776 US Hwy 69 N,TX,32.5160483,-95.4097292,2023-02-01,Express Tunnel,0.0,4606.0,,,,"https://www.google.com/maps/dir/32.5160483,-95.4097292/32.488615,-95.398186","https://earth.google.com/web/@32.502332,-95.403958,0a,6355d,35y,0h,0t,0r"
+32.0,neighbor,Precision Express Car Wash,precisionexpress_000019,1.0,2106 S Main St,TX,32.488615,-95.398186,2020-01-01,Express Tunnel,3.2,,6377.0,5119.0,19.7,"https://www.google.com/maps/dir/32.5160483,-95.4097292/32.488615,-95.398186","https://earth.google.com/web/@32.502332,-95.403958,0a,6355d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+33.0,entrant,BlueWave,bluewave_000567,24.0,10718 International Blvd,TX,27.6111894,-99.4666582,2023-08-01,Express Tunnel,0.0,14564.0,,,,"https://www.google.com/maps/dir/27.6111894,-99.4666582/27.613834,-99.467364","https://earth.google.com/web/@27.612512,-99.467011,0a,2400d,35y,0h,0t,0r"
+33.0,neighbor,Monkey Shine,5025495monkey,1.0,2518 Bob Bullock Loop,TX,27.613834,-99.467364,2020-01-01,Touchless,0.3,,6687.0,5405.0,19.2,"https://www.google.com/maps/dir/27.6111894,-99.4666582/27.613834,-99.467364","https://earth.google.com/web/@27.612512,-99.467011,0a,2400d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+34.0,entrant,Wash N Roll,washnroll_000485,1.0,5307 Cane Ridge Rd,TN,36.043861,-86.662127,2022-08-01,Express Tunnel,0.0,5846.0,,,,"https://www.google.com/maps/dir/36.043861,-86.662127/36.1196537,-86.7745102/35.961495,-86.672336","https://earth.google.com/web/@36.041670,-86.702991,0a,33880d,35y,0h,0t,0r"
+34.0,neighbor,Champion CW,championcarwash_000085,6.0,2640 8th Ave S,TN,36.1196537,-86.7745102,2020-01-01,Express Tunnel,13.2,,10498.0,5500.0,47.6,"https://www.google.com/maps/dir/36.043861,-86.662127/36.1196537,-86.7745102/35.961495,-86.672336","https://earth.google.com/web/@36.041670,-86.702991,0a,33880d,35y,0h,0t,0r"
+34.0,neighbor,Wash 37135,wash37135_000143,1.0,912 Oldham Dr,TN,35.961495,-86.672336,2020-01-01,Express Tunnel,9.2,,10639.0,11622.0,-9.2,"https://www.google.com/maps/dir/36.043861,-86.662127/36.1196537,-86.7745102/35.961495,-86.672336","https://earth.google.com/web/@36.041670,-86.702991,0a,33880d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+35.0,entrant,Valley View Express Wash,valleyviewew_000195,2.0,2335 E Market St,VA,38.4210925,-78.8383377,2021-12-01,Express Tunnel,0.0,8320.0,,,,"https://www.google.com/maps/dir/38.4210925,-78.8383377/38.4050444,-78.8677808","https://earth.google.com/web/@38.413068,-78.853059,0a,6187d,35y,0h,0t,0r"
+35.0,neighbor,Valley View Express Wash,valleyviewew_000195,1.0,2200 Rock Port Dr,VA,38.4050444,-78.8677808,2020-01-01,Express Tunnel,3.1,,14892.0,12069.0,19.0,"https://www.google.com/maps/dir/38.4210925,-78.8383377/38.4050444,-78.8677808","https://earth.google.com/web/@38.413068,-78.853059,0a,6187d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+36.0,entrant,BlueWave,bluewave_000567,9.0,710 S Main St,TX,30.2424926,-94.1967773,2023-06-01,Express Tunnel,0.0,6812.0,,,,"https://www.google.com/maps/dir/30.2424926,-94.1967773/30.114223,-94.1700739/30.2491693,-94.1981079","https://earth.google.com/web/@30.201962,-94.188320,0a,31237d,35y,0h,0t,0r"
+36.0,neighbor,Blue Crew Car Wash,bluecrewcw_000222,1.0,6045 Folsom Dr,TX,30.114223,-94.1700739,2020-03-01,Express Tunnel,14.5,,14562.0,9062.0,37.8,"https://www.google.com/maps/dir/30.2424926,-94.1967773/30.114223,-94.1700739/30.2491693,-94.1981079","https://earth.google.com/web/@30.201962,-94.188320,0a,31237d,35y,0h,0t,0r"
+36.0,neighbor,Blu's Flex Serve Car Wash,blusflexservecw_000214,1.0,420 S Main St,TX,30.2491693,-94.1981079,2020-02-01,Flex,0.8,,6225.0,6244.0,-0.3,"https://www.google.com/maps/dir/30.2424926,-94.1967773/30.114223,-94.1700739/30.2491693,-94.1981079","https://earth.google.com/web/@30.201962,-94.188320,0a,31237d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+37.0,entrant,BlueWave,bluewave_000567,10.0,3820 College St,TX,30.068785,-94.132751,2023-06-01,Express Tunnel,0.0,7821.0,,,,"https://www.google.com/maps/dir/30.068785,-94.132751/30.114223,-94.1700739/30.076585,-94.170757","https://earth.google.com/web/@30.086531,-94.157861,0a,11387d,35y,0h,0t,0r"
+37.0,neighbor,Blue Crew Car Wash,bluecrewcw_000222,1.0,6045 Folsom Dr,TX,30.114223,-94.1700739,2020-03-01,Express Tunnel,6.2,,14562.0,9062.0,37.8,"https://www.google.com/maps/dir/30.068785,-94.132751/30.114223,-94.1700739/30.076585,-94.170757","https://earth.google.com/web/@30.086531,-94.157861,0a,11387d,35y,0h,0t,0r"
+37.0,neighbor,Valvoline Express Care,johnsontexacoexpress_000141,1.0,6455 Prutzman Rd,TX,30.076585,-94.170757,2020-01-01,Full Service,3.8,,760.0,766.0,-0.8,"https://www.google.com/maps/dir/30.068785,-94.132751/30.114223,-94.1700739/30.076585,-94.170757","https://earth.google.com/web/@30.086531,-94.157861,0a,11387d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+38.0,entrant,Bubble Brothers FL,bubblebrothersfl_000730,1.0,916 S Kirkman Rd,FL,28.529129,-81.460352,2025-02-01,Express Tunnel,0.0,4534.0,,,,"https://www.google.com/maps/dir/28.529129,-81.460352/28.468623,-81.395878/28.452047,-81.3345029/28.550065,-81.601286","https://earth.google.com/web/@28.499966,-81.448005,0a,49433d,35y,0h,0t,0r"
+38.0,neighbor,Big Dan's,bigdans_000378,15.0,6107 S Orange Blossom Trl,FL,28.468623,-81.395878,2023-11-01,Express Tunnel,9.2,,11670.0,13434.0,-15.1,"https://www.google.com/maps/dir/28.529129,-81.460352/28.468623,-81.395878/28.452047,-81.3345029/28.550065,-81.601286","https://earth.google.com/web/@28.499966,-81.448005,0a,49433d,35y,0h,0t,0r"
+38.0,neighbor,Links Car Wash,linkscw_000673,1.0,3893 McCoy Rd,FL,28.452047,-81.3345029,2024-08-01,Express Tunnel,15.0,,9891.0,11108.0,-12.3,"https://www.google.com/maps/dir/28.529129,-81.460352/28.468623,-81.395878/28.452047,-81.3345029/28.550065,-81.601286","https://earth.google.com/web/@28.499966,-81.448005,0a,49433d,35y,0h,0t,0r"
+38.0,neighbor,Zips Express Car Wash,zips_000468,12.0,14580 W Colonial Dr,FL,28.550065,-81.601286,2022-09-01,Express Tunnel,14.0,,18548.0,3340.0,82.0,"https://www.google.com/maps/dir/28.529129,-81.460352/28.468623,-81.395878/28.452047,-81.3345029/28.550065,-81.601286","https://earth.google.com/web/@28.499966,-81.448005,0a,49433d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+39.0,entrant,Century Car Wash,centurycarwash_000236,9.0,6661 E Shelby Dr,TN,35.01991,-89.840712,2024-05-01,Express Tunnel,0.0,4697.0,,,,"https://www.google.com/maps/dir/35.01991,-89.840712/35.0491648,-89.8282628","https://earth.google.com/web/@35.034537,-89.834487,0a,6667d,35y,0h,0t,0r"
+39.0,neighbor,Century Car Wash,centurycarwash_000236,5.0,7050 Winchester Rd,TN,35.0491648,-89.8282628,2022-01-01,Express Tunnel,3.4,,12871.0,10562.0,17.9,"https://www.google.com/maps/dir/35.01991,-89.840712/35.0491648,-89.8282628","https://earth.google.com/web/@35.034537,-89.834487,0a,6667d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+40.0,entrant,Champion Xpress CW,championxpresscw_000216,52.0,1819 N Henderson St,IL,40.9700414,-90.3823484,2024-05-01,Express Tunnel,0.0,5456.0,,,,"https://www.google.com/maps/dir/40.9700414,-90.3823484/40.9765307,-90.3654912","https://earth.google.com/web/@40.973286,-90.373920,0a,3882d,35y,0h,0t,0r"
+40.0,neighbor,Champion Xpress CW,championxpresscw_000216,25.0,334 E Carl Sandburg Dr,IL,40.9765307,-90.3654912,2022-08-01,Express Tunnel,1.6,,10460.0,8596.0,17.8,"https://www.google.com/maps/dir/40.9700414,-90.3823484/40.9765307,-90.3654912","https://earth.google.com/web/@40.973286,-90.373920,0a,3882d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+41.0,entrant,Cadillac Express Carwash,cadillacexpresscw_000080,7.0,9520 Cullen Blvd,TX,29.653275,-95.355952,2023-09-01,Express Tunnel,0.0,6250.0,,,,"https://www.google.com/maps/dir/29.653275,-95.355952/29.669329,-95.354293/29.6270427,-95.2356065/29.639348,-95.464116","https://earth.google.com/web/@29.647249,-95.352492,0a,36053d,35y,0h,0t,0r"
+41.0,neighbor,R&R Superior Bellfort Carwash,162721superior,1.0,4825 Bellfort St,TX,29.669329,-95.354293,2020-01-01,Unknown,1.8,,1958.0,1467.0,25.0,"https://www.google.com/maps/dir/29.653275,-95.355952/29.669329,-95.354293/29.6270427,-95.2356065/29.639348,-95.464116","https://earth.google.com/web/@29.647249,-95.352492,0a,36053d,35y,0h,0t,0r"
+41.0,neighbor,Superior Almeda Car Wash,46303superior,1.0,10126 Almeda Genoa Rd,TX,29.6270427,-95.2356065,2020-01-01,Unknown,12.0,,2988.0,2738.0,8.4,"https://www.google.com/maps/dir/29.653275,-95.355952/29.669329,-95.354293/29.6270427,-95.2356065/29.639348,-95.464116","https://earth.google.com/web/@29.647249,-95.352492,0a,36053d,35y,0h,0t,0r"
+41.0,neighbor,Cadillac Express Carwash,cadillacexpresscw_000080,5.0,12940 S Post Oak Rd,TX,29.639348,-95.464116,2021-04-01,Express Tunnel,10.6,,16494.0,13505.0,18.1,"https://www.google.com/maps/dir/29.653275,-95.355952/29.669329,-95.354293/29.6270427,-95.2356065/29.639348,-95.464116","https://earth.google.com/web/@29.647249,-95.352492,0a,36053d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+42.0,entrant,Road Runner Express,midtowncw_000328,3.0,101 Market Center Way,VA,37.417232,-79.911144,2023-09-01,Express Tunnel,0.0,5386.0,,,,"https://www.google.com/maps/dir/37.417232,-79.911144/37.2984337,-79.9390081","https://earth.google.com/web/@37.357833,-79.925076,0a,21656d,35y,0h,0t,0r"
+42.0,neighbor,TLC Car Wash,3dollarcarwash_000146,1.0,2925 Williamson Rd,VA,37.2984337,-79.9390081,2020-01-01,Express Tunnel,13.4,,1687.0,1398.0,17.2,"https://www.google.com/maps/dir/37.417232,-79.911144/37.2984337,-79.9390081","https://earth.google.com/web/@37.357833,-79.925076,0a,21656d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+43.0,entrant,Hall of Fame,halloffamecw_000586,1.0,3721 Gateway Blvd,NC,34.213589,-78.019791,2023-11-01,Express Tunnel,0.0,6154.0,,,,"https://www.google.com/maps/dir/34.213589,-78.019791/34.21931,-78.016423","https://earth.google.com/web/@34.216449,-78.018107,0a,2561d,35y,0h,0t,0r"
+43.0,neighbor,Magnolia,magnolia_000414,17.0,2040 Olde Regent Way,NC,34.21931,-78.016423,2022-09-01,Express Tunnel,0.7,,13652.0,11351.0,16.9,"https://www.google.com/maps/dir/34.213589,-78.019791/34.21931,-78.016423","https://earth.google.com/web/@34.216449,-78.018107,0a,2561d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+44.0,entrant,Wash Wizard,washwizard_000252,4.0,999 Bacons Bridge Rd,SC,32.995008,-80.186328,2025-02-01,Express Tunnel,0.0,4684.0,,,,"https://www.google.com/maps/dir/32.995008,-80.186328/33.0466,-80.110187/32.973443,-80.140086","https://earth.google.com/web/@33.005017,-80.145534,0a,18533d,35y,0h,0t,0r"
+44.0,neighbor,Wash Wizard,washwizard_000252,1.0,2146 N Main St,SC,33.0466,-80.110187,2020-09-01,Express Tunnel,9.1,,10895.0,9900.0,9.1,"https://www.google.com/maps/dir/32.995008,-80.186328/33.0466,-80.110187/32.973443,-80.140086","https://earth.google.com/web/@33.005017,-80.145534,0a,18533d,35y,0h,0t,0r"
+44.0,neighbor,Wash Wizard,washwizard_000252,3.0,3910 Ladson Rd,SC,32.973443,-80.140086,2022-12-01,Express Tunnel,4.9,,9457.0,7188.0,24.0,"https://www.google.com/maps/dir/32.995008,-80.186328/33.0466,-80.110187/32.973443,-80.140086","https://earth.google.com/web/@33.005017,-80.145534,0a,18533d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+45.0,entrant,Mr Clean Car Wash,mrcleancw_000329,14.0,890 Blanding Blvd,FL,30.1420232,-81.7681602,2023-05-01,Express Tunnel,0.0,4932.0,,,,"https://www.google.com/maps/dir/30.1420232,-81.7681602/30.1781864,-81.7020632/30.248689,-81.758822","https://earth.google.com/web/@30.189633,-81.743015,0a,21720d,35y,0h,0t,0r"
+45.0,neighbor,Magnolia,magnolia_000414,20.0,950 Park Ave,FL,30.1781864,-81.7020632,2022-09-01,Unknown,7.5,,4555.0,3652.0,19.8,"https://www.google.com/maps/dir/30.1420232,-81.7681602/30.1781864,-81.7020632/30.248689,-81.758822","https://earth.google.com/web/@30.189633,-81.743015,0a,21720d,35y,0h,0t,0r"
+45.0,neighbor,Magnolia,magnolia_000414,21.0,6929 103rd St,FL,30.248689,-81.758822,2022-09-01,Express Tunnel,11.9,,7341.0,6398.0,12.9,"https://www.google.com/maps/dir/30.1420232,-81.7681602/30.1781864,-81.7020632/30.248689,-81.758822","https://earth.google.com/web/@30.189633,-81.743015,0a,21720d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+46.0,entrant,Luv Car Wash,luvcarwash_000457,15.0,9826 San Jose Blvd,FL,30.199675,-81.620606,2022-08-01,Express Tunnel,0.0,5262.0,,,,"https://www.google.com/maps/dir/30.199675,-81.620606/30.253554,-81.537669/30.10281,-81.704756","https://earth.google.com/web/@30.185346,-81.621010,0a,38128d,35y,0h,0t,0r"
+46.0,neighbor,Scrubbles Express Wash,scrubbles_000069,1.0,5064 Weebers Crossing Dr,FL,30.253554,-81.537669,2020-01-01,Express Tunnel,10.0,,10094.0,8420.0,16.6,"https://www.google.com/maps/dir/30.199675,-81.620606/30.253554,-81.537669/30.10281,-81.704756","https://earth.google.com/web/@30.185346,-81.621010,0a,38128d,35y,0h,0t,0r"
+46.0,neighbor,Scrubbles Express Wash,scrubbles_000069,2.0,1725 Eagle Harbor Pkwy,FL,30.10281,-81.704756,2020-01-01,Express Tunnel,13.5,,8889.0,7570.0,14.8,"https://www.google.com/maps/dir/30.199675,-81.620606/30.253554,-81.537669/30.10281,-81.704756","https://earth.google.com/web/@30.185346,-81.621010,0a,38128d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+47.0,entrant,Sud Stop,sudstop_000639,4.0,1617 John B White Sr Blvd,SC,34.922906,-81.978752,2024-09-01,Express Tunnel,0.0,6193.0,,,,"https://www.google.com/maps/dir/34.922906,-81.978752/34.8324228,-81.993065","https://earth.google.com/web/@34.877664,-81.985908,0a,16718d,35y,0h,0t,0r"
+47.0,neighbor,Don's Express Carwash,donsexpress,1.0,200 Waldon Rd,KY,34.8324228,-81.993065,2020-01-01,Touchless,10.1,,2643.0,2251.0,14.8,"https://www.google.com/maps/dir/34.922906,-81.978752/34.8324228,-81.993065","https://earth.google.com/web/@34.877664,-81.985908,0a,16718d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+48.0,entrant,Four Seasons,fourseasons_000739,2.0,1030 Mars Hill Rd,GA,33.8739062,-83.4427884,2025-03-01,Express Tunnel,0.0,7496.0,,,,"https://www.google.com/maps/dir/33.8739062,-83.4427884/33.94529,-83.439461/33.930623,-83.307606","https://earth.google.com/web/@33.916606,-83.396618,0a,26578d,35y,0h,0t,0r"
+48.0,neighbor,Bulldog Car Wash,bulldogcarwash_000246,1.0,2920 Atlanta Hwy,GA,33.94529,-83.439461,2020-08-01,Flex,7.9,,2063.0,1793.0,13.1,"https://www.google.com/maps/dir/33.8739062,-83.4427884/33.94529,-83.439461/33.930623,-83.307606","https://earth.google.com/web/@33.916606,-83.396618,0a,26578d,35y,0h,0t,0r"
+48.0,neighbor,Koala Car Wash,koalacarwash_000094,1.0,1560 Lexington Rd,GA,33.930623,-83.307606,2020-01-01,Express Tunnel,14.0,,4855.0,4096.0,15.6,"https://www.google.com/maps/dir/33.8739062,-83.4427884/33.94529,-83.439461/33.930623,-83.307606","https://earth.google.com/web/@33.916606,-83.396618,0a,26578d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+49.0,entrant,Woodies,woodys_000289,11.0,111 N Tamiami Trail,FL,27.1246129,-82.453425,2022-12-01,Express Tunnel,0.0,3163.0,,,,"https://www.google.com/maps/dir/27.1246129,-82.453425/27.2288441,-82.4938241/27.0888194,-82.4438975","https://earth.google.com/web/@27.147425,-82.463716,0a,30091d,35y,0h,0t,0r"
+49.0,neighbor,Blu Palm Express,blupalmexpress_000293,1.0,8403 S Tamiami Trail,FL,27.2288441,-82.4938241,2020-11-01,Express Tunnel,12.3,,5831.0,6101.0,-4.6,"https://www.google.com/maps/dir/27.1246129,-82.453425/27.2288441,-82.4938241/27.0888194,-82.4438975","https://earth.google.com/web/@27.147425,-82.463716,0a,30091d,35y,0h,0t,0r"
+49.0,neighbor,Venice Car Wash,venicecarwash,1.0,700 S Tamiami Trail,FL,27.0888194,-82.4438975,2020-01-01,Hand Wash / Detail,4.1,,1826.0,1216.0,33.4,"https://www.google.com/maps/dir/27.1246129,-82.453425/27.2288441,-82.4938241/27.0888194,-82.4438975","https://earth.google.com/web/@27.147425,-82.463716,0a,30091d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+50.0,entrant,Sammy's Express Car Wash,sammysexpresscw_000254,3.0,801 Rte 70 W,NJ,39.89671,-74.941433,2022-06-01,Express Tunnel,0.0,4010.0,,,,"https://www.google.com/maps/dir/39.89671,-74.941433/39.942724,-74.990216/39.933847,-75.0672078","https://earth.google.com/web/@39.924427,-74.999619,0a,19072d,35y,0h,0t,0r"
+50.0,neighbor,Sammy's Express Car Wash,sammysexpresscw_000254,1.0,491 Route 38 W,NJ,39.942724,-74.990216,2020-06-01,Express Tunnel,6.6,,15964.0,13695.0,14.2,"https://www.google.com/maps/dir/39.89671,-74.941433/39.942724,-74.990216/39.933847,-75.0672078","https://earth.google.com/web/@39.924427,-74.999619,0a,19072d,35y,0h,0t,0r"
+50.0,neighbor,Mach 1 Express Wash,zippycarwash_000145,5.0,5201 NJ-70,NJ,39.933847,-75.0672078,2020-07-01,Express Tunnel,11.5,,7551.0,6494.0,14.0,"https://www.google.com/maps/dir/39.89671,-74.941433/39.942724,-74.990216/39.933847,-75.0672078","https://earth.google.com/web/@39.924427,-74.999619,0a,19072d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+51.0,entrant,Vibe Car Wash,vibecw_000482,1.0,801 Spring Creek Pkwy,TX,33.0570132,-96.7086449,2023-02-01,Express Tunnel,0.0,5991.0,,,,"https://www.google.com/maps/dir/33.0570132,-96.7086449/32.997453,-96.848735","https://earth.google.com/web/@33.027233,-96.778690,0a,23468d,35y,0h,0t,0r"
+51.0,neighbor,Mint Carwash,mintcondition_000103,1.0,3751 Frankford Rd,TX,32.997453,-96.848735,2020-01-01,Express Tunnel,14.6,,8417.0,7244.0,13.9,"https://www.google.com/maps/dir/33.0570132,-96.7086449/32.997453,-96.848735","https://earth.google.com/web/@33.027233,-96.778690,0a,23468d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+52.0,entrant,Big Peach Car Wash,bigpeachcw_000300,10.0,1710 Zebulon Rd,GA,33.1941083,-84.2833177,2024-03-01,Express Tunnel,0.0,7038.0,,,,"https://www.google.com/maps/dir/33.1941083,-84.2833177/33.273799,-84.291788","https://earth.google.com/web/@33.233954,-84.287553,0a,14844d,35y,0h,0t,0r"
+52.0,neighbor,Blue Penguin Car Wash,bluepenguincw_000433,2.0,1475 N Expy,GA,33.273799,-84.291788,2022-03-01,Flex,8.9,,9318.0,8039.0,13.7,"https://www.google.com/maps/dir/33.1941083,-84.2833177/33.273799,-84.291788","https://earth.google.com/web/@33.233954,-84.287553,0a,14844d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+53.0,entrant,Champion Xpress CW,championxpresscw_000216,40.0,2830 Patterson Rd,CO,39.092194,-108.527841,2024-04-01,Express Tunnel,0.0,3947.0,,,,"https://www.google.com/maps/dir/39.092194,-108.527841/39.084002,-108.471501","https://earth.google.com/web/@39.088098,-108.499671,0a,8920d,35y,0h,0t,0r"
+53.0,neighbor,Champion Xpress CW,championxpresscw_000216,29.0,540 Warrior Way,CO,39.084002,-108.471501,2022-12-01,Express Tunnel,4.9,,4924.0,4256.0,13.6,"https://www.google.com/maps/dir/39.092194,-108.527841/39.084002,-108.471501","https://earth.google.com/web/@39.088098,-108.499671,0a,8920d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+54.0,entrant,Dirty Dog's Car Wash,dirtydogs_000082,13.0,1175 S Broad St,FL,28.54216,-82.401021,2023-12-01,Express Tunnel,0.0,4936.0,,,,"https://www.google.com/maps/dir/28.54216,-82.401021/28.530828,-82.511058","https://earth.google.com/web/@28.536494,-82.456040,0a,17734d,35y,0h,0t,0r"
+54.0,neighbor,Radiant Express Car Wash,radiantcw_000133,5.0,7104 Mariner Blvd,FL,28.530828,-82.511058,2022-04-01,Express Tunnel,10.8,,8450.0,7316.0,13.4,"https://www.google.com/maps/dir/28.54216,-82.401021/28.530828,-82.511058","https://earth.google.com/web/@28.536494,-82.456040,0a,17734d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+55.0,entrant,Riptide,riptideneuse_000337,7.0,3335 Victory Blvd,VA,36.799698,-76.352119,2023-02-01,Express Tunnel,0.0,4160.0,,,,"https://www.google.com/maps/dir/36.799698,-76.352119/36.7725254,-76.252004","https://earth.google.com/web/@36.786112,-76.302062,0a,15621d,35y,0h,0t,0r"
+55.0,neighbor,Carl's Wash,carlswash_000218,1.0,1538 Sam's Cir,VA,36.7725254,-76.252004,2020-01-01,Express Tunnel,9.4,,5290.0,4614.0,12.8,"https://www.google.com/maps/dir/36.799698,-76.352119/36.7725254,-76.252004","https://earth.google.com/web/@36.786112,-76.302062,0a,15621d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+56.0,entrant,Rapids Express,rapidsexp_000743,2.0,2045 N Tustin St,CA,33.82171,-117.83542,2025-03-01,Express Tunnel,0.0,31061.0,,,,"https://www.google.com/maps/dir/33.82171,-117.83542/33.7506512,-117.9550813/33.8393559,-117.9755835/33.8780527,-117.9239973","https://earth.google.com/web/@33.822442,-117.922521,0a,27093d,35y,0h,0t,0r"
+56.0,neighbor,Brookhurst Express Car Wash,brookhurstexpresscw_000235,1.0,14571 Brookhurst St,CA,33.7506512,-117.9550813,2020-07-01,Express Tunnel,13.6,,9161.0,7545.0,17.6,"https://www.google.com/maps/dir/33.82171,-117.83542/33.7506512,-117.9550813/33.8393559,-117.9755835/33.8780527,-117.9239973","https://earth.google.com/web/@33.822442,-117.922521,0a,27093d,35y,0h,0t,0r"
+56.0,neighbor,Drive Thru Express,drivethruexp_000568,1.0,590 N Magnolia Ave,CA,33.8393559,-117.9755835,2023-07-01,Express Tunnel,13.1,,9378.0,7816.0,16.7,"https://www.google.com/maps/dir/33.82171,-117.83542/33.7506512,-117.9550813/33.8393559,-117.9755835/33.8780527,-117.9239973","https://earth.google.com/web/@33.822442,-117.922521,0a,27093d,35y,0h,0t,0r"
+56.0,neighbor,Fullerton  Car Wash,fullertoncw_000623,1.0,800 N Harbor Blvd,CA,33.8780527,-117.9239973,2023-12-01,Flex,10.3,,5775.0,5556.0,3.8,"https://www.google.com/maps/dir/33.82171,-117.83542/33.7506512,-117.9550813/33.8393559,-117.9755835/33.8780527,-117.9239973","https://earth.google.com/web/@33.822442,-117.922521,0a,27093d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+57.0,entrant,Sparky's Car Wash,sparkyscw_000470,1.0,451 E University Blvd,TX,32.6704552,-96.813758,2022-11-01,Express Tunnel,0.0,3362.0,,,,"https://www.google.com/maps/dir/32.6704552,-96.813758/32.590479,-96.927912/32.705339,-96.839619","https://earth.google.com/web/@32.655424,-96.860430,0a,30289d,35y,0h,0t,0r"
+57.0,neighbor,Snap Clean,snapclean,2.0,619 E Belt Line Rd,TX,32.590479,-96.927912,2020-01-01,Express Tunnel,13.9,,12669.0,11174.0,11.8,"https://www.google.com/maps/dir/32.6704552,-96.813758/32.590479,-96.927912/32.705339,-96.839619","https://earth.google.com/web/@32.655424,-96.860430,0a,30289d,35y,0h,0t,0r"
+57.0,neighbor,Snap Clean,snapclean,3.0,1060 W Kiest Blvd,TX,32.705339,-96.839619,2020-12-01,Express Tunnel,4.6,,13763.0,11881.0,13.7,"https://www.google.com/maps/dir/32.6704552,-96.813758/32.590479,-96.927912/32.705339,-96.839619","https://earth.google.com/web/@32.655424,-96.860430,0a,30289d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+58.0,entrant,Century Car Wash,centurycarwash_000236,8.0,2660 McIngvale Rd,MS,34.820948,-89.971472,2023-09-01,Express Tunnel,0.0,7024.0,,,,"https://www.google.com/maps/dir/34.820948,-89.971472/34.9330506,-90.0093086","https://earth.google.com/web/@34.876999,-89.990390,0a,20901d,35y,0h,0t,0r"
+58.0,neighbor,Century Car Wash,centurycarwash_000236,2.0,1101 Church Rd W,MS,34.9330506,-90.0093086,2020-09-01,Express Tunnel,12.9,,11216.0,9822.0,12.4,"https://www.google.com/maps/dir/34.820948,-89.971472/34.9330506,-90.0093086","https://earth.google.com/web/@34.876999,-89.990390,0a,20901d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+59.0,entrant,Galaxy Car Wash,galaxycw_000689,1.0,925 Lockwood Blvd,FL,28.6581873,-81.1785821,2025-02-01,Express Tunnel,0.0,6480.0,,,,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+59.0,neighbor,Caliber Car Wash,caliberocala_000153,13.0,6750 Aloma Ave,FL,28.606138,-81.298764,2021-05-01,Express Tunnel,13.1,,15600.0,12557.0,19.5,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+59.0,neighbor,Floris Car Wash,floriscarwash_000233,3.0,1754 N Econlockhatchee Trail,FL,28.567093,-81.253742,2024-01-01,Express Tunnel,12.5,,6896.0,7567.0,-9.7,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+59.0,neighbor,Wash City,washcity_000125,1.0,11674 University Blvd,FL,28.59694,-81.217049,2020-01-01,Express Tunnel,7.8,,12837.0,11886.0,7.4,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+59.0,neighbor,Wash City,washcity_000125,11.0,2699 Cassel Creek Blvd,FL,28.64087,-81.323187,2022-12-01,Express Tunnel,14.2,,10862.0,10508.0,3.3,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+59.0,neighbor,Wash City,washcity_000125,12.0,7651 University Blvd,FL,28.597897,-81.283844,2024-04-01,Express Tunnel,12.3,,5015.0,6619.0,-32.0,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+59.0,neighbor,Zips Express Car Wash,zips_000468,7.0,2971 Alafaya Trail,FL,28.628755,-81.20727,2022-08-01,Express Tunnel,4.3,,8992.0,1347.0,85.0,"https://www.google.com/maps/dir/28.6581873,-81.1785821/28.606138,-81.298764/28.567093,-81.253742/28.59694,-81.217049/28.64087,-81.323187/28.597897,-81.283844/28.628755,-81.20727","https://earth.google.com/web/@28.613697,-81.251777,0a,27567d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+60.0,entrant,Caliber Car Wash,caliberocala_000153,28.0,5570 Windward Pkwy,GA,34.0877012,-84.2650764,2024-09-01,Express Tunnel,0.0,4633.0,,,,"https://www.google.com/maps/dir/34.0877012,-84.2650764/34.0854544,-84.1606903/34.166594,-84.177567/33.989541,-84.2762578","https://earth.google.com/web/@34.082323,-84.219898,0a,36150d,35y,0h,0t,0r"
+60.0,neighbor,Aloha Car Wash,183765aloha,1.0,5360 Laurel Springs Pkwy,GA,34.0854544,-84.1606903,2020-01-01,Unknown,9.6,,3455.0,2963.0,14.2,"https://www.google.com/maps/dir/34.0877012,-84.2650764/34.0854544,-84.1606903/34.166594,-84.177567/33.989541,-84.2762578","https://earth.google.com/web/@34.082323,-84.219898,0a,36150d,35y,0h,0t,0r"
+60.0,neighbor,Aqua Bubble Car Wash,aquablue_000062,1.0,5860 Bethelview Rd,GA,34.166594,-84.177567,2020-01-01,Express Tunnel,11.9,,7685.0,6552.0,14.7,"https://www.google.com/maps/dir/34.0877012,-84.2650764/34.0854544,-84.1606903/34.166594,-84.177567/33.989541,-84.2762578","https://earth.google.com/web/@34.082323,-84.219898,0a,36150d,35y,0h,0t,0r"
+60.0,neighbor,Mr Clean Car Wash,mrcleancw_000329,16.0,2904 Holcomb Bridge Rd,GA,33.989541,-84.2762578,2023-07-01,Flex,11.0,,7115.0,6666.0,6.3,"https://www.google.com/maps/dir/34.0877012,-84.2650764/34.0854544,-84.1606903/34.166594,-84.177567/33.989541,-84.2762578","https://earth.google.com/web/@34.082323,-84.219898,0a,36150d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+61.0,entrant,Luv Car Wash,luvcarwash_000457,11.0,862 N Broadway,CA,33.131789,-117.084964,2022-12-01,Express Tunnel,0.0,4746.0,,,,"https://www.google.com/maps/dir/33.131789,-117.084964/33.0181571,-117.0751321","https://earth.google.com/web/@33.074973,-117.080048,0a,20502d,35y,0h,0t,0r"
+61.0,neighbor,San Diego Car Care Costa Verde,sandiegocarcare_000024,3.0,16757 Bernardo Center Dr,CA,33.0181571,-117.0751321,2020-01-01,Flex,12.7,,1423.0,1255.0,11.8,"https://www.google.com/maps/dir/33.131789,-117.084964/33.0181571,-117.0751321","https://earth.google.com/web/@33.074973,-117.080048,0a,20502d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+62.0,entrant,BlueWave,bluewave_000567,42.0,"6622 Reading Rd,",TX,29.5430962,-95.7582916,2023-12-01,Express Tunnel,0.0,18903.0,,,,"https://www.google.com/maps/dir/29.5430962,-95.7582916/29.6500386,-95.6794292","https://earth.google.com/web/@29.596567,-95.718860,0a,22690d,35y,0h,0t,0r"
+62.0,neighbor,Cool River Express Car Wash,coolriverexpresscw_000189,1.0,11287 FM 1464 Rd,TX,29.6500386,-95.6794292,2020-01-01,Express Tunnel,14.1,,8190.0,7243.0,11.6,"https://www.google.com/maps/dir/29.5430962,-95.7582916/29.6500386,-95.6794292","https://earth.google.com/web/@29.596567,-95.718860,0a,22690d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+63.0,entrant,Big Dan's,bigdans_000378,13.0,6310 14th St W,FL,27.429033,-82.576508,2023-03-01,Express Tunnel,0.0,15952.0,,,,"https://www.google.com/maps/dir/27.429033,-82.576508/27.4621466,-82.567598","https://earth.google.com/web/@27.445590,-82.572053,0a,7178d,35y,0h,0t,0r"
+63.0,neighbor,Car Wash On 5th,bluedolphincw_000185,1.0,505 Cortez Rd W,FL,27.4621466,-82.567598,2020-01-01,Full Service,3.8,,3228.0,2866.0,11.2,"https://www.google.com/maps/dir/27.429033,-82.576508/27.4621466,-82.567598","https://earth.google.com/web/@27.445590,-82.572053,0a,7178d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+64.0,entrant,Suds Deluxe,sudsdeluxe_000305,5.0,3327 Spencer Hwy,TX,29.665452,-95.193657,2022-03-01,Express Tunnel,0.0,6447.0,,,,"https://www.google.com/maps/dir/29.665452,-95.193657/29.6270427,-95.2356065","https://earth.google.com/web/@29.646247,-95.214632,0a,10333d,35y,0h,0t,0r"
+64.0,neighbor,Superior Almeda Car Wash,46303superior,1.0,10126 Almeda Genoa Rd,TX,29.6270427,-95.2356065,2020-01-01,Unknown,5.9,,3451.0,3073.0,11.0,"https://www.google.com/maps/dir/29.665452,-95.193657/29.6270427,-95.2356065","https://earth.google.com/web/@29.646247,-95.214632,0a,10333d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+65.0,entrant,Caliber Car Wash,caliberocala_000153,24.0,600 E Eau Gallie Blvd,FL,28.138893,-80.590606,2023-03-01,Express Tunnel,0.0,6594.0,,,,"https://www.google.com/maps/dir/28.138893,-80.590606/28.078848,-80.621854/28.187874,-80.6726589/28.1392348,-80.671077","https://earth.google.com/web/@28.136212,-80.639049,0a,21366d,35y,0h,0t,0r"
+65.0,neighbor,Dirty Dog's Car Wash,dirtydogs_000082,7.0,10 W New Haven Ave,FL,28.078848,-80.621854,2022-06-01,Express Tunnel,7.3,,5201.0,8372.0,-61.0,"https://www.google.com/maps/dir/28.138893,-80.590606/28.078848,-80.621854/28.187874,-80.6726589/28.1392348,-80.671077","https://earth.google.com/web/@28.136212,-80.639049,0a,21366d,35y,0h,0t,0r"
+65.0,neighbor,Magnolia,magnolia_000414,7.0,4860 N Wickham Rd,FL,28.187874,-80.6726589,2022-07-01,Express Tunnel,9.7,,9226.0,9723.0,-5.4,"https://www.google.com/maps/dir/28.138893,-80.590606/28.078848,-80.621854/28.187874,-80.6726589/28.1392348,-80.671077","https://earth.google.com/web/@28.136212,-80.639049,0a,21366d,35y,0h,0t,0r"
+65.0,neighbor,Pristine Car Wash,pristine_000034,1.0,1989 N Wickham Rd,FL,28.1392348,-80.671077,2020-01-01,Unknown,7.9,,1941.0,1749.0,9.9,"https://www.google.com/maps/dir/28.138893,-80.590606/28.078848,-80.621854/28.187874,-80.6726589/28.1392348,-80.671077","https://earth.google.com/web/@28.136212,-80.639049,0a,21366d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+66.0,entrant,Woodies,woodys_000289,19.0,6612 University Pkwy,FL,27.385202,-82.424886,2023-08-01,Express Tunnel,0.0,9406.0,,,,"https://www.google.com/maps/dir/27.385202,-82.424886/27.2700815,-82.4684296","https://earth.google.com/web/@27.327642,-82.446658,0a,21756d,35y,0h,0t,0r"
+66.0,neighbor,International Auto Spa,internationalautospa_000316,1.0,4975 Clark Rd,FL,27.2700815,-82.4684296,2021-05-01,Express Tunnel,13.5,,8756.0,7813.0,10.8,"https://www.google.com/maps/dir/27.385202,-82.424886/27.2700815,-82.4684296","https://earth.google.com/web/@27.327642,-82.446658,0a,21756d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+67.0,entrant,Suds Deluxe,sudsdeluxe_000305,10.0,2434 I 35 Frontage Rd,TX,29.8504544,-97.9609079,2024-07-01,Express Tunnel,0.0,8050.0,,,,"https://www.google.com/maps/dir/29.8504544,-97.9609079/29.863781,-97.960194","https://earth.google.com/web/@29.857118,-97.960551,0a,3725d,35y,0h,0t,0r"
+67.0,neighbor,Suds Deluxe,sudsdeluxe_000305,7.0,233 Wonder World Dr,TX,29.863781,-97.960194,2023-02-01,Express Tunnel,1.5,,13633.0,12178.0,10.7,"https://www.google.com/maps/dir/29.8504544,-97.9609079/29.863781,-97.960194","https://earth.google.com/web/@29.857118,-97.960551,0a,3725d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+68.0,entrant,Blu Sahara Car Wash,blusaharacw_000676,1.0,5950 W Sahara Ave,NV,36.144831,-115.223724,2024-11-01,Express Tunnel,0.0,6654.0,,,,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+68.0,neighbor,Luv Car Wash,luvcarwash_000457,10.0,5730 S Jones Blvd,NV,36.085123,-115.224395,2022-08-01,Express Tunnel,6.6,,6833.0,6690.0,2.1,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+68.0,neighbor,Luv Car Wash,luvcarwash_000457,3.0,4620 Blue Diamond Rd,NV,36.034755,-115.20456,2022-07-01,Express Tunnel,12.4,,15469.0,13852.0,10.5,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+68.0,neighbor,Luv Car Wash,luvcarwash_000457,4.0,7495 S Rainbow Blvd,NV,36.052427,-115.24378,2022-10-01,Express Tunnel,10.4,,15298.0,14267.0,6.7,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+68.0,neighbor,Luv Car Wash,luvcarwash_000457,5.0,421 N Nellis Blvd,NV,36.170872,-115.062805,2022-07-01,Express Tunnel,14.7,,13626.0,10547.0,22.6,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+68.0,neighbor,Luv Car Wash,luvcarwash_000457,7.0,3650 E Tropicana Ave,NV,36.1006336,-115.0955916,2022-06-01,Express Tunnel,12.5,,14480.0,13852.0,4.3,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+68.0,neighbor,UDrive,udrive_000121,1.0,6451 W Charleston Blvd,NV,36.1586658,-115.2361894,2020-01-01,Unknown,1.9,,6484.0,5539.0,14.6,"https://www.google.com/maps/dir/36.144831,-115.223724/36.085123,-115.224395/36.034755,-115.20456/36.052427,-115.24378/36.170872,-115.062805/36.1006336,-115.0955916/36.1586658,-115.2361894","https://earth.google.com/web/@36.106758,-115.184435,0a,40629d,35y,0h,0t,0r"
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,
+69.0,entrant,Zips Express Car Wash,zips_000468,18.0,23685 Walton Ave,TX,30.1530502,-95.2185982,2022-10-01,Express Tunnel,0.0,9826.0,,,,"https://www.google.com/maps/dir/30.1530502,-95.2185982/30.068153,-95.2278537/30.0387765,-95.2526797","https://earth.google.com/web/@30.086660,-95.233044,0a,24035d,35y,0h,0t,0r"
+69.0,neighbor,Superior Mermaid Carwash,172509mermaid,1.0,1750 NORTH PARK DRIVE,TX,30.068153,-95.2278537,2020-01-01,Unknown,9.5,,2146.0,1886.0,12.1,"https://www.google.com/maps/dir/30.1530502,-95.2185982/30.068153,-95.2278537/30.0387765,-95.2526797","https://earth.google.com/web/@30.086660,-95.233044,0a,24035d,35y,0h,0t,0r"
+69.0,neighbor,Superior Flagship,superiorflagshipcw_000173,1.0,22515 Loop 494,TX,30.0387765,-95.2526797,2020-01-01,Flex,13.1,,3667.0,3369.0,8.1,"https://www.google.com/maps/dir/30.1530502,-95.2185982/30.068153,-95.2278537/30.0387765,-95.2526797","https://earth.google.com/web/@30.086660,-95.233044,0a,24035d,35y,0h,0t,0r"
