@@ -31,6 +31,16 @@ class ExploreKpisRequest(_PinRequest):
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
 
 
+class InsightsRequest(_PinRequest):
+    """Tab 1 — AI Key Insights: the 2-node pipeline (compute_metrics -> generate_insights) over the local
+    market's KPI panels. Returns structured investor metrics + an LLM narrative per group (Washes/Revenue/ASPs)."""
+    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Local-market radius in km.")
+    min_months: int = Field(36, ge=1, le=72, description="Rich-history filter (>= this many monthly records).")
+    last_n_months: int = Field(12, ge=3, le=36, description="Trailing window for the 'recent' metrics (months).")
+    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = INSIGHTS_LLM_BACKEND env (default azure).")
+    demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order (no real names to the LLM).")
+
+
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────
 class PinpointForecastRequest(_PinRequest):
     """Tab 2 — drop-a-pin 5-year forecast (new site's trajectory + local market history/forecast)."""

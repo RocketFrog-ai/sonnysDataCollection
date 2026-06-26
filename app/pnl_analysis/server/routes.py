@@ -3,15 +3,19 @@ from __future__ import annotations
 import logging
 from typing import Tuple
 
+import numpy as np
 from fastapi import APIRouter, HTTPException
 
 from app.utils import common as calib
+from app.pnl_analysis.modelling import data as D
 from app.pnl_analysis.modelling import market
 from app.pnl_analysis.modelling import pnl as pnl_engine
 from app.pnl_analysis.modelling import campaign as campaign_engine
+from app.pnl_analysis.insights.graph import market_insights as _insights_pipeline
 from app.pnl_analysis.server.models import (
     ExploreMarketRequest,
     ExploreKpisRequest,
+    InsightsRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
     ExpensePlanRequest,
@@ -74,6 +78,31 @@ def explore_market_kpis(req: ExploreKpisRequest):
         lat=lat, lon=lon, radius_km=req.radius_km, smoothing=req.smoothing,
         min_months=req.min_months, demo=req.demo,
     )
+
+
+@router.post("/insights")
+def insights(req: InsightsRequest):
+    """Tab 1 — AI Key Insights: the 2-node pipeline (compute_metrics -> generate_insights) for the local
+    market. Builds the SAME market subset the KPI panels draw (ASP per the Streamlit definitions) and returns
+    {"metrics": ..., "insights": {"Washes","Revenue","ASPs"}}."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    df, site = D.load_panel()
+    site_rich = site[site.n_obs >= req.min_months]
+    nb = market._neighbourhood(site_rich, lat, lon, req.radius_km)
+    if nb.empty:
+        raise HTTPException(status_code=404, detail=f"No rich-history sites within {req.radius_km} km of this pin.")
+    focal = market._focal_key(nb)
+    panel = df[df.site_key.isin(nb.site_key.tolist())].copy()
+    # recompute ASP the SAME way the Streamlit chart does (membership ASP via mem_purchase_count)
+    panel["asp_ret"] = panel.ret_revenue / panel.ret_wash_count.replace(0, np.nan)
+    panel["asp_mem"] = panel.mem_revenue / panel.mem_purchase_count.replace(0, np.nan)
+    meta = nb[["site_key", "op_start", "dist_km", "is_entrant", "left_censored"]].copy()
+    if req.demo:
+        anon = {k: f"Site {i + 1}" for i, k in enumerate(nb.sort_values("op_start").site_key)}
+        meta["name"] = meta.site_key.map(anon)
+    else:
+        meta["name"] = meta.site_key.map(site.set_index("site_key").client_name.to_dict())
+    return _insights_pipeline(panel, meta, focal, backend=req.backend, last_n_months=req.last_n_months)
 
 
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────

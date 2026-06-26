@@ -441,7 +441,7 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
                  annual_mem_growth=0.0, annual_ret_change=0.0,
                  mem_growth_band=None, ret_change_band=None, horizon=H_DEFAULT, art=None,
                  local_anchor=True, anchor_radius_km=20.0, anchor_max_cov=0.7, anchor_keys=None,
-                 model_kind="lgb"):
+                 anchor_min_n=3, model_kind="lgb"):
     """Return DataFrame[month, total_med/lo/hi, mem, ret] — the new site's 5-yr monthly trajectory.
 
     mem_growth_band / ret_change_band = optional (lo, hi) post-maturity drift rates (e.g. the Theil-Sen slope CI).
@@ -476,8 +476,10 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
             anchor_level = float(np.median(vals))                        # MEDIAN: robust to one flagship skewing the mean
             mean_v = float(np.mean(vals))
             local_cov = float(np.std(vals) / mean_v) if mean_v > 0 else float("inf")
-            if local_cov <= anchor_max_cov:                              # GUARD: skip the proxy when matured sites
-                override = (anchor_level, float(n_local_mature))         # disagree wildly (backtest: it hurts there)
+            # need ENOUGH matured neighbours (≥anchor_min_n) AND agreement (CoV guard). With 1–2 sites the anchor
+            # is noisy (and CoV is trivially 0 for n=1), so fall back to the pure global model instead.
+            if n_local_mature >= anchor_min_n and local_cov <= anchor_max_cov:
+                override = (anchor_level, float(n_local_mature))
                 proxy_used = True
 
     X = _point_features(art, lat, lon, brand, brand_loo_override=override)

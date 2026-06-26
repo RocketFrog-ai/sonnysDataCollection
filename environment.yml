@@ -33,6 +33,7 @@ dependencies:
     - httpx==0.28.1
     - idna==3.11
     - jiter==0.13.0
+    - langgraph>=0.2          # Explore-markets Key-Insights pipeline (2-node graph); falls back to a sequential runner if absent
     - numpy==2.0.2
     - openai==2.16.0
     - opencv-python==4.13.0.90
