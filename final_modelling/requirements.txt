@@ -6,3 +6,4 @@ plotly
 folium
 streamlit
 streamlit-folium
+langgraph>=0.2

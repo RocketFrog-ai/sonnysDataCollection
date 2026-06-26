@@ -21,6 +21,32 @@ from streamlit_folium import st_folium
 import coldstart_model as cm
 import site_visual_page as svp
 
+# ── make the repo-root `app.*` package importable from streamlits/ (the local app.py would otherwise
+#    shadow it). Mirrors site_analysis_page.py: register `app` as a namespace package at <repo>/app. ──
+import importlib.machinery
+import importlib.util
+import os
+import sys
+
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+_APP_DIR = _REPO_ROOT / "app"
+if _APP_DIR.is_dir() and ("app" not in sys.modules or not hasattr(sys.modules.get("app"), "__path__")):
+    _app_mod = importlib.util.module_from_spec(importlib.machinery.ModuleSpec("app", None, is_package=True))
+    _app_mod.__path__ = [str(_APP_DIR)]
+    sys.modules["app"] = _app_mod
+
+try:                                                          # keep the dashboard alive if the package can't import
+    from app.pnl_analysis.insights.graph import market_insights
+    from app.pnl_analysis.insights.llm import insights_llm_ready
+    _INSIGHTS_OK = True
+except Exception as _insights_imp_err:                        # pragma: no cover
+    market_insights = None
+    def insights_llm_ready(*_a, **_k):
+        return False
+    _INSIGHTS_OK = False
+
 HERE = Path(__file__).resolve().parent
 CSV = HERE.parent / "data" / "main-ds.csv"
 TYPES_CSV = HERE.parent / "data" / "site_carwash_types.csv"
@@ -1026,19 +1052,24 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                                  local_anchor=anchor_on, anchor_keys=anchor_keys, model_kind=model_kind)
     g = traj.set_index("month")
     # ── big, full-width interactive map: pan/zoom is smooth (no rerun) → click to drop the pin ──
-    gco = site[site.has_coords & (site.cluster >= 0)]              # only clustered sites (no orange standalones)
+    # EVERY site within the radius is a neighbour the model actually uses (local trend + level anchor) — including
+    # singletons that aren't assigned to a cluster. Show them all (not just clustered) so the map matches the model.
+    _nb = site[site.has_coords].copy()
+    _nb["d"] = haversine_km(lat, lon, _nb.lat.values, _nb.lon.values)
+    used = _nb[_nb.d <= radius].sort_values("d")               # neighbours used (within the radius)
     fmap = folium.Map(location=[lat, lon], zoom_start=10,          # same zoom as the Explore-markets map
-                      tiles="cartodbpositron", control_scale=True)
+                      tiles="cartodbpositron", control_scale=True, prefer_canvas=True)
     if demo:
         # confidential demo: no site dots, no exact pin — a soft shaded red region marks the chosen area
         for rad_km, fop in [(radius, 0.08), (radius * 0.55, 0.12), (radius * 0.28, 0.18)]:
             folium.Circle([lat, lon], radius=rad_km * 1000, color="#c0392b", weight=0,
                           fill=True, fill_color="#e6194B", fill_opacity=fop).add_to(fmap)
     else:
-        for _, s in gco.iterrows():
-            folium.CircleMarker([s.lat, s.lon], radius=3, color="#3b7dd8", fill=True, fill_color="#3b7dd8",
-                                fill_opacity=0.7, weight=0,
-                                tooltip=f"{s.client_name} · market #{int(s.cluster)}").add_to(fmap)
+        add_all_site_dots(fmap, site)                          # ALL sites, bright (full footprint, same as Explore)
+        for _, s in used.iterrows():                           # highlight the in-radius neighbours the model actually uses
+            folium.CircleMarker([s.lat, s.lon], radius=6, color="#b34700", fill=True, fill_color="#ff7f0e",
+                                fill_opacity=0.95, weight=1,
+                                tooltip=f"{s.client_name} · {s.d:.1f} km · {int(s.n_obs)} mo of data").add_to(fmap)
         folium.Circle([lat, lon], radius=radius * 1000, color="#c0392b", weight=2, fill=False).add_to(fmap)
         folium.Marker([lat, lon], icon=folium.Icon(color="red", icon="star"), tooltip="📍 your new site").add_to(fmap)
     # return ONLY last_clicked → panning/zooming no longer triggers a rerun (fixes the dimming-on-zoom)
@@ -1047,8 +1078,9 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     if lc and (round(lc["lat"], 5), round(lc["lng"], 5)) != (round(lat, 5), round(lon, 5)):
         st.session_state.pin = (lc["lat"], lc["lng"])
         st.rerun()
-    st.caption(f"🔵 clustered sites · ⭕ {radius} km radius · ⭐ your pin. "
-               "**Click to drop the pin.** For exact coordinates use the lat/lon boxes in the sidebar.")
+    st.caption(f"🟠 **{len(used)} sites within {radius} km** feed the local trend; the level anchor uses "
+               f"**{info.get('n_local_mature', 0)} matured** of them (needs ≥3, else it falls back to the global model). "
+               f"🔵 all other sites · ⭕ {radius} km · ⭐ your pin. **Click to drop the pin.**")
 
     st.divider(); st.subheader("📈 Total local-market wash count — history + 5-year forecast")
     gmk = gran_picker("gran_market")
@@ -1557,6 +1589,37 @@ gframes = {}                                                                   #
 for k in order:
     g = sub[sub.site_key == k].set_index("date").sort_index()
     gframes[k] = g.reindex(pd.date_range(g.index.min(), g.index.max(), freq="MS")) if len(g) else g
+
+# ── AI Key Insights — 2-node pipeline (compute_metrics -> generate_insights), one read-out per group ──
+# Computed once per market on demand (the button) and stored by market signature, so flipping a group's
+# granularity radio re-renders instantly without another LLM call.
+insights_backend = os.getenv("INSIGHTS_LLM_BACKEND", "azure").strip().lower()
+imeta = nb_full[[c for c in ["site_key", "op_start", "dist_km", "is_entrant", "left_censored"] if c in nb_full.columns]].copy()
+if "left_censored" not in imeta.columns:                                       # safety: pull from `site` if dropped
+    imeta = imeta.merge(site[["site_key", "left_censored"]], on="site_key", how="left")
+imeta["name"] = imeta.site_key.map(name_of)                                    # demo-safe ("Site N") names
+isig = (tuple(sorted(ckeys)), str(focal_key), int(radius), bool(demo), insights_backend)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _market_insights_cached(_sig, _sub, _meta, focal_key, backend):
+    """Cached per market signature `_sig` (the big frames are underscore-prefixed so they aren't hashed)."""
+    return market_insights(_sub, _meta, focal_key, backend=backend)["insights"]
+
+
+insights_store = st.session_state.setdefault("insights_store", {})
+bcol, mcol = st.columns([1, 3])
+if bcol.button("✨ Generate Key Insights", key="gen_insights", disabled=not _INSIGHTS_OK,
+               help="Investor read-outs written by an LLM, grounded only in this market's numbers."):
+    if not insights_llm_ready(insights_backend):
+        mcol.warning(f"`{insights_backend}` insights endpoint unavailable — showing rule-based summary.")
+    with st.spinner("Writing investor insights…"):
+        try:
+            insights_store[isig] = _market_insights_cached(isig, sub, imeta, focal_key, insights_backend)
+        except Exception as e:
+            mcol.error(f"Insights failed: {e}")
+group_insights = insights_store.get(isig, {})
+
 for gi, (gname, panels) in enumerate(GROUPS):
     gk = gran_picker(f"gran_kpi_{gname}")
     gk_how = "mean" if gname == "ASPs" else "sum"                 # ASP is a per-wash rate → average; washes/$ → sum
@@ -1583,5 +1646,8 @@ for gi, (gname, panels) in enumerate(GROUPS):
         gfig.update_xaxes(tickformat=gran_date_tickformat(gk))
     st.plotly_chart(gfig, width="stretch", key=f"kpi_{gname}")
     st.markdown(f"**Key insights — {gname}**")
-    st.caption("_Work in progress._")
+    if group_insights.get(gname):
+        st.markdown(group_insights[gname])
+    else:
+        st.caption("_Click_ **✨ Generate Key Insights** _above to write these from the numbers._")
     st.divider()
