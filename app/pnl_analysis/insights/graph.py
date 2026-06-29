@@ -52,6 +52,9 @@ def generate_insights_node(state: InsightsState) -> Dict[str, Any]:
     surface an honest error notice so the operator fixes connectivity instead of trusting canned text."""
     metrics = state["metrics"]
     try:
+
+        print(build_combined_messages(metrics))
+        print("*"*50)
         raw, used = llm_client.complete_cascade(build_combined_messages(metrics),
                                                 backend=state.get("backend"), json_mode=True)
         logger.info("Insights generated via %s backend.", used)

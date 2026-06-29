@@ -22,27 +22,22 @@ from typing import Any, Dict, List, Optional
 _SIGNAL_EMOJI = {"positive": "🟢", "neutral": "⚪", "cautionary": "🟠", "negative": "🔴"}
 
 SYSTEM_PROMPT = (
-    "You are a private-equity investor running a site-selection model for car washes, deciding whether to BUILD a "
-    "NEW site in this local market. You read the market's actual monthly operating data (every site here has 30+ "
-    "months of history) and write tight, decision-useful read-outs that help the reader interpret the plotted lines "
-    "and judge the opportunity.\n"
-    "What you are deciding: is this an attractive market to enter? Your best analog for a new build is how the LAST "
-    "entrant ramped here. Weigh market size & headroom, membership demand quality, pricing power (ASP), competitive "
-    "density, per-site economics, and cannibalization risk.\n"
+     "You are a private-equity investor running a site-selection model for car washes, deciding whether to BUILD a NEW site in this local market. "
+    "You read the market's actual monthly operating data (every site here has 30+ months of history) and write a tight, decision-useful read-outs "
+   "\n"
+    "What you are deciding: is this an attractive market to enter? Your best analog for a new build is how the LAST entrant ramped here. "
+    "Weigh market size & headroom, membership demand quality, pricing power (ASP), competitive density, per-site economics, and cannibalization risk.\n"
     "Rules:\n"
-    "- Use ONLY the numbers provided. Never invent, extrapolate beyond a stated trend, or cite a number not given. "
-    "If something is absent, omit it.\n"
-    "- Be concrete and quantitative: cite absolute levels, dates, peak-vs-current, recent momentum (last N months) "
-    "vs year-over-year, and the new entrant's ramp & effect.\n"
-    "- LEVELS ARE 3-MONTH AVERAGED: every 'peak', 'current' and YoY here is a ~3-month average, not a single "
-    "month — so describe a peak as a period (e.g. 'around 2024-Q2'), never as a one-month spike.\n"
-    "- SAME-STORE (a.k.a. like-for-like) = compares ONLY the sites reporting in BOTH periods. If sites stopped "
-    "reporting (see MARKET CONTEXT) a falling market SUM is a coverage artifact, not real demand loss: lead with "
-    "the same-store YoY, call it 'same-store', and never call a coverage drop a market decline.\n"
-    "- Membership penetration and its growth are your most important demand-quality signal; ASP and the membership "
-    "premium are pricing power; cannibalization of incumbents by a new entrant is your downside signal.\n"
-    "- Close each section with what it implies for building a new site here."
-)
+    "- Use ONLY the numbers provided. Never invent, extrapolate beyond a stated trend, or cite a number not given. If something is absent, omit it.\n"
+    "- Be concrete and quantitative: cite absolute levels, dates, peak-vs-current, recent momentum (last N months) vs year-over-year, and the new entrant's ramp & effect.\n"
+    "- LEVELS ARE 3-MONTH AVERAGED: every 'peak', 'current' and YoY here is a ~3-month average, not a single month — so describe a peak as a period (e.g. 'around 2024-Q2'), never as a one-month spike.\n"
+    "- SAME-STORE (a.k.a. like-for-like) = compares ONLY the sites reporting in BOTH periods. If sites stopped reporting (see MARKET CONTEXT) a falling market SUM is a coverage artifact, not real demand loss: lead with the same-store YoY, call it 'same-store', and never call a coverage drop a market decline.\n"
+    "- CONSISTENCY: if same-store demand is flat or only modestly down, do not later describe the market as 'declining' anywhere else in the read-out, including the verdict — use 'maturing', 'saturated', or 'plateaued' instead. Every later section must stay consistent with what the Market Demand section established.\n"
+    "- Membership penetration and its growth are your most important demand-quality signal — but a high membership share is only a GOOD signal if that base isn't already locked into a competitor. If the dominant share belongs to an incumbent, say so explicitly as a lock-in risk, not just a demand-quality positive.\n"
+    "- Competitive density is measured by distance to the nearest existing site, not by volume — always cite the nearest-site distance and state plainly whether there is or isn't an open trade area.\n"
+    "- ASP and the membership premium are your pricing-power signal, judged independently of volume — strong, stable ASPs can coexist with a bad location decision.\n"
+    "- The verdict should state that (a) states in one sentence whether the economics are sound and whether the location is sound, as two separate judgments, and (b) gives the recommendation plus the one condition that would change your mind (e.g., a different site becoming available, or an incumbent's exit)."
+    )
 
 
 # ─────────────────────────── number formatting ───────────────────────────
@@ -264,6 +259,40 @@ _FACT_BUILDERS = {"Washes": _washes_facts, "Revenue": _revenue_facts, "ASPs": _a
 
 
 # ─────────────────────────── request construction (JSON output) ───────────────────────────
+# def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
+#     blocks = []
+#     for group in ("Washes", "Revenue", "ASPs"):
+#         facts = "\n".join(_FACT_BUILDERS[group](metrics)) or "- (no data)"
+#         blocks.append(f"[{group}]\n{facts}")
+#     user = (
+#         "MARKET CONTEXT (read first — explains data coverage):\n"
+#         f"{_context_block(metrics)}\n\n"
+#         "SITE-SELECTION CONTEXT (you are deciding whether to BUILD a new site here):\n"
+#         f"{_site_selection_block(metrics)}\n\n"
+#         "QUARTERLY DATA POINTS (the actual market series — read the shape; prefer same-store comparisons "
+#         "when coverage dropped):\n"
+#         f"{_data_points_block(metrics)}\n\n"
+#         "FACTS by group:\n"
+#         f"{chr(10).join(blocks)}\n\n"
+#         "Return a single JSON object (and NOTHING else) with exactly these three keys: \"washes\", "
+#         "\"revenue\", \"asps\". Each maps to an object:\n"
+#         '  {"headline": "<one decision-useful sentence, no markdown>",\n'
+#         '   "bullets": ["4 to 6 specific sentences, each grounded in the numbers above"],\n'
+#         '   "signal": "positive" | "neutral" | "cautionary"}\n\n'
+#         "Each section should help the reader interpret the plotted lines AND judge a new build. Cover:\n"
+#         "- washes: current level vs peak (and % off peak), recent momentum (last-N) vs YoY (prefer same-store "
+#         "YoY when coverage dropped), absolute total volume, the new entrant's ramp (use the last-entrant analog as "
+#         "the expected ramp for a new build), its effect on incumbents, and a coverage caveat if any site stopped "
+#         "reporting.\n"
+#         "- revenue: total revenue level/peak/trend, the membership-vs-retail split & which stream drives growth, "
+#         "blended revenue-per-wash, revenue per site, and the new site's revenue contribution.\n"
+#         "- asps: retail & membership ASP level/peak, MoM/YoY/last-N momentum, the membership premium over retail "
+#         "(pricing power), and how the new entrant prices vs incumbents — i.e. the pricing headroom for a new site.\n"
+#         "End each section's last bullet with the implication for building a new site here. "
+#         "Do not use markdown inside any string. signal = the investor's view of building here (positive = "
+#         "attractive, cautionary = a real risk)."
+#     )
+#     return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
 def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
     blocks = []
     for group in ("Washes", "Revenue", "ASPs"):
@@ -279,24 +308,39 @@ def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
         f"{_data_points_block(metrics)}\n\n"
         "FACTS by group:\n"
         f"{chr(10).join(blocks)}\n\n"
-        "Return a single JSON object (and NOTHING else) with exactly these three keys: \"washes\", "
-        "\"revenue\", \"asps\". Each maps to an object:\n"
-        '  {"headline": "<one decision-useful sentence, no markdown>",\n'
-        '   "bullets": ["4 to 6 specific sentences, each grounded in the numbers above"],\n'
-        '   "signal": "positive" | "neutral" | "cautionary"}\n\n'
-        "Each section should help the reader interpret the plotted lines AND judge a new build. Cover:\n"
-        "- washes: current level vs peak (and % off peak), recent momentum (last-N) vs YoY (prefer same-store "
-        "YoY when coverage dropped), absolute total volume, the new entrant's ramp (use the last-entrant analog as "
-        "the expected ramp for a new build), its effect on incumbents, and a coverage caveat if any site stopped "
-        "reporting.\n"
-        "- revenue: total revenue level/peak/trend, the membership-vs-retail split & which stream drives growth, "
-        "blended revenue-per-wash, revenue per site, and the new site's revenue contribution.\n"
-        "- asps: retail & membership ASP level/peak, MoM/YoY/last-N momentum, the membership premium over retail "
-        "(pricing power), and how the new entrant prices vs incumbents — i.e. the pricing headroom for a new site.\n"
-        "End each section's last bullet with the implication for building a new site here. "
-        "Do not use markdown inside any string. signal = the investor's view of building here (positive = "
-        "attractive, cautionary = a real risk)."
-    )
+        "Return a single JSON object (and NOTHING else) with exactly these three keys: \"washes\", \"revenue\", \"asps\".\n\n"
+    "\"revenue\" and \"asps\" must always be present as empty stubs:\n"
+"  {\"headline\": \"\", \"bullets\": [], \"signal\": \"neutral\"}\n\n"    "\"washes\" must have this exact shape:\n"
+    "  {\"headline\": \"one crisp sentence that separates the economics judgment from the location "
+    "judgment, e.g. 'Sound membership economics, wrong location.'>\",\n"
+    "   \"bullets\": [<array of plain-prose strings — one string per section, in the order listed below>],\n"
+    "   \"signal\": \"<positive|neutral|cautionary|negative> — <sentence 1: elaborate the headline judgment in full>. <sentence 2: the recommendation plus the one condition that would change your mind.>\"}\n\n"
+
+    "The \"bullets\" array must contain exactly these sections as individual plain-prose strings, in this exact order. "
+    "Each string must begin with the section label followed by ' — ' and then 2-4 sentences of analysis:\n\n"
+    "\"⚠️ Data Note\" — include ONLY if MARKET CONTEXT shows sites stopped reporting; state plainly that the raw "
+    "market-level trend is a coverage artifact and name which figure (same-store) the reader should trust instead. "
+    "If coverage didn't change, omit this string from the array entirely.\n\n"
+    "\"Market Demand\" — same-store YoY vs raw YoY; current level vs peak (with date and % off peak); AND whether "
+    "the most relevant comparable (the most recent entrant, if one exists) is itself above or below its own peak — "
+    "use that to judge whether the growth window is still open or has likely closed.\n\n"
+    "\"Business Model\" — which revenue model (membership vs. retail) is actually carrying the market, based on share "
+    "level and its trend; and if that share is already concentrated in a single existing competitor, name that "
+    "explicitly as a lock-in risk rather than just a positive signal.\n\n"
+    "\"Competitive Headroom\" — lead with the distance to the nearest existing site; conclude plainly whether there is "
+    "open trade-area separation or whether this is a head-to-head fight with an entrenched operator.\n\n"
+    "\"Market Timing\" — the period the market peaked, and where the most relevant comparable now sits in its own ramp "
+    "(still ramping / plateaued / past its own peak); conclude whether the entry window is open or closed. Use "
+    "'maturing' / 'saturated' / 'plateaued' if demand is flat same-store — never 'declining'.\n\n"
+    "\"Revenue & Pricing\" — ASP level/trend for retail and membership as the pricing-power signal, separate from "
+    "volume; state plainly what would actually have to happen for a new site's revenue to ramp (e.g., pulling "
+    "subscribers from an incumbent vs. organic growth).\n\n"
+    
+    "Do not use markdown, nested JSON, or bullet points inside any string value. "
+    "Do not invent a section label not listed above. Data Note is the only optional section."
+
+)
+    
     return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
 
 
@@ -307,22 +351,36 @@ def _esc_dollars(s: str) -> str:
 
 
 def _render_group(obj: Any) -> Optional[str]:
-    """Render {headline, bullets[], signal} into markdown. Strips stray markdown the model may have added."""
     if not isinstance(obj, dict):
         return None
     head = str(obj.get("headline") or "").strip().strip("*").strip().rstrip(".")
     bullets = obj.get("bullets") or []
     if isinstance(bullets, str):
         bullets = [bullets]
-    sig = str(obj.get("signal") or "").strip().lower()
+
+    # Keep raw for display, lowercase only for keyword lookup
+    sig_raw = str(obj.get("signal") or "").strip()
+
     parts: List[str] = []
     if head:
         parts.append(f"**{_esc_dollars(head)}**")
     clean = [_esc_dollars(str(b).strip().lstrip("-•*").strip()) for b in bullets if str(b).strip()]
     if clean:
         parts.append("\n".join(f"- {b}" for b in clean))
-    if sig in _SIGNAL_EMOJI:
-        parts.append(f"{_SIGNAL_EMOJI[sig]} _{sig}_")
+
+    # Split "positive — verdict line 1. verdict line 2." if present
+    if " — " in sig_raw:
+        sig_word, verdict_text = sig_raw.split(" — ", 1)
+        sig_word = sig_word.strip().lower()
+        verdict_text = verdict_text.strip()
+    else:
+        sig_word = sig_raw.strip().lower()
+        verdict_text = ""
+
+    if sig_word in _SIGNAL_EMOJI:
+        verdict_display = f"\n\n{_esc_dollars(verdict_text)}" if verdict_text else ""
+        parts.append(f"{_SIGNAL_EMOJI[sig_word]} _{sig_word}_{verdict_display}")
+
     return "\n\n".join(parts).strip() or None
 
 
