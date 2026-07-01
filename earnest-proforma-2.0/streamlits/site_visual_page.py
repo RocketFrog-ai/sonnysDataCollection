@@ -5,8 +5,10 @@ Given the shared map pin (the same (lat, lon) used by Explore markets & Forecast
 address / lat-lon — this renders a Google Maps Platform dashboard:
 
   LEFT  (70%)  Photorealistic 3D tiles centred + tilted on the site, with a "📍 YOU" site marker, rotate /
-               zoom / pan / tilt, a Street-View toggle, and Nearby-Places overlays (wash sites,
-               restaurants, gas, shopping, schools, hospitals, gyms, hotels, offices) you can filter.
+               zoom / pan / tilt, a Street-View toggle, Nearby-Places overlays (wash sites, gas, restaurants,
+               retail, mass-merchants) filterable at 1 / 3 / 5-mile rings, and an "Anchor routes" overlay that
+               draws the road each nearby Walmart/Costco-type anchor pulls traffic along and flags every car
+               wash sitting on it (the washes that intercept anchor-bound customers).
   RIGHT (30%)  "Site intelligence" — trade-area feature values pulled from
                earnest-proforma-2.0/data/merged_all_sites.csv (matched to the nearest site by lat/lon):
                population & growth, income, vehicles, hourly traffic, and commercial activity.
@@ -28,7 +30,9 @@ from __future__ import annotations
 import importlib.machinery
 import importlib.util
 import json
+import math
 import os
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -57,19 +61,28 @@ from app.utils import common as calib  # noqa: E402
 HERE = Path(__file__).resolve().parent
 CSV = HERE.parent / "data" / "merged_all_sites.csv"
 EARTH_KM = 6371.0088
-FETCH_RADIUS_M = 5000          # fetch once at the widest ring; the UI filters to 500 m–5 km client-side
+MILE_M = 1609.34
+FETCH_RADIUS_M = 8050          # widest ring is 5 mi (~8047 m); the UI filters to 1 / 3 / 5 mi client-side
+ENROUTE_BUFFER_M = 480.0       # a wash sits "on the road" to an anchor if within ~0.3 mi of the road corridor
+CORRIDOR_APPROACH_M = 3200.0   # length of approach road drawn BEFORE the site (~2 mi) so the corridor leads INTO the anchor
+ROUTE_COLORS = ["#e53935", "#8e24aa", "#1e88e5"]   # per-anchor road colours (the ≤3 nearest anchors)
+
+# Mass-merchant / big-box anchor brands (Walmart, Costco, …) — used to filter the anchor search results.
+MASS_RE = re.compile(
+    r"\b(wal[\s-]?mart|costco|sam'?s\s*club|target|bj'?s|meijer|kohl'?s|"
+    r"home\s*depot|lowe'?s|ikea|best\s*buy)\b", re.I)
 
 # Place categories → Places(New) primary types + marker colour. Shared by Python (fetch) & JS (render).
+# Trimmed to the few POIs that actually co-locate with / drive car-wash demand (competitors, fuel, food & retail
+# traffic, and big-box anchors) so the per-pin Places bill stays low — schools / hospitals / gyms / hotels /
+# offices were dropped. "mass" uses POPULARITY ranking + a brand filter so the real anchors surface (see fetch).
 CATS = [
-    {"id": "car_wash",   "label": "🚿 Wash sites", "types": ["car_wash"], "color": "#2979ff", "on": True},
-    {"id": "restaurant", "label": "🍔 Restaurants", "types": ["restaurant"], "color": "#fb8c00", "on": False},
-    {"id": "mall",       "label": "🛍️ Shopping",    "types": ["shopping_mall", "department_store"], "color": "#8e24aa", "on": False},
-    {"id": "gas",        "label": "⛽ Gas",          "types": ["gas_station"], "color": "#00897b", "on": False},
-    {"id": "school",     "label": "🏫 Schools",      "types": ["school", "primary_school", "secondary_school"], "color": "#3949ab", "on": False},
-    {"id": "hospital",   "label": "🏥 Hospitals",    "types": ["hospital"], "color": "#d81b60", "on": False},
-    {"id": "gym",        "label": "💪 Gyms",         "types": ["gym", "fitness_center"], "color": "#43a047", "on": False},
-    {"id": "hotel",      "label": "🏨 Hotels",       "types": ["lodging", "hotel"], "color": "#6d4c41", "on": False},
-    {"id": "office",     "label": "🏢 Offices",      "types": ["corporate_office"], "color": "#546e7a", "on": False},
+    {"id": "car_wash",   "label": "🚿 Wash sites",    "types": ["car_wash"], "color": "#2979ff", "on": True},
+    {"id": "gas",        "label": "⛽ Gas",            "types": ["gas_station"], "color": "#00897b", "on": False},
+    {"id": "restaurant", "label": "🍔 Restaurants",    "types": ["restaurant"], "color": "#fb8c00", "on": False},
+    {"id": "mall",       "label": "🛍️ Retail",         "types": ["shopping_mall", "department_store"], "color": "#8e24aa", "on": False},
+    {"id": "mass",       "label": "🏬 Mass merchants", "types": ["department_store", "discount_store", "warehouse_store", "supermarket"],
+     "color": "#c62828", "on": False, "rank": "POPULARITY", "brand": True},
 ]
 
 
@@ -81,6 +94,12 @@ def js_map_key() -> str:
 def server_key() -> str:
     """Key for server-side Places (New) + Geocoding."""
     return calib.GOOGLE_MAPS_API_KEY or ""
+
+
+def routes_key() -> str:
+    """Key for the Routes API (driving paths to anchors). The Places server-key project doesn't have Routes API
+    enabled, so this defaults to GOOGLE_ROUTES_API_KEY / the JS-project key (which does), else the server key."""
+    return os.getenv("GOOGLE_ROUTES_API_KEY", "") or js_map_key() or server_key()
 
 
 # ───────────────────────────── trade-area data (from the CSV) ─────────────────────────────
@@ -188,16 +207,20 @@ def build_intelligence(row, dist_km: float) -> list[dict]:
 
 
 # ───────────────────────────── live Places (New) — server-side, old key ─────────────────────────────
-def _search_one(types, lat, lon, key):
-    """One Places(New) searchNearby POST → list of {name, lat, lng, m, rating, n, type}."""
+def _search_one(types, lat, lon, key, rank="DISTANCE"):
+    """One Places(New) searchNearby POST → list of {name, lat, lng, m, rating, n, type}.
+    rank="POPULARITY" surfaces big well-rated anchors (Walmart/Costco) over nearby dollar/thrift stores.
+    Field mask is name + location + primaryType only — that keeps the call on the Places Nearby Search
+    *Pro* SKU ($32/1k). Adding rating / userRatingCount would bump every call to the Enterprise SKU
+    ($35/1k), so they're intentionally omitted (rating / n come back null and the UI just drops the ★)."""
     import requests
     body = {
-        "includedPrimaryTypes": types, "maxResultCount": 20, "rankPreference": "DISTANCE",
+        "includedPrimaryTypes": types, "maxResultCount": 20, "rankPreference": rank,
         "locationRestriction": {"circle": {"center": {"latitude": lat, "longitude": lon}, "radius": float(FETCH_RADIUS_M)}},
     }
     headers = {
         "Content-Type": "application/json", "X-Goog-Api-Key": key,
-        "X-Goog-FieldMask": "places.displayName,places.location,places.rating,places.userRatingCount,places.primaryType",
+        "X-Goog-FieldMask": "places.displayName,places.location,places.primaryType",
     }
     r = requests.post("https://places.googleapis.com/v1/places:searchNearby",
                       json=body, headers=headers, timeout=10)
@@ -220,21 +243,37 @@ def _search_one(types, lat, lon, key):
 
 @st.cache_data(show_spinner="Fetching nearby places…", ttl=60 * 60)
 def fetch_places(lat: float, lon: float, key: str) -> dict:
-    """Server-fetch ONLY the on-by-default categories (just wash sites) — 1 Places call instead of 9. Other
-    categories are fetched lazily in the browser (Places JS library) the first time their chip is toggled on,
-    so we never pay for overlays nobody looks at. Cached per (lat, lon). {} on no key."""
+    """Server-fetch ALL categories (one Places(New) searchNearby per category, run in parallel) so every chip
+    shows a real count immediately. We used to fetch only the on-by-default wash layer and lazy-load the rest in
+    the browser, but the browser Place.searchNearby silently returns nothing here (the JS-map key path) while the
+    SERVER key works for every category — so the other chips were stuck at 0. Fetching server-side is the reliable
+    path; results flow to the JS as CFG.places and the lazy browser fetch becomes a no-op (data already present).
+    Cached 1 h per (lat, lon). {} on no key."""
     if not key:
         return {}
-    on_cats = [c for c in CATS if c["on"]]
     results: dict[str, list] = {}
-    with ThreadPoolExecutor(max_workers=max(1, len(on_cats))) as ex:
-        futs = {ex.submit(_search_one, c["types"], lat, lon, key): c["id"] for c in on_cats}
+    with ThreadPoolExecutor(max_workers=max(1, len(CATS))) as ex:
+        futs = {ex.submit(_search_one, c["types"], lat, lon, key, c.get("rank", "DISTANCE")): c["id"] for c in CATS}
         for fut, cid in [(f, futs[f]) for f in futs]:
             try:
                 results[cid] = fut.result()
             except Exception:
                 results[cid] = []
+    # brand-filter the anchor categories so dollar / thrift / corner stores don't masquerade as mass merchants
+    for c in CATS:
+        if c.get("brand"):
+            results[c["id"]] = _filter_brand(results.get(c["id"], []))
     return results
+
+
+def _filter_brand(items: list) -> list:
+    """Keep only recognised big-box brands (Walmart, Costco, …), nearest first. Falls back to the genuine
+    big-box place-types if no brand matched, so the anchor layer isn't silently empty in an unbranded area."""
+    branded = [x for x in items if MASS_RE.search(x.get("name") or "")]
+    if branded:
+        return sorted(branded, key=lambda x: x["m"])
+    keep = {"department_store", "discount_store", "warehouse_store"}
+    return sorted([x for x in items if x.get("type") in keep], key=lambda x: x["m"])
 
 
 @st.cache_data(show_spinner="Geocoding…")
@@ -255,13 +294,139 @@ def geocode(address: str, key: str):
     return None
 
 
+# ───────────────────────────── routes to mass-merchant anchors (Routes API) ─────────────────────────────
+def _decode_polyline(enc: str) -> list[tuple[float, float]]:
+    """Decode a Google encoded-polyline string → [(lat, lon), …]."""
+    coords, index, lat, lng, n = [], 0, 0, 0, len(enc)
+    while index < n:
+        for is_lat in (True, False):
+            shift = result = 0
+            while True:
+                b = ord(enc[index]) - 63
+                index += 1
+                result |= (b & 0x1f) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            d = ~(result >> 1) if (result & 1) else (result >> 1)
+            if is_lat:
+                lat += d
+            else:
+                lng += d
+        coords.append((lat * 1e-5, lng * 1e-5))
+    return coords
+
+
+def _pt_seg_m(plat, plon, alat, alon, blat, blon) -> float:
+    """Metres from point P to segment A–B via a local equirectangular projection (fine at these scales)."""
+    latref = math.radians((alat + blat) / 2.0)
+    kx, ky = 111320.0 * math.cos(latref), 110540.0
+    px, py = (plon - alon) * kx, (plat - alat) * ky
+    bx, by = (blon - alon) * kx, (blat - alat) * ky
+    seg2 = bx * bx + by * by
+    t = 0.0 if seg2 == 0 else max(0.0, min(1.0, (px * bx + py * by) / seg2))
+    return math.hypot(px - t * bx, py - t * by)
+
+
+def _min_dist_to_path(wlat, wlon, path) -> float:
+    best = 1e18
+    for i in range(len(path) - 1):
+        a, b = path[i], path[i + 1]
+        d = _pt_seg_m(wlat, wlon, a[0], a[1], b[0], b[1])
+        if d < best:
+            best = d
+    return best
+
+
+def _approach_origin(slat, slon, mlat, mlon):
+    """A commuter start point ~CORRIDOR_APPROACH_M beyond the site, directly away from the anchor. Routing from
+    here to the anchor traces the road corridor that carries anchor-bound traffic PAST the site — so the drawn
+    path is 'the road to the mass merchant', not a trip that begins at our wash."""
+    latref = math.radians(slat)
+    kx, ky = 111320.0 * math.cos(latref), 110540.0
+    dx, dy = (slon - mlon) * kx, (slat - mlat) * ky      # anchor → site direction (metres)
+    n = math.hypot(dx, dy) or 1.0
+    olon = slon + (dx / n) * CORRIDOR_APPROACH_M / kx
+    olat = slat + (dy / n) * CORRIDOR_APPROACH_M / ky
+    return olat, olon
+
+
+def _route_one(olat, olon, dlat, dlon, key):
+    """Driving route O→D via Routes API → (path[(lat,lon)…], distance_m, duration_s); (None, None, None) on failure."""
+    import requests
+    body = {
+        "origin": {"location": {"latLng": {"latitude": olat, "longitude": olon}}},
+        "destination": {"location": {"latLng": {"latitude": dlat, "longitude": dlon}}},
+        "travelMode": "DRIVE", "routingPreference": "TRAFFIC_UNAWARE",
+    }
+    headers = {
+        "Content-Type": "application/json", "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+    }
+    try:
+        r = requests.post("https://routes.googleapis.com/directions/v2:computeRoutes",
+                          json=body, headers=headers, timeout=12)
+        rt = (r.json().get("routes") or [None])[0]
+        if rt and (rt.get("polyline") or {}).get("encodedPolyline"):
+            dur = rt.get("duration", "") or ""
+            dur_s = int(dur[:-1]) if dur.endswith("s") and dur[:-1].isdigit() else None
+            return _decode_polyline(rt["polyline"]["encodedPolyline"]), rt.get("distanceMeters"), dur_s
+    except Exception:
+        pass
+    return None, None, None
+
+
+@st.cache_data(show_spinner="Mapping roads to nearby anchors…", ttl=60 * 60)
+def compute_routes(lat: float, lon: float, key: str, payload: str) -> list[dict]:
+    """For the ≤3 nearest mass-merchant anchors, trace the main road CORRIDOR that carries traffic INTO the anchor
+    (from a commuter start ~2 mi out on the site's side — so it's 'the road to the mass merchant', not a trip that
+    starts at our wash) and mark EVERY car wash sitting on that road within ~0.3 mi (ours + competitors). Those are
+    the washes that intercept anchor-bound customers. `payload` = JSON {"mass": [...], "wash": [...]} (kept a string
+    so the result caches per pin)."""
+    if not key:
+        return []
+    data = json.loads(payload)
+    dests = data.get("mass", [])[:3]
+    wash = data.get("wash", [])                       # every nearby wash is a candidate — don't single out the site
+    out = []
+    routes_api_ok = True   # if the first computeRoutes fails (e.g. Routes API disabled), skip the rest → straight-line
+    for i, d in enumerate(dests):
+        olat, olon = _approach_origin(lat, lon, d["lat"], d["lng"])   # commuter start ~2 mi out, anchor-opposite
+        path = None
+        if routes_api_ok:
+            path, _dist_m, _dur_s = _route_one(olat, olon, d["lat"], d["lng"], key)
+            if path is None:
+                routes_api_ok = False
+        straight = path is None
+        if straight:                                                 # Routes API off/failed → straight-line corridor
+            path = [(olat, olon), (d["lat"], d["lng"])]
+        seen, on_road = set(), []
+        for w in wash:
+            nm = w.get("name") or "—"
+            if nm in seen:
+                continue
+            if _min_dist_to_path(w["lat"], w["lng"], path) <= ENROUTE_BUFFER_M:
+                seen.add(nm)
+                on_road.append({"name": nm, "lat": w["lat"], "lng": w["lng"]})
+        out.append({
+            "label": d.get("name") or "anchor", "lat": d["lat"], "lng": d["lng"],
+            "color": ROUTE_COLORS[i % len(ROUTE_COLORS)],
+            "dist_mi": round((d.get("m") or 0.0) / MILE_M, 1),       # straight-line site→anchor (from the Places fetch)
+            "straight": straight,
+            "polyline": [[round(p[0], 6), round(p[1], 6)] for p in path],
+            "washes": on_road, "washes_n": len(on_road),
+        })
+    return out
+
+
 # ───────────────────────────── the immersive dashboard (Maps JS) ─────────────────────────────
 def dashboard_html(map_key: str, lat: float, lon: float, label: str,
-                   match_name: str, match_dist_km: float, sections: list[dict], places: dict) -> str:
+                   match_name: str, match_dist_km: float, sections: list[dict], places: dict,
+                   routes: list[dict]) -> str:
     cfg = json.dumps({
         "key": map_key, "lat": lat, "lon": lon, "label": label,
         "matchName": match_name, "matchDist": round(match_dist_km, 2),
-        "sections": sections, "places": places,
+        "sections": sections, "places": places, "routes": routes,
         "cats": [{"id": c["id"], "label": c["label"], "color": c["color"], "on": c["on"]} for c in CATS],
     })
     return r"""
@@ -311,7 +476,7 @@ def dashboard_html(map_key: str, lat: float, lon: float, label: str,
         <div class="btn" id="b2d">🗺️ Satellite</div>
         <div class="btn" id="bsv">🚶 Street View</div>
         <div class="btn" id="brot">↻ Orbit</div>
-        <div class="btn" id="btraffic">🚦 Traffic</div>
+        <div class="btn" id="broutes">🛣️ Anchor routes</div>
       </div>
       <div class="banner" id="banner"></div>
       <div id="fatal" style="display:none;position:absolute;inset:0;z-index:9;background:#0b1726;color:#e7eef9;
@@ -329,11 +494,14 @@ def dashboard_html(map_key: str, lat: float, lon: float, label: str,
 const CFG = __CFG__;
 const SITE = {lat: CFG.lat, lng: CFG.lon};
 const PLACES = CFG.places || {};
+const ROUTES = CFG.routes || [];
 const CATS = CFG.cats;
-const RADII = [500,1000,3000,5000];
-let radius = 1000;
+const MI = 1609.34;
+const RADII = [1609,4828,8047];   // 1 / 3 / 5 miles
+let radius = 1609;                 // default: 1-mile ring
 
-function distLabel(m){return m>=1000?(m/1000).toFixed(1)+' km':Math.round(m)+' m';}
+function distLabel(m){ return m < MI*0.25 ? Math.round(m*3.28084)+' ft' : (m/MI).toFixed(1)+' mi'; }
+function miLabel(m){ return (m/MI).toFixed(0)+' mi'; }
 
 // ── right-hand intelligence panel ────────────────────────────────────────────
 function renderPanel(){
@@ -344,6 +512,11 @@ function renderPanel(){
   h+=`<div class="secthead">Nearby (live · Google Places)</div>
       <div class="card"><div class="ct">Nearest wash sites</div><div id="nearComp"></div>
       <div class="legend">Live from Google Places — the one layer not read from the CSV.</div></div>`;
+  h+=`<div class="secthead">Mass-merchant anchors & roads</div>
+      <div class="card"><div class="ct">Roads into Walmart / Costco-type anchors</div><div id="routes"></div>
+      <div class="legend">The main road each nearby anchor pulls traffic along, and every car wash sitting on
+      that road (within ~0.3 mi) — the washes that intercept anchor-bound customers. Toggle
+      <b>🛣️ Anchor routes</b> above the map to draw them.</div></div>`;
   h+=`<div class="secthead">Trade-area features (merged_all_sites.csv)</div>`;
   for(const s of CFG.sections){
     h+=`<div class="card"><div class="ct">${s.icon} ${s.title}</div>`;
@@ -353,6 +526,7 @@ function renderPanel(){
     h+=`</div>`;
   }
   p.innerHTML=h;
+  renderRoutes();
 }
 
 function hav(la1,lo1,la2,lo2){ const R=6371008.8,r=Math.PI/180,
@@ -366,7 +540,7 @@ async function ensureCat(cat){          // lazy: fetch a category's nearby place
     if(!placesLib) placesLib=await google.maps.importLibrary("places");
     const {Place,SearchNearbyRankPreference}=placesLib;
     const resp=await Place.searchNearby({
-      fields:["displayName","location","rating","userRatingCount","primaryType"],
+      fields:["displayName","location","primaryType"],   // name-only → Pro SKU (no rating/userRatingCount → not Enterprise)
       locationRestriction:{center:{lat:SITE.lat,lng:SITE.lng},radius:5000},
       includedPrimaryTypes:cat.types,maxResultCount:20,
       rankPreference:SearchNearbyRankPreference.DISTANCE});
@@ -385,7 +559,7 @@ function renderChips(){
     const n=(PLACES[cat.id]||[]).filter(x=>x.m<=radius).length;
     h+=`<div class="chip ${cat.on?'on':''}" data-cat="${cat.id}" style="${cat.on?'background:'+cat.color:''}">${cat.label} ${n}</div>`;
   }
-  h+=`<div class="chip" id="radchip" style="margin-left:auto">◎ ${radius>=1000?radius/1000+' km':radius+' m'}</div>`;
+  h+=`<div class="chip" id="radchip" style="margin-left:auto">◎ ${miLabel(radius)}</div>`;
   c.innerHTML=h;
   c.querySelectorAll('.chip[data-cat]').forEach(el=>el.onclick=async()=>{
     const cat=CATS.find(x=>x.id===el.dataset.cat); cat.on=!cat.on; renderChips();
@@ -407,8 +581,22 @@ function renderNearComp(){
   }).join('');
 }
 
+function renderRoutes(){                 // right-panel legend: each anchor, its drive distance & en-route wash count
+  const el=document.getElementById('routes'); if(!el) return;
+  if(!ROUTES.length){ el.innerHTML='<span style="color:#7b8494">No Walmart / Costco-type anchors within 5 mi.</span>'; return; }
+  let h=ROUTES.map(r=>{
+    const sw=`<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${r.color};margin-right:6px;vertical-align:middle"></span>`;
+    const wn=`${r.washes_n} wash${r.washes_n===1?'':'es'} on the road`;
+    return `<div class="poi"><span class="nm">${sw}${r.label}</span><span class="meta">${r.dist_mi} mi away · <b style="color:${r.color}">${wn}</b></span></div>`;
+  }).join('');
+  if(ROUTES.some(r=>r.straight))
+    h+=`<div class="legend" style="margin-top:6px">Straight-line corridor shown — enable the <b>Routes API</b> on the Maps key for true road paths (upgrades automatically).</div>`;
+  el.innerHTML=h;
+}
+
 // ── Maps bootstrap ───────────────────────────────────────────────────────────
-let map2d, pano, advLib, the3d, trafficLayer=null, orbiting=false, orbitTimer=null;
+let map2d, pano, advLib, the3d, orbiting=false, orbitTimer=null;
+let routeObjs=[];   // drawn polylines + anchor / en-route-wash markers for the Anchor-routes overlay
 const built={};   // catId -> [{data, m, am(2D), m3(3D)}]
 
 (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;
@@ -460,7 +648,6 @@ async function init(){
     center:SITE, zoom:18, tilt:47, heading:0, mapTypeId:'hybrid',
     mapId:'DEMO_MAP_ID', streetViewControl:false, mapTypeControl:false, fullscreenControl:false});
   new advLib.AdvancedMarkerElement({map:map2d,position:SITE,content:pin('#ffd400','📍 YOU'),zIndex:9999});
-  trafficLayer=new google.maps.TrafficLayer();   // live/typical road congestion — no extra API cost beyond the map load
   // Street View is loaded lazily on first click (see bsv) so we don't pay for a pano nobody opens.
 
   wireButtons(); updateMarkers();
@@ -505,12 +692,44 @@ function wireButtons(){
       else if(map2d){map2d.setHeading((map2d.getHeading()+1)%360);}
     },60);} else clearInterval(orbitTimer);
   };
-  const bt=document.getElementById('btraffic');     // 🚦 live/typical road traffic (Google Maps TrafficLayer — no extra cost)
-  bt.onclick=()=>{
-    const on=!bt.classList.contains('on'); bt.classList.toggle('on',on);
-    if(on){ show('map2d'); setOn(b2); if(trafficLayer) trafficLayer.setMap(map2d); }   // traffic only renders on the 2D satellite view
-    else if(trafficLayer){ trafficLayer.setMap(null); }
+  const br=document.getElementById('broutes');      // 🛣️ draw driving routes to nearby mass-merchant anchors + flag en-route washes
+  br.onclick=()=>{
+    const on=!br.classList.contains('on'); br.classList.toggle('on',on);
+    if(on){ show('map2d'); setOn(b2); drawRoutes(); }   // routes render on the 2D satellite view
+    else clearRoutes();
   };
+}
+
+function storePin(color,label){    // anchor (Walmart/Costco) marker — a coloured badge matching its route line
+  const d=document.createElement('div');
+  d.style.cssText=`background:${color};color:#fff;font:800 12px sans-serif;padding:5px 9px;border-radius:8px;
+    border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.55);white-space:nowrap`;
+  d.textContent='🏬 '+label; return d;
+}
+function enrouteDot(){             // a car wash sitting on the road to an anchor — blue dot, red "intercept" ring
+  const d=document.createElement('div');
+  d.style.cssText=`width:15px;height:15px;border-radius:50%;background:#2979ff;border:3px solid #ff1744;
+    box-shadow:0 0 0 3px rgba(255,23,68,.35),0 1px 3px rgba(0,0,0,.6)`;
+  return d;
+}
+function drawRoutes(){             // draw each anchor's road corridor + anchor badge + every wash sitting on it (2D map)
+  clearRoutes();
+  for(const r of ROUTES){
+    const path=r.polyline.map(p=>({lat:p[0],lng:p[1]}));
+    routeObjs.push(new google.maps.Polyline({path,map:map2d,strokeColor:r.color,strokeOpacity:.9,
+      strokeWeight:5,geodesic:true,zIndex:50}));
+    routeObjs.push(new advLib.AdvancedMarkerElement({map:map2d,position:{lat:r.lat,lng:r.lng},
+      content:storePin(r.color,r.label),zIndex:60}));
+    for(const w of (r.washes||[])){
+      routeObjs.push(new advLib.AdvancedMarkerElement({map:map2d,position:{lat:w.lat,lng:w.lng},
+        content:enrouteDot(),title:`${w.name} · on the road to ${r.label}`,zIndex:55}));
+    }
+  }
+  if(map2d) map2d.setCenter(SITE);
+}
+function clearRoutes(){
+  for(const o of routeObjs){ if(o.setMap) o.setMap(null); else o.map=null; }
+  routeObjs=[];
 }
 
 // ── overlay markers from server-fetched places; toggle by category + radius ──
@@ -551,9 +770,10 @@ renderPanel(); renderChips(); init();
 # ───────────────────────────── page entry point ─────────────────────────────
 def render(demo: bool = False):
     st.title("🛰️ Site analysis (visual) · beta")
-    st.caption("Google-Earth-style 3D explorer + live Places overlays, with trade-area intelligence "
-               "from `merged_all_sites.csv`. Pan / tilt / orbit the map to read frontage, intersections, "
-               "parking and surrounding activity for yourself.")
+    st.caption("Google-Earth-style 3D explorer + live Places overlays (competitors, gas, food, retail & "
+               "mass-merchants at 1 / 3 / 5-mile rings), with trade-area intelligence from `merged_all_sites.csv`. "
+               "Toggle **🛣️ Anchor routes** to see the road each nearby Walmart/Costco-type anchor pulls traffic "
+               "along and the car washes sitting on it (the ones intercepting anchor-bound customers).")
 
     df = load_features()
     if "pin" not in st.session_state:
@@ -600,8 +820,12 @@ def render(demo: bool = False):
                 "describe this exact spot. The map & live Places still reflect the pin.")
 
     places = fetch_places(lat, lon, server_key()) if server_key() else {}
+    routes = []
+    if routes_key() and places.get("mass"):
+        payload = json.dumps({"mass": places.get("mass", []), "wash": places.get("car_wash", [])})
+        routes = compute_routes(lat, lon, routes_key(), payload)
 
     components.html(
-        dashboard_html(js_map_key(), lat, lon, label, name, dist_km, sections, places),
+        dashboard_html(js_map_key(), lat, lon, label, name, dist_km, sections, places, routes),
         height=790, scrolling=False,
     )

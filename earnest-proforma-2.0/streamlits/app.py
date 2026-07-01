@@ -20,6 +20,12 @@ import folium
 from streamlit_folium import st_folium
 import coldstart_model as cm
 import site_visual_page as svp
+try:                                                          # tunnel-length → CAPEX model (learned from proforma data)
+    import tunnel_capex as tcx
+    _CAPEX_OK = True
+except Exception:                                             # pragma: no cover
+    tcx = None
+    _CAPEX_OK = False
 
 # ── make the repo-root `app.*` package importable from streamlits/ (the local app.py would otherwise
 #    shadow it). Mirrors site_analysis_page.py: register `app` as a namespace package at <repo>/app. ──
@@ -47,6 +53,18 @@ except Exception as _insights_imp_err:                        # pragma: no cover
         return False
     _INSIGHTS_OK = False
 
+# ── POC (kept deliberately separate from the grounded pipeline above): raw-GPT market analysis from the
+#    pin's location alone, no data fed in. Its own module/prompt; reuses only the shared Azure transport. ──
+try:
+    from app.pnl_analysis.insights.location_poc import (location_market_analysis, pollinate_analysis,
+                                                        competition_scale_analysis)
+    _LOC_POC_OK = True
+except Exception:                                             # pragma: no cover
+    location_market_analysis = None
+    pollinate_analysis = None
+    competition_scale_analysis = None
+    _LOC_POC_OK = False
+
 HERE = Path(__file__).resolve().parent
 CSV = HERE.parent / "data" / "main-ds.csv"
 TYPES_CSV = HERE.parent / "data" / "site_carwash_types.csv"
@@ -54,6 +72,13 @@ ARTIFACTS = HERE.parent / "notebooks" / "artifacts"
 EARTH_KM = 6371.0088
 EXPRESS_TYPE = "Express Tunnel"          # the "express only" filter keeps just this primary_carwash_type
 EXPRESS_MIN_MONTHS = 30                   # express mode also requires ≥30 monthly records → richer history
+# ── corrupted-ASP floor (a real data-feed drop: revenue decays to ~0 while wash_count stays normal) ──
+# A site-month is implausible when it has material volume but a near-zero implied price. Drop these rows
+# BEFORE pooling the cluster ASP so the bad sites can't halve the $/wash. Wash-weighting means dropping
+# cheap rows only ever pulls the ratio toward the healthy majority — never inflates it.
+ASP_MIN_WASH = 200       # only judge rows with material volume (≥200 washes) — ignore thin/noisy months
+ASP_FLOOR_MEM = 4.0      # $/membership-wash below this @ ≥200 washes ⇒ corrupt (healthy median ~$11)
+ASP_FLOOR_RET = 5.0      # $/retail-wash below this @ ≥200 washes ⇒ corrupt (healthy median ~$16)
 
 # ───────────────────────────── data ─────────────────────────────
 @st.cache_data(show_spinner=False)
@@ -112,6 +137,33 @@ def load_data(express_only=False):
     # density-aware "local market" clustering (adaptive 10/20km — won the bake-off vs fixed 20km; see coldstart_forecast.ipynb)
     site["cluster"] = cm.assign_clusters(site, "adaptive")
     return df, site
+
+
+def _drop_corrupt_asp_rows(rec):
+    """Drop site-months whose revenue feed collapsed to ~0 while wash_count stayed normal (a data-feed drop,
+    not a real price). Row is bad if it has ≥ASP_MIN_WASH washes AND an implied $/wash below the floor.
+    Self-contained per-row predicate (no per-site baseline). Returns (filtered_rec, n_dropped)."""
+    if rec.empty:
+        return rec, 0
+    mw, rw = rec.mem_wash_count.replace(0, np.nan), rec.ret_wash_count.replace(0, np.nan)
+    bad = (((rec.mem_wash_count >= ASP_MIN_WASH) & (rec.mem_revenue / mw < ASP_FLOOR_MEM))
+           | ((rec.ret_wash_count >= ASP_MIN_WASH) & (rec.ret_revenue / rw < ASP_FLOOR_RET))).fillna(False)
+    return rec[~bad], int(bad.sum())
+
+
+@st.cache_data(show_spinner=False)
+def global_healthy_asp(express_only=False):
+    """Wash-weighted cluster-ASP fallback from ALL healthy site-months (after the corrupt-row floor),
+    used when every in-radius neighbour is corrupt — far better than the flat $30/$15 defaults.
+    Returns (cl_mem_pp, purch_per_wash, cl_ret)."""
+    df, _ = load_data(express_only)
+    rec, _ = _drop_corrupt_asp_rows(df)
+    mm = rec.dropna(subset=["mem_revenue"]); rr = rec.dropna(subset=["ret_revenue"])
+    mp, mw = mm.mem_purchase_count.sum(), mm.mem_wash_count.sum()
+    cl_mem_pp = float(mm.mem_revenue.sum() / mp) if mp > 0 else 30.0
+    ppw = float(mp / mw) if mw > 0 else 0.33
+    cl_ret = float(rr.ret_revenue.sum() / rr.ret_wash_count.sum()) if rr.ret_wash_count.sum() > 0 else 15.0
+    return cl_mem_pp, ppw, cl_ret
 
 
 def haversine_km(lat1, lon1, lat2, lon2):
@@ -472,6 +524,24 @@ def spread_capex(n_months, capex_by_year):
         if amt:
             out[sl] = amt / max(sl.stop - sl.start, 1)
     return out
+
+
+@st.cache_data(show_spinner=False)
+def capex_band_table():
+    """Tunnel-length → CAPEX band table (median/mean/n per band), learned from the proforma data."""
+    return tcx.capex_band_table() if _CAPEX_OK else pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
+def capex_builds():
+    """Per-build (tunnel length, total CAPEX) points for the scatter."""
+    return tcx.load_builds() if _CAPEX_OK else pd.DataFrame(columns=["tlen", "capex"])
+
+
+@st.cache_data(show_spinner=False)
+def capex_fit():
+    """(slope $/m, intercept $, corr, n) of CAPEX ~ tunnel length, for the analysis caption."""
+    return tcx.fit() if _CAPEX_OK else (None, None, None, 0)
 
 
 def per_year_to_monthly(n_months, by_year, default):
@@ -959,8 +1029,49 @@ def campaign_cluster_panel(df, site, lat, lon, radius, demo=False):
     st.plotly_chart(fig, width="stretch", key="camp_cluster_chart")
 
 
+def _pnl_figure(rev_m, opex_m, capex_m, totexp_m, net_m, gran, *, title,
+                camp_on=False, rev_base=None, c_launch=None, win=6):
+    """Build the 5-year P&L figure (revenue · stacked OPEX+CAPEX · total expenses · net income). Reused so the
+    baseline and the campaign scenario render as two IDENTICAL plots. `camp_on` overlays the no-campaign revenue
+    line and shades the promo window."""
+    xb, rev_a = agg_months(rev_m, gran)
+    _, opex_a = agg_months(opex_m, gran)
+    _, capex_a = agg_months(capex_m, gran)
+    _, totexp_a = agg_months(totexp_m, gran)
+    _, net_a = agg_months(net_m, gran)
+    f = go.Figure()
+    f.add_trace(go.Scatter(x=xb, y=opex_a, name="OPEX", mode="lines", line=dict(color="#e67e22", width=0.5),
+                           stackgroup="exp", fillcolor="rgba(230,126,34,0.55)",
+                           hovertemplate="m%{x} · $%{y:,.0f}<extra>OPEX</extra>"))
+    f.add_trace(go.Scatter(x=xb, y=capex_a, name="CAPEX", mode="lines", line=dict(color="#8e44ad", width=0.5),
+                           stackgroup="exp", fillcolor="rgba(142,68,173,0.45)",
+                           hovertemplate="m%{x} · $%{y:,.0f}<extra>CAPEX</extra>"))
+    f.add_trace(go.Scatter(x=xb, y=totexp_a, name="total expenses", mode="lines", line=dict(color="#c0392b", width=2),
+                           hovertemplate="m%{x} · $%{y:,.0f}<extra>total expenses</extra>"))
+    f.add_trace(go.Scatter(x=xb, y=rev_a, name="revenue (sales)", mode="lines", line=dict(color="#16a085", width=3),
+                           hovertemplate="m%{x} · $%{y:,.0f}<extra>revenue</extra>"))
+    f.add_trace(go.Scatter(x=xb, y=net_a, name="net income", mode="lines", line=dict(color="#0a84ff", width=2.6),
+                           hovertemplate="m%{x} · $%{y:,.0f}<extra>net</extra>"))
+    f.add_hline(y=0, line=dict(color="#9aa6b2", width=1, dash="dot"))
+    if camp_on and rev_base is not None:
+        _, revb_a = agg_months(rev_base, gran)
+        f.add_trace(go.Scatter(x=xb, y=revb_a, name="revenue (no campaign)", mode="lines",
+                               line=dict(color="#9aa6b2", width=1.4, dash="dot"),
+                               hovertemplate="m%{x} · $%{y:,.0f}<extra>no campaign</extra>"))
+        f.add_vrect(x0=c_launch, x1=min(60, c_launch + win), fillcolor="rgba(230,25,75,0.08)", line_width=0,
+                    annotation_text="campaign", annotation_position="top left")
+        f.add_vline(x=c_launch, line=dict(color="#c0392b", dash="dash", width=1.2))
+    f.update_layout(title=title, height=440, template="plotly_white", hovermode="x unified",
+                    yaxis_title=f"$ / {GRAN_UNIT[gran]}", margin=dict(l=10, r=10, t=44, b=10),
+                    legend=dict(orientation="h", y=-0.24))
+    gran_xaxes_months(f, gran, xb, noun="opening")
+    return f
+
+
 def drop_pin_ui(df, site, art, demo=False, express_only=False):
-    st.title("Forecasting for a new site")
+    st.title("📍 Pinpoint forecast")
+    st.caption("Drop a pin inside a market for a grounded **5-year forecast of a new car-wash site** — "
+               "wash volume, P&L, the build CAPEX for your tunnel size, and whether to run a launch campaign.")
     if express_only:
         st.caption("🚿 **Express-only mode** — local-market trends, the cluster gate and the level anchor all use "
                    "Express Tunnel sites only.")
@@ -976,16 +1087,18 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         ov = st.number_input("Plateau override — total washes/mo (0 = use model)", min_value=0, value=0, step=500)
         # Separate, self-contained level strategies (each leave-one-out backtested; WAPE shown). The ramp-up →
         # mature → plateau trajectory is the SAME underneath — the models differ only in how the plateau level is set.
-        # leakage-free LOO backtest (1223 sites, ≥24mo): Model 1 WAPE 46.5 · Model 2 43.6 · Model 3 40.2 (cold-start) ·
+        # leakage-free LOO backtest (1223 sites, ≥24mo): Model 2 WAPE 43.6 · Model 3 40.2 (cold-start) ·
         # Model 4 ~34.1 WAPE / 27.7 medAPE when the operator is KNOWN (uses that operator's avg mature level, brand_loo).
+        # Model 1 (no local anchor) was DROPPED — it under-predicts wash count badly (bias 0.72; 29% of sites fall
+        # below their cluster-neighbour minimum). All kept models anchor on the local matured level. Labels keep
+        # their original numbers so the WAPE references above stay meaningful.
         MODEL_STRATEGIES = {
-            "Model 1": dict(local_anchor=False, model_kind="lgb", use_operator=False),
             "Model 2": dict(local_anchor=True, model_kind="lgb", use_operator=False),
             "Model 3": dict(local_anchor=True, model_kind="et", use_operator=False),
             "Model 4": dict(local_anchor=True, model_kind="et", use_operator=True),
         }
-        strat = MODEL_STRATEGIES[st.radio("Model", list(MODEL_STRATEGIES), index=2,
-                                          help="Plateau-level strategy (LOO WAPE): M1 46.5%, M2 43.6%, M3 40.2% "
+        strat = MODEL_STRATEGIES[st.radio("Model", list(MODEL_STRATEGIES), index=1,    # default Model 3 (best cold-start)
+                                          help="Plateau-level strategy (LOO WAPE): M2 43.6%, M3 40.2% "
                                                "(cold-start, no operator). M4 ≈ 34% — operator-based; pick the operator below.")]
         anchor_on = strat["local_anchor"]
         model_kind = strat["model_kind"]
@@ -1082,6 +1195,22 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                f"**{info.get('n_local_mature', 0)} matured** of them (needs ≥3, else it falls back to the global model). "
                f"🔵 all other sites · ⭕ {radius} km · ⭐ your pin. **Click to drop the pin.**")
 
+    # ── 📊 Forecast at a glance — headline KPIs straight off the trajectory ──
+    _plat = info.get("plateau_med")
+    _peak = float(np.nanmax(g.total_med.to_numpy())) if len(g) else None
+    _mm5 = float(np.nansum(g.mem_med.reindex(range(36, 61)))) if "mem_med" in g else 0.0
+    _rr5 = float(np.nansum(g.ret_med.reindex(range(36, 61)))) if "ret_med" in g else 0.0
+    _msat = (_mm5 / (_mm5 + _rr5)) if (_mm5 + _rr5) > 0 else None
+    st.markdown("##### 📊 Forecast at a glance")
+    _k1, _k2, _k3, _k4 = st.columns(4)
+    _k1.metric("Plateau washes / mo", f"{_plat:,.0f}" if _plat else "—",
+               help="Mature monthly wash level the forecast settles at (years 4–5).")
+    _k2.metric("Peak washes / mo", f"{_peak:,.0f}" if _peak else "—",
+               help="Highest monthly volume across the 5-year trajectory.")
+    _k3.metric("Membership @ maturity", f"{_msat:.0%}" if _msat is not None else "—",
+               help="Membership share of washes at maturity — higher = stickier, recurring demand.")
+    _k4.metric("Sites in market", f"{len(used)}", help=f"Existing sites within {radius} km feeding the local trend.")
+
     st.divider(); st.subheader("📈 Total local-market wash count — history + 5-year forecast")
     gmk = gran_picker("gran_market")
     today = pd.Timestamp(df.date.max())
@@ -1168,9 +1297,9 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
             f"(**{info['plateau_med']:,.0f}/mo**).")
     elif anchor_on:
         _none = "no **express** matured sites" if express_only else "no matured sites"
-        st.caption(f"🔧 **{_ml}** on, but {_none} within 20 km — same as Model 1 here.")
-    else:
-        st.caption(f"🔧 **Model 1:** plateau **{info['plateau_med']:,.0f}/mo**.")
+        st.caption(f"🔧 **{_ml}** on, but {_none} within 20 km — falls back to the base model (no local anchor) here.")
+    else:                                                        # unreachable now (all kept models anchor); defensive
+        st.caption(f"🔧 **Base model (no anchor):** plateau **{info['plateau_med']:,.0f}/mo**.")
     gtr = gran_picker("gran_traj")
     xb, tot = agg_months(g.total_med.to_numpy(), gtr)
     _, hi = agg_months(g.total_hi.to_numpy(), gtr); _, lo = agg_months(g.total_lo.to_numpy(), gtr)
@@ -1195,12 +1324,23 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     _nbk["d"] = haversine_km(lat, lon, _nbk.lat.values, _nbk.lon.values)
     _ck = _nbk.site_key[(_nbk.d <= radius) & (_nbk.d > 1e-6)].tolist()
     _rec = df[df.site_key.isin(_ck)].sort_values("date").groupby("site_key").tail(12) if _ck else df.iloc[:0]
+    # Drop corrupted site-months (revenue feed dropped to ~0 with washes intact) BEFORE pooling — else a couple
+    # of bad neighbours halve the cluster $/wash and the forecast revenue with it. See _drop_corrupt_asp_rows.
+    _rec, _n_drop = _drop_corrupt_asp_rows(_rec)
     _mm, _rr = _rec.dropna(subset=["mem_revenue"]), _rec.dropna(subset=["ret_revenue"])
     _mp, _mw = _mm.mem_purchase_count.sum(), _mm.mem_wash_count.sum()
-    cl_mem_pp = float(_mm.mem_revenue.sum() / _mp) if _mp > 0 else 30.0         # cluster $/membership PURCHASE (the new ASP)
-    purch_per_wash = float(_mp / _mw) if _mw > 0 else 0.33                      # cluster membership purchases per membership wash
-    cl_ret = float(_rr.ret_revenue.sum() / _rr.ret_wash_count.sum()) if _rr.ret_wash_count.sum() > 0 else 15.0
-    asp_scope = f"cluster ≤{radius} km · {len(_ck)} sites" if _ck else "default (no neighbours)"
+    # Fallback chain: clean cluster pool → if a side is empty (all neighbours corrupt / no market) use the
+    # GLOBAL healthy-median ASP (never the flat $30/$15, which can be worse than a degraded-but-real figure).
+    _g_mem_pp, _g_ppw, _g_ret = global_healthy_asp(express_only)
+    cl_mem_pp = float(_mm.mem_revenue.sum() / _mp) if _mp > 0 else _g_mem_pp     # cluster $/membership PURCHASE (the new ASP)
+    purch_per_wash = float(_mp / _mw) if _mw > 0 else _g_ppw                     # cluster membership purchases per membership wash
+    cl_ret = float(_rr.ret_revenue.sum() / _rr.ret_wash_count.sum()) if _rr.ret_wash_count.sum() > 0 else _g_ret
+    if not _ck:
+        asp_scope = "global healthy avg (no neighbours)"
+    elif _mp <= 0 and _rr.ret_wash_count.sum() <= 0:
+        asp_scope = f"global healthy avg ({len(_ck)} neighbours all corrupt)"
+    else:
+        asp_scope = f"cluster ≤{radius} km · {len(_ck)} sites" + (f" · {_n_drop} corrupt site-mo excluded" if _n_drop else "")
     tj = traj.set_index("month"); months = np.arange(0, 61)
     mem = tj["mem_med"].reindex(months).fillna(0.0).to_numpy()                  # projected membership WASHES
     ret = tj["ret_med"].reindex(months).fillna(0.0).to_numpy()                  # projected retail washes
@@ -1214,13 +1354,84 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         seg, sr = opex_shape[sl], _rev0[sl]
         w = sr if float(np.nansum(sr)) > 0 else np.ones_like(seg)
         return int(min(150, max(0, round(100 * float(np.average(seg, weights=w))))))
+    # ── 🏗️ Expected tunnel length → build CAPEX (learned from 187 real proforma builds) ──
+    st.markdown("##### 🏗️ Expected tunnel length → build CAPEX")
+    # 💡 Recommended tunnel length from the forecast's PEAK monthly washes (same proxy as the explore-markets plot):
+    #   peak-month washes ÷ 250 (25 operating days × 10 h/day → peak cars/hour) ÷ 3.2 + 10 → tunnel metres.
+    _fc_tot = np.asarray(mem, float) + np.asarray(ret, float)                   # forecast TOTAL washes/mo (60-mo trajectory)
+    _peak_fc = float(np.nanmax(_fc_tot)) if _fc_tot.size and np.isfinite(np.nanmax(_fc_tot)) else 0.0
+    rec_len = (_peak_fc / 250 / 3.2 + 10) if _peak_fc > 0 else None
+    if rec_len:
+        st.info(f"💡 **Recommended tunnel length ≈ {rec_len:.0f} m** — from your forecast peak of "
+                f"**{_peak_fc:,.0f} washes/mo** (peak ÷ 250 ÷ 3.2 + 10). Rough proxy — used to pre-pick the band below.")
+    _ctab = capex_band_table()
+    if _CAPEX_OK and len(_ctab):
+        _opts = _ctab.band.tolist()
+        _slope, _intr, _corr, _nfit = capex_fit()
+        # pre-select the band that CONTAINS the recommended length (fallback 35–40 m)
+        _rec_band = next((row.band for _, row in _ctab.iterrows() if rec_len and row.lo <= rec_len < row.hi), None)
+        _def_ix = (_opts.index(_rec_band) if _rec_band in _opts
+                   else (_opts.index("35–40 m") if "35–40 m" in _opts else len(_opts) // 2))
+
+        def _capex_opt_label(b):
+            r = _ctab[_ctab.band == b].iloc[0]
+            return f"{b}  ·  ≈ ${r['median'] / 1e6:.1f}M" + (f"  (n={int(r['n'])})" if r["n"] else "")
+
+        tlen_band = st.selectbox("Expected tunnel length", _opts, index=_def_ix, format_func=_capex_opt_label,
+                                 key=f"tlen_band_{round(lat, 3)}_{round(lon, 3)}",
+                                 help="Pre-set to the band matching the recommended length above; change it to override. "
+                                      "Sets the build CAPEX from the median total investment of real builds at that length.")
+        _band_med = float(_ctab[_ctab.band == tlen_band]["median"].iloc[0])
+        build_capex = float(st.number_input(
+            "Build CAPEX ($) — auto-set from tunnel length (editable)", min_value=0,
+            value=int(round(_band_med)), step=50_000, format="%d", key=f"build_capex_{tlen_band}",
+            help="Total build/acquisition investment for this tunnel size, spread evenly across the 5-year P&L. "
+                 "Edit to override the data-driven default."))
+        _cap_cap = (f"Build CAPEX **${build_capex:,.0f}** for a **{tlen_band}** tunnel "
+                    f"(spread evenly over 5 years ≈ **${build_capex / 60:,.0f}/mo**).")
+        if _slope:
+            _cap_cap += f" Across {_nfit} real builds, CAPEX rises ~${_slope:,.0f}/m (corr {_corr:.2f})."
+        st.caption(_cap_cap.replace("$", "\\$"))                                 # escape $ so Streamlit doesn't render LaTeX
+        with st.expander("📊 How tunnel length drives CAPEX (real proforma builds)"):
+            _b = capex_builds()
+
+            def _bx(lo, hi):                                                     # band marker at its real median length
+                seg = _b[(_b.tlen >= lo) & (_b.tlen < hi)] if len(_b) else _b
+                return float(seg.tlen.median()) if len(seg) else (lo + min(hi, lo + 10)) / 2
+            if len(_b):
+                _cfig = go.Figure()
+                _cfig.add_trace(go.Scatter(x=_b.tlen, y=_b.capex, mode="markers", name="real builds",
+                                           marker=dict(size=6, color="#9ecae1", opacity=0.55),
+                                           hovertemplate="%{x:.0f} m · $%{y:,.0f}<extra></extra>"))
+                _cx = [_bx(r.lo, r.hi) for r in _ctab.itertuples()]
+                _cfig.add_trace(go.Scatter(x=_cx, y=_ctab["median"], mode="lines+markers", name="band median",
+                                           line=dict(color="#2171b5", width=2),
+                                           hovertemplate="band median $%{y:,.0f}<extra></extra>"))
+                _sel = _ctab[_ctab.band == tlen_band].iloc[0]
+                _cfig.add_trace(go.Scatter(x=[_bx(_sel.lo, _sel.hi)], y=[build_capex], mode="markers",
+                                           name="your choice", marker=dict(size=16, color="#e6194B", symbol="star"),
+                                           hovertemplate="your build · $%{y:,.0f}<extra></extra>"))
+                _cfig.update_layout(height=340, template="plotly_white", margin=dict(l=8, r=8, t=10, b=10),
+                                    legend=dict(orientation="h", y=-0.2),
+                                    xaxis_title="tunnel length (m)", yaxis_title="total build CAPEX ($)")
+                st.plotly_chart(_cfig, width="stretch", key="capex_scatter")
+            _show = _ctab.assign(**{"median CAPEX": _ctab["median"].map(lambda v: f"${v:,.0f}"),
+                                    "mean CAPEX": _ctab["mean"].map(lambda v: f"${v:,.0f}" if pd.notna(v) else "—")})
+            st.dataframe(_show[["band", "n", "median CAPEX", "mean CAPEX"]].rename(columns={"band": "tunnel length"}),
+                         hide_index=True, width="stretch")
+            st.caption("CAPEX = `project_cost_total_investment` from builds with a known tunnel length & non-zero "
+                       "investment. The median is the auto-set default; band medians are kept non-decreasing.")
+    else:
+        build_capex = 0.0
+        st.caption("_Tunnel-length CAPEX model unavailable — enter CAPEX manually in the grid below._")
+
     with st.expander("⚙️ Cost assumptions — by year", expanded=True):
         _plan0 = pd.DataFrame({
             "Year": [f"Year {i + 1}" for i in range(5)],
             "Mem ASP ($/purchase)": [round(min(cl_mem_pp, 100.0), 1)] * 5,
             "Retail ASP ($/wash)": [round(min(cl_ret, 60.0), 1)] * 5,
             "OPEX (% of sales)": [_learned_pct(sl) for sl in _yslices],
-            "CAPEX ($)": [0] * 5,
+            "Extra CAPEX ($)": [0] * 5,
         })
         plan = st.data_editor(
             _plan0, hide_index=True, width="stretch", num_rows="fixed", disabled=["Year"], key="pnl_plan",
@@ -1234,21 +1445,61 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                 "OPEX (% of sales)": st.column_config.NumberColumn(
                     min_value=0, max_value=150, step=1, format="%d%%",
                     help="Operating expense as % of sales; fitted onto the learned hot→mature pattern. Defaults follow the learned curve (Years 4–5 extrapolated)."),
-                "CAPEX ($)": st.column_config.NumberColumn(
+                "Extra CAPEX ($)": st.column_config.NumberColumn(
                     min_value=0, step=25000, format="$%d",
-                    help="Build-out / equipment $ spent that year, added into expenses and spread across its months."),
+                    help="ADDITIONAL CAPEX that year (e.g. refurb), on TOP of the tunnel-length build CAPEX above; "
+                         "spread across that year's months."),
             },
         )
         mem_asp_in = {i + 1: float(plan["Mem ASP ($/purchase)"].iloc[i]) for i in range(5)}
         ret_asp_in = {i + 1: float(plan["Retail ASP ($/wash)"].iloc[i]) for i in range(5)}
         opex_in = {i + 1: float(plan["OPEX (% of sales)"].iloc[i]) for i in range(5)}
-        capex_in = {i + 1: float(plan["CAPEX ($)"].iloc[i]) for i in range(5) if float(plan["CAPEX ($)"].iloc[i])}
+        extra_capex = {i + 1: float(plan["Extra CAPEX ($)"].iloc[i]) for i in range(5) if float(plan["Extra CAPEX ($)"].iloc[i])}
+    capex_in = dict(extra_capex)
+    if build_capex:                                                            # tunnel-length build CAPEX spread evenly over 5 years
+        for _y in range(1, 6):
+            capex_in[_y] = capex_in.get(_y, 0.0) + build_capex / 5
     asp_mem_pp = per_year_to_monthly(len(months), mem_asp_in, cl_mem_pp)        # $/purchase per month (membership)
     asp_ret = per_year_to_monthly(len(months), ret_asp_in, cl_ret)             # $/wash per month (retail)
     rev_base = mem_purch * asp_mem_pp + ret * asp_ret                          # sales = mem purchases × $/purchase + retail washes × $/wash
 
-    # ── CAMPAIGN — promo that converts retail→membership and eats neighbours' share (opex-data.csv + book_v4) ──
-    st.markdown("##### 🎯 Campaign — should this site run a promotion?")
+    # ── baseline expenses (no campaign): OPEX %/yr fitted onto the learned hot→mature shape; CAPEX spread per year ──
+    opex_pct, opex_tgts = fit_opex_pct_to_targets(opex_shape, rev_base, opex_in)
+    opex_base_m = opex_pct * rev_base                                  # OPEX $ (no campaign)
+    capex_m = spread_capex(len(months), capex_in)                     # CAPEX $ spread across each year
+    total_exp_base = opex_base_m + capex_m
+    net_base = rev_base - total_exp_base
+
+    gpnl = gran_picker("gran_pnl")
+    st.plotly_chart(_pnl_figure(rev_base, opex_base_m, capex_m, total_exp_base, net_base, gpnl,
+                                title="P&L — revenue vs expenses (OPEX + CAPEX) · net income, 5-year"), width="stretch")
+    # Breakeven = cash PAYBACK: months until cumulative OPERATING profit (sales − OPEX) recovers the FULL upfront
+    # build + extra CAPEX. The P&L line amortizes CAPEX over 5y for the income-statement view, but payback must
+    # treat it as spent upfront — else it reports breakeven (e.g. month 15) while ~75% of the build is unrecovered.
+    _oper = np.nan_to_num(rev_base - opex_base_m)                     # operating profit, CAPEX NOT amortized here
+    _capex_tot = float(np.nansum(capex_m))
+    _cum_oper = np.cumsum(_oper)
+    _be = (int(np.argmax(_cum_oper >= _capex_tot)) + 1) if (_cum_oper >= _capex_tot).any() else None  # 1-indexed
+    _sales5 = float(np.nansum(rev_base)); _opex5 = float(np.nansum(opex_base_m))
+    _capex5 = float(np.nansum(capex_m)); _net5 = float(np.nansum(net_base))
+    st.markdown("**5-year totals**")
+    _t1, _t2, _t3, _t4, _t5 = st.columns(5)
+    _t1.metric("Sales", f"${_sales5 / 1e6:.2f}M")
+    _t2.metric("OPEX", f"${_opex5 / 1e6:.2f}M", help="Operating expenses (excl. CAPEX) over 5 years.")
+    _t3.metric("CAPEX", f"${_capex5 / 1e6:.2f}M", help="Build investment, spread evenly over the 5 years.")
+    _t4.metric("Net income", f"${_net5 / 1e6:.2f}M", delta=(f"{_net5 / _sales5:.0%} margin" if _sales5 > 0 else None))
+    _t5.metric("Breakeven", (f"month {_be}" if _be is not None else "—"),
+               help=("Cash payback: month cumulative operating profit (sales − OPEX) recovers the full upfront "
+                     f"build CAPEX (${_capex_tot/1e6:.2f}M)." if _be is not None
+                     else "Operating profit doesn't recover the build CAPEX within 5 years."))
+    st.caption((f"ROI (5-yr net ÷ CAPEX) **{_net5 / _capex5:.0%}** · " if _capex5 > 0 else "")
+               + "OPEX %/yr (fitted): " + ", ".join(f"Y{y}={t * 100:.0f}%" for y, t in opex_tgts.items()) + ".")
+
+    # ════════════ CAMPAIGN ANALYSIS — self-contained, separate from the baseline P&L above ════════════
+    st.divider()
+    st.header("🎯 Campaign analysis — should this site run a launch promotion?")
+    st.caption("A promo converts retail visits into membership and steals some neighbour share. Everything below is "
+               "the **campaign scenario** — the P&L above stays the campaign-free baseline.")
     ms = float(info.get("mem_share", 0.6))                       # fallback if the trajectory is empty
     # the LOCAL MARKET incumbents: established (≥2yr) sites within the radius — do they prove membership works?
     _loc = site[site.has_coords].copy(); _loc["d"] = haversine_km(lat, lon, _loc.lat.values, _loc.lon.values)
@@ -1260,8 +1511,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         lambda gg: gg.mem_wash_count.fillna(0).sum()
         / max(1.0, gg.mem_wash_count.fillna(0).sum() + gg.ret_wash_count.fillna(0).sum()), include_groups=False)
     nb_ms = float(_per.median()) if len(_per) else float("nan")
-    # THIS SITE's predicted membership = what its 5-yr trajectory SETTLES at (plateau months 36–60): predicted
-    # membership washes ÷ total washes — read straight off the trajectory plot, not the raw model parameter.
+    # THIS SITE's predicted membership = what its 5-yr trajectory SETTLES at (plateau months 36–60).
     _plm, _plr = float(np.nansum(mem[36:61])), float(np.nansum(ret[36:61]))
     if _plm + _plr > 0:
         ms = _plm / (_plm + _plr)
@@ -1285,7 +1535,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     cB.metric("Established incumbents", n_inc, help=f"Sites with ≥2 years of history within {radius} km — proof the market is viable & competitive.")
     cC.metric("This site's predicted membership", f"{ms:.0%}",
               help="Membership share its 5-year trajectory settles at (predicted membership ÷ total washes at maturity) — the same split shown in the trajectory plot. Lower = more retail headroom to convert.")
-    st.markdown(verdict)
+    (st.success if verdict.startswith("🟢") else st.warning if verdict.startswith("🟠") else st.error)(verdict)
     with st.expander("Apply a campaign and see the P&L change", expanded=False):
         camp_on = st.checkbox("Apply campaign", value=False)
         cc1, cc2 = st.columns(2)
@@ -1298,56 +1548,23 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     if camp_on:                                                        # additional info: the real OPEX/Rev/Profit/Mem breakdown
         with st.popover("Additional info — what a campaign does to OPEX / Revenue / Profit / Membership", width=1000):
             render_campaign_snapshot()
-
-    rev_m = mem_purch * mem_mult * asp_mem_pp + ret * ret_mult * asp_ret   # campaign shifts the mix retail→membership (purchases scale with mem washes)
-    # OPEX line = the user's per-year % of sales, fitted onto the learned hot→mature pattern (shape kept, level set
-    # to each year's target). CAPEX = $ per year spread across its months. Expenses = OPEX + CAPEX; net = sales − both.
-    opex_pct, opex_tgts = fit_opex_pct_to_targets(opex_shape, rev_base, opex_in)
-    opex_base_m = opex_pct * rev_base                                  # OPEX $ (no campaign)
-    opex_m = opex_base_m * opex_mult_c                                 # + the promo spend over the campaign window
-    capex_m = spread_capex(len(months), capex_in)                     # CAPEX $ spread across each year
-    total_exp_base = opex_base_m + capex_m
+    # campaign scenario: revenue shifts retail→membership; OPEX carries the promo spend over the window; CAPEX unchanged
+    rev_m = mem_purch * mem_mult * asp_mem_pp + ret * ret_mult * asp_ret
+    opex_m = opex_base_m * opex_mult_c
     total_exp_m = opex_m + capex_m
     net_m = rev_m - total_exp_m
 
-    gpnl = gran_picker("gran_pnl")
-    xb, rev_a = agg_months(rev_m, gpnl)
-    _, opex_a = agg_months(opex_m, gpnl)
-    _, capex_a = agg_months(capex_m, gpnl)
-    _, totexp_a = agg_months(total_exp_m, gpnl)
-    _, net_a = agg_months(net_m, gpnl)
-    f2 = go.Figure()
-    # expense composition: OPEX + CAPEX stacked → the top of the filled stack IS total expenses
-    f2.add_trace(go.Scatter(x=xb, y=opex_a, name="OPEX", mode="lines", line=dict(color="#e67e22", width=0.5),
-                            stackgroup="exp", fillcolor="rgba(230,126,34,0.55)",
-                            hovertemplate="m%{x} · $%{y:,.0f}<extra>OPEX</extra>"))
-    f2.add_trace(go.Scatter(x=xb, y=capex_a, name="CAPEX", mode="lines", line=dict(color="#8e44ad", width=0.5),
-                            stackgroup="exp", fillcolor="rgba(142,68,173,0.45)",
-                            hovertemplate="m%{x} · $%{y:,.0f}<extra>CAPEX</extra>"))
-    f2.add_trace(go.Scatter(x=xb, y=totexp_a, name="total expenses", mode="lines", line=dict(color="#c0392b", width=2),
-                            hovertemplate="m%{x} · $%{y:,.0f}<extra>total expenses</extra>"))
-    f2.add_trace(go.Scatter(x=xb, y=rev_a, name="revenue (sales)", mode="lines", line=dict(color="#16a085", width=3),
-                            hovertemplate="m%{x} · $%{y:,.0f}<extra>revenue</extra>"))
-    f2.add_trace(go.Scatter(x=xb, y=net_a, name="net income", mode="lines", line=dict(color="#0a84ff", width=2.6),
-                            hovertemplate="m%{x} · $%{y:,.0f}<extra>net</extra>"))
-    f2.add_hline(y=0, line=dict(color="#9aa6b2", width=1, dash="dot"))
+    # second copy of the SAME P&L plot — now the campaign scenario (overlays the no-campaign revenue when applied)
+    gpnl_c = gran_picker("gran_pnl_camp")
+    st.plotly_chart(_pnl_figure(rev_m, opex_m, capex_m, total_exp_m, net_m, gpnl_c,
+                                title="P&L WITH campaign — revenue vs expenses (OPEX + CAPEX) · net income, 5-year",
+                                camp_on=camp_on, rev_base=rev_base, c_launch=c_launch, win=WIN), width="stretch")
     if camp_on:
-        _, revb_a = agg_months(rev_base, gpnl)
-        f2.add_trace(go.Scatter(x=xb, y=revb_a, name="revenue (no campaign)", mode="lines",
-                                line=dict(color="#9aa6b2", width=1.4, dash="dot"), hovertemplate="m%{x} · $%{y:,.0f}<extra>no campaign</extra>"))
-        f2.add_vrect(x0=c_launch, x1=min(60, c_launch + WIN), fillcolor="rgba(230,25,75,0.08)", line_width=0,
-                     annotation_text="campaign", annotation_position="top left")
-        f2.add_vline(x=c_launch, line=dict(color="#c0392b", dash="dash", width=1.2))
-    f2.update_layout(title="P&L — revenue vs expenses (OPEX + CAPEX) · net income, 5-year", height=440,
-                     template="plotly_white", hovermode="x unified",
-                     yaxis_title=f"$ / {GRAN_UNIT[gpnl]}", margin=dict(l=10, r=10, t=44, b=10), legend=dict(orientation="h", y=-0.24))
-    gran_xaxes_months(f2, gpnl, xb, noun="opening")
-    st.plotly_chart(f2, width="stretch")
-    _cum = np.cumsum(np.nan_to_num(net_m)); _be = int(np.argmax(_cum > 0)) if (_cum > 0).any() else None
-    st.caption(f"5-yr totals — sales **${np.nansum(rev_base):,.0f}** · OPEX **${np.nansum(opex_base_m):,.0f}** · "
-               f"CAPEX **${np.nansum(capex_m):,.0f}** · net **${np.nansum(rev_base - total_exp_base):,.0f}**"
-               + (f" · breakeven ~month **{_be}**." if _be is not None else " · no breakeven within 5 yrs.")
-               + "  OPEX %/yr (fitted): " + ", ".join(f"Y{y}={t * 100:.0f}%" for y, t in opex_tgts.items()) + ".")
+        _net5c = float(np.nansum(net_m)); _dnet = _net5c - _net5
+        st.caption(f"Campaign 5-yr net **\\${_net5c / 1e6:.2f}M** vs baseline **\\${_net5 / 1e6:.2f}M** "
+                   f"(**{'+' if _dnet >= 0 else '−'}\\${abs(_dnet) / 1e6:.2f}M** from the promo).")
+    else:
+        st.caption("_Tick **Apply campaign** in the expander above to overlay the promo scenario on this plot._")
 
     # ── eating the market: your site vs EACH incumbent, each time-series-forecast forward 5 years ──
     if n_inc >= 1:
@@ -1413,7 +1630,30 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
 
 # ───────────────────────────── UI ─────────────────────────────
 st.set_page_config(page_title="Local Market Explorer", layout="wide")
-MODES = ["🗺️ Explore markets", "📍 Drop-a-pin forecast", "🛰️ Site analysis (visual) · beta"]
+# ── light global polish: card-style metrics, tidier expanders/headers (no logic, pure CSS) ──
+st.markdown("""
+<style>
+/* theme-agnostic: semi-transparent grey tints work on BOTH light and dark backgrounds (no hardcoded white) */
+[data-testid="stMetric"]{background:rgba(128,128,128,.10);border:1px solid rgba(128,128,128,.22);
+  border-radius:12px;padding:10px 16px;}
+[data-testid="stMetricLabel"]{opacity:.8;}
+[data-testid="stMetricValue"]{font-size:1.5rem;font-weight:600;}
+[data-testid="stMetricDelta"]{font-size:.82rem;}
+div[data-testid="stExpander"] details{border:1px solid rgba(128,128,128,.22);border-radius:12px;}
+h1{letter-spacing:-.02em;} h2,h3{letter-spacing:-.01em;padding-top:.15rem;}
+hr{margin:.7rem 0;}
+/* readable AI summaries — generous line-height, spaced headings & lists so a long LLM report scans cleanly */
+[data-testid="stMarkdownContainer"] p{line-height:1.58;margin:.35rem 0;}
+[data-testid="stMarkdownContainer"] li{line-height:1.5;margin:.14rem 0;}
+[data-testid="stMarkdownContainer"] ul,[data-testid="stMarkdownContainer"] ol{margin:.25rem 0 .6rem;}
+[data-testid="stMarkdownContainer"] h2,[data-testid="stMarkdownContainer"] h3,[data-testid="stMarkdownContainer"] h4{margin:.85rem 0 .3rem;font-weight:650;}
+[data-testid="stMarkdownContainer"] h4{font-size:1.02rem;}
+/* bordered summary cards: rounded, soft tint, comfortable padding */
+[data-testid="stVerticalBlockBorderWrapper"]{border-radius:14px;}
+[data-testid="stVerticalBlockBorderWrapper"]>div{padding:.2rem .25rem;}
+</style>
+""", unsafe_allow_html=True)
+MODES = ["🛰️ Sitewise", "🗺️ Explore markets", "📍 Pinpoint forecast"]
 with st.sidebar:
     st.header("Controls")
     demo = st.toggle("👔 Client demo (anonymized)", value=False,
@@ -1573,9 +1813,17 @@ ckeys = nb_full.site_key.tolist()
 cdesc = f"this local market · {len(ckeys)} sites" if demo else f"local market ≤{radius} km · {len(ckeys)} sites"
 st.subheader(f"Local-market KPIs over time — {cdesc}")
 sub = df[df.site_key.isin(ckeys)].copy()
+# Null corrupted revenue (feed dropped to ~0 with washes intact) so the revenue/ASP charts and the AI
+# insights below aren't deflated by it. Same floor as the P&L block; washes & purchases are left intact.
+_subr = (sub.ret_wash_count >= ASP_MIN_WASH) & (sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan) < ASP_FLOOR_RET)
+_subm = (sub.mem_wash_count >= ASP_MIN_WASH) & (sub.mem_revenue / sub.mem_wash_count.replace(0, np.nan) < ASP_FLOOR_MEM)
+sub.loc[_subr.fillna(False), "ret_revenue"] = np.nan
+sub.loc[_subm.fillna(False), "mem_revenue"] = np.nan
+sub["tot_revenue"] = sub[["mem_revenue", "ret_revenue"]].sum(axis=1, min_count=1)
 sub["asp_ret"] = sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan)        # retail ASP = revenue ÷ retail washes
 sub["asp_mem"] = sub.mem_revenue / sub.mem_purchase_count.replace(0, np.nan)    # membership ASP = revenue ÷ membership PURCHASES
-# one figure per group (washes → revenue → ASP); each followed by a "Key insights" note
+# one figure per group (washes → revenue → ASP). Grounded Key Insights are shown ONCE as a card up top
+# (the Analysis → Key Insights view), not repeated under each chart.
 GROUPS = [
     ("Washes", [("tot_wash_count", "Total washes", "count"), ("ret_wash_count", "Retail washes", "count"), ("mem_wash_count", "Membership washes", "count")]),
     ("Revenue", [("tot_revenue", "Total revenue ($)", "$"), ("ret_revenue", "Retail revenue ($)", "$"), ("mem_revenue", "Membership revenue ($)", "$")]),
@@ -1607,18 +1855,204 @@ def _market_insights_cached(_sig, _sub, _meta, focal_key, backend):
     return market_insights(_sub, _meta, focal_key, backend=backend)["insights"]
 
 
+# ── Summaries are prepared AUTOMATICALLY on pin/market change, then VIEWED via the dropdown ──
+# No "Generate" click: when a market is chosen we eagerly compute and cache every LLM-backed summary we can
+# support for that market, so switching the dropdown only renders already-prepared output.
 insights_store = st.session_state.setdefault("insights_store", {})
-bcol, mcol = st.columns([1, 3])
-if bcol.button("✨ Generate Key Insights", key="gen_insights", disabled=not _INSIGHTS_OK,
-               help="Investor read-outs written by an LLM, grounded only in this market's numbers."):
-    if not insights_llm_ready(insights_backend):
-        mcol.warning(f"`{insights_backend}` insights endpoint unavailable — showing rule-based summary.")
-    with st.spinner("Writing investor insights…"):
+loc_poc_store = st.session_state.setdefault("loc_poc_store", {})
+pollinate_store = st.session_state.setdefault("pollinate_store", {})
+compete_store = st.session_state.setdefault("compete_store", {})
+loc_sig = (round(plat, 5), round(plon, 5), int(radius))
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _location_poc_cached(_sig, lat, lon, radius_km, backend):
+    """Location-only LLM summary, cached per (rounded location, radius, backend)."""
+    return location_market_analysis(lat, lon, radius_km=radius_km, backend=backend)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _pollinate_cached(_sig, _qual_text, _quant, _comp, lat, lon, radius_km, backend):
+    """Fusion of the summaries, cached per market signature `_sig` (text/dict args underscore-prefixed → not hashed).
+    `_comp` is the competition-scale read (or None) folded in as the competitive-saturation dimension."""
+    return pollinate_analysis(_qual_text, _quant, lat=lat, lon=lon, radius_km=radius_km, competition=_comp,
+                              backend=backend)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _compete_cached(_sig, lat, lon, radius_km, known_sites, backend):
+    """LLM competitive-saturation estimate — client footprint vs total landscape, cached per (location, radius, known set)."""
+    return competition_scale_analysis(lat, lon, known_sites=list(known_sites), radius_km=radius_km, backend=backend)
+
+
+MODE_KEY = "✨ Key Insights — grounded in this market's data"
+MODE_DIRECT = "🌍 Direct LLM summary — location only, no data"
+MODE_POLLINATE = "🔀 Pollinated — location commentary × data insights"
+MODE_COMPETE = "🏁 Competitive saturation — client footprint vs the trade area"
+_modes = []
+if _INSIGHTS_OK:
+    _modes.append(MODE_KEY)
+if (not demo) and _LOC_POC_OK:                                # Direct/Pollinated/Competition reveal the city → not in demo
+    _modes.append(MODE_DIRECT)
+    if _INSIGHTS_OK:
+        _modes.append(MODE_POLLINATE)
+    _modes.append(MODE_COMPETE)
+if not _modes:
+    _modes = [MODE_KEY]
+
+# names of the car washes we actually have data for in this radius (real names — this mode reveals the city)
+_known_names = tuple(sorted(name_of.get(k, str(k)) for k in ckeys)) if not demo else tuple()
+
+# Eager precompute (cached → runs once per new market, then served instantly on every later rerun).
+_llm_ready = insights_llm_ready(insights_backend)
+if not _llm_ready:
+    st.caption(f"⚠️ `{insights_backend}` LLM endpoint unavailable — summaries can't be prepared right now.")
+else:
+    if _INSIGHTS_OK and isig not in insights_store:
         try:
-            insights_store[isig] = _market_insights_cached(isig, sub, imeta, focal_key, insights_backend)
+            with st.spinner("Preparing grounded Key Insights for this market…"):
+                insights_store[isig] = _market_insights_cached(isig, sub, imeta, focal_key, insights_backend)
         except Exception as e:
-            mcol.error(f"Insights failed: {e}")
-group_insights = insights_store.get(isig, {})
+            st.caption(f"_Key Insights couldn't be prepared: {e}_")
+    if not demo and _LOC_POC_OK:
+        if loc_sig not in loc_poc_store:
+            try:
+                with st.spinner("Preparing the location-only summary…"):
+                    loc_poc_store[loc_sig] = _location_poc_cached(loc_sig, plat, plon, int(radius),
+                                                                  insights_backend)
+            except Exception as e:
+                st.caption(f"_Location summary couldn't be prepared: {e}_")
+        _qual = loc_poc_store.get(loc_sig)
+        _quant = insights_store.get(isig)
+        if _qual and _quant:
+            _ckey = (loc_sig, _known_names)
+            if _ckey not in compete_store:
+                try:
+                    with st.spinner("Sizing the competitive set near this pin…"):
+                        compete_store[_ckey] = _compete_cached(_ckey, plat, plon, int(radius),
+                                                               _known_names, insights_backend)
+                except Exception as e:
+                    st.caption(f"_Competition estimate couldn't be prepared: {e}_")
+            _out_c = compete_store.get(_ckey)
+            if _out_c and isig not in pollinate_store:
+                try:
+                    with st.spinner("Combining location commentary × grounded data × competition…"):
+                        pollinate_store[isig] = _pollinate_cached(
+                            isig, _qual["text"], _quant, _out_c, plat, plon, int(radius), insights_backend
+                        )
+                except Exception as e:
+                    st.caption(f"_Pollinated summary couldn't be prepared: {e}_")
+
+gen_mode = st.selectbox("Analysis — pick a view (all summaries prepare automatically when you choose a pin)", _modes,
+                        key="analysis_mode")
+group_insights = insights_store.get(isig, {})                 # the per-chart loop below renders this
+
+if gen_mode == MODE_DIRECT:
+    _out = loc_poc_store.get(loc_sig)
+    if _out:
+        with st.container(border=True):
+            st.markdown("#### 🌍 Location-only market read")
+            st.markdown(_out["text"])
+            st.caption(f"From location alone via `{_out['backend']}` — no operating data was sent.")
+            with st.expander("🔎 Exact prompt sent to the LLM"):
+                st.code(_out["prompt"], language="text")
+elif gen_mode == MODE_POLLINATE:
+    _qual, _quant = loc_poc_store.get(loc_sig), insights_store.get(isig)
+    if _qual and _quant:
+        _ckey = (loc_sig, _known_names)
+        _out_c = compete_store.get(_ckey)
+        _out = pollinate_store.get(isig)
+        if _out:
+            with st.container(border=True):
+                st.markdown("#### 🔀 Pollinated read — location × market data × competition")
+                st.markdown(_out["text"])
+                st.caption(f"Fuses the location commentary, the grounded data insights and the competitive-"
+                           f"saturation read via `{_out['backend']}`.")
+                with st.expander("🔎 The inputs + the pollination prompt"):
+                    st.markdown("**(A) Location-only commentary**")
+                    st.markdown(_qual["text"])
+                    st.markdown("**Pollination prompt sent:**")
+                    st.code(_out["prompt"], language="text")
+elif gen_mode == MODE_COMPETE:
+    _ckey = (loc_sig, _known_names)
+    _out = compete_store.get(_ckey)
+    if _out:
+        d = _out.get("data") or {}
+        n_known = _out["known_count"]
+        exp = d.get("estimated_express_tunnels") or {}
+        tot = d.get("estimated_total_carwashes") or {}
+        share = d.get("estimated_client_share") or {}
+        st.markdown("#### 🏁 Competitive landscape — the client's footprint vs the whole trade area")
+        _c1, _c2, _c3, _c4 = st.columns(4)
+        _c1.metric(f"Client's own sites (≤{int(radius)} km)", n_known,
+                   help="Express car washes this operator runs in the trade area.")
+        if exp:
+            _c2.metric("Est. express tunnels (total)", f"{exp.get('low','?')}–{exp.get('high','?')}")
+        if tot:
+            _c3.metric("Est. all car washes", f"{tot.get('low','?')}–{tot.get('high','?')}")
+        if share:
+            _c4.metric("Client share of express", f"{share.get('low','?')}–{share.get('high','?')}%")
+        # coverage multiple — the factor to scale competitive pressure by (constructive, NOT a "gap")
+        _se = _out.get("scale_express")
+        if _se and exp and n_known > 0:
+            st.info(f"📐 **Coverage scale.** The client runs **{n_known}** of an estimated **{exp.get('low','?')}–"
+                    f"{exp.get('high','?')}** express tunnels in this trade area — so the true competitive set is roughly "
+                    f"**~{_se.get('low','?')}×–{_se.get('high','?')}×** the client's own footprint. Scale competitive "
+                    f"pressure accordingly. Express supply density: **{d.get('saturation','—')}**.")
+        elif n_known == 0:
+            st.info("The client runs no sites of their own in this radius — the table below is the competitive "
+                    "landscape they'd be entering.")
+        # ── competitors, as a typed table (express tunnels first, then other types; sorted by threat) ──
+        _comps = [c for c in (d.get("competitors") or []) if isinstance(c, dict)]
+        if _comps:
+            _TYPE_ORD = {"Express tunnel": 0, "In-bay automatic": 1, "Self-serve": 2, "Other": 3}
+
+            def _norm_type(t):
+                s = (t or "").strip().lower()
+                if any(k in s for k in ("express", "tunnel", "conveyor")):
+                    return "Express tunnel"
+                if any(k in s for k in ("in-bay", "in bay", "iba", "automatic")):
+                    return "In-bay automatic"
+                if "self" in s:
+                    return "Self-serve"
+                return "Other"
+            _rows = [{"Competitor": c.get("name", "?"), "Type": _norm_type(c.get("type")),
+                      "Scale": c.get("scale", ""), "Threat": c.get("threat", ""), "Notes": c.get("note", "")}
+                     for c in _comps]
+            _cdf = pd.DataFrame(_rows)
+            _cdf["_t"] = _cdf["Type"].map(_TYPE_ORD).fillna(9)
+            _cdf["_th"] = _cdf["Threat"].map({"High": 0, "Medium": 1, "Low": 2}).fillna(9)
+            _cdf = _cdf.sort_values(["_t", "_th"]).drop(columns=["_t", "_th"])
+            _bytype = _cdf["Type"].value_counts()
+            st.markdown("**Competitors by type:** " + " · ".join(f"{k} **{v}**" for k, v in _bytype.items()))
+            st.dataframe(_cdf, width="stretch", hide_index=True)
+        # ── richer competitive read ──
+        if d.get("client_position"):
+            st.markdown(f"**Client's competitive position:** {d['client_position']}")
+        _g1, _g2 = st.columns(2)
+        with _g1:
+            if d.get("competitive_intensity"):
+                st.markdown(f"**Competitive intensity:** {d['competitive_intensity']}")
+            if d.get("headroom"):
+                st.markdown(f"**Headroom for a new build:** {d['headroom']}")
+        with _g2:
+            if d.get("pricing_positioning"):
+                st.markdown(f"**Pricing / positioning:** {d['pricing_positioning']}")
+            if d.get("expansion_signals"):
+                st.markdown(f"**Expansion signals:** {d['expansion_signals']}")
+        _rk = d.get("client_sites_recognized") or []
+        if _rk:
+            st.caption(f"LLM recognized of the client's sites: {', '.join(map(str, _rk))}")
+        st.caption(f"Confidence: **{d.get('confidence','—')}** · via `{_out['backend']}`. {d.get('reasoning','')}")
+        with st.expander("🔎 Prompt + raw JSON"):
+            st.code(_out["prompt"], language="text")
+            st.code(_out.get("raw", ""), language="json")
+elif gen_mode == MODE_KEY:
+    overall_insight = group_insights.get("Washes") if group_insights else None
+    if overall_insight:
+        with st.container(border=True):
+            st.markdown("#### ✨ Key Insights — grounded in this market's data")
+            st.markdown(overall_insight)
 
 for gi, (gname, panels) in enumerate(GROUPS):
     gk = gran_picker(f"gran_kpi_{gname}")
@@ -1645,9 +2079,79 @@ for gi, (gname, panels) in enumerate(GROUPS):
     else:
         gfig.update_xaxes(tickformat=gran_date_tickformat(gk))
     st.plotly_chart(gfig, width="stretch", key=f"kpi_{gname}")
-    st.markdown(f"**Key insights — {gname}**")
-    if group_insights.get(gname):
-        st.markdown(group_insights[gname])
-    else:
-        st.caption("_Click_ **✨ Generate Key Insights** _above to write these from the numbers._")
     st.divider()
+
+# ───────────────────────── Tunnel-length proxy (estimated metres) ─────────────────────────
+# Proxy for tunnel LENGTH in metres, from peak monthly volume:
+#   peak-month total washes ÷ 25 operating days ÷ 10 hours/day ÷ 3.2 cars/hr per metre ≈ tunnel metres.
+# Toggle Operator-wise (an operator's sites here collapsed to one bar, median length) vs Site-wise.
+# Horizontal bars + 10-m range bands keep it readable. Demo-safe: `name_of` ("Site N") / "Operator N".
+st.subheader("Tunnel length proxy — estimated metres")
+tl_group = st.radio("Group by", ["Operator", "Site"], horizontal=True, key="tl_group",
+                    help="Operator-wise collapses an operator's sites in this market into one bar "
+                         "(median tunnel length); Site-wise shows every site.")
+st.caption("**peak-month washes ÷ 25 days ÷ 10 hours ÷ 3.2** ≈ tunnel length (m), in 10-m range bands "
+           "(0–10 · 10–20 · 20–30 · 30–40 · 40m+). Further right / darker = longer; 🆕 = the new site.")
+_BANDS = [("0–10m", "#c6dbef"), ("10–20m", "#9ecae1"), ("20–30m", "#6baed6"), ("30–40m", "#3182bd"), ("40m+", "#08519c")]
+def _bandlabel(m):
+    return _BANDS[min(int(m // 10), 4)][0]                                   # 0–9→band0 … ≥40→band4 (40m+)
+def _dedupe(labels):                                                         # unique, readable y-axis names
+    seen, out = {}, []
+    for l in labels:
+        seen[l] = seen.get(l, 0) + 1
+        out.append(l if seen[l] == 1 else f"{l} ({seen[l]})")
+    return out
+
+_peak = sub.groupby("site_key")["tot_wash_count"].max()                      # peak month total washes per site
+_site_m = (_peak / 25 / 10 / 3.2).replace([np.inf, -np.inf], np.nan).dropna()   # ÷25d ÷10h ÷3.2 → tunnel metres
+_site_m = _site_m[_site_m.index.isin(ckeys)]
+if len(_site_m):
+    base = pd.DataFrame({"site_key": _site_m.index, "metres": _site_m.values})
+    base["peak"] = base.site_key.map(_peak)
+    base["is_focal"] = base.site_key == focal_key
+    if tl_group == "Operator":                                              # collapse each operator's sites → one bar
+        base["oid"] = base.site_key.str.split("::").str[0]
+        agg = (base.groupby("oid")
+               .agg(metres=("metres", "median"), peak=("peak", "max"), is_focal=("is_focal", "any"),
+                    n=("site_key", "size"), k=("site_key", "first")).reset_index())
+        if demo:                                                            # demo-safe anonymous operator labels
+            agg = agg.sort_values("metres").reset_index(drop=True)
+            agg["label"] = [f"Operator {i + 1}" for i in range(len(agg))]
+        else:
+            agg["label"] = agg["k"].map(lambda x: str(name_of.get(x, "?"))[:26])
+        plot_df = agg[["label", "metres", "peak", "is_focal", "n"]].copy()
+    else:
+        base["label"] = base.site_key.map(lambda x: str(name_of.get(x, "?"))[:26])
+        plot_df = base.assign(n=1)[["label", "metres", "peak", "is_focal", "n"]].copy()
+    plot_df["label"] = _dedupe(plot_df["label"].tolist())                   # disambiguate same-name sites/operators
+    plot_df.loc[plot_df.is_focal, "label"] = plot_df.loc[plot_df.is_focal, "label"] + " 🆕"
+    plot_df = plot_df.sort_values("metres").reset_index(drop=True)          # ascending → longest at the TOP (h-bars)
+    tlfig = go.Figure()
+    for _bl, _bc in _BANDS:                                                 # one trace per band → discrete legend
+        d = plot_df[plot_df.metres.map(_bandlabel) == _bl]
+        if d.empty:
+            continue
+        tlfig.add_trace(go.Bar(
+            orientation="h", y=d.label, x=d.metres, name=_bl, marker_color=_bc,
+            marker_line_color=["#e6194B" if f else "rgba(0,0,0,0)" for f in d.is_focal],
+            marker_line_width=[3 if f else 0 for f in d.is_focal],
+            customdata=np.stack([d.peak.values, d.n.values], axis=-1),
+            text=[f"{m:.0f} m" for m in d.metres], textposition="outside", cliponaxis=False,
+            hovertemplate="<b>%{y}</b><br>~%{x:.0f} m tunnel (proxy) · " + _bl +
+                          "<br>peak month %{customdata[0]:,.0f} washes · %{customdata[1]:.0f} site(s)<extra></extra>"))
+    tlfig.update_layout(height=max(260, 42 * len(plot_df) + 120), template="plotly_white", barmode="overlay",
+                        bargap=0.35, margin=dict(l=8, r=8, t=10, b=10),
+                        legend=dict(orientation="h", y=-0.18, title="range band"),
+                        xaxis_title="estimated tunnel length (m)", yaxis_title=None)
+    tlfig.update_yaxes(categoryorder="array", categoryarray=plot_df.label.tolist())
+    tlfig.update_xaxes(dtick=10, ticksuffix="m", rangemode="tozero")
+    for _xv in (10, 20, 30, 40):                                            # range-band boundary gridlines
+        tlfig.add_vline(x=_xv, line_dash="dot", line_color="#cccccc", line_width=1)
+    st.plotly_chart(tlfig, width="stretch", key="tunnel_length")
+    _foc = plot_df[plot_df.is_focal]
+    if len(_foc):
+        _fr = _foc.iloc[-1]
+        _extra = f", median across {int(_fr.n)} sites" if tl_group == "Operator" and _fr.n > 1 else ""
+        st.caption(f"🆕 The new site ≈ **{_fr.metres:.0f} m** ({_bandlabel(_fr.metres)} band{_extra}).")
+else:
+    st.caption("_No wash data available for this market to estimate tunnel length._")

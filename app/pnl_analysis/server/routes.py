@@ -5,6 +5,7 @@ from typing import Tuple
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import PlainTextResponse
 
 from app.utils import common as calib
 from app.pnl_analysis.modelling import data as D
@@ -12,10 +13,15 @@ from app.pnl_analysis.modelling import market
 from app.pnl_analysis.modelling import pnl as pnl_engine
 from app.pnl_analysis.modelling import campaign as campaign_engine
 from app.pnl_analysis.insights.graph import market_insights as _insights_pipeline
+from app.pnl_analysis.insights import location_poc as _loc
+from app.pnl_analysis.insights import llm as _llm
 from app.pnl_analysis.server.models import (
     ExploreMarketRequest,
     ExploreKpisRequest,
     InsightsRequest,
+    LocationSummaryRequest,
+    CompetitionScaleRequest,
+    PollinatedSummaryRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
     ExpensePlanRequest,
@@ -80,29 +86,103 @@ def explore_market_kpis(req: ExploreKpisRequest):
     )
 
 
-@router.post("/insights")
-def insights(req: InsightsRequest):
-    """Tab 1 — AI Key Insights: the 2-node pipeline (compute_metrics -> generate_insights) for the local
-    market. Builds the SAME market subset the KPI panels draw (ASP per the Streamlit definitions) and returns
-    {"Washes","Revenue","ASPs"} narrative blocks (the `insights` payload only)."""
-    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+def _grounded_inputs(lat, lon, radius_km, min_months, demo):
+    """Build (panel, meta, focal) for the grounded Key-Insights pipeline over the local market — the SAME subset
+    the KPI panels draw, with ASP recomputed per the Streamlit definitions. Returns None if no rich-history sites.
+    Shared by /insights and /insights/pollinated."""
     df, site = D.load_panel()
-    site_rich = site[site.n_obs >= req.min_months]
-    nb = market._neighbourhood(site_rich, lat, lon, req.radius_km)
+    site_rich = site[site.n_obs >= min_months]
+    nb = market._neighbourhood(site_rich, lat, lon, radius_km)
     if nb.empty:
-        raise HTTPException(status_code=404, detail=f"No rich-history sites within {req.radius_km} km of this pin.")
+        return None
     focal = market._focal_key(nb)
     panel = df[df.site_key.isin(nb.site_key.tolist())].copy()
-    # recompute ASP the SAME way the Streamlit chart does (membership ASP via mem_purchase_count)
-    panel["asp_ret"] = panel.ret_revenue / panel.ret_wash_count.replace(0, np.nan)
-    panel["asp_mem"] = panel.mem_revenue / panel.mem_purchase_count.replace(0, np.nan)
+    panel["asp_ret"] = panel.ret_revenue / panel.ret_wash_count.replace(0, np.nan)     # ASP as the chart draws it
+    panel["asp_mem"] = panel.mem_revenue / panel.mem_purchase_count.replace(0, np.nan)  # membership ASP via purchases
     meta = nb[["site_key", "op_start", "dist_km", "is_entrant", "left_censored"]].copy()
-    if req.demo:
+    if demo:
         anon = {k: f"Site {i + 1}" for i, k in enumerate(nb.sort_values("op_start").site_key)}
         meta["name"] = meta.site_key.map(anon)
     else:
         meta["name"] = meta.site_key.map(site.set_index("site_key").client_name.to_dict())
-    return _insights_pipeline(panel, meta, focal, backend=req.backend, last_n_months=req.last_n_months)["insights"]
+    return panel, meta, focal
+
+
+def _known_site_names(lat, lon, radius_km, min_months, demo):
+    """The client's OWN car washes in the radius (their portfolio) — names fed to the competition read so the LLM
+    can cross-reference them. [] in demo (don't leak identities)."""
+    if demo:
+        return []
+    _, site = D.load_panel()
+    pool = site[site.n_obs >= min_months] if min_months > 1 else site
+    nb = market._neighbourhood(pool, lat, lon, radius_km)
+    return [str(n) for n in nb.client_name.dropna().tolist()] if not nb.empty else []
+
+
+@router.post("/insights", response_class=PlainTextResponse)
+def insights(req: InsightsRequest):
+    """Tab 1 — AI Key Insights (grounded on the local market's KPI panels). Returns the full narrative as
+    plain-text markdown (## Washes / ## Revenue / ## ASPs), nothing else. 404 if the market is too thin."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    grounded = _grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
+    if grounded is None:
+        raise HTTPException(status_code=404, detail=f"No rich-history sites within {req.radius_km} km of this pin.")
+    panel, meta, focal = grounded
+    blocks = _insights_pipeline(panel, meta, focal, backend=req.backend, last_n_months=req.last_n_months)["insights"]
+
+    def _has_substance(v: str) -> bool:  # the model returns one holistic block — drop empty/neutral/error placeholders
+        low = (v or "").lower()
+        if any(s in low for s in ("did not return", "could not generate", "generation failed")):
+            return False
+        return ("\n- " in v) or (len(v.strip()) > 60)
+
+    parts = [v.strip() for v in blocks.values() if v and _has_substance(v)]
+    return "\n\n".join(parts) or "\n\n".join(v.strip() for v in blocks.values() if v)
+
+
+@router.post("/insights/location", response_class=PlainTextResponse)
+def insights_location(req: LocationSummaryRequest):
+    """Tab 1 — location-only LLM market read (world-knowledge from the pin alone). Returns the full markdown
+    text, nothing else. 503 if no LLM backend answers."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    try:
+        return _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
+                                             backend=req.backend)["text"]
+    except _llm.LLMUnavailable as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+
+@router.post("/insights/competition", response_class=PlainTextResponse)
+def insights_competition(req: CompetitionScaleRequest):
+    """Tab 1 — competitive landscape (LLM sizes the full competitive set vs the client's own portfolio).
+    Returns the model's full JSON text response, nothing else. 503 if no LLM answers."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    known = _known_site_names(lat, lon, req.radius_km, req.min_months, req.demo)
+    try:
+        return _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
+                                               radius_km=req.radius_km, backend=req.backend)["raw"]
+    except _llm.LLMUnavailable as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+
+@router.post("/insights/pollinated", response_class=PlainTextResponse)
+def insights_pollinated(req: PollinatedSummaryRequest):
+    """Tab 1 — the fused ('pollinated') read: location (A) × grounded data (B) × competition (C), synthesized
+    into one summary. Returns the full markdown text, nothing else. Multiple LLM calls. 503 if no LLM answers."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    try:
+        loc = _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
+                                            backend=req.backend)["text"]
+        grounded = _grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
+        insights = (_insights_pipeline(*grounded, backend=req.backend, last_n_months=req.last_n_months)["insights"]
+                    if grounded is not None else None)
+        known = _known_site_names(lat, lon, req.radius_km, 1, req.demo)
+        comp = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
+                                               radius_km=req.radius_km, backend=req.backend)
+        return _loc.pollinate_analysis(loc, insights, lat=lat, lon=lon, radius_km=req.radius_km,
+                                       competition=comp, backend=req.backend)["text"]
+    except _llm.LLMUnavailable as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
 
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────

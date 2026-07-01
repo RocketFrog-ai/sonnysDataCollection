@@ -31,6 +31,38 @@ from app.pnl_analysis.modelling.market import compute_trajectory
 from app.pnl_analysis.modelling.campaign import campaign_effect, campaign_conv_pct
 
 
+# ── corrupted-ASP floor (mirror of app.py): drop site-months where the revenue feed dropped to ~0 while
+# wash_count stayed normal (a data-feed drop, not a real price) BEFORE pooling the cluster ASP. ──
+ASP_MIN_WASH = 200       # only judge rows with material volume (>=200 washes)
+ASP_FLOOR_MEM = 4.0      # $/membership-wash below this @ >=200 washes => corrupt (healthy median ~$11)
+ASP_FLOOR_RET = 5.0      # $/retail-wash below this @ >=200 washes => corrupt (healthy median ~$16)
+
+
+def _drop_corrupt_asp_rows(rec):
+    """Drop site-months whose revenue collapsed to ~0 while wash_count stayed normal. Row is bad if it has
+    >=ASP_MIN_WASH washes AND an implied $/wash below the floor. Returns (filtered_rec, n_dropped)."""
+    if rec.empty:
+        return rec, 0
+    mw, rw = rec.mem_wash_count.replace(0, np.nan), rec.ret_wash_count.replace(0, np.nan)
+    bad = (((rec.mem_wash_count >= ASP_MIN_WASH) & (rec.mem_revenue / mw < ASP_FLOOR_MEM))
+           | ((rec.ret_wash_count >= ASP_MIN_WASH) & (rec.ret_revenue / rw < ASP_FLOOR_RET))).fillna(False)
+    return rec[~bad], int(bad.sum())
+
+
+_GLOBAL_ASP_CACHE: Dict[str, float] = {}
+
+
+def global_healthy_asp(df):
+    """Wash-weighted ($/mem-wash, $/ret-wash) from ALL healthy site-months (after the corrupt-row floor) —
+    the fallback when every in-radius neighbour is corrupt. Cached on first call. Returns (cl_mem, cl_ret)."""
+    if not _GLOBAL_ASP_CACHE:
+        rec, _ = _drop_corrupt_asp_rows(df)
+        mm = rec.dropna(subset=["mem_revenue"]); rr = rec.dropna(subset=["ret_revenue"])
+        _GLOBAL_ASP_CACHE["mem"] = float(mm.mem_revenue.sum() / mm.mem_wash_count.sum()) if mm.mem_wash_count.sum() > 0 else 10.0
+        _GLOBAL_ASP_CACHE["ret"] = float(rr.ret_revenue.sum() / rr.ret_wash_count.sum()) if rr.ret_wash_count.sum() > 0 else 15.0
+    return _GLOBAL_ASP_CACHE["mem"], _GLOBAL_ASP_CACHE["ret"]
+
+
 # ─────────────────────────── opex / asp scope helpers (ported verbatim from app.py) ───────────────────────────
 def regional_opex(pnl, art, state, region, min_sites=5):
     """Average annual operating expense per site, by YEAR, for the pin's STATE (if >=min_sites of P&L data
@@ -259,10 +291,19 @@ def pnl_forecast(lat: float, lon: float, brand: Optional[str] = None,
     _nbk["d"] = haversine_km(lat, lon, _nbk.lat.values, _nbk.lon.values)
     _ck = _nbk.site_key[(_nbk.d <= radius) & (_nbk.d > 1e-6)].tolist()
     _rec = df[df.site_key.isin(_ck)].sort_values("date").groupby("site_key").tail(12) if _ck else df.iloc[:0]
+    # Drop corrupted site-months (revenue feed dropped to ~0 with washes intact) BEFORE pooling — else a couple
+    # of bad neighbours halve the cluster $/wash and the forecast revenue. Mirrors app.py drop_pin_ui.
+    _rec, _n_drop = _drop_corrupt_asp_rows(_rec)
     _mm, _rr = _rec.dropna(subset=["mem_revenue"]), _rec.dropna(subset=["ret_revenue"])
-    cl_mem = float(_mm.mem_revenue.sum() / _mm.mem_wash_count.sum()) if _mm.mem_wash_count.sum() > 0 else 10.0
-    cl_ret = float(_rr.ret_revenue.sum() / _rr.ret_wash_count.sum()) if _rr.ret_wash_count.sum() > 0 else 15.0
-    asp_scope = f"cluster <={radius:.0f} km · {len(_ck)} sites" if _ck else "default (no neighbours)"
+    _g_mem, _g_ret = global_healthy_asp(df)                                     # global healthy fallback (never flat $0-ish)
+    cl_mem = float(_mm.mem_revenue.sum() / _mm.mem_wash_count.sum()) if _mm.mem_wash_count.sum() > 0 else _g_mem
+    cl_ret = float(_rr.ret_revenue.sum() / _rr.ret_wash_count.sum()) if _rr.ret_wash_count.sum() > 0 else _g_ret
+    if not _ck:
+        asp_scope = "global healthy avg (no neighbours)"
+    elif _mm.mem_wash_count.sum() <= 0 and _rr.ret_wash_count.sum() <= 0:
+        asp_scope = f"global healthy avg ({len(_ck)} neighbours all corrupt)"
+    else:
+        asp_scope = f"cluster <={radius:.0f} km · {len(_ck)} sites" + (f" · {_n_drop} corrupt site-mo excluded" if _n_drop else "")
     s_mix = float(info.get("mem_share", 0.6))                                   # this site's membership share of washes
     asp_blend = s_mix * cl_mem + (1 - s_mix) * cl_ret                           # cluster average BLENDED $/wash
 
