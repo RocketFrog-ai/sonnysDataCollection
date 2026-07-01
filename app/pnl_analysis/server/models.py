@@ -41,6 +41,34 @@ class InsightsRequest(_PinRequest):
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order (no real names to the LLM).")
 
 
+class LocationSummaryRequest(_PinRequest):
+    """Tab 1 — the location-only LLM market read: world-knowledge assessment from the pin ALONE (no operating
+    data sent). Free-form markdown covering demographics, roads, competition, climate, verdict."""
+    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Local trade-area radius in km (context for the model).")
+    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = INSIGHTS_LLM_BACKEND env (default azure).")
+
+
+class CompetitionScaleRequest(_PinRequest):
+    """Tab 1 — the competitive landscape: an LLM estimate of the FULL competitive set in the trade area (total +
+    express tunnels, a typed competitor table, saturation/intensity/pricing/headroom) vs the client's OWN portfolio
+    of sites in the radius, yielding a 'coverage scale' multiple. Returns strict-JSON data + the scale multiples."""
+    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Trade-area radius in km.")
+    min_months: int = Field(1, ge=1, le=72, description="Count the client's sites with >= this many months as the known portfolio (1 = every in-radius site).")
+    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = env default.")
+    demo: bool = Field(False, description="Anonymized demo: don't send the client's real site names to the LLM.")
+
+
+class PollinatedSummaryRequest(_PinRequest):
+    """Tab 1 — the fused ('pollinated') read: location commentary (A) × grounded data insights (B) × the
+    competitive landscape (C), synthesized into one decision-useful summary (the data wins ties). Self-contained:
+    it computes A, B and C internally, so it makes several LLM calls."""
+    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Local-market radius in km.")
+    min_months: int = Field(36, ge=1, le=72, description="Rich-history filter for the grounded (B) data insights.")
+    last_n_months: int = Field(12, ge=3, le=36, description="Trailing window for the 'recent' metrics in (B).")
+    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = env default.")
+    demo: bool = Field(False, description="Anonymized demo: sites become 'Site N' / no real names to the LLM.")
+
+
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────
 class PinpointForecastRequest(_PinRequest):
     """Tab 2 — drop-a-pin 5-year forecast (new site's trajectory + local market history/forecast)."""

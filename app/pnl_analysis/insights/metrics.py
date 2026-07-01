@@ -203,6 +203,17 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
     P = panel.copy()
     P["date"] = pd.to_datetime(P["date"])
     P = P[P["date"].notna()]
+    # Null corrupted revenue (feed dropped to ~0 while wash_count stayed normal) so it can't deflate the
+    # summed revenue / revenue-weighted ASPs. Wash counts & mem_purchase_count are kept intact (the per-purchase
+    # mem ASP and the wash trajectories are robust); only the ~0-priced revenue is dropped. Same floor as the P&L.
+    if {"ret_wash_count", "ret_revenue"}.issubset(P.columns):
+        _badr = (P.ret_wash_count >= 200) & (P.ret_revenue / P.ret_wash_count.replace(0, np.nan) < 5.0)
+        P.loc[_badr.fillna(False), "ret_revenue"] = np.nan
+    if {"mem_wash_count", "mem_revenue"}.issubset(P.columns):
+        _badm = (P.mem_wash_count >= 200) & (P.mem_revenue / P.mem_wash_count.replace(0, np.nan) < 4.0)
+        P.loc[_badm.fillna(False), "mem_revenue"] = np.nan
+    if "tot_revenue" in P.columns:                                 # rebuild blended total off the cleaned legs
+        P["tot_revenue"] = P[["mem_revenue", "ret_revenue"]].sum(axis=1, min_count=1)
     meta = sites_meta.copy()
 
     sum_cols = ["mem_wash_count", "ret_wash_count", "tot_wash_count",

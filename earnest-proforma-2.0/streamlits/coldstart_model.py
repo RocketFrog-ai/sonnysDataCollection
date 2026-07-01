@@ -30,6 +30,13 @@ MODEL_PATH = ART / "coldstart_artifacts.joblib"
 EARTH_KM = 6371.0088
 H_DEFAULT = 60
 MODEL_MIN_MONTHS = 24    # train labels + the local-mature level anchor only use sites with ≥24 months of history
+# Strong-market calibration: the level model regresses good clusters toward the global mean (LOSO wash-count
+# backtest: strong-cluster bias 0.92, below neighbour floor 21% in the top quartile, never over-predicts there).
+# Blend the predicted level toward the local-mature NEIGHBOUR median in log space by this weight, ONLY for pins
+# that have a real anchor (≥anchor_min_n matured siblings). Backtest @0.50: global bias 0.912→0.925, in-band
+# 60.6→70%, strong-tercile 0.92→~0.96 (no overshoot), WAPE +0.4pp. Keep ≤0.6 — higher erodes weak markets and
+# drags genuine outperformers toward their cluster median. 0.0 disables.
+ANCHOR_CALIB_W = 0.50
 
 FEAT = ["lat", "lon", "n_nbr_5", "n_nbr_10", "n_nbr_20", "mean_nbr_10", "mean_nbr_20",
         "logsum_20", "shr_nbr_20", "dist_nearest_km", "nearest_level", "cluster_size",
@@ -276,11 +283,22 @@ def build_features(panel, site):
 RAMP_RELIABLE_MAX = 42   # follow the data to ~3.5y; beyond, hold the data-driven asymptote (yrs 4–5 = drift-slider scenario)
 
 
-def _ramp_points(panel, site, H=H_DEFAULT):
-    """Per-site normalized ramp (value / own months-18–30 mean), tagged with cluster & region."""
+def _ramp_points(panel, site, H=H_DEFAULT, clean=True, min_months=30, drop_open_years=(2020,)):
+    """Per-site normalized ramp (value / own months-18–30 mean), tagged with cluster & region.
+
+    clean=True restricts the ramp-SHAPE pool to representative, well-observed sites:
+      • drop `drop_open_years` cohorts (2020 = COVID-distorted: 35% membership vs ~67% for 2022+, and its
+        retail decays steeply — it was 80% of the month-≥55 pool and manufactured a false yr-4–5 decline);
+      • require ≥`min_months` of history (a real plateau + tail, not a half-ramp).
+    This only governs the normalized SHAPE; the plateau LEVEL is set by the model/anchor, not here."""
     p = panel.merge(site[["site_key", "op_start", "cluster", "region"]], on="site_key", how="left", suffixes=("", "_s"))
     p["m"] = (p.date.dt.year - p.op_start.dt.year) * 12 + (p.date.dt.month - p.op_start.dt.month)
     p = p[(p.m >= 0) & (p.m <= H)].copy()
+    if clean:
+        nmo = p.groupby("site_key").m.nunique()
+        keep = set(nmo[nmo >= min_months].index)
+        oy = p.op_start.dt.year
+        p = p[p.site_key.isin(keep) & ~oy.isin(drop_open_years)].copy()
     p["region"] = p["region"].fillna("Unknown")
     mat = p[p.m.between(18, 30)].groupby("site_key").agg(pm=("mem_wash_count", "mean"), pr=("ret_wash_count", "mean"))
     mat = mat[(mat.pm > 0) & (mat.pr > 0)]
@@ -290,9 +308,16 @@ def _ramp_points(panel, site, H=H_DEFAULT):
     return p
 
 
-def _curve_from(pts, H=H_DEFAULT, parent=None, k=10.0, min_per_m=6, reliable_max=RAMP_RELIABLE_MAX):
-    """Median normalized ramp from `pts`: data-driven through the supported horizon, then a flat asymptote at the
-    learned mature level (NOT a hard early clamp). Shrunk toward `parent` by n/(n+k) when data is thin."""
+def _curve_from(pts, H=H_DEFAULT, parent=None, k=10.0, min_per_m=6, reliable_max=RAMP_RELIABLE_MAX,
+                tail="slope", tail_fit_window=12, tail_slope_cap=0.01):
+    """Median normalized ramp from `pts`: data-driven through the supported horizon, then EXTENDED to H.
+    Shrunk toward `parent` by n/(n+k) when data is thin.
+
+    tail="slope" (default): past the last reliable month, continue the component's OWN measured late slope
+      (fit over the last `tail_fit_window` months), capped at ±`tail_slope_cap`/mo and to ±60% of the
+      mature level — so membership keeps its gentle climb and retail its gentle erosion instead of a flat
+      line frozen at month ~42 (the flat hold inherited the COVID 2020 cohort's decay → underreported yr4–5).
+    tail="flat": legacy behaviour — hold the mature asymptote flat (use for A/B backtests)."""
     out = {}
     n_sites = pts.site_key.nunique()
     for comp, key in [("rmem", "mem"), ("rret", "ret")]:
@@ -305,7 +330,16 @@ def _curve_from(pts, H=H_DEFAULT, parent=None, k=10.0, min_per_m=6, reliable_max
         last = int(rel.max()) if len(rel) else 0
         s = pd.Series(arr).interpolate(limit_area="inside")
         asym = float(np.nanmean(arr[max(0, last - 5):last + 1])) if len(rel) else 1.0
-        s = s.fillna(asym)                                              # leading gaps + tail(>last) -> asymptote
+        if tail == "slope" and len(rel) and last < H:
+            base = float(s.iloc[last])
+            w0 = max(int(rel.min()), last - tail_fit_window + 1)
+            xv = np.arange(w0, last + 1); yv = s.iloc[w0:last + 1].to_numpy()
+            ok = np.isfinite(yv)
+            b = float(np.polyfit(xv[ok], yv[ok], 1)[0]) if ok.sum() >= 3 else 0.0
+            b = float(np.clip(b, -tail_slope_cap, tail_slope_cap))     # cap |slope| to keep noisy thin fits sane
+            ext = base + b * (np.arange(last + 1, H + 1) - last)
+            s.iloc[last + 1:] = np.clip(ext, base * 0.4, base * 1.6)   # cap cumulative tail drift to ±60%
+        s = s.fillna(asym)                                              # leading gaps (+ tail if flat) -> asymptote
         cur = pd.Series(s.to_numpy()).rolling(3, center=True, min_periods=1).mean().to_numpy()
         if parent is not None:                                          # shrink thin groups toward the parent curve
             w = n_sites / (n_sites + k)
@@ -314,33 +348,54 @@ def _curve_from(pts, H=H_DEFAULT, parent=None, k=10.0, min_per_m=6, reliable_max
     return out
 
 
-def _ramp_curves(panel, site, H=H_DEFAULT):
+def _ramp_curves(panel, site, H=H_DEFAULT, clean=True, tail="flat"):
     """Hierarchical ramp life-cycles: global → per region → per cluster (where ≥3 opened sites), so a pin can use
     its LOCAL market's historical ramp, shrinking to region/global when the local sample is thin."""
-    pts = _ramp_points(panel, site, H)
-    glob = _curve_from(pts, H, parent=None)
-    region = {r: _curve_from(sub, H, parent=glob, k=12)
+    pts = _ramp_points(panel, site, H, clean=clean)
+    cf = lambda sub, **kw: _curve_from(sub, H, tail=tail, **kw)
+    glob = cf(pts, parent=None)
+    region = {r: cf(sub, parent=glob, k=12)
               for r, sub in pts.groupby("region") if sub.site_key.nunique() >= 8}
     cluster, cluster_region = {}, {}
     for c, sub in pts[pts.cluster >= 0].groupby("cluster"):
         if sub.site_key.nunique() >= 3:
             reg = sub.region.mode()
             par = region.get(reg.iloc[0], glob) if len(reg) else glob
-            cluster[int(c)] = _curve_from(sub, H, parent=par, k=8)
+            cluster[int(c)] = cf(sub, parent=par, k=8)
             cluster_region[int(c)] = reg.iloc[0] if len(reg) else None
     return {"global": glob, "region": region, "cluster": cluster, "cluster_region": cluster_region,
             "support": {"n_sites": int(pts.site_key.nunique()), "clusters_with_ramp": len(cluster), "regions": len(region)}}
 
 
-def _select_ramp(art, lat, lon):
-    """Ramp life-cycle for a pin = REGION-pooled (with global fallback).
-    NOTE: per-cluster ramps overfit — backtested on held-out openings, per-cluster gave ~21% WAPE vs
-    region/global ~17% (a ramp from 2-3 cluster siblings is noisy; pooling ~1000 sites is smoother & more accurate).
-    """
+def _select_ramp(art, lat, lon, prefer="region", radius_km=20.0, min_sibs=2):
+    """Ramp life-cycle (SHAPE only — the plateau LEVEL is anchored separately) for a dropped pin.
+
+    prefer="region" (default): region-pooled selection (global fallback). This is what the LOSO trajectory
+      backtest supports — cluster-anchoring the shape did NOT improve held-out WAPE (20.8→21.3 overall), echoing
+      the earlier per-cluster finding; the plateau LEVEL never came from clusters anyway.
+    prefer="cluster" (opt-in): borrow the trajectory shape from the pin's actual neighbours — pick the geo-cluster
+      with the most members within `radius_km` that has a precomputed (shrunk) ramp ("cluster siblings first,
+      20 km fallback"), region→global fallback. Kept available because neighbours DO agree on late-ramp SHAPE to
+      ±14% (vs ±38% on level), so it may earn its keep once the 2022+ membership-era cohorts mature past month 48
+      (today the only observable yr-4–5 truth is the COVID 2020 cohort, which declines)."""
     rl = art["sites_rl"].reset_index(drop=True)
+    if not len(rl):
+        return art["ramps"]["global"], "global"
     d = _haversine(lat, lon, rl.lat.values, rl.lon.values)
     ramps = art["ramps"]
-    region = rl.iloc[int(np.argmin(d))].region if len(rl) else None
+    cl = ramps.get("cluster", {})
+    if prefer == "cluster" and cl:
+        within = np.where(d <= radius_km)[0]
+        counts = {}
+        for i in within:
+            c = int(rl.cluster.iloc[i])
+            if c >= 0 and c in cl:
+                counts[c] = counts.get(c, 0) + 1
+        counts = {c: n for c, n in counts.items() if n >= min_sibs}
+        if counts:
+            best = max(counts, key=counts.get)
+            return cl[best], f"cluster {best}: {counts[best]} sibs ≤{radius_km:.0f}km"
+    region = rl.iloc[int(np.argmin(d))].region
     if region in ramps["region"]:
         return ramps["region"][region], f"region: {region}"
     return ramps["global"], "global"
@@ -376,7 +431,10 @@ def fit(save=True):
     et = ExtraTreesRegressor(n_estimators=600, min_samples_leaf=2, max_features=0.5, n_jobs=-1, random_state=0)
     et.fit(X[FEAT].fillna(et_impute), lab.y.values); models["et"] = et
 
-    ramps = _ramp_curves(panel, site)
+    # clean=True drops the COVID 2020 cohort + sub-30-mo sites from the SHAPE pool (validated: temporal holdout
+    # predicting unseen 2022/2023 cohorts improved 20.7→20.3 / 16.6→16.1 WAPE). tail="flat" + region selection are
+    # the backtested defaults; cluster ramps are still built here so prefer="cluster"/tail="slope" stay opt-in.
+    ramps = _ramp_curves(panel, site, clean=True, tail="flat")
     cannib = _fit_cannibalization(panel, site)          # data-fit retail cannibalization a*exp(-d/L)
     brand_mean = S.groupby("client_id").mat_total.mean()
     brand_n = S.groupby("client_id").mat_total.count()
@@ -441,7 +499,7 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
                  annual_mem_growth=0.0, annual_ret_change=0.0,
                  mem_growth_band=None, ret_change_band=None, horizon=H_DEFAULT, art=None,
                  local_anchor=True, anchor_radius_km=20.0, anchor_max_cov=0.7, anchor_keys=None,
-                 anchor_min_n=3, model_kind="lgb"):
+                 anchor_min_n=3, model_kind="lgb", anchor_calib_w=None):
     """Return DataFrame[month, total_med/lo/hi, mem, ret] — the new site's 5-yr monthly trajectory.
 
     mem_growth_band / ret_change_band = optional (lo, hi) post-maturity drift rates (e.g. the Theil-Sen slope CI).
@@ -503,6 +561,18 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
     else:
         model_p50 = p50
 
+    # strong-market calibration: pull the level toward the local-mature neighbour median (log-space blend), ONLY
+    # when a real anchor exists. Corrects the model's mean-regression of strong clusters; model_p50 above stays the
+    # pure no-anchor reference for the UI before/after. Skipped under a manual plateau_override (that wins below).
+    _cw = ANCHOR_CALIB_W if anchor_calib_w is None else float(anchor_calib_w)
+    calib_applied = False
+    if (_cw > 0 and proxy_used and np.isfinite(anchor_level) and anchor_level > 0
+            and not (plateau_override is not None and plateau_override > 0)):
+        blended = float(np.expm1(_cw * np.log1p(anchor_level) + (1 - _cw) * np.log1p(p50)))
+        scale = blended / max(p50, 1e-9)
+        p50, p10, p90 = blended, p10 * scale, p90 * scale
+        calib_applied = True
+
     if plateau_override is not None and plateau_override > 0:
         scale = plateau_override / max(p50, 1e-9)
         p50, p10, p90 = plateau_override, p10 * scale, p90 * scale
@@ -531,7 +601,8 @@ def predict_site(lat, lon, brand=None, plateau_override=None,
                      n_neighbours_20km=int(X["n_nbr_20"].iloc[0]), brand_known=bool(brand and brand in art["brand_mean"]),
                      ramp_source=ramp_src, region=str(X["region"].iloc[0]), state=str(X["state"].iloc[0]),
                      model_plateau=model_p50, anchor_level=anchor_level, n_local_mature=n_local_mature,
-                     proxy_used=proxy_used, local_cov=local_cov, model_kind=("et" if use_et else "lgb"))
+                     proxy_used=proxy_used, local_cov=local_cov, model_kind=("et" if use_et else "lgb"),
+                     calib_applied=calib_applied, calib_w=(_cw if calib_applied else 0.0))
 
 
 def _haversine(lat1, lon1, lat2, lon2):
