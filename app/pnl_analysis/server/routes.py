@@ -122,13 +122,16 @@ def _known_site_names(lat, lon, radius_km, min_months, demo):
 @router.post("/insights", response_class=PlainTextResponse)
 def insights(req: InsightsRequest):
     """Tab 1 — AI Key Insights (grounded on the local market's KPI panels). Returns the full narrative as
-    plain-text markdown (## Washes / ## Revenue / ## ASPs), nothing else. 404 if the market is too thin."""
+    standard, react-markdown-compatible markdown (plain `$`, `**bold**`, `- bullets`), nothing else.
+    404 if the market is too thin."""
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     grounded = _grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
     if grounded is None:
         raise HTTPException(status_code=404, detail=f"No rich-history sites within {req.radius_km} km of this pin.")
     panel, meta, focal = grounded
-    blocks = _insights_pipeline(panel, meta, focal, backend=req.backend, last_n_months=req.last_n_months)["insights"]
+    # escape_dollars=False → plain `$` so the returned markdown renders cleanly in react-markdown (not KaTeX-escaped).
+    blocks = _insights_pipeline(panel, meta, focal, backend=req.backend,
+                                last_n_months=req.last_n_months, escape_dollars=False)["insights"]
 
     def _has_substance(v: str) -> bool:  # the model returns one holistic block — drop empty/neutral/error placeholders
         low = (v or "").lower()
@@ -174,7 +177,8 @@ def insights_pollinated(req: PollinatedSummaryRequest):
         loc = _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
                                             backend=req.backend)["text"]
         grounded = _grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
-        insights = (_insights_pipeline(*grounded, backend=req.backend, last_n_months=req.last_n_months)["insights"]
+        insights = (_insights_pipeline(*grounded, backend=req.backend, last_n_months=req.last_n_months,
+                                       escape_dollars=False)["insights"]
                     if grounded is not None else None)
         known = _known_site_names(lat, lon, req.radius_km, 1, req.demo)
         comp = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
