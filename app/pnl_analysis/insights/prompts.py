@@ -23,19 +23,20 @@ _SIGNAL_EMOJI = {"positive": "🟢", "neutral": "⚪", "cautionary": "🟠", "ne
 
 SYSTEM_PROMPT = (
      "You are a private-equity investor running a site-selection model for car washes, deciding whether to BUILD a NEW site in this local market. "
-    "You read the market's actual monthly operating data (every site here has 30+ months of history) and write a tight, decision-useful read-outs "
+    "You read the market's actual monthly operating data (every site here has 30+ months of history) and write a complete, clear, decision-useful read-out "
    "\n"
     "What you are deciding: is this an attractive market to enter? Your best analog for a new build is how the LAST entrant ramped here. "
-    "Weigh market size & headroom, membership demand quality, pricing power (ASP), competitive density, per-site economics, and cannibalization risk.\n"
+    "Weigh market size & headroom, membership demand quality, pricing power (average revenue per wash), competitive density, per-site economics, and cannibalization risk.\n"
     "Rules:\n"
+    "- SIMPLE, COMPLETE ENGLISH: write a FULL, proper summary — thorough and complete, covering every section in real depth — but in clear, simple language that a non-finance reader can easily follow. Do NOT make it terse, skimmable, or bullet-shorthand; write it out properly and explain in plain words what each number means and why it matters. Keep all the detail; just make the WORDING simpler. Avoid jargon, and spell out EVERY abbreviation in full: 'year-over-year' (never 'YoY'), 'percentage points' (never 'pp'), 'month-over-month' (never 'MoM'), 'average revenue per wash' (never 'ASP'), 'per month' (never '/mo'), 'per year' (never '/yr').\n"
     "- Use ONLY the numbers provided. Never invent, extrapolate beyond a stated trend, or cite a number not given. If something is absent, omit it.\n"
     "- Be concrete and quantitative: cite absolute levels, dates, peak-vs-current, recent momentum (last N months) vs year-over-year, and the new entrant's ramp & effect.\n"
-    "- LEVELS ARE 3-MONTH AVERAGED: every 'peak', 'current' and YoY here is a ~3-month average, not a single month — so describe a peak as a period (e.g. 'around 2024-Q2'), never as a one-month spike.\n"
-    "- SAME-STORE (a.k.a. like-for-like) = compares ONLY the sites reporting in BOTH periods. If sites stopped reporting (see MARKET CONTEXT) a falling market SUM is a coverage artifact, not real demand loss: lead with the same-store YoY, call it 'same-store', and never call a coverage drop a market decline.\n"
+    "- WINDOWS ONLY — never cite a single month or a month-over-month move. Every 'current', 'peak', level and change here is a trailing MULTI-MONTH window (3-month, or 6-month); describe a peak or a current level as a PERIOD (e.g. 'around 2024-Q2', 'over the last 3 months'), never a one-month value.\n"
+    "- The data has ALREADY been trimmed to the last clean reporting period, so do NOT write any note, caveat, or aside about data coverage, reporting gaps, sites dropping out, or artifacts — just read the demand. Same-store (like-for-like) YoY is provided as the robust demand measure; use it quietly, without narrating coverage.\n"
     "- CONSISTENCY: if same-store demand is flat or only modestly down, do not later describe the market as 'declining' anywhere else in the read-out, including the verdict — use 'maturing', 'saturated', or 'plateaued' instead. Every later section must stay consistent with what the Market Demand section established.\n"
     "- Membership penetration and its growth are your most important demand-quality signal — but a high membership share is only a GOOD signal if that base isn't already locked into a competitor. If the dominant share belongs to an incumbent, say so explicitly as a lock-in risk, not just a demand-quality positive.\n"
     "- Competitive density is measured by distance to the nearest existing site, not by volume — always cite the nearest-site distance and state plainly whether there is or isn't an open trade area.\n"
-    "- ASP and the membership premium are your pricing-power signal, judged independently of volume — strong, stable ASPs can coexist with a bad location decision.\n"
+    "- Average revenue per wash and the membership premium are your pricing-power signal, judged independently of volume — strong, stable pricing can coexist with a bad location decision.\n"
     "- The verdict should state that (a) states in one sentence whether the economics are sound and whether the location is sound, as two separate judgments, and (b) gives the recommendation plus the one condition that would change your mind (e.g., a different site becoming available, or an incumbent's exit)."
     )
 
@@ -46,11 +47,11 @@ def _pct(x: Optional[float]) -> Optional[str]:
 
 
 def _pp(x: Optional[float]) -> Optional[str]:
-    return None if x is None else f"{x:+.1f} pp"
+    return None if x is None else f"{x:+.1f} percentage points"
 
 
 def _per_yr(x: Optional[float]) -> Optional[str]:
-    return None if x is None else f"{x:+.0%}/yr"
+    return None if x is None else f"{x:+.0%} per year"
 
 
 def _count(x: Optional[float]) -> Optional[str]:
@@ -74,18 +75,18 @@ def _level_line(label: str, b: Dict[str, Any], money: bool = False, n: int = 12)
     fmt = _money0 if money else _count
     parts: List[str] = []
     if b.get("current") is not None:
-        parts.append(f"now {fmt(b['current'])}/mo")
+        parts.append(f"now {fmt(b['current'])} per month")
     if b.get("peak") is not None and b.get("peak_date"):
-        parts.append(f"peak ~{fmt(b['peak'])}/mo around {b['peak_date']}")
+        parts.append(f"peak ~{fmt(b['peak'])} per month around {b['peak_date']}")
     if b.get("current_vs_peak") is not None:
-        parts.append(f"{_pct(b['current_vs_peak'])} vs peak")
+        parts.append(f"{_pct(b['current_vs_peak'])} versus peak")
     if b.get("yoy") is not None:
-        y = f"YoY {_pct(b['yoy'])}"
+        y = f"year-over-year {_pct(b['yoy'])}"
         if b.get("yoy_same_store") is not None:
             y += f" (same-store {_pct(b['yoy_same_store'])})"
         parts.append(y)
     if b.get("change_last_n") is not None:
-        parts.append(f"last {n}mo {_pct(b['change_last_n'])}")
+        parts.append(f"last {n} months {_pct(b['change_last_n'])}")
     if b.get("trend_annual") is not None:
         parts.append(f"trend {_per_yr(b['trend_annual'])}")
     if b.get("start"):
@@ -98,7 +99,7 @@ def _traj(label: str, pts: List[Dict[str, Any]], money: bool = False) -> Optiona
         return None
     fmt = _money0 if money else _count
     body = ", ".join(f"{p['year']}: {fmt(p['avg'])}" for p in pts if p.get("avg") is not None)
-    return f"- {label} by year (avg/mo): {body}." if body else None
+    return f"- {label} by year (average per month): {body}." if body else None
 
 
 # ─────────────────────────── shared market-context block ───────────────────────────
@@ -183,20 +184,20 @@ def _washes_facts(m: Dict[str, Any]) -> List[str]:
     ms = w.get("membership_share") or {}
     if ms.get("current") is not None:
         extra = f"; peak ~{_share(ms['peak'])} around {ms['peak_date']}" if ms.get("peak") is not None else ""
-        out.append(f"- Membership share of washes: now {_share(ms['current'])} (YoY {_pp(ms.get('yoy_delta_pp'))}){extra}.")
+        out.append(f"- Membership share of washes: now {_share(ms['current'])} (year-over-year {_pp(ms.get('yoy_delta_pp'))}){extra}.")
     out.append(_traj("Total washes", (w.get("trajectory_yearly") or {}).get("total", [])))
     out.append(_traj("Membership washes", (w.get("trajectory_yearly") or {}).get("membership", [])))
     ee = w.get("entry_effect")
     if ee:
-        out.append(f"- Around the new entrant ({ee['entry_date']}): market total {_count(ee['pre_per_month'])}/mo → "
-                   f"{_count(ee['post_per_month'])}/mo ({_pct(ee['change'])}).")
+        out.append(f"- Around the new entrant ({ee['entry_date']}): market total {_count(ee['pre_per_month'])} per month → "
+                   f"{_count(ee['post_per_month'])} per month ({_pct(ee['change'])}).")
     fr = w.get("focal_ramp")
     if fr:
         thin = ", thin history" if fr.get("short_history") else ""
-        peak = (f", peaked ~{_count(fr['peak_per_month'])}/mo around {fr['peak_date']} ({_pct(fr.get('current_vs_peak'))} since)"
+        peak = (f", peaked ~{_count(fr['peak_per_month'])} per month around {fr['peak_date']} ({_pct(fr.get('current_vs_peak'))} since)"
                 if fr.get("peak") is not None else "")
-        out.append(f"- New site ramp: {_count(fr['first3_per_month'])}/mo → {_count(fr['current_per_month'])}/mo over "
-                   f"{fr['months_open']} mo ({_pct(fr['ramp'])}){peak}{thin}.")
+        out.append(f"- New site ramp: {_count(fr['first3_per_month'])} per month → {_count(fr['current_per_month'])} per month over "
+                   f"{fr['months_open']} months ({_pct(fr['ramp'])}){peak}{thin}.")
     cb = w.get("cannibalization")
     if cb:
         out.append(f"- Incumbents after entry (retail): {_pct(cb.get('retail_change'))} "
@@ -210,22 +211,22 @@ def _revenue_facts(m: Dict[str, Any]) -> List[str]:
     out = [_level_line("Total revenue", r["total"], money=True, n=n)]
     sh = r.get("mem_share") or {}
     if sh.get("current") is not None:
-        slope = f"; {sh['slope_pp_per_yr']:+.1f} pp/yr" if sh.get("slope_pp_per_yr") is not None else ""
+        slope = f"; {sh['slope_pp_per_yr']:+.1f} percentage points per year" if sh.get("slope_pp_per_yr") is not None else ""
         out.append(f"- Revenue mix: membership {_share(sh['current'])} / retail {_share(sh.get('retail_share_current'))} "
-                   f"(YoY {_pp(sh.get('yoy_delta_pp'))}{slope}).")
+                   f"(year-over-year {_pp(sh.get('yoy_delta_pp'))}{slope}).")
     pw = r.get("per_wash") or {}
     if pw.get("current") is not None:
-        out.append(f"- Blended revenue per wash: {_money2(pw['current'])} (YoY {_pct(pw.get('yoy'))}).")
+        out.append(f"- Blended revenue per wash: {_money2(pw['current'])} (year-over-year {_pct(pw.get('yoy'))}).")
     mv = r.get("mem_vs_ret_yoy") or {}
     if mv.get("membership") is not None or mv.get("retail") is not None:
-        out.append(f"- Revenue growth by stream (YoY): membership {_pct(mv.get('membership'))}, retail {_pct(mv.get('retail'))}.")
+        out.append(f"- Revenue growth by stream (year-over-year): membership {_pct(mv.get('membership'))}, retail {_pct(mv.get('retail'))}.")
     out.append(_traj("Total revenue", (r.get("trajectory_yearly") or {}).get("total", []), money=True))
     out.append(_traj("Membership revenue", (r.get("trajectory_yearly") or {}).get("membership", []), money=True))
     fc = r.get("focal_contribution")
     if fc:
-        l12 = f" ({_share(fc['share_of_market_last12'])} over last 12 mo)" if fc.get("share_of_market_last12") is not None else ""
-        out.append(f"- New site is {_share(fc.get('share_of_market'))} of latest-month market revenue{l12} "
-                   f"({_money0(fc.get('focal_revenue_per_month'))}/mo).")
+        l12 = f" ({_share(fc['share_of_market_last12'])} over the last 12 months)" if fc.get("share_of_market_last12") is not None else ""
+        out.append(f"- New site is {_share(fc.get('share_of_market'))} of latest market revenue{l12} "
+                   f"({_money0(fc.get('focal_revenue_per_month'))} per month).")
     return [o for o in out if o]
 
 
@@ -233,25 +234,25 @@ def _asp_facts(m: Dict[str, Any]) -> List[str]:
     a = m["asps"]
     n = m["meta"]["last_n_months"]
     out = []
-    for key, label in (("retail", "Retail ASP/wash"), ("membership", "Membership ASP")):
+    for key, label in (("retail", "Retail average revenue per wash"), ("membership", "Membership average revenue per wash")):
         b = a.get(key) or {}
         if b.get("current") is None:
             continue
         peak = f"; peak ~{_money2(b['peak'])} around {b['peak_date']}" if b.get("peak") is not None else ""
         mom = b.get("mom_smoothed") if b.get("mom_smoothed") is not None else b.get("mom")
-        out.append(f"- {label}: now {_money2(b['current'])} (MoM {_pct(mom)}, YoY {_pct(b.get('yoy'))}, "
-                   f"last {n}mo {_pct(b.get('change_last_n'))}){peak}.")
+        out.append(f"- {label}: now {_money2(b['current'])} (recent three months {_pct(mom)}, year-over-year {_pct(b.get('yoy'))}, "
+                   f"last {n} months {_pct(b.get('change_last_n'))}){peak}.")
     prem = a.get("membership_premium") or {}
     if prem.get("abs") is not None:
-        ratio = f" ({prem['ratio']:.1f}x retail)" if prem.get("ratio") is not None else ""
-        out.append(f"- Membership ASP premium over retail: {_money2(prem['abs'])}{ratio}.")
-    out.append(_traj("Retail ASP", (a.get("trajectory_yearly") or {}).get("retail", []), money=True))
-    out.append(_traj("Membership ASP", (a.get("trajectory_yearly") or {}).get("membership", []), money=True))
+        ratio = f" ({prem['ratio']:.1f} times retail)" if prem.get("ratio") is not None else ""
+        out.append(f"- Membership pricing premium over retail: {_money2(prem['abs'])}{ratio}.")
+    out.append(_traj("Retail average revenue per wash", (a.get("trajectory_yearly") or {}).get("retail", []), money=True))
+    out.append(_traj("Membership average revenue per wash", (a.get("trajectory_yearly") or {}).get("membership", []), money=True))
     g = a.get("focal_gap")
     if g:
-        out.append(f"- New site vs incumbents: retail ASP {_money2(g.get('retail_focal'))} vs "
-                   f"{_money2(g.get('retail_incumbent'))} ({_pct(g.get('retail_gap_pct'))}); membership ASP "
-                   f"{_money2(g.get('membership_focal'))} vs {_money2(g.get('membership_incumbent'))}.")
+        out.append(f"- New site versus incumbents: retail average revenue per wash {_money2(g.get('retail_focal'))} versus "
+                   f"{_money2(g.get('retail_incumbent'))} ({_pct(g.get('retail_gap_pct'))}); membership average revenue per wash "
+                   f"{_money2(g.get('membership_focal'))} versus {_money2(g.get('membership_incumbent'))}.")
     return [o for o in out if o]
 
 
@@ -299,12 +300,11 @@ def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
         facts = "\n".join(_FACT_BUILDERS[group](metrics)) or "- (no data)"
         blocks.append(f"[{group}]\n{facts}")
     user = (
-        "MARKET CONTEXT (read first — explains data coverage):\n"
+        "MARKET CONTEXT (read first — market size & per-site history):\n"
         f"{_context_block(metrics)}\n\n"
         "SITE-SELECTION CONTEXT (you are deciding whether to BUILD a new site here):\n"
         f"{_site_selection_block(metrics)}\n\n"
-        "QUARTERLY DATA POINTS (the actual market series — read the shape; prefer same-store comparisons "
-        "when coverage dropped):\n"
+        "QUARTERLY DATA POINTS (the actual market series — read the shape over multi-month windows):\n"
         f"{_data_points_block(metrics)}\n\n"
         "FACTS by group:\n"
         f"{chr(10).join(blocks)}\n\n"
@@ -317,13 +317,14 @@ def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
     "   \"signal\": \"<positive|neutral|cautionary|negative> — <sentence 1: elaborate the headline judgment in full>. <sentence 2: the recommendation plus the one condition that would change your mind.>\"}\n\n"
 
     "The \"bullets\" array must contain exactly these sections as individual plain-prose strings, in this exact order. "
-    "Each string must begin with the section label followed by ' — ' and then 2-4 sentences of analysis:\n\n"
-    "\"⚠️ Data Note\" — include ONLY if MARKET CONTEXT shows sites stopped reporting; state plainly that the raw "
-    "market-level trend is a coverage artifact and name which figure (same-store) the reader should trust instead. "
-    "If coverage didn't change, omit this string from the array entirely.\n\n"
-    "\"Market Demand\" — same-store YoY vs raw YoY; current level vs peak (with date and % off peak); AND whether "
-    "the most relevant comparable (the most recent entrant, if one exists) is itself above or below its own peak — "
-    "use that to judge whether the growth window is still open or has likely closed.\n\n"
+    "Each string must begin with the section label followed by ' — ' and then a proper, complete explanation of 3-4 clear "
+    "sentences written in simple, everyday language (state the numbers, then explain in plain words what they mean and "
+    "why they matter for building here). Do not shorten it to a terse one-liner. "
+    "Every number you cite is a multi-month window; do NOT include any data-note / coverage / caveat section:\n\n"
+    "\"Market Demand\" — the same-store YoY as the demand read, and the current level vs its peak as PERIODS (name the "
+    "peak period and the % off peak, all on multi-month windows); AND whether the most relevant comparable (the most "
+    "recent entrant, if one exists) is itself above or below its own peak — use that to judge whether the growth "
+    "window is still open or has likely closed.\n\n"
     "\"Business Model\" — which revenue model (membership vs. retail) is actually carrying the market, based on share "
     "level and its trend; and if that share is already concentrated in a single existing competitor, name that "
     "explicitly as a lock-in risk rather than just a positive signal.\n\n"
@@ -337,7 +338,11 @@ def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
     "subscribers from an incumbent vs. organic growth).\n\n"
     
     "Do not use markdown, nested JSON, or bullet points inside any string value. "
-    "Do not invent a section label not listed above. Data Note is the only optional section."
+    "Do not invent a section label not listed above. Do NOT add a data-note / coverage / caveat section of any kind. "
+    "Every figure you cite must be a multi-month window — never reference a single month or a month-over-month change. "
+    "Write a full, proper summary in plain, simple English — complete and explained, not terse or skimmable — and spell "
+    "out all abbreviations in full (year-over-year, percentage points, average revenue per wash) — no shorthand like "
+    "'YoY', 'pp', 'ASP', '/mo'."
 
 )
     
@@ -350,9 +355,12 @@ def _esc_dollars(s: str) -> str:
     return s.replace("$", "\\$")
 
 
-def _render_group(obj: Any) -> Optional[str]:
+def _render_group(obj: Any, escape_dollars: bool = True) -> Optional[str]:
+    """Render one group's JSON into markdown. `escape_dollars=True` (Streamlit/KaTeX) turns `$`→`\\$`; set
+    False for standard react-markdown output (plain `$`)."""
     if not isinstance(obj, dict):
         return None
+    esc = _esc_dollars if escape_dollars else (lambda s: s)
     head = str(obj.get("headline") or "").strip().strip("*").strip().rstrip(".")
     bullets = obj.get("bullets") or []
     if isinstance(bullets, str):
@@ -363,8 +371,8 @@ def _render_group(obj: Any) -> Optional[str]:
 
     parts: List[str] = []
     if head:
-        parts.append(f"**{_esc_dollars(head)}**")
-    clean = [_esc_dollars(str(b).strip().lstrip("-•*").strip()) for b in bullets if str(b).strip()]
+        parts.append(f"**{esc(head)}**")
+    clean = [esc(str(b).strip().lstrip("-•*").strip()) for b in bullets if str(b).strip()]
     if clean:
         parts.append("\n".join(f"- {b}" for b in clean))
 
@@ -378,7 +386,7 @@ def _render_group(obj: Any) -> Optional[str]:
         verdict_text = ""
 
     if sig_word in _SIGNAL_EMOJI:
-        verdict_display = f"\n\n{_esc_dollars(verdict_text)}" if verdict_text else ""
+        verdict_display = f"\n\n{esc(verdict_text)}" if verdict_text else ""
         parts.append(f"{_SIGNAL_EMOJI[sig_word]} _{sig_word}_{verdict_display}")
 
     return "\n\n".join(parts).strip() or None
@@ -408,26 +416,29 @@ _LOOSE_RE = re.compile(
     re.DOTALL | re.IGNORECASE)
 
 
-def _render_loose(body: str) -> Optional[str]:
+def _render_loose(body: str, escape_dollars: bool = True) -> Optional[str]:
     head = re.search(r"(?:Headline:)?\s*(.+)", body)
     sig = re.search(r"Signal:\s*(positive|neutral|cautionary|negative)", body, re.IGNORECASE)
     bullets = re.findall(r"^\s*[-*]\s+(.+)$", body, re.MULTILINE)
     headline = (re.sub(r"^Headline:\s*", "", head.group(1), flags=re.IGNORECASE) if head else "")
     return _render_group({"headline": headline, "bullets": bullets,
-                          "signal": sig.group(1) if sig else ""})
+                          "signal": sig.group(1) if sig else ""}, escape_dollars=escape_dollars)
 
 
-def parse_group_sections(text: str) -> Dict[str, Optional[str]]:
-    """Map LLM output to {'Washes','Revenue','ASPs'} rendered-markdown (None if a group is missing)."""
+def parse_group_sections(text: str, escape_dollars: bool = True) -> Dict[str, Optional[str]]:
+    """Map LLM output to {'Washes','Revenue','ASPs'} rendered-markdown (None if a group is missing).
+    `escape_dollars=True` escapes `$`→`\\$` for Streamlit/KaTeX; pass False for standard react-markdown
+    (plain `$`) — the FastAPI endpoints use False so their returned summary renders in react-markdown."""
     out: Dict[str, Optional[str]] = {"Washes": None, "Revenue": None, "ASPs": None}
     data = _extract_json(text)
     if isinstance(data, dict):
         low = {(k.lower() if isinstance(k, str) else k): v for k, v in data.items()}
         for disp, key in (("Washes", "washes"), ("Revenue", "revenue"), ("ASPs", "asps")):
-            out[disp] = _render_group(low.get(key))
+            out[disp] = _render_group(low.get(key), escape_dollars=escape_dollars)
         if any(out.values()):
             return out
     for mtch in _LOOSE_RE.finditer(text or ""):       # fallback for non-JSON output
         grp = mtch.group(1)
-        out["ASPs" if grp.lower() == "asps" else grp.capitalize()] = _render_loose(mtch.group(2))
+        out["ASPs" if grp.lower() == "asps" else grp.capitalize()] = _render_loose(mtch.group(2),
+                                                                                    escape_dollars=escape_dollars)
     return out

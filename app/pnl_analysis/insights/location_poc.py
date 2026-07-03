@@ -27,6 +27,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.pnl_analysis.insights import llm as llm_client
+from app.pnl_analysis.insights import websearch
 
 logger = logging.getLogger(__name__)
 
@@ -51,18 +52,51 @@ SYSTEM_PROMPT = (
 )
 
 
+def _format_web_sources(sources: List[dict]) -> str:
+    """Number the retrieved web sources for the prompt: '[n] Title — URL' + a trimmed snippet."""
+    out = []
+    for i, s in enumerate(sources, 1):
+        title = (s.get("title") or s.get("url") or "source").strip()
+        url = (s.get("url") or "").strip()
+        snippet = (s.get("content") or "").strip().replace("\n", " ")
+        if len(snippet) > 320:
+            snippet = snippet[:320] + "…"
+        out.append(f"[{i}] {title} — {url}" + (f"\n    {snippet}" if snippet else ""))
+    return "\n".join(out)
+
+
 def build_location_messages(lat: float, lon: float, *, address: Optional[str] = None,
-                            radius_km: float = 20) -> List[dict]:
-    """Construct the chat request — context + goal + location + radius, and NO market data."""
+                            radius_km: float = 20, web_sources: Optional[List[dict]] = None) -> List[dict]:
+    """Construct the chat request — context + goal + location + radius, and NO market data. When `web_sources`
+    are supplied (fresh web-search results), they are injected as citable ground truth and the model is told to
+    cite them by number and list its sources."""
     addr = (address or "").strip() or "(not provided — infer the place from the coordinates)"
+    system = SYSTEM_PROMPT
+    web_section, cite_rule = "", ""
+    if web_sources:
+        web_section = (
+            "\nFRESH WEB SEARCH RESULTS (retrieved just now for this exact location — treat as current, "
+            "authoritative context; prefer them over static memory when they conflict):\n"
+            f"{_format_web_sources(web_sources)}\n"
+        )
+        cite_rule = (
+            "\n- Ground concrete claims (demographics, income, roads, named competitors, growth, new builds) in the "
+            "WEB SEARCH RESULTS above and cite the source inline as [n] using its number. End the report with a "
+            "'## Sources' section listing every [n] you cited as '[n] Title — URL'. Never cite a source you did not use.\n"
+        )
+        system = SYSTEM_PROMPT + (
+            "\n\nYou have ALSO been handed fresh web-search results for this exact location. Use them as current "
+            "ground truth, prefer them over static memory when they conflict, and cite them by number."
+        )
     user = (
         "NEW CAR-WASH SITE — MARKET ANALYSIS REQUEST (location only, no operating data supplied)\n\n"
         "GOAL: Assess whether this is an attractive place to build a new express-tunnel car wash, and describe "
-        "what the local market looks like — entirely from your knowledge of this location.\n\n"
+        "what the local market looks like — from your knowledge of this location and any web results provided.\n\n"
         "LOCATION:\n"
         f"- Latitude, Longitude: {lat:.5f}, {lon:.5f}\n"
         f"- Approx address / description: {addr}\n"
-        f"- Local trade-area radius: {radius_km:g} km (≈ {radius_km * 0.621:.0f} miles)\n\n"
+        f"- Local trade-area radius: {radius_km:g} km (≈ {radius_km * 0.621:.0f} miles)\n"
+        f"{web_section}\n"
         "Write a markdown report. Cover as many of the following as your knowledge of this place supports — and "
         "add anything else relevant. For each section, LEAD with your conclusion, then give the reasoning, then "
         "mark confidence (High/Medium/Low):\n\n"
@@ -79,24 +113,40 @@ def build_location_messages(lat: float, lon: float, *, address: Optional[str] = 
         "6. **Demand drivers & risks** — anything specific to this location that helps or hurts a new car wash.\n"
         "7. **Verdict** — is this an attractive build? Give a clear lean, your overall confidence, and the top 3 "
         "pieces of REAL data you'd pull next to confirm or kill the site.\n"
+        f"{cite_rule}"
     )
-    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
 # ─────────────────────────── entry point ───────────────────────────
 def location_market_analysis(lat: float, lon: float, *, address: Optional[str] = None,
                              radius_km: float = 20, backend: Optional[str] = None,
-                             max_tokens: int = 2200, temperature: float = 0.5) -> Dict[str, Any]:
+                             max_tokens: int = 2200, temperature: float = 0.5,
+                             use_web_search: bool = False) -> Dict[str, Any]:
     """Ask the LLM for a location-only market read. Azure-first (cascades to local), like the
     Key-Insights button. Free-form markdown — no JSON mode — so we see the full range of what it can do.
 
+    When `use_web_search` is True and a search provider is configured, fresh web results for this location
+    are retrieved and fed in as citable context; the returned dict carries the `sources` (title/url) so the
+    caller can render clickable links backing the commentary. Falls back to un-grounded output if search is
+    unavailable or fails.
+
     Raises `llm_client.LLMUnavailable` if no backend answers; the caller surfaces that honestly.
     """
-    messages = build_location_messages(lat, lon, address=address, radius_km=radius_km)
+    sources: List[dict] = []
+    place = (address or "").strip()
+    if use_web_search:
+        try:
+            sources, place = websearch.gather_location_sources(lat, lon, address=address, radius_km=radius_km)
+        except Exception as e:                                    # search must never break the analysis
+            logger.warning("Web-search grounding failed, continuing without it: %s", e)
+            sources = []
+    messages = build_location_messages(lat, lon, address=address, radius_km=radius_km, web_sources=sources)
     text, used = llm_client.complete_cascade(messages, backend=backend, max_tokens=max_tokens,
                                              temperature=temperature, json_mode=False)
-    logger.info("Location POC analysis generated via %s backend.", used)
-    return {"text": (text or "").strip(), "backend": used, "prompt": messages[-1]["content"]}
+    logger.info("Location POC analysis generated via %s backend (web_sources=%d).", used, len(sources))
+    return {"text": (text or "").strip(), "backend": used, "prompt": messages[-1]["content"],
+            "sources": sources, "web_used": bool(sources), "place": place}
 
 
 # ─────────────────────────── pollination (qualitative × quantitative) ───────────────────────────
@@ -168,6 +218,10 @@ def _format_competition(competition: Any) -> str:
     rivals = [c.get("name") for c in (data.get("competitors") or []) if isinstance(c, dict) and c.get("name")]
     if rivals:
         parts.append("Named rivals: " + ", ".join(str(r) for r in rivals[:8]) + ".")
+    nearby = competition.get("nearby_washes") or []
+    if nearby:
+        obs = ", ".join(str(w.get("name")) for w in nearby[:6] if w.get("name"))
+        parts.append(f"Grounded on {len(nearby)} real washes observed via Google Places nearby ({obs}).")
     return " ".join(parts)
 
 
@@ -249,12 +303,37 @@ COMPETITION_SYSTEM_PROMPT = (
 )
 
 
+def _format_nearby_washes(nearby_washes: List[dict]) -> str:
+    """Render the real Google-Places washes as a name + distance ground-truth list for the prompt."""
+    lines = []
+    for w in nearby_washes[:25]:
+        nm = (w.get("name") or "?").strip()
+        d = w.get("distance_miles")
+        lines.append(f"- {nm}" + (f" — {float(d):.1f} mi" if isinstance(d, (int, float)) else ""))
+    return "\n".join(lines)
+
+
 def build_competition_messages(lat: float, lon: float, *, known_sites: Optional[List[str]] = None,
-                               address: Optional[str] = None, radius_km: float = 20) -> List[dict]:
-    """Construct the competitive-saturation JSON request — location, radius, and the client's OWN sites."""
+                               address: Optional[str] = None, radius_km: float = 20,
+                               nearby_washes: Optional[List[dict]] = None) -> List[dict]:
+    """Construct the competitive-saturation JSON request — location, radius, the client's OWN sites, and
+    (when supplied) the REAL nearby car washes observed via Google Places (name + distance) as ground truth
+    the estimate must be anchored to."""
     addr = (address or "").strip() or "(not provided — infer the place from the coordinates)"
     known = [str(s) for s in (known_sites or []) if str(s).strip()]
     known_block = ("; ".join(known)) if known else "(the client has no sites of their own in this radius)"
+    observed_block = ""
+    if nearby_washes:
+        observed_block = (
+            f"OBSERVED CAR WASHES near this pin from Google Places (GROUND TRUTH — real washes actually operating "
+            f"within ~11 miles, name + distance; {len(nearby_washes)} found, nearest first):\n"
+            f"{_format_nearby_washes(nearby_washes)}\n"
+            "Anchor your estimate to this observed set: your total counts must be AT LEAST what is listed here, "
+            "include these real names among the `competitors` (classify each as an express tunnel vs other where you "
+            "can tell), and let them ground which brands actually operate here. You may extrapolate beyond the ~20 "
+            "Places returns, but never contradict or fall below this observed set.\n\n"
+        )
+    know_src = "your knowledge of this place and the observed washes below" if nearby_washes else "your knowledge of this place"
     user = (
         "COMPETITIVE SATURATION ESTIMATE — JSON ONLY\n\n"
         "LOCATION:\n"
@@ -262,7 +341,8 @@ def build_competition_messages(lat: float, lon: float, *, known_sites: Optional[
         f"- Approx address / description: {addr}\n"
         f"- Trade-area radius: {radius_km:g} km (≈ {radius_km * 0.621:.0f} miles)\n\n"
         f"THE CLIENT'S OWN CAR WASHES in this radius — the site(s) this operator runs ({len(known)} owned): {known_block}\n\n"
-        "From your knowledge of this place, estimate the TOTAL competitive set in the radius — every car wash "
+        f"{observed_block}"
+        f"From {know_src}, estimate the TOTAL competitive set in the radius — every car wash "
         "competing with the client, plus the express-tunnel segment specifically — and give a full competitive read "
         "so we can size how outnumbered the client's footprint is and what kind of competition it is. Return STRICT "
         "JSON with exactly these keys:\n"
@@ -314,14 +394,21 @@ def _mid(rng: Any) -> Optional[float]:
 def competition_scale_analysis(lat: float, lon: float, *, known_sites: Optional[List[str]] = None,
                                address: Optional[str] = None, radius_km: float = 20,
                                backend: Optional[str] = None, max_tokens: int = 1900,
-                               temperature: float = 0.3) -> Dict[str, Any]:
+                               temperature: float = 0.3,
+                               nearby_washes: Optional[List[dict]] = None) -> Dict[str, Any]:
     """Ask the LLM how many car washes really operate near this pin and size the client's competitive saturation.
+
+    When `nearby_washes` (real Google-Places washes: name + distance within ~11 mi) are supplied, they are fed in
+    as GROUND TRUTH the estimate is anchored to, and echoed back in the result so the UI can show the source of
+    truth behind the numbers.
 
     Returns the parsed estimate, the client's own site count, and the implied SATURATION MULTIPLE (LLM total ÷ the
     client's own count = competitors per client site) for both the express-tunnel segment and all car washes.
     Estimates only — labelled as such in the UI. Raises `llm_client.LLMUnavailable` if no backend answers."""
     known = [str(s) for s in (known_sites or []) if str(s).strip()]
-    messages = build_competition_messages(lat, lon, known_sites=known, address=address, radius_km=radius_km)
+    nearby = list(nearby_washes or [])
+    messages = build_competition_messages(lat, lon, known_sites=known, address=address, radius_km=radius_km,
+                                          nearby_washes=nearby)
     text, used = llm_client.complete_cascade(messages, backend=backend, max_tokens=max_tokens,
                                              temperature=temperature, json_mode=True)
     data = _parse_json_lax(text)
@@ -348,6 +435,7 @@ def competition_scale_analysis(lat: float, lon: float, *, known_sites: Optional[
         "total_mid": tot_mid,
         "scale_express": _scale(data.get("estimated_express_tunnels")),
         "scale_total": _scale(data.get("estimated_total_carwashes")),
+        "nearby_washes": nearby,            # real Google-Places washes fed as ground truth (name + distance)
         "backend": used,
         "prompt": messages[-1]["content"],
         "raw": (text or "").strip(),

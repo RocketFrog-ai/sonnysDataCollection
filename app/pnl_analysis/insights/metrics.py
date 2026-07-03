@@ -33,6 +33,8 @@ from app.pnl_analysis.modelling.trend import market_trend, robust_growth
 _MIN_SIDE_MONTHS = 3     # need >=3 non-NaN months each side of an entry to call a before/after change
 _RAMP_MIN_MONTHS = 18    # below this the focal history is too short for a robust ramp slope
 _SMOOTH = 3              # months — de-spike window so a single spiky month is never called a "peak"
+_CLIFF_DROP_RATIO = 3.0  # a trailing month is a coverage cliff if the prior month is ≥3x it (a ≥200% collapse) — trim it
+_CLIFF_MIN_KEEP = 6      # never trim below this many months of history (safety floor)
 
 
 # ─────────────────────────── small numeric helpers ───────────────────────────
@@ -66,6 +68,25 @@ def _at_or_before(s: pd.Series, ts: Optional[pd.Timestamp]) -> float:
 def _last_valid_idx(s: pd.Series) -> Optional[pd.Timestamp]:
     s = s.dropna()
     return s.index[-1] if len(s) else None
+
+
+def _trim_coverage_cliff(s: pd.Series, ratio: float = _CLIFF_DROP_RATIO,
+                         min_keep: int = _CLIFF_MIN_KEEP) -> Optional[pd.Timestamp]:
+    """Last 'clean' month to analyse through. Walk back from the end and drop any trailing month whose value
+    COLLAPSES >200% vs the month before it (prior > `ratio`× current) — that's a coverage cliff from sites
+    dropping out of the feed, not real demand. Truncating there means the corrupted tail never reaches the
+    narrative, so no 'data note' is needed. Never trims below `min_keep` months (safety)."""
+    sd = s.dropna()
+    if len(sd) < 2:
+        return sd.index[-1] if len(sd) else None
+    i = len(sd) - 1
+    while i >= min_keep:
+        cur, prev = float(sd.iloc[i]), float(sd.iloc[i - 1])
+        if cur > 0 and prev > 0 and (prev / cur) >= ratio:    # prev ≥3× cur (a ≥200% collapse, e.g. 2 of 3 sites drop) → cliff
+            i -= 1
+        else:
+            break
+    return sd.index[i]
 
 
 def _ym(ts) -> Optional[str]:
@@ -222,7 +243,16 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
     full_idx = pd.date_range(P["date"].min(), P["date"].max(), freq="MS")
     M = P.groupby("date")[sum_cols].sum(min_count=1).reindex(full_idx)
     M.index.name = "date"
-    last = _last_valid_idx(M["tot_wash_count"]) or full_idx[-1]
+    # Trailing coverage-cliff guard: if the market total collapses >200% month-over-month at the very end
+    # (sites dropping out of the feed), truncate that corrupted tail and analyse only through the last clean
+    # month — so every downstream figure is computed on real demand and NO "data note" is ever needed.
+    last_raw = _last_valid_idx(M["tot_wash_count"]) or full_idx[-1]
+    cutoff = _trim_coverage_cliff(M["tot_wash_count"]) or last_raw
+    if cutoff is not None and cutoff < last_raw:
+        M = M.loc[:cutoff]
+        P = P[P["date"] <= cutoff]
+        full_idx = full_idx[full_idx <= cutoff]
+    last = _last_valid_idx(M["tot_wash_count"]) or cutoff
     prev_year = last - pd.DateOffset(months=12)
     win_start = last - pd.DateOffset(months=max(last_n_months - 1, 0))
 
@@ -263,11 +293,9 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
             "avg_washes_last12": _f(avg12),
         })
     active_now, active_year_ago = len(keys_now), len(keys_prev)
+    # No coverage "data note" is surfaced: any trailing coverage cliff was already trimmed above, so the series
+    # the narrative sees is clean. (same-store YoY is still computed below as a quiet robustness cross-check.)
     coverage_note = None
-    if active_now < active_year_ago:
-        coverage_note = (f"{active_year_ago - active_now} of {len(meta)} sites stopped reporting in the last "
-                         f"year (active sites {active_year_ago}→{active_now}); the raw market-sum YoY is "
-                         f"depressed by this coverage drop — prefer the same-panel YoY.")
     coverage = {
         "market_start": _ym(full_idx[0]), "market_end": _ym(last),
         "n_sites": int(len(meta)), "active_now": active_now, "active_year_ago": active_year_ago,
@@ -322,14 +350,15 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
         arr = f.loc[entry_date:].dropna()
         if len(arr):
             first3 = arr.iloc[:3].mean()
+            cur3 = arr.iloc[-3:].mean()                           # trailing 3-mo average — a window, never one month
             arr_s = _smooth(arr)
             pk_i = arr_s.idxmax()
             washes["focal_ramp"] = {
                 "name": focal_name, "entry_date": _ym(entry_date),
-                "first3_per_month": _f(first3), "current_per_month": _f(arr.iloc[-1]),
+                "first3_per_month": _f(first3), "current_per_month": _f(cur3),
                 "peak_per_month": _f(arr_s.loc[pk_i]), "peak_date": _ym(pk_i),
-                "ramp": _pct(arr.iloc[-1], first3),
-                "current_vs_peak": _pct(arr.iloc[-1], arr_s.loc[pk_i]),
+                "ramp": _pct(cur3, first3),
+                "current_vs_peak": _pct(cur3, arr_s.loc[pk_i]),
                 "growth_annual": _f(robust_growth(arr.to_numpy())[0]),
                 "months_open": int(len(arr)),
                 "short_history": bool(len(arr) < _RAMP_MIN_MONTHS),
@@ -372,8 +401,8 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
     }
     if has_clean_entry:
         focal_rev = (P[P.site_key == focal_key].groupby("date")["tot_revenue"].sum(min_count=1).reindex(full_idx))
-        fr_now = _at_or_before(focal_rev, last)
-        mkt_now = _at_or_before(M["tot_revenue"], last)
+        fr_now = _wavg(focal_rev, last)                           # trailing 3-mo average (windowed)
+        mkt_now = _wavg(M["tot_revenue"], last)
         f12 = focal_rev.loc[last - pd.DateOffset(months=11):last].mean()
         m12 = M["tot_revenue"].loc[last - pd.DateOffset(months=11):last].mean()
         revenue["focal_contribution"] = {
@@ -388,13 +417,13 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
     asp_mem_w = M["mem_revenue"] / M["mem_purchase_count"].replace(0, np.nan)
 
     def _asp_block(series: pd.Series, rev_col: str, unit_col: str) -> Dict[str, Any]:
-        mom = _pct(_at_or_before(series, last), _at_or_before(series, last - pd.DateOffset(months=1)))
+        # windowed momentum: last 3 mo vs the prior 3 mo (never a single-month MoM)
         last3 = M.loc[last - pd.DateOffset(months=2):last]
         prev3 = M.loc[last - pd.DateOffset(months=5):last - pd.DateOffset(months=3)]
         mom_smoothed = _pct(_weighted_asp(last3, rev_col, unit_col), _weighted_asp(prev3, rev_col, unit_col))
         block = _extremes(series)                                 # current/peak on a 3-mo-averaged basis
-        block.update({"mom": mom, "mom_smoothed": mom_smoothed,
-                      "yoy": _pct(_wavg(series, last), _wavg(series, prev_year)),     # de-spiked YoY
+        block.update({"mom": None, "mom_smoothed": mom_smoothed,   # single-month MoM intentionally dropped
+                      "yoy": _pct(_wavg(series, last), _wavg(series, prev_year)),     # de-spiked 3-mo YoY
                       "change_last_n": _pct(_wavg(series, last), _wavg(series, win_start))})
         return block
 
@@ -402,7 +431,8 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
         "retail": _asp_block(asp_ret_w, "ret_revenue", "ret_wash_count"),
         "membership": _asp_block(asp_mem_w, "mem_revenue", "mem_purchase_count"),
         "trajectory_yearly": {"retail": _yearly(asp_ret_w), "membership": _yearly(asp_mem_w)},
-        "definitions": "MoM = latest month vs prior month; YoY = latest vs same month a year earlier (point-in-time).",
+        "definitions": ("All figures are trailing multi-month windows: 'recent' = last 3 mo vs the prior 3 mo; "
+                        "YoY = last 3 mo vs the same 3 mo a year earlier. No single-month values."),
         "focal_gap": None,
     }
     if has_clean_entry and inc_keys:
@@ -437,14 +467,15 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
     }
 
     # ════════════════════════ REVENUE — monetization add-ons ════════════════════════
-    rev_now, wash_now = _at_or_before(M["tot_revenue"], last), _at_or_before(M["tot_wash_count"], last)
-    rev_prev, wash_prev = _at_or_before(M["tot_revenue"], prev_year), _at_or_before(M["tot_wash_count"], prev_year)
+    # blended $/wash monetization — trailing 3-mo windows (no single month)
+    rev_now, wash_now = _wavg(M["tot_revenue"], last), _wavg(M["tot_wash_count"], last)
+    rev_prev, wash_prev = _wavg(M["tot_revenue"], prev_year), _wavg(M["tot_wash_count"], prev_year)
     pw_now = (rev_now / wash_now) if np.isfinite(rev_now) and np.isfinite(wash_now) and wash_now else np.nan
     pw_prev = (rev_prev / wash_prev) if np.isfinite(rev_prev) and np.isfinite(wash_prev) and wash_prev else np.nan
-    revenue["per_wash"] = {"current": _f(pw_now), "yoy": _pct(pw_now, pw_prev)}      # blended $/wash monetization
-    revenue["mem_vs_ret_yoy"] = {                                                    # which stream is driving growth
-        "membership": _pct(_at_or_before(M["mem_revenue"], last), _at_or_before(M["mem_revenue"], prev_year)),
-        "retail": _pct(_at_or_before(M["ret_revenue"], last), _at_or_before(M["ret_revenue"], prev_year)),
+    revenue["per_wash"] = {"current": _f(pw_now), "yoy": _pct(pw_now, pw_prev)}
+    revenue["mem_vs_ret_yoy"] = {                                                    # which stream drives growth (3-mo YoY)
+        "membership": _pct(_wavg(M["mem_revenue"], last), _wavg(M["mem_revenue"], prev_year)),
+        "retail": _pct(_wavg(M["ret_revenue"], last), _wavg(M["ret_revenue"], prev_year)),
     }
 
     # ════════════════════════ SITE SELECTION (the investor is choosing where to BUILD) ════════════════════════
@@ -456,13 +487,14 @@ def compute_metrics(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: st
         if len(fa):
             fa_s = _smooth(fa)
             pk, first3 = fa_s.idxmax(), fa.iloc[:3].mean()
+            fa_cur3 = fa.iloc[-3:].mean()                         # trailing 3-mo average (windowed 'current')
             playbook = {
                 "name": focal_name, "months_open": int(len(fa)),
                 "first3_per_month": _f(first3), "peak_per_month": _f(fa_s.loc[pk]),
                 "months_to_peak": int((pk.year - entry_date.year) * 12 + (pk.month - entry_date.month)),
-                "ramp_multiple": _f(fa.iloc[-1] / first3) if first3 else None,
-                "current_per_month": _f(fa.iloc[-1]),
-                "share_of_market_washes": _f(fa.iloc[-1] / wash_now) if np.isfinite(wash_now) and wash_now else None,
+                "ramp_multiple": _f(fa_cur3 / first3) if first3 else None,
+                "current_per_month": _f(fa_cur3),
+                "share_of_market_washes": _f(fa_cur3 / wash_now) if np.isfinite(wash_now) and wash_now else None,
             }
     site_selection = {
         "sites_in_market": int(len(meta)),

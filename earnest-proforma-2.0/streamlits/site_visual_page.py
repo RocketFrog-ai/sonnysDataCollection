@@ -66,6 +66,11 @@ FETCH_RADIUS_M = 8050          # widest ring is 5 mi (~8047 m); the UI filters t
 ENROUTE_BUFFER_M = 480.0       # a wash sits "on the road" to an anchor if within ~0.3 mi of the road corridor
 CORRIDOR_APPROACH_M = 3200.0   # length of approach road drawn BEFORE the site (~2 mi) so the corridor leads INTO the anchor
 ROUTE_COLORS = ["#e53935", "#8e24aa", "#1e88e5"]   # per-anchor road colours (the ≤3 nearest anchors)
+# ── en-route detour scoring: a wash is a better site if stopping at it barely lengthens the drive to the anchor ──
+CANDIDATE_BUFFER_M = 800.0     # cheap prefilter: only score washes within this of the driving corridor
+MAX_CANDIDATES = 5             # per anchor, cap how many washes we spend a Routes (detour) call on — bounds cost
+DETOUR_GOOD_MIN = 2.0          # a wash adding ≤ this many minutes to the anchor drive is a PRIME intercept (green)
+DETOUR_OK_MIN = 5.0            # ≤ this = still "en route"; beyond it it's a real detour, not on the way
 
 # Mass-merchant / big-box anchor brands (Walmart, Costco, …) — used to filter the anchor search results.
 MASS_RE = re.compile(
@@ -351,14 +356,18 @@ def _approach_origin(slat, slon, mlat, mlon):
     return olat, olon
 
 
-def _route_one(olat, olon, dlat, dlon, key):
-    """Driving route O→D via Routes API → (path[(lat,lon)…], distance_m, duration_s); (None, None, None) on failure."""
+def _route_one(olat, olon, dlat, dlon, key, via=None):
+    """Driving route O→D via Routes API → (path[(lat,lon)…], distance_m, duration_s); (None, None, None) on failure.
+    When `via=(lat,lon)` is given it becomes an intermediate STOP, so the route is O→via→D (used to price the
+    detour of stopping at a car wash on the way to an anchor)."""
     import requests
     body = {
         "origin": {"location": {"latLng": {"latitude": olat, "longitude": olon}}},
         "destination": {"location": {"latLng": {"latitude": dlat, "longitude": dlon}}},
         "travelMode": "DRIVE", "routingPreference": "TRAFFIC_UNAWARE",
     }
+    if via is not None:
+        body["intermediates"] = [{"location": {"latLng": {"latitude": via[0], "longitude": via[1]}}}]
     headers = {
         "Content-Type": "application/json", "X-Goog-Api-Key": key,
         "X-Goog-FieldMask": "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
@@ -376,45 +385,89 @@ def _route_one(olat, olon, dlat, dlon, key):
     return None, None, None
 
 
-@st.cache_data(show_spinner="Mapping roads to nearby anchors…", ttl=60 * 60)
+@st.cache_data(show_spinner="Mapping drivable routes & car-wash stops to nearby anchors…", ttl=60 * 60)
 def compute_routes(lat: float, lon: float, key: str, payload: str) -> list[dict]:
-    """For the ≤3 nearest mass-merchant anchors, trace the main road CORRIDOR that carries traffic INTO the anchor
-    (from a commuter start ~2 mi out on the site's side — so it's 'the road to the mass merchant', not a trip that
-    starts at our wash) and mark EVERY car wash sitting on that road within ~0.3 mi (ours + competitors). Those are
-    the washes that intercept anchor-bound customers. `payload` = JSON {"mass": [...], "wash": [...]} (kept a string
-    so the result caches per pin)."""
+    """For the ≤3 nearest mass-merchant anchors, model the drive a commuter takes INTO the anchor (from a start
+    ~2 mi out on the site's side, so it's 'the road to the mass merchant', not a trip that starts at our wash),
+    then score how well each nearby car wash INTERCEPTS that trip by the real DETOUR of stopping there:
+
+        detour = drive(commuter → wash → anchor)  −  drive(commuter → anchor)
+
+    A low detour means the wash is naturally on the way to the anchor (a stronger intercept site); a big detour
+    means it's off-route. We also score the pin itself ('your site') so you can see whether THIS location is
+    en route. Each candidate carries its own drive-through polyline so the UI can draw the O→wash→anchor route.
+
+    `payload` = JSON {"mass":[...], "wash":[...], "site":{lat,lng}} (a string so the result caches per pin).
+    Cost note: 1 baseline Routes call + up to MAX_CANDIDATES detour calls per anchor (candidates prefiltered to
+    those near the corridor). Cached 1 h. Falls back to a straight-line corridor (proximity flag, no detour) if
+    the Routes API is unavailable."""
     if not key:
         return []
     data = json.loads(payload)
     dests = data.get("mass", [])[:3]
     wash = data.get("wash", [])                       # every nearby wash is a candidate — don't single out the site
+    site = data.get("site")                           # the pin (our candidate build) — scored as its own "wash"
     out = []
     routes_api_ok = True   # if the first computeRoutes fails (e.g. Routes API disabled), skip the rest → straight-line
     for i, d in enumerate(dests):
-        olat, olon = _approach_origin(lat, lon, d["lat"], d["lng"])   # commuter start ~2 mi out, anchor-opposite
-        path = None
+        alat, alon = d["lat"], d["lng"]
+        olat, olon = _approach_origin(lat, lon, alat, alon)          # commuter start ~2 mi out, anchor-opposite
+        base_path = base_dist = base_dur = None
         if routes_api_ok:
-            path, _dist_m, _dur_s = _route_one(olat, olon, d["lat"], d["lng"], key)
-            if path is None:
+            base_path, base_dist, base_dur = _route_one(olat, olon, alat, alon, key)
+            if base_path is None:
                 routes_api_ok = False
-        straight = path is None
+        straight = base_path is None
         if straight:                                                 # Routes API off/failed → straight-line corridor
-            path = [(olat, olon), (d["lat"], d["lng"])]
-        seen, on_road = set(), []
-        for w in wash:
+            base_path = [(olat, olon), (alat, alon)]
+
+        # candidate washes = the site itself + nearby washes within the corridor prefilter (nearest-to-path first, capped)
+        candidates = []
+        if site:
+            candidates.append({"name": "📍 Your site", "lat": site["lat"], "lng": site["lng"], "is_site": True})
+        near = sorted(
+            ((_min_dist_to_path(w["lat"], w["lng"], base_path), w) for w in wash),
+            key=lambda t: t[0],
+        )
+        seen = set()
+        for dist_path, w in near:
+            if dist_path > CANDIDATE_BUFFER_M:
+                break
             nm = w.get("name") or "—"
             if nm in seen:
                 continue
-            if _min_dist_to_path(w["lat"], w["lng"], path) <= ENROUTE_BUFFER_M:
-                seen.add(nm)
-                on_road.append({"name": nm, "lat": w["lat"], "lng": w["lng"]})
+            seen.add(nm)
+            candidates.append({"name": nm, "lat": w["lat"], "lng": w["lng"], "is_site": False})
+            if len(candidates) >= MAX_CANDIDATES + (1 if site else 0):
+                break
+
+        washes = []
+        for c in candidates:
+            det_min = det_mi = via_poly = None
+            en_route = False
+            if not straight:                                          # price the real O→wash→anchor detour
+                vp, vdist, vdur = _route_one(olat, olon, alat, alon, key, via=(c["lat"], c["lng"]))
+                if vp is not None and base_dur is not None and vdur is not None:
+                    det_min = round((vdur - base_dur) / 60.0, 1)
+                    det_mi = round(((vdist or 0) - (base_dist or 0)) / MILE_M, 2)
+                    via_poly = [[round(p[0], 6), round(p[1], 6)] for p in vp]
+                    en_route = det_min <= DETOUR_OK_MIN
+            else:                                                     # no routing → fall back to straight-line proximity
+                en_route = _min_dist_to_path(c["lat"], c["lng"], base_path) <= ENROUTE_BUFFER_M
+            washes.append({
+                "name": c["name"], "lat": c["lat"], "lng": c["lng"], "is_site": c["is_site"],
+                "detour_min": det_min, "detour_mi": det_mi, "via": via_poly, "en_route": en_route,
+            })
+        # en-route first, then by smallest detour (unknown detour last)
+        washes.sort(key=lambda x: (not x["en_route"], x["detour_min"] if x["detour_min"] is not None else 1e9))
         out.append({
-            "label": d.get("name") or "anchor", "lat": d["lat"], "lng": d["lng"],
+            "label": d.get("name") or "anchor", "lat": alat, "lng": alon,
             "color": ROUTE_COLORS[i % len(ROUTE_COLORS)],
             "dist_mi": round((d.get("m") or 0.0) / MILE_M, 1),       # straight-line site→anchor (from the Places fetch)
             "straight": straight,
-            "polyline": [[round(p[0], 6), round(p[1], 6)] for p in path],
-            "washes": on_road, "washes_n": len(on_road),
+            "polyline": [[round(p[0], 6), round(p[1], 6)] for p in base_path],
+            "washes": washes,
+            "washes_n": sum(1 for w in washes if w["en_route"]),
         })
     return out
 
@@ -428,6 +481,7 @@ def dashboard_html(map_key: str, lat: float, lon: float, label: str,
         "matchName": match_name, "matchDist": round(match_dist_km, 2),
         "sections": sections, "places": places, "routes": routes,
         "cats": [{"id": c["id"], "label": c["label"], "color": c["color"], "on": c["on"]} for c in CATS],
+        "detourGood": DETOUR_GOOD_MIN, "detourOk": DETOUR_OK_MIN,
     })
     return r"""
 <div id="root" style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
@@ -450,6 +504,9 @@ def dashboard_html(map_key: str, lat: float, lon: float, label: str,
     .chip.on{color:#fff;font-weight:600}
     .banner{position:absolute;top:12px;right:12px;z-index:6;background:rgba(180,60,30,.92);color:#fff;
             font-size:11.5px;padding:6px 10px;border-radius:8px;max-width:240px;display:none}
+    .rbanner{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:6;
+             background:rgba(17,28,45,.92);color:#fff;font-size:12px;padding:7px 12px;border-radius:8px;
+             max-width:72%;display:none;backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.4)}
     .secthead{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:#8a93a3;margin:16px 0 6px;font-weight:700}
     .h1{font-size:16px;font-weight:800;color:#10243f;margin:0 0 2px}
     .sub{font-size:12px;color:#6b7686;margin:0 0 4px}
@@ -479,6 +536,7 @@ def dashboard_html(map_key: str, lat: float, lon: float, label: str,
         <div class="btn" id="broutes">🛣️ Anchor routes</div>
       </div>
       <div class="banner" id="banner"></div>
+      <div class="rbanner" id="rbanner"></div>
       <div id="fatal" style="display:none;position:absolute;inset:0;z-index:9;background:#0b1726;color:#e7eef9;
            padding:28px;font-size:13px;line-height:1.55;overflow:auto">
         <div style="font-size:15px;font-weight:800;margin-bottom:8px">🛑 Map could not load</div>
@@ -512,11 +570,12 @@ function renderPanel(){
   h+=`<div class="secthead">Nearby (live · Google Places)</div>
       <div class="card"><div class="ct">Nearest wash sites</div><div id="nearComp"></div>
       <div class="legend">Live from Google Places — the one layer not read from the CSV.</div></div>`;
-  h+=`<div class="secthead">Mass-merchant anchors & roads</div>
-      <div class="card"><div class="ct">Roads into Walmart / Costco-type anchors</div><div id="routes"></div>
-      <div class="legend">The main road each nearby anchor pulls traffic along, and every car wash sitting on
-      that road (within ~0.3 mi) — the washes that intercept anchor-bound customers. Toggle
-      <b>🛣️ Anchor routes</b> above the map to draw them.</div></div>`;
+  h+=`<div class="secthead">Car washes en route to mass merchants</div>
+      <div class="card"><div class="ct">Detour to stop on the way to Walmart / Costco-type anchors</div><div id="routes"></div>
+      <div class="legend">Each anchor's <b>traffic road</b> (coloured, arrows = direction of flow into the store) is
+      drawn on the map; clicking a car wash overlays the <b style="color:#ff6d00">route with that stop</b> in orange
+      and shows the <b>extra minutes</b>. A low <b>+min detour</b> = a wash that naturally intercepts anchor-bound
+      traffic (a stronger site). Toggle <b>🛣️ Anchor routes</b> to start.</div></div>`;
   h+=`<div class="secthead">Trade-area features (merged_all_sites.csv)</div>`;
   for(const s of CFG.sections){
     h+=`<div class="card"><div class="ct">${s.icon} ${s.title}</div>`;
@@ -581,16 +640,33 @@ function renderNearComp(){
   }).join('');
 }
 
-function renderRoutes(){                 // right-panel legend: each anchor, its drive distance & en-route wash count
+function detourText(w){                   // "+2.3 min · +0.4 mi", or "near route" when we couldn't route
+  if(w.detour_min==null) return 'near route';
+  return '+'+w.detour_min+' min'+(w.detour_mi!=null?' · +'+w.detour_mi+' mi':'');
+}
+function renderRoutes(){                  // right-panel: per anchor, each nearby wash ranked by detour to stop en route
   const el=document.getElementById('routes'); if(!el) return;
   if(!ROUTES.length){ el.innerHTML='<span style="color:#7b8494">No Walmart / Costco-type anchors within 5 mi.</span>'; return; }
+  let anyStraight=false;
   let h=ROUTES.map(r=>{
     const sw=`<span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${r.color};margin-right:6px;vertical-align:middle"></span>`;
-    const wn=`${r.washes_n} wash${r.washes_n===1?'':'es'} on the road`;
-    return `<div class="poi"><span class="nm">${sw}${r.label}</span><span class="meta">${r.dist_mi} mi away · <b style="color:${r.color}">${wn}</b></span></div>`;
+    const rows=(r.washes||[]).map(w=>{
+      if(w.detour_min==null) anyStraight=true;
+      const good = w.detour_min!=null && w.detour_min<=CFG.detourGood;
+      const col = good?'#00a152':(w.en_route?'#1f2d44':'#9aa4b2');
+      const tag = w.is_site?'📍 ':'';
+      const star = good?' ⭐':'';
+      const check = w.en_route?'':' <span style="color:#c0c6cf">(off-route)</span>';
+      return `<div class="poi"><span class="nm" style="color:${col}">${tag}${w.name}${star}</span>`
+           + `<span class="meta" style="color:${col}">${detourText(w)}${check}</span></div>`;
+    }).join('') || '<div class="poi"><span class="meta" style="color:#7b8494">no washes near this drive</span></div>';
+    return `<div style="margin-bottom:10px">`
+         + `<div class="poi"><span class="nm">${sw}${r.label}</span>`
+         + `<span class="meta">${r.dist_mi} mi · <b style="color:${r.color}">${r.washes_n} en route</b></span></div>`
+         + rows + `</div>`;
   }).join('');
-  if(ROUTES.some(r=>r.straight))
-    h+=`<div class="legend" style="margin-top:6px">Straight-line corridor shown — enable the <b>Routes API</b> on the Maps key for true road paths (upgrades automatically).</div>`;
+  if(anyStraight)
+    h+=`<div class="legend" style="margin-top:6px">Straight-line only (couldn't route) — enable the <b>Routes API</b> on the Maps key for real drivable detours.</div>`;
   el.innerHTML=h;
 }
 
@@ -700,34 +776,67 @@ function wireButtons(){
   };
 }
 
+let viaObjs=[];                    // the drive-through (O→wash→anchor) overlay for the currently-selected stop
+const DETOUR_COLOR='#ff6d00';      // the route WITH the car-wash stop is drawn in this contrasting colour (vs the traffic road)
+function arrowIcons(color){        // repeated chevrons so a polyline reads as a DIRECTIONAL traffic road (points along the path)
+  return [{icon:{path:google.maps.SymbolPath.FORWARD_CLOSED_ARROW,scale:3,strokeColor:'#ffffff',
+    strokeWeight:1,fillColor:color,fillOpacity:1},offset:'6%',repeat:'90px'}];
+}
 function storePin(color,label){    // anchor (Walmart/Costco) marker — a coloured badge matching its route line
   const d=document.createElement('div');
   d.style.cssText=`background:${color};color:#fff;font:800 12px sans-serif;padding:5px 9px;border-radius:8px;
     border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.55);white-space:nowrap`;
   d.textContent='🏬 '+label; return d;
 }
-function enrouteDot(){             // a car wash sitting on the road to an anchor — blue dot, red "intercept" ring
+function washMarker(w,color){      // a car-wash STOP on the way to an anchor — styled by its detour (green=prime intercept)
   const d=document.createElement('div');
-  d.style.cssText=`width:15px;height:15px;border-radius:50%;background:#2979ff;border:3px solid #ff1744;
-    box-shadow:0 0 0 3px rgba(255,23,68,.35),0 1px 3px rgba(0,0,0,.6)`;
+  if(w.is_site){                   // the pin itself — is OUR location on the way to this anchor?
+    d.style.cssText=`background:#ffd400;color:#1a1a1a;font:900 11px sans-serif;padding:4px 8px;border-radius:14px;
+      border:2px solid #fff;box-shadow:0 0 0 3px rgba(255,23,68,.55),0 2px 6px rgba(0,0,0,.6);white-space:nowrap;cursor:pointer`;
+    d.textContent='📍 YOU'; return d;
+  }
+  const good = w.detour_min!=null && w.detour_min<=CFG.detourGood;
+  const bg = good?'#00c853':(w.en_route?color:'#9aa4b2');       // green prime · anchor-colour on-route · grey off-route
+  const ring = w.en_route?'#ff1744':'rgba(255,255,255,.85)';    // red "intercept" ring for en-route washes
+  d.style.cssText=`width:15px;height:15px;border-radius:50%;background:${bg};border:3px solid ${ring};
+    box-shadow:0 0 0 2px rgba(255,255,255,.6),0 1px 3px rgba(0,0,0,.6);cursor:pointer`;
   return d;
 }
-function drawRoutes(){             // draw each anchor's road corridor + anchor badge + every wash sitting on it (2D map)
+function clearVia(){ for(const o of viaObjs){ if(o.setMap) o.setMap(null); else o.map=null; } viaObjs=[]; }
+function drawVia(r,w){             // overlay the route WITH the stop (origin→wash→anchor) in the DETOUR colour, on top of the traffic road
+  clearVia();
+  if(w.via && w.via.length){
+    viaObjs.push(new google.maps.Polyline({path:w.via.map(p=>({lat:p[0],lng:p[1]})),map:map2d,
+      strokeColor:DETOUR_COLOR,strokeOpacity:.95,strokeWeight:6,geodesic:true,zIndex:70,icons:arrowIcons(DETOUR_COLOR)}));
+  }
+  const rb=document.getElementById('rbanner');
+  const det=(w.detour_min==null)?'straight-line only':('<b>'+detourText(w)+'</b> extra to stop');
+  const legend=`<span style="color:${r.color}">▬▸ traffic to ${r.label}</span> &nbsp; `
+             + `<span style="color:${DETOUR_COLOR}">▬▸ route with stop</span>`;
+  rb.innerHTML=`${legend} &nbsp;·&nbsp; 🚗 <b>${w.name}</b> — ${det}`; rb.style.display='block';
+}
+function drawRoutes(){             // baseline commuter drive (thin) + anchor badge + each wash stop; click a stop → its drive-through
   clearRoutes();
+  let best=null, bestR=null;
   for(const r of ROUTES){
-    const path=r.polyline.map(p=>({lat:p[0],lng:p[1]}));
-    routeObjs.push(new google.maps.Polyline({path,map:map2d,strokeColor:r.color,strokeOpacity:.9,
-      strokeWeight:5,geodesic:true,zIndex:50}));
+    routeObjs.push(new google.maps.Polyline({path:r.polyline.map(p=>({lat:p[0],lng:p[1]})),map:map2d,
+      strokeColor:r.color,strokeOpacity:.75,strokeWeight:5,geodesic:true,zIndex:45,
+      icons:arrowIcons(r.color)}));   // the TRAFFIC road into the anchor — arrows show the direction of flow toward the store
     routeObjs.push(new advLib.AdvancedMarkerElement({map:map2d,position:{lat:r.lat,lng:r.lng},
       content:storePin(r.color,r.label),zIndex:60}));
     for(const w of (r.washes||[])){
+      const el=washMarker(w,r.color); el.onclick=()=>drawVia(r,w);   // click a wash → draw its real O→wash→anchor route
       routeObjs.push(new advLib.AdvancedMarkerElement({map:map2d,position:{lat:w.lat,lng:w.lng},
-        content:enrouteDot(),title:`${w.name} · on the road to ${r.label}`,zIndex:55}));
+        content:el,title:`${w.name} · ${detourText(w)} en route to ${r.label}`,zIndex:55}));
+      if(w.en_route && w.detour_min!=null && (best==null || w.detour_min<best.detour_min)){ best=w; bestR=r; }
     }
   }
   if(map2d) map2d.setCenter(SITE);
+  if(best) drawVia(bestR,best);    // show the single best drivable en-route example up front
 }
 function clearRoutes(){
+  clearVia();
+  const rb=document.getElementById('rbanner'); if(rb) rb.style.display='none';
   for(const o of routeObjs){ if(o.setMap) o.setMap(null); else o.map=null; }
   routeObjs=[];
 }
@@ -772,8 +881,9 @@ def render(demo: bool = False):
     st.title("🛰️ Site analysis (visual) · beta")
     st.caption("Google-Earth-style 3D explorer + live Places overlays (competitors, gas, food, retail & "
                "mass-merchants at 1 / 3 / 5-mile rings), with trade-area intelligence from `merged_all_sites.csv`. "
-               "Toggle **🛣️ Anchor routes** to see the road each nearby Walmart/Costco-type anchor pulls traffic "
-               "along and the car washes sitting on it (the ones intercepting anchor-bound customers).")
+               "Toggle **🛣️ Anchor routes** to see the drive to each nearby Walmart/Costco-type anchor and the "
+               "car washes on the way — ranked by the extra minutes to stop (low detour = a wash that naturally "
+               "intercepts anchor-bound traffic). Click a wash to draw its drive-through route.")
 
     df = load_features()
     if "pin" not in st.session_state:
@@ -822,7 +932,8 @@ def render(demo: bool = False):
     places = fetch_places(lat, lon, server_key()) if server_key() else {}
     routes = []
     if routes_key() and places.get("mass"):
-        payload = json.dumps({"mass": places.get("mass", []), "wash": places.get("car_wash", [])})
+        payload = json.dumps({"mass": places.get("mass", []), "wash": places.get("car_wash", []),
+                              "site": {"lat": lat, "lng": lon}})   # score the pin itself as an en-route candidate
         routes = compute_routes(lat, lon, routes_key(), payload)
 
     components.html(

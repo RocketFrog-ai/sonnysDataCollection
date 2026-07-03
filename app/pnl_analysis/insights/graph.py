@@ -33,6 +33,7 @@ class InsightsState(TypedDict, total=False):
     focal_key: str
     last_n_months: int
     backend: Optional[str]
+    escape_dollars: bool
     # node outputs
     metrics: Dict[str, Any]
     insights: Dict[str, str]
@@ -55,7 +56,7 @@ def generate_insights_node(state: InsightsState) -> Dict[str, Any]:
         raw, used = llm_client.complete_cascade(build_combined_messages(metrics),
                                                 backend=state.get("backend"), json_mode=True)
         logger.info("Insights generated via %s backend.", used)
-        parsed = parse_group_sections(raw)
+        parsed = parse_group_sections(raw, escape_dollars=state.get("escape_dollars", True))
         insights = {g: (parsed.get(g) or f"_The model did not return a {g} section — try regenerating._")
                     for g in _GROUPS}
     except llm_client.LLMUnavailable as exc:
@@ -92,11 +93,15 @@ USING_LANGGRAPH = _GRAPH is not None
 
 
 def market_insights(panel: pd.DataFrame, sites_meta: pd.DataFrame, focal_key: str, *,
-                    backend: Optional[str] = None, last_n_months: int = 12) -> Dict[str, Any]:
-    """Run the pipeline and return {"metrics": dict, "insights": {"Washes","Revenue","ASPs"}}."""
+                    backend: Optional[str] = None, last_n_months: int = 12,
+                    escape_dollars: bool = True) -> Dict[str, Any]:
+    """Run the pipeline and return {"metrics": dict, "insights": {"Washes","Revenue","ASPs"}}.
+
+    `escape_dollars=True` (default) escapes `$`→`\\$` for the Streamlit/KaTeX renderer; pass False for
+    standard react-markdown output (plain `$`) — the FastAPI /insights endpoint uses False."""
     state: InsightsState = {
         "panel": panel, "sites_meta": sites_meta, "focal_key": focal_key,
-        "last_n_months": last_n_months, "backend": backend,
+        "last_n_months": last_n_months, "backend": backend, "escape_dollars": escape_dollars,
     }
     if _GRAPH is not None:
         out = _GRAPH.invoke(state)

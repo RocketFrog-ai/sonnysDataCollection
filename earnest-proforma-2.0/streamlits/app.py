@@ -65,6 +65,14 @@ except Exception:                                             # pragma: no cover
     competition_scale_analysis = None
     _LOC_POC_OK = False
 
+# Optional web-search grounding for the location-only market read (returns citable links). Best-effort:
+# if the module/provider isn't available, market analysis silently runs un-grounded (its old behaviour).
+try:
+    from app.pnl_analysis.insights.websearch import search_available as _web_search_available
+except Exception:                                             # pragma: no cover
+    def _web_search_available() -> bool:
+        return False
+
 HERE = Path(__file__).resolve().parent
 CSV = HERE.parent / "data" / "main-ds.csv"
 TYPES_CSV = HERE.parent / "data" / "site_carwash_types.csv"
@@ -1866,9 +1874,28 @@ loc_sig = (round(plat, 5), round(plon, 5), int(radius))
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
-def _location_poc_cached(_sig, lat, lon, radius_km, backend):
-    """Location-only LLM summary, cached per (rounded location, radius, backend)."""
-    return location_market_analysis(lat, lon, radius_km=radius_km, backend=backend)
+def _location_poc_cached(_sig, lat, lon, radius_km, backend, use_web):
+    """Location-only LLM summary, cached per (rounded location, radius, backend, web-search on/off).
+    `use_web` grounds the read on fresh web results and returns citable source links."""
+    return location_market_analysis(lat, lon, radius_km=radius_km, backend=backend, use_web_search=use_web)
+
+
+@st.cache_data(show_spinner=False, ttl=3600)
+def _nearby_washes_cached(lat, lon, radius_miles=11):
+    """Real nearby car washes (name + distance) from Google Places — the ground truth that anchors the
+    competitive-saturation read. Cached per (rounded location, radius). [] if the key/fetch is unavailable."""
+    try:
+        from app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
+        from app.utils import common as _calib
+        key = _calib.GOOGLE_MAPS_API_KEY or ""
+        if not key:
+            return []
+        data = get_nearby_competitors(key, lat, lon, radius_miles=radius_miles,
+                                      fetch_place_details=False, max_results=20)
+        return [{"name": c.get("name"), "distance_miles": c.get("distance_miles")}
+                for c in (data.get("competitors") or []) if c.get("name")]
+    except Exception:
+        return []
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -1880,9 +1907,11 @@ def _pollinate_cached(_sig, _qual_text, _quant, _comp, lat, lon, radius_km, back
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
-def _compete_cached(_sig, lat, lon, radius_km, known_sites, backend):
-    """LLM competitive-saturation estimate — client footprint vs total landscape, cached per (location, radius, known set)."""
-    return competition_scale_analysis(lat, lon, known_sites=list(known_sites), radius_km=radius_km, backend=backend)
+def _compete_cached(_sig, lat, lon, radius_km, known_sites, backend, _nearby):
+    """LLM competitive-saturation estimate — client footprint vs total landscape, anchored to the real nearby
+    washes `_nearby` (name + distance from Google Places). Cached per (location, radius, known set)."""
+    return competition_scale_analysis(lat, lon, known_sites=list(known_sites), radius_km=radius_km, backend=backend,
+                                      nearby_washes=list(_nearby or []))
 
 
 MODE_KEY = "✨ Key Insights — grounded in this market's data"
@@ -1905,6 +1934,23 @@ _known_names = tuple(sorted(name_of.get(k, str(k)) for k in ckeys)) if not demo 
 
 # Eager precompute (cached → runs once per new market, then served instantly on every later rerun).
 _llm_ready = insights_llm_ready(insights_backend)
+_web_on = _web_search_available()                             # web-grounded market read available? (Tavily/DDG)
+
+# ── one central "Try again" — wipe every cached/stored insight so ALL views regenerate from scratch ──
+if _llm_ready and (_INSIGHTS_OK or _LOC_POC_OK):
+    if st.button("🔄 Try again — regenerate all insights",
+                 help="Clear the cached Key Insights / location read / competition / pollinated summaries and "
+                      "rebuild them all fresh for this market (the model output varies each time)."):
+        for _fn in (_market_insights_cached, _location_poc_cached, _pollinate_cached,
+                    _compete_cached, _nearby_washes_cached):
+            try:
+                _fn.clear()                                   # drop the st.cache_data memoization
+            except Exception:
+                pass
+        for _store in (insights_store, loc_poc_store, pollinate_store, compete_store):
+            _store.clear()                                    # drop the per-session stored results
+        st.rerun()
+
 if not _llm_ready:
     st.caption(f"⚠️ `{insights_backend}` LLM endpoint unavailable — summaries can't be prepared right now.")
 else:
@@ -1917,9 +1963,10 @@ else:
     if not demo and _LOC_POC_OK:
         if loc_sig not in loc_poc_store:
             try:
-                with st.spinner("Preparing the location-only summary…"):
+                _spin = "Preparing the location market read (web-grounded)…" if _web_on else "Preparing the location-only summary…"
+                with st.spinner(_spin):
                     loc_poc_store[loc_sig] = _location_poc_cached(loc_sig, plat, plon, int(radius),
-                                                                  insights_backend)
+                                                                  insights_backend, _web_on)
             except Exception as e:
                 st.caption(f"_Location summary couldn't be prepared: {e}_")
         _qual = loc_poc_store.get(loc_sig)
@@ -1929,8 +1976,9 @@ else:
             if _ckey not in compete_store:
                 try:
                     with st.spinner("Sizing the competitive set near this pin…"):
+                        _nearby = _nearby_washes_cached(plat, plon, 11)    # real washes (name+dist) as ground truth
                         compete_store[_ckey] = _compete_cached(_ckey, plat, plon, int(radius),
-                                                               _known_names, insights_backend)
+                                                               _known_names, insights_backend, _nearby)
                 except Exception as e:
                     st.caption(f"_Competition estimate couldn't be prepared: {e}_")
             _out_c = compete_store.get(_ckey)
@@ -1950,10 +1998,22 @@ group_insights = insights_store.get(isig, {})                 # the per-chart lo
 if gen_mode == MODE_DIRECT:
     _out = loc_poc_store.get(loc_sig)
     if _out:
+        _srcs = _out.get("sources") or []
         with st.container(border=True):
-            st.markdown("#### 🌍 Location-only market read")
+            _hdr = "#### 🌍 Location market read" + (" · web-grounded" if _srcs else " — location only")
+            st.markdown(_hdr)
             st.markdown(_out["text"])
-            st.caption(f"From location alone via `{_out['backend']}` — no operating data was sent.")
+            if _srcs:
+                st.markdown("**Sources (live web search — the links behind the commentary):**")
+                for _i, _s in enumerate(_srcs, 1):
+                    _title = (_s.get("title") or _s.get("url") or "source").strip()
+                    st.markdown(f"{_i}. [{_title}]({_s.get('url')})")
+                st.caption(f"Commentary grounded on {len(_srcs)} live web result(s) for "
+                           f"**{_out.get('place') or 'this location'}** via `{_out['backend']}`.")
+            else:
+                _why = ("web search is off (`WEB_SEARCH_BACKEND=off`, or Azure/Tavily not configured)"
+                        if not _web_on else "no web results came back for this pin")
+                st.caption(f"From location knowledge alone via `{_out['backend']}` — {_why}. No operating data was sent.")
             with st.expander("🔎 Exact prompt sent to the LLM"):
                 st.code(_out["prompt"], language="text")
 elif gen_mode == MODE_POLLINATE:
@@ -1983,6 +2043,16 @@ elif gen_mode == MODE_COMPETE:
         tot = d.get("estimated_total_carwashes") or {}
         share = d.get("estimated_client_share") or {}
         st.markdown("#### 🏁 Competitive landscape — the client's footprint vs the whole trade area")
+        # ── ground truth: the real nearby washes (Google Places) the estimate is anchored to ──
+        _nb = _out.get("nearby_washes") or []
+        if _nb:
+            with st.expander(f"🛰️ Observed nearby washes — Google Places ground truth ({len(_nb)} within 11 mi)",
+                             expanded=False):
+                _nbdf = pd.DataFrame([{"Car wash": w.get("name"),
+                                       "Distance (mi)": w.get("distance_miles")} for w in _nb])
+                st.dataframe(_nbdf, width="stretch", hide_index=True)
+                st.caption("Real, currently-operating washes from Google Places (name + driving distance). The "
+                           "estimate below is anchored to this observed set — its totals never fall below it.")
         _c1, _c2, _c3, _c4 = st.columns(4)
         _c1.metric(f"Client's own sites (≤{int(radius)} km)", n_known,
                    help="Express car washes this operator runs in the trade area.")
