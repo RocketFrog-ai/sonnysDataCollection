@@ -311,38 +311,29 @@ def build_combined_messages(metrics: Dict[str, Any]) -> List[dict]:
         "Return a single JSON object (and NOTHING else) with exactly these three keys: \"washes\", \"revenue\", \"asps\".\n\n"
     "\"revenue\" and \"asps\" must always be present as empty stubs:\n"
 "  {\"headline\": \"\", \"bullets\": [], \"signal\": \"neutral\"}\n\n"    "\"washes\" must have this exact shape:\n"
-    "  {\"headline\": \"one crisp sentence that separates the economics judgment from the location "
+    "  {\"headline\": \"one short, punchy sentence separating the economics judgment from the location "
     "judgment, e.g. 'Sound membership economics, wrong location.'>\",\n"
-    "   \"bullets\": [<array of plain-prose strings — one string per section, in the order listed below>],\n"
-    "   \"signal\": \"<positive|neutral|cautionary|negative> — <sentence 1: elaborate the headline judgment in full>. <sentence 2: the recommendation plus the one condition that would change your mind.>\"}\n\n"
+    "   \"bullets\": [<array of SHORT strings — one per section, in the order listed below>],\n"
+    "   \"signal\": \"<positive|neutral|cautionary|negative> — <ONE sentence: the verdict plus the single condition that would change your mind>\"}\n\n"
 
-    "The \"bullets\" array must contain exactly these sections as individual plain-prose strings, in this exact order. "
-    "Each string must begin with the section label followed by ' — ' and then a proper, complete explanation of 3-4 clear "
-    "sentences written in simple, everyday language (state the numbers, then explain in plain words what they mean and "
-    "why they matter for building here). Do not shorten it to a terse one-liner. "
-    "Every number you cite is a multi-month window; do NOT include any data-note / coverage / caveat section:\n\n"
-    "\"Market Demand\" — the same-store YoY as the demand read, and the current level vs its peak as PERIODS (name the "
-    "peak period and the % off peak, all on multi-month windows); AND whether the most relevant comparable (the most "
-    "recent entrant, if one exists) is itself above or below its own peak — use that to judge whether the growth "
-    "window is still open or has likely closed.\n\n"
-    "\"Business Model\" — which revenue model (membership vs. retail) is actually carrying the market, based on share "
-    "level and its trend; and if that share is already concentrated in a single existing competitor, name that "
-    "explicitly as a lock-in risk rather than just a positive signal.\n\n"
-    "\"Competitive Headroom\" — lead with the distance to the nearest existing site; conclude plainly whether there is "
-    "open trade-area separation or whether this is a head-to-head fight with an entrenched operator.\n\n"
-    "\"Market Timing\" — the period the market peaked, and where the most relevant comparable now sits in its own ramp "
-    "(still ramping / plateaued / past its own peak); conclude whether the entry window is open or closed. Use "
-    "'maturing' / 'saturated' / 'plateaued' if demand is flat same-store — never 'declining'.\n\n"
-    "\"Revenue & Pricing\" — ASP level/trend for retail and membership as the pricing-power signal, separate from "
-    "volume; state plainly what would actually have to happen for a new site's revenue to ramp (e.g., pulling "
-    "subscribers from an incumbent vs. organic growth).\n\n"
-    
-    "Do not use markdown, nested JSON, or bullet points inside any string value. "
-    "Do not invent a section label not listed above. Do NOT add a data-note / coverage / caveat section of any kind. "
-    "Every figure you cite must be a multi-month window — never reference a single month or a month-over-month change. "
-    "Write a full, proper summary in plain, simple English — complete and explained, not terse or skimmable — and spell "
-    "out all abbreviations in full (year-over-year, percentage points, average revenue per wash) — no shorthand like "
-    "'YoY', 'pp', 'ASP', '/mo'."
+    "The \"bullets\" array must contain EXACTLY these five sections, in this exact order. Keep each bullet to ONE short, "
+    "scannable sentence (roughly 15-25 words) — a marker, not a paragraph. Start each with the BOLDED section label, then "
+    "' — ', then the key figure(s) in **bold** and a brief plain-English 'so what'. Every number is a multi-month window; "
+    "do NOT include any data-note / coverage / caveat section:\n\n"
+    "\"**Market Demand**\" — same-store year-over-year and current level vs its **named peak period** (percent off peak); "
+    "note if the most recent comparable entrant is above or below its own peak (growth window open or closed).\n\n"
+    "\"**Business Model**\" — whether **membership or retail** carries the market (share level + trend); flag lock-in risk "
+    "if that share is concentrated in one incumbent.\n\n"
+    "\"**Competitive Headroom**\" — the **distance to the nearest existing site**; open trade-area separation or a "
+    "head-to-head fight with an entrenched operator.\n\n"
+    "\"**Market Timing**\" — when the market **peaked** and where the key comparable sits in its ramp (ramping / plateaued "
+    "/ past peak); entry window open or closed. Say 'maturing' / 'saturated' if flat same-store — never 'declining'.\n\n"
+    "\"**Revenue & Pricing**\" — retail and membership **average selling price** (level/trend) as the pricing signal; one "
+    "clause on what must happen for a new site's revenue to ramp.\n\n"
+
+    "Use **bold** ONLY to highlight the section label and key figures; no other markdown, no nested JSON, no sub-bullets "
+    "inside a string. Do not invent a section not listed above, and do NOT add any data-note / coverage / caveat section. "
+    "Never cite a single month or a month-over-month change. Keep the whole thing tight, plain-English and skimmable."
 
 )
     
@@ -372,7 +363,7 @@ def _render_group(obj: Any, escape_dollars: bool = True) -> Optional[str]:
     parts: List[str] = []
     if head:
         parts.append(f"**{esc(head)}**")
-    clean = [esc(str(b).strip().lstrip("-•*").strip()) for b in bullets if str(b).strip()]
+    clean = [esc(str(b).strip().lstrip("-•").strip()) for b in bullets if str(b).strip()]  # keep leading ** (bold label)
     if clean:
         parts.append("\n".join(f"- {b}" for b in clean))
 

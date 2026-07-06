@@ -26,7 +26,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[3]
 PROFORMA = ROOT / "earnest-proforma-2.0"
 COLDSTART_DIR = PROFORMA / "streamlits"
-MAIN_CSV = PROFORMA / "data" / "main-ds.csv"
+MAIN_CSV = PROFORMA / "data" / "main-data-v2-stitched.csv"
 OPEX_CSV = PROFORMA / "data" / "opex-data.csv"
 EARTH_KM = 6371.0088
 

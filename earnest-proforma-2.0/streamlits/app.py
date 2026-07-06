@@ -57,12 +57,16 @@ except Exception as _insights_imp_err:                        # pragma: no cover
 #    pin's location alone, no data fed in. Its own module/prompt; reuses only the shared Azure transport. ──
 try:
     from app.pnl_analysis.insights.location_poc import (location_market_analysis, pollinate_analysis,
-                                                        competition_scale_analysis)
+                                                        competition_scale_analysis, build_competition_response,
+                                                        independent_market_research, build_independent_research_response)
     _LOC_POC_OK = True
 except Exception:                                             # pragma: no cover
     location_market_analysis = None
     pollinate_analysis = None
     competition_scale_analysis = None
+    build_competition_response = None
+    independent_market_research = None
+    build_independent_research_response = None
     _LOC_POC_OK = False
 
 # Optional web-search grounding for the location-only market read (returns citable links). Best-effort:
@@ -74,7 +78,7 @@ except Exception:                                             # pragma: no cover
         return False
 
 HERE = Path(__file__).resolve().parent
-CSV = HERE.parent / "data" / "main-ds.csv"
+CSV = HERE.parent / "data" / "main-data-v2-stitched.csv"
 TYPES_CSV = HERE.parent / "data" / "site_carwash_types.csv"
 ARTIFACTS = HERE.parent / "notebooks" / "artifacts"
 EARTH_KM = 6371.0088
@@ -1859,8 +1863,9 @@ isig = (tuple(sorted(ckeys)), str(focal_key), int(radius), bool(demo), insights_
 
 @st.cache_data(show_spinner=False, ttl=3600)
 def _market_insights_cached(_sig, _sub, _meta, focal_key, backend):
-    """Cached per market signature `_sig` (the big frames are underscore-prefixed so they aren't hashed)."""
-    return market_insights(_sub, _meta, focal_key, backend=backend)["insights"]
+    """Cached per market signature `_sig` (the big frames are underscore-prefixed so they aren't hashed).
+    escape_dollars=False → plain `$` (exactly what the /insights API returns), so the react-markdown preview matches."""
+    return market_insights(_sub, _meta, focal_key, backend=backend, escape_dollars=False)["insights"]
 
 
 # ── Summaries are prepared AUTOMATICALLY on pin/market change, then VIEWED via the dropdown ──
@@ -1870,7 +1875,9 @@ insights_store = st.session_state.setdefault("insights_store", {})
 loc_poc_store = st.session_state.setdefault("loc_poc_store", {})
 pollinate_store = st.session_state.setdefault("pollinate_store", {})
 compete_store = st.session_state.setdefault("compete_store", {})
+independent_store = st.session_state.setdefault("independent_store", {})
 loc_sig = (round(plat, 5), round(plon, 5), int(radius))
+_INDEP_RADII = (3.0, 6.0, 9.0)                                # miles — sized independently by the external-LLM research
 
 
 @st.cache_data(show_spinner=False, ttl=3600)
@@ -1914,18 +1921,28 @@ def _compete_cached(_sig, lat, lon, radius_km, known_sites, backend, _nearby):
                                       nearby_washes=list(_nearby or []))
 
 
+@st.cache_data(show_spinner=False, ttl=3600)
+def _independent_cached(_sig, lat, lon, radii_miles, backend, use_web):
+    """Independent EXTERNAL-LLM market research — sizes each radius (3/6/9 mi) from world knowledge only, NO internal
+    data. Cached per (location, radii, backend, web on/off). `use_web` grounds it on fresh web results."""
+    return independent_market_research(lat, lon, radii_miles=list(radii_miles), backend=backend, use_web_search=use_web)
+
+
 MODE_KEY = "✨ Key Insights — grounded in this market's data"
 MODE_DIRECT = "🌍 Direct LLM summary — location only, no data"
-MODE_POLLINATE = "🔀 Pollinated — location commentary × data insights"
+MODE_POLLINATE = "🔀 Pollinated summary — data × location × competition → verdict"
 MODE_COMPETE = "🏁 Competitive saturation — client footprint vs the trade area"
+MODE_INDEPENDENT = "🌐 Independent research — external LLM only, per 3/6/9-mi radius"
 _modes = []
 if _INSIGHTS_OK:
     _modes.append(MODE_KEY)
-if (not demo) and _LOC_POC_OK:                                # Direct/Pollinated/Competition reveal the city → not in demo
+if (not demo) and _LOC_POC_OK:                                # Direct/Pollinated/Competition/Independent reveal the city → not in demo
     _modes.append(MODE_DIRECT)
     if _INSIGHTS_OK:
         _modes.append(MODE_POLLINATE)
     _modes.append(MODE_COMPETE)
+    if independent_market_research:
+        _modes.append(MODE_INDEPENDENT)
 if not _modes:
     _modes = [MODE_KEY]
 
@@ -1942,80 +1959,183 @@ if _llm_ready and (_INSIGHTS_OK or _LOC_POC_OK):
                  help="Clear the cached Key Insights / location read / competition / pollinated summaries and "
                       "rebuild them all fresh for this market (the model output varies each time)."):
         for _fn in (_market_insights_cached, _location_poc_cached, _pollinate_cached,
-                    _compete_cached, _nearby_washes_cached):
+                    _compete_cached, _nearby_washes_cached, _independent_cached):
             try:
                 _fn.clear()                                   # drop the st.cache_data memoization
             except Exception:
                 pass
-        for _store in (insights_store, loc_poc_store, pollinate_store, compete_store):
+        for _store in (insights_store, loc_poc_store, pollinate_store, compete_store, independent_store):
             _store.clear()                                    # drop the per-session stored results
         st.rerun()
 
 if not _llm_ready:
     st.caption(f"⚠️ `{insights_backend}` LLM endpoint unavailable — summaries can't be prepared right now.")
 else:
-    if _INSIGHTS_OK and isig not in insights_store:
+    # ── Prepare A / B / C CONCURRENTLY. They are independent (each its own network/LLM call), so on a cold market
+    #    we fan them out in a thread pool and wait for all three — cold-start ≈ max(A,B,C) instead of A+B+C. Cached
+    #    results are served instantly on rerun (the `… not in …store` guards), so the pool only spins on a new pin. ──
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    try:
+        from streamlit.runtime.scriptrunner import add_script_run_ctx, get_script_run_ctx
+    except Exception:                                          # pragma: no cover — st internals moved
+        add_script_run_ctx = get_script_run_ctx = None
+
+    _ckey = (loc_sig, _known_names)
+    _ikey = (loc_sig, _INDEP_RADII, _web_on)                  # independent-research cache key (per location, radii, web)
+    _loc_ok = (not demo) and _LOC_POC_OK
+
+    def _prep_B():                                             # Key Insights — grounded on the market's data
+        return _market_insights_cached(isig, sub, imeta, focal_key, insights_backend)
+
+    def _prep_A():                                             # Local Market Analysis — location-only read
+        return _location_poc_cached(loc_sig, plat, plon, int(radius), insights_backend, _web_on)
+
+    def _prep_C():                                             # Competition Coverage — needs the Places ground truth first
+        _nearby = _nearby_washes_cached(plat, plon, 11)
+        return _compete_cached(_ckey, plat, plon, int(radius), _known_names, insights_backend, _nearby)
+
+    def _prep_D():                                             # Independent research — external LLM only, per 3/6/9-mi radius
+        return _independent_cached(_ikey, plat, plon, _INDEP_RADII, insights_backend, _web_on)
+
+    _jobs = [(k, fn) for k, fn, go in (
+        ("B", _prep_B, _INSIGHTS_OK and isig not in insights_store),
+        ("A", _prep_A, _loc_ok and loc_sig not in loc_poc_store),
+        ("C", _prep_C, _loc_ok and _ckey not in compete_store),
+        ("D", _prep_D, _loc_ok and bool(independent_market_research) and _ikey not in independent_store),
+    ) if go]
+
+    if _jobs:
+        _LABEL = {"A": "Location summary", "B": "Key Insights", "C": "Competition estimate",
+                  "D": "Independent research"}
+        _ctx = get_script_run_ctx() if get_script_run_ctx else None
+
+        def _with_ctx(fn):                                     # attach the ScriptRunContext so st.cache_data works off-thread
+            def _inner():
+                if add_script_run_ctx and _ctx is not None:
+                    add_script_run_ctx(threading.current_thread(), _ctx)
+                return fn()
+            return _inner
+
+        with st.spinner("Preparing insights for this market (Key Insights · location · competition · independent, in parallel)…"):
+            with ThreadPoolExecutor(max_workers=len(_jobs)) as _ex:
+                _futs = {k: _ex.submit(_with_ctx(fn)) for k, fn in _jobs}
+                for k, f in _futs.items():
+                    try:
+                        _res = f.result()
+                        if k == "B":
+                            insights_store[isig] = _res
+                        elif k == "A":
+                            loc_poc_store[loc_sig] = _res
+                        elif k == "C":
+                            compete_store[_ckey] = _res
+                        else:
+                            independent_store[_ikey] = _res
+                    except Exception as e:
+                        st.caption(f"_{_LABEL[k]} couldn't be prepared: {e}_")
+
+    # ── Then pollinate — needs all three in hand (runs after the parallel prep resolves). ──
+    _qual, _quant, _out_c = loc_poc_store.get(loc_sig), insights_store.get(isig), compete_store.get(_ckey)
+    if _loc_ok and _qual and _quant and _out_c and isig not in pollinate_store:
         try:
-            with st.spinner("Preparing grounded Key Insights for this market…"):
-                insights_store[isig] = _market_insights_cached(isig, sub, imeta, focal_key, insights_backend)
+            with st.spinner("Combining Key Insights × location × competition → Final Verdict…"):
+                pollinate_store[isig] = _pollinate_cached(
+                    isig, _qual["text"], _quant, _out_c, plat, plon, int(radius), insights_backend
+                )
         except Exception as e:
-            st.caption(f"_Key Insights couldn't be prepared: {e}_")
-    if not demo and _LOC_POC_OK:
-        if loc_sig not in loc_poc_store:
-            try:
-                _spin = "Preparing the location market read (web-grounded)…" if _web_on else "Preparing the location-only summary…"
-                with st.spinner(_spin):
-                    loc_poc_store[loc_sig] = _location_poc_cached(loc_sig, plat, plon, int(radius),
-                                                                  insights_backend, _web_on)
-            except Exception as e:
-                st.caption(f"_Location summary couldn't be prepared: {e}_")
-        _qual = loc_poc_store.get(loc_sig)
-        _quant = insights_store.get(isig)
-        if _qual and _quant:
-            _ckey = (loc_sig, _known_names)
-            if _ckey not in compete_store:
-                try:
-                    with st.spinner("Sizing the competitive set near this pin…"):
-                        _nearby = _nearby_washes_cached(plat, plon, 11)    # real washes (name+dist) as ground truth
-                        compete_store[_ckey] = _compete_cached(_ckey, plat, plon, int(radius),
-                                                               _known_names, insights_backend, _nearby)
-                except Exception as e:
-                    st.caption(f"_Competition estimate couldn't be prepared: {e}_")
-            _out_c = compete_store.get(_ckey)
-            if _out_c and isig not in pollinate_store:
-                try:
-                    with st.spinner("Combining location commentary × grounded data × competition…"):
-                        pollinate_store[isig] = _pollinate_cached(
-                            isig, _qual["text"], _quant, _out_c, plat, plon, int(radius), insights_backend
-                        )
-                except Exception as e:
-                    st.caption(f"_Pollinated summary couldn't be prepared: {e}_")
+            st.caption(f"_Pollinated summary couldn't be prepared: {e}_")
 
 gen_mode = st.selectbox("Analysis — pick a view (all summaries prepare automatically when you choose a pin)", _modes,
                         key="analysis_mode")
 group_insights = insights_store.get(isig, {})                 # the per-chart loop below renders this
 
+
+def _strip_leading_h1(md: str) -> str:
+    """Drop a leading '# Title' line from the model's markdown. The prompts emit an H1 for react-markdown API
+    consumers; the Streamlit views supply their own section header, so the H1 would render as a duplicate title."""
+    s = (md or "").lstrip()
+    if s.startswith("# "):
+        return s.partition("\n")[2].lstrip("\n")
+    return md
+
+
+import json as _json
+import streamlit.components.v1 as _components
+
+
+def _react_md(md: str, *, height: int | None = None) -> None:
+    """Render markdown through the SAME renderer the frontend uses — react-markdown + remark-gfm (so GFM tables,
+    bullets and bold all render exactly as they will in production). Fed the raw API markdown verbatim (plain `$`,
+    no KaTeX), this is a faithful preview of what the frontend will show for each /insights* response."""
+    md = md or ""
+    if height is None:                                            # rough auto-height from content (tables are taller)
+        height = int(min(1500, 140 + md.count("\n") * 26 + md.count("|") * 3))
+    try:
+        base = st.get_option("theme.base") or "light"
+    except Exception:
+        base = "light"
+    dark = base == "dark"
+    fg = "#e7e9ee" if dark else "#1f2329"
+    border = "#3a3f4b" if dark else "#dfe2e8"
+    zebra = "rgba(255,255,255,0.05)" if dark else "rgba(0,0,0,0.03)"
+    payload = _json.dumps(md)
+    html = """
+<!doctype html><html><head><meta charset="utf-8"><style>
+  body{margin:0;padding:2px 4px;background:transparent;color:__FG__;
+       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.55;}
+  h1{font-size:1.5em;} h2{font-size:1.25em;} h3{font-size:1.08em;} h1,h2,h3,h4{margin:.7em 0 .35em;font-weight:700;}
+  table{border-collapse:collapse;width:100%;margin:.5em 0;font-size:.93em;} th,td{border:1px solid __BORDER__;padding:6px 10px;text-align:left;vertical-align:top;}
+  thead th{background:__ZEBRA__;font-weight:700;} tbody tr:nth-child(even){background:__ZEBRA__;}
+  ul,ol{margin:.3em 0;padding-left:1.25em;} li{margin:.12em 0;} p{margin:.4em 0;}
+  code{background:__ZEBRA__;padding:1px 5px;border-radius:4px;font-size:.9em;} a{color:#4c8bf5;text-decoration:none;}
+  hr{border:0;border-top:1px solid __BORDER__;margin:.8em 0;}
+</style></head><body><div id="root"></div>
+<script type="module">
+  import React from 'https://esm.sh/react@18';
+  import { createRoot } from 'https://esm.sh/react-dom@18/client';
+  import ReactMarkdown from 'https://esm.sh/react-markdown@9?deps=react@18,react-dom@18';
+  import remarkGfm from 'https://esm.sh/remark-gfm@4';
+  const md = __PAYLOAD__;
+  createRoot(document.getElementById('root')).render(
+    React.createElement(ReactMarkdown, { remarkPlugins: [remarkGfm] }, md)
+  );
+</script></body></html>
+""".replace("__FG__", fg).replace("__BORDER__", border).replace("__ZEBRA__", zebra).replace("__PAYLOAD__", payload)
+    _components.html(html, height=height, scrolling=True)
+
+
+def _key_insights_summary(blocks: dict) -> str:
+    """Reconstruct the `/insights` response `summary` from the {Washes,Revenue,ASPs} block dict — mirrors the
+    route so the Streamlit view shows exactly what the API returns."""
+    def _sub(v):
+        low = (v or "").lower()
+        if any(s in low for s in ("did not return", "could not generate", "generation failed")):
+            return False
+        return ("\n- " in v) or (len(v.strip()) > 60)
+    parts = [v.strip() for v in blocks.values() if v and _sub(v)]
+    return "\n\n".join(parts) or "\n\n".join(v.strip() for v in blocks.values() if v)
+
+
+# Each view renders the EXACT markdown its /insights* endpoint returns, through react-markdown + remark-gfm (the same
+# renderer the frontend uses) — a faithful preview — plus an expander with the exact JSON response.
+def _sources_md(srcs):
+    if not srcs:
+        return ""
+    lines = ["", "**Sources (live web search):**"]
+    for i, s in enumerate(srcs, 1):
+        lines.append(f"{i}. [{(s.get('title') or s.get('url') or 'source').strip()}]({s.get('url')})")
+    return "\n".join(lines)
+
+
 if gen_mode == MODE_DIRECT:
     _out = loc_poc_store.get(loc_sig)
     if _out:
-        _srcs = _out.get("sources") or []
+        _resp = {"summary": _out["text"]}                 # POST /insights/location → {summary}
         with st.container(border=True):
-            _hdr = "#### 🌍 Location market read" + (" · web-grounded" if _srcs else " — location only")
-            st.markdown(_hdr)
-            st.markdown(_out["text"])
-            if _srcs:
-                st.markdown("**Sources (live web search — the links behind the commentary):**")
-                for _i, _s in enumerate(_srcs, 1):
-                    _title = (_s.get("title") or _s.get("url") or "source").strip()
-                    st.markdown(f"{_i}. [{_title}]({_s.get('url')})")
-                st.caption(f"Commentary grounded on {len(_srcs)} live web result(s) for "
-                           f"**{_out.get('place') or 'this location'}** via `{_out['backend']}`.")
-            else:
-                _why = ("web search is off (`WEB_SEARCH_BACKEND=off`, or Azure/Tavily not configured)"
-                        if not _web_on else "no web results came back for this pin")
-                st.caption(f"From location knowledge alone via `{_out['backend']}` — {_why}. No operating data was sent.")
-            with st.expander("🔎 Exact prompt sent to the LLM"):
-                st.code(_out["prompt"], language="text")
+            st.markdown("#### 🌍 Local Market Analysis")
+            _react_md(_strip_leading_h1(_out["text"]) + _sources_md(_out.get("sources")))
+            with st.expander("🔎 API response (JSON) — POST /insights/location"):
+                st.json(_resp)
 elif gen_mode == MODE_POLLINATE:
     _qual, _quant = loc_poc_store.get(loc_sig), insights_store.get(isig)
     if _qual and _quant:
@@ -2023,106 +2143,51 @@ elif gen_mode == MODE_POLLINATE:
         _out_c = compete_store.get(_ckey)
         _out = pollinate_store.get(isig)
         if _out:
+            _comp_summary = build_competition_response(_out_c)["summary"] if (build_competition_response and _out_c) else None
+            _resp = {                                     # POST /insights/pollinated → {summary, sources}
+                "summary": _out["text"],
+                "sources": {
+                    "key_insights": _key_insights_summary(_quant),
+                    "location_analysis": _qual["text"],
+                    "competition": _comp_summary,
+                },
+            }
             with st.container(border=True):
-                st.markdown("#### 🔀 Pollinated read — location × market data × competition")
-                st.markdown(_out["text"])
-                st.caption(f"Fuses the location commentary, the grounded data insights and the competitive-"
-                           f"saturation read via `{_out['backend']}`.")
-                with st.expander("🔎 The inputs + the pollination prompt"):
-                    st.markdown("**(A) Location-only commentary**")
-                    st.markdown(_qual["text"])
-                    st.markdown("**Pollination prompt sent:**")
-                    st.code(_out["prompt"], language="text")
+                st.markdown("#### 🔀 Pollinated summary — final consolidated read + verdict")
+                _react_md(_strip_leading_h1(_out["text"]))
+                with st.expander("🔎 API response (JSON) — POST /insights/pollinated (summary + the 3 source responses)"):
+                    st.json(_resp)
 elif gen_mode == MODE_COMPETE:
     _ckey = (loc_sig, _known_names)
     _out = compete_store.get(_ckey)
-    if _out:
-        d = _out.get("data") or {}
-        n_known = _out["known_count"]
-        exp = d.get("estimated_express_tunnels") or {}
-        tot = d.get("estimated_total_carwashes") or {}
-        share = d.get("estimated_client_share") or {}
-        st.markdown("#### 🏁 Competitive landscape — the client's footprint vs the whole trade area")
-        # ── ground truth: the real nearby washes (Google Places) the estimate is anchored to ──
-        _nb = _out.get("nearby_washes") or []
-        if _nb:
-            with st.expander(f"🛰️ Observed nearby washes — Google Places ground truth ({len(_nb)} within 11 mi)",
-                             expanded=False):
-                _nbdf = pd.DataFrame([{"Car wash": w.get("name"),
-                                       "Distance (mi)": w.get("distance_miles")} for w in _nb])
-                st.dataframe(_nbdf, width="stretch", hide_index=True)
-                st.caption("Real, currently-operating washes from Google Places (name + driving distance). The "
-                           "estimate below is anchored to this observed set — its totals never fall below it.")
-        _c1, _c2, _c3, _c4 = st.columns(4)
-        _c1.metric(f"Client's own sites (≤{int(radius)} km)", n_known,
-                   help="Express car washes this operator runs in the trade area.")
-        if exp:
-            _c2.metric("Est. express tunnels (total)", f"{exp.get('low','?')}–{exp.get('high','?')}")
-        if tot:
-            _c3.metric("Est. all car washes", f"{tot.get('low','?')}–{tot.get('high','?')}")
-        if share:
-            _c4.metric("Client share of express", f"{share.get('low','?')}–{share.get('high','?')}%")
-        # coverage multiple — the factor to scale competitive pressure by (constructive, NOT a "gap")
-        _se = _out.get("scale_express")
-        if _se and exp and n_known > 0:
-            st.info(f"📐 **Coverage scale.** The client runs **{n_known}** of an estimated **{exp.get('low','?')}–"
-                    f"{exp.get('high','?')}** express tunnels in this trade area — so the true competitive set is roughly "
-                    f"**~{_se.get('low','?')}×–{_se.get('high','?')}×** the client's own footprint. Scale competitive "
-                    f"pressure accordingly. Express supply density: **{d.get('saturation','—')}**.")
-        elif n_known == 0:
-            st.info("The client runs no sites of their own in this radius — the table below is the competitive "
-                    "landscape they'd be entering.")
-        # ── competitors, as a typed table (express tunnels first, then other types; sorted by threat) ──
-        _comps = [c for c in (d.get("competitors") or []) if isinstance(c, dict)]
-        if _comps:
-            _TYPE_ORD = {"Express tunnel": 0, "In-bay automatic": 1, "Self-serve": 2, "Other": 3}
-
-            def _norm_type(t):
-                s = (t or "").strip().lower()
-                if any(k in s for k in ("express", "tunnel", "conveyor")):
-                    return "Express tunnel"
-                if any(k in s for k in ("in-bay", "in bay", "iba", "automatic")):
-                    return "In-bay automatic"
-                if "self" in s:
-                    return "Self-serve"
-                return "Other"
-            _rows = [{"Competitor": c.get("name", "?"), "Type": _norm_type(c.get("type")),
-                      "Scale": c.get("scale", ""), "Threat": c.get("threat", ""), "Notes": c.get("note", "")}
-                     for c in _comps]
-            _cdf = pd.DataFrame(_rows)
-            _cdf["_t"] = _cdf["Type"].map(_TYPE_ORD).fillna(9)
-            _cdf["_th"] = _cdf["Threat"].map({"High": 0, "Medium": 1, "Low": 2}).fillna(9)
-            _cdf = _cdf.sort_values(["_t", "_th"]).drop(columns=["_t", "_th"])
-            _bytype = _cdf["Type"].value_counts()
-            st.markdown("**Competitors by type:** " + " · ".join(f"{k} **{v}**" for k, v in _bytype.items()))
-            st.dataframe(_cdf, width="stretch", hide_index=True)
-        # ── richer competitive read ──
-        if d.get("client_position"):
-            st.markdown(f"**Client's competitive position:** {d['client_position']}")
-        _g1, _g2 = st.columns(2)
-        with _g1:
-            if d.get("competitive_intensity"):
-                st.markdown(f"**Competitive intensity:** {d['competitive_intensity']}")
-            if d.get("headroom"):
-                st.markdown(f"**Headroom for a new build:** {d['headroom']}")
-        with _g2:
-            if d.get("pricing_positioning"):
-                st.markdown(f"**Pricing / positioning:** {d['pricing_positioning']}")
-            if d.get("expansion_signals"):
-                st.markdown(f"**Expansion signals:** {d['expansion_signals']}")
-        _rk = d.get("client_sites_recognized") or []
-        if _rk:
-            st.caption(f"LLM recognized of the client's sites: {', '.join(map(str, _rk))}")
-        st.caption(f"Confidence: **{d.get('confidence','—')}** · via `{_out['backend']}`. {d.get('reasoning','')}")
-        with st.expander("🔎 Prompt + raw JSON"):
-            st.code(_out["prompt"], language="text")
-            st.code(_out.get("raw", ""), language="json")
+    if _out and build_competition_response:
+        _resp = build_competition_response(_out)          # POST /insights/competition → {table, summary}
+        with st.container(border=True):
+            st.markdown("#### 🏁 Competition Coverage")
+            _react_md(_resp["summary"])
+            with st.expander("🔎 API response (JSON) — POST /insights/competition (table + summary)"):
+                st.json(_resp)
 elif gen_mode == MODE_KEY:
-    overall_insight = group_insights.get("Washes") if group_insights else None
-    if overall_insight:
+    if group_insights:
+        _summary = _key_insights_summary(group_insights)  # POST /insights → {summary}
         with st.container(border=True):
             st.markdown("#### ✨ Key Insights — grounded in this market's data")
-            st.markdown(overall_insight)
+            _react_md(_summary)
+            with st.expander("🔎 API response (JSON) — POST /insights"):
+                st.json({"summary": _summary})
+elif gen_mode == MODE_INDEPENDENT:
+    _ikey = (loc_sig, _INDEP_RADII, _web_on)
+    _out_d = independent_store.get(_ikey)
+    if _out_d and build_independent_research_response:
+        _resp = build_independent_research_response(_out_d)   # POST /insights/independent-research → {radii, summary, sources}
+        with st.container(border=True):
+            st.markdown("#### 🌐 Independent market research — external LLM knowledge only")
+            st.caption("No internal/operator data used — each radius (3 / 6 / 9 mi) sized from public knowledge alone"
+                       + (" (web-grounded)." if _resp.get("sources") else "; web search off.")
+                       + " Anything it can't responsibly size is shown as **Not estimable** (never fabricated).")
+            _react_md(_strip_leading_h1(_resp["summary"]) + _sources_md(_resp.get("sources")))
+            with st.expander("🔎 API response (JSON) — POST /insights/independent-research (per-radius metrics)"):
+                st.json(_resp)
 
 for gi, (gname, panels) in enumerate(GROUPS):
     gk = gran_picker(f"gran_kpi_{gname}")
