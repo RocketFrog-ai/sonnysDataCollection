@@ -66,7 +66,7 @@ AZURE_ENDPOINT = os.getenv(
 AZURE_API_VERSION = "2024-02-15-preview"
 DEPLOYMENT = "gpt-4o"
 
-DEFAULT_INPUT = os.path.join(HERE, "data", "main-ds.csv")
+DEFAULT_INPUT = os.path.join(REPO_ROOT, "earnest-proforma-2.0", "data", "main-data-v2-stitched.csv")
 DEFAULT_OUTPUT = os.path.join(HERE, "data", "site_carwash_types.csv")
 
 VALID_TYPES = [

@@ -25,7 +25,7 @@ warnings.filterwarnings("ignore")
 
 HERE = Path(__file__).resolve().parent
 ART = HERE.parent / "notebooks" / "artifacts"
-CSV = HERE.parent / "data" / "main-ds.csv"
+CSV = HERE.parent / "data" / "main-data-v2-stitched.csv"
 MODEL_PATH = ART / "coldstart_artifacts.joblib"
 EARTH_KM = 6371.0088
 H_DEFAULT = 60

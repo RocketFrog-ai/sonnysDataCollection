@@ -5,7 +5,6 @@ from typing import Tuple
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import PlainTextResponse
 
 from app.utils import common as calib
 from app.pnl_analysis.modelling import data as D
@@ -22,6 +21,7 @@ from app.pnl_analysis.server.models import (
     LocationSummaryRequest,
     CompetitionScaleRequest,
     PollinatedSummaryRequest,
+    IndependentResearchRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
     ExpensePlanRequest,
@@ -119,11 +119,11 @@ def _known_site_names(lat, lon, radius_km, min_months, demo):
     return [str(n) for n in nb.client_name.dropna().tolist()] if not nb.empty else []
 
 
-@router.post("/insights", response_class=PlainTextResponse)
+@router.post("/insights")
 def insights(req: InsightsRequest):
-    """Tab 1 — AI Key Insights (grounded on the local market's KPI panels). Returns the full narrative as
-    standard, react-markdown-compatible markdown (plain `$`, `**bold**`, `- bullets`), nothing else.
-    404 if the market is too thin."""
+    """Tab 1 — AI Key Insights (grounded on the local market's KPI panels). Returns JSON `{summary}` — the full
+    narrative as react-markdown-compatible markdown (plain `$`, `**bold**`, `- bullets`). 404 if the market is
+    too thin."""
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     grounded = _grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
     if grounded is None:
@@ -140,51 +140,75 @@ def insights(req: InsightsRequest):
         return ("\n- " in v) or (len(v.strip()) > 60)
 
     parts = [v.strip() for v in blocks.values() if v and _has_substance(v)]
-    return "\n\n".join(parts) or "\n\n".join(v.strip() for v in blocks.values() if v)
+    return {"summary": "\n\n".join(parts) or "\n\n".join(v.strip() for v in blocks.values() if v)}
 
 
-@router.post("/insights/location", response_class=PlainTextResponse)
+@router.post("/insights/location")
 def insights_location(req: LocationSummaryRequest):
-    """Tab 1 — location-only LLM market read (world-knowledge from the pin alone). Returns the full markdown
-    text, nothing else. 503 if no LLM backend answers."""
+    """Tab 1 — location-only LLM market read (world-knowledge from the pin alone). Returns JSON `{summary}` — the
+    full Local Market Analysis markdown (no verdict; the verdict lives only in the pollinated summary). 503 if no
+    LLM backend answers."""
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     try:
-        return _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
+        text = _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
                                              backend=req.backend)["text"]
+        return {"summary": text}
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
 
-@router.post("/insights/competition", response_class=PlainTextResponse)
+@router.post("/insights/competition")
 def insights_competition(req: CompetitionScaleRequest):
-    """Tab 1 — competitive landscape (LLM sizes the full competitive set vs the client's own portfolio).
-    Returns the model's full JSON text response, nothing else. 503 if no LLM answers."""
+    """Tab 1 — competitive landscape (LLM sizes the full competitive set vs the client's own portfolio). Returns
+    JSON with both a structured `table` (counts, shares, saturation multiples, the typed competitor list — what the
+    frontend renders as the comparison table) and a react-markdown `summary`. 503 if no LLM answers."""
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     known = _known_site_names(lat, lon, req.radius_km, req.min_months, req.demo)
     try:
-        return _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
-                                               radius_km=req.radius_km, backend=req.backend)["raw"]
+        result = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
+                                                 radius_km=req.radius_km, backend=req.backend)
+        return _loc.build_competition_response(result)
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
 
-@router.post("/insights/pollinated", response_class=PlainTextResponse)
+@router.post("/insights/pollinated")
 def insights_pollinated(req: PollinatedSummaryRequest):
-    """Tab 1 — the fused ('pollinated') read: location (A) × grounded data (B) × competition (C), synthesized
-    into one summary. Returns the full markdown text, nothing else. Multiple LLM calls. 503 if no LLM answers."""
+    """Tab 1 — the fused ('pollinated') summary. CONSUMES the three insight responses the frontend already
+    fetched — Key Insights (B), Local Market Analysis (A) and Competition Coverage (C) — passed in on the request,
+    and synthesises them into one consolidated summary ending in a Final Verdict. One LLM call, no recomputation
+    of A/B/C. Returns JSON: the consolidated `summary` plus, under `sources`, the exact three summary responses it
+    consumed (so the frontend can render everything from this one payload). 503 if no LLM answers."""
+    if not any((req.key_insights, req.location_analysis, req.competition)):
+        raise HTTPException(status_code=400,
+                            detail="Provide at least one of key_insights, location_analysis or competition.")
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     try:
-        loc = _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
-                                            backend=req.backend)["text"]
-        grounded = _grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
-        insights = (_insights_pipeline(*grounded, backend=req.backend, last_n_months=req.last_n_months,
-                                       escape_dollars=False)["insights"]
-                    if grounded is not None else None)
-        known = _known_site_names(lat, lon, req.radius_km, 1, req.demo)
-        comp = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
-                                               radius_km=req.radius_km, backend=req.backend)
-        return _loc.pollinate_analysis(loc, insights, lat=lat, lon=lon, radius_km=req.radius_km,
-                                       competition=comp, backend=req.backend)["text"]
+        out = _loc.pollinate_analysis(req.location_analysis, req.key_insights, lat=lat, lon=lon,
+                                      radius_km=req.radius_km, competition=req.competition, backend=req.backend)
+        return {
+            "summary": out["text"],
+            "sources": {
+                "key_insights": req.key_insights,
+                "location_analysis": req.location_analysis,
+                "competition": req.competition,
+            },
+        }
+    except _llm.LLMUnavailable as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+
+@router.post("/insights/independent-research")
+def insights_independent_research(req: IndependentResearchRequest):
+    """Tab 1 — independent EXTERNAL-LLM market research: can the model size a NEW car-wash market for this pin from
+    world knowledge ALONE (no internal/operator data; optional web search)? Sizes each radius separately (default
+    3/6/9 mi) and estimates the requested business metrics, returning null-with-reason for anything it can't
+    responsibly estimate rather than fabricating. Returns JSON `{radii, summary, sources}`. 503 if no LLM answers."""
+    lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
+    try:
+        result = _loc.independent_market_research(lat, lon, address=req.address, radii_miles=req.radii_miles,
+                                                  backend=req.backend, use_web_search=req.use_web_search)
+        return _loc.build_independent_research_response(result)
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
