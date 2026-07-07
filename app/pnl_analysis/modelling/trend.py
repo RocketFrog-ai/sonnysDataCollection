@@ -74,10 +74,35 @@ def market_trend(piv):
     return _shrink_annualize(sl, se)
 
 
-def forecast_series(s, H, g=None):
-    """SMOOTH 5-yr expected-trend forecast (no repeating seasonal photocopy). Starts exactly at the last
-    actual value and blends over ~a quarter into a trend line at the recent deseasonalized LEVEL, growing
-    at a ROBUST annual rate (`robust_growth`), SATURATING over ~2 yr so a boom decelerates."""
+def seasonal_factors(s, min_years=2):
+    """Multiplicative calendar-month seasonal profile (12 factors, Jan..Dec, mean 1.0) from a
+    monthly-DATETIME-indexed history via a 12-month centered-moving-average decomposition:
+    ratio = actual / local 12-mo average, pooled by calendar month (MEDIAN, spike-robust), then
+    normalized to mean 1 and damped to ±40%. Returns None (→ caller stays flat) when the index isn't
+    monthly-datetime or there isn't ~2 yr covering all 12 months to estimate a stable profile."""
+    if not isinstance(getattr(s, "index", None), pd.DatetimeIndex) or len(s) < 12 * min_years:
+        return None
+    v = pd.Series(s).astype(float)
+    trend = v.rolling(12, center=True, min_periods=12).mean()      # de-trend: monthly / its 12-mo average
+    ratio = (v / trend).replace([np.inf, -np.inf], np.nan).dropna()
+    if ratio.empty:
+        return None
+    by_month = ratio.groupby(ratio.index.month).median().reindex(range(1, 13))
+    if by_month.isna().any():                                       # need every calendar month represented
+        return None
+    fac = by_month.to_numpy()
+    fac = np.clip(fac / np.mean(fac), 0.6, 1.4)                     # pure seasonal (no level shift), damp outliers
+    return fac / np.mean(fac)
+
+
+def forecast_series(s, H, g=None, seasonal=False):
+    """SMOOTH 5-yr expected-trend forecast. Starts exactly at the last actual value and blends over ~a
+    quarter into a trend line at the recent deseasonalized LEVEL, growing at a ROBUST annual rate
+    (`robust_growth`), SATURATING over ~2 yr so a boom decelerates.
+
+    `seasonal=True` overlays the history's repeating calendar-month profile (`seasonal_factors`) on the
+    trend so a MONTHLY series keeps a realistic yearly wiggle instead of going flat — it needs a
+    datetime-indexed `s` and ~2 yr of history; otherwise it silently stays flat."""
     s = pd.Series(s).astype(float).dropna()
     n = len(s)
     if n == 0:
@@ -89,5 +114,11 @@ def forecast_series(s, H, g=None):
         g = robust_growth(arr)[0]
     t = np.arange(1, H + 1)
     trend = level * (1 + g) ** sat_years(t / 12.0)
+    if seasonal:                                                    # repeat the calendar-month profile forward
+        fac = seasonal_factors(s)
+        if fac is not None:
+            last_month = int(s.index[-1].month)
+            fut_month = (last_month - 1 + t) % 12                   # 0-based calendar month of each future step
+            trend = trend * fac[fut_month]
     w = np.exp(-(t - 1) / 3.0)
     return np.clip(last * w + trend * (1 - w), 0, None)
