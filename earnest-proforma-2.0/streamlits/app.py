@@ -730,11 +730,33 @@ def market_trend(piv):
     return _shrink_annualize(sl, se)
 
 
-def forecast_series(s, H, g=None):
-    """SMOOTH 5-yr expected-trend forecast (no repeating seasonal photocopy). Starts exactly at the last actual
-    value and blends over ~a quarter into a trend line at the recent deseasonalized LEVEL, growing at a ROBUST
-    annual rate (`robust_growth` — Theil-Sen, follows the true long-run direction, not a spike-fooled ratio).
-    Predicting 5 yrs of month-by-month seasonal wiggle isn't meaningful; the history keeps its real seasonality."""
+def _seasonal_factors(s, min_years=2):
+    """Multiplicative calendar-month seasonal profile (12 factors, Jan..Dec, mean 1.0) from a monthly-DATETIME-
+    indexed history via a 12-mo centered-moving-average decomposition (ratio = actual / local 12-mo average,
+    pooled per calendar month by MEDIAN, normalized to mean 1, damped ±40%). None → caller stays flat (index
+    not monthly-datetime, or < ~2 yr covering all 12 months)."""
+    if not isinstance(getattr(s, "index", None), pd.DatetimeIndex) or len(s) < 12 * min_years:
+        return None
+    v = pd.Series(s).astype(float)
+    trend = v.rolling(12, center=True, min_periods=12).mean()
+    ratio = (v / trend).replace([np.inf, -np.inf], np.nan).dropna()
+    if ratio.empty:
+        return None
+    by_month = ratio.groupby(ratio.index.month).median().reindex(range(1, 13))
+    if by_month.isna().any():
+        return None
+    fac = np.clip(by_month.to_numpy() / float(np.mean(by_month.to_numpy())), 0.6, 1.4)
+    return fac / np.mean(fac)
+
+
+def forecast_series(s, H, g=None, seasonal=False):
+    """SMOOTH 5-yr expected-trend forecast. Starts exactly at the last actual value and blends over ~a quarter
+    into a trend line at the recent deseasonalized LEVEL, growing at a ROBUST annual rate (`robust_growth` —
+    Theil-Sen, follows the true long-run direction, not a spike-fooled ratio).
+
+    `seasonal=True` overlays the history's repeating calendar-month profile (`_seasonal_factors`) on the trend so
+    a MONTHLY series keeps a realistic yearly wiggle instead of going flat; needs a datetime-indexed `s` with ~2 yr
+    of history, else it silently stays flat."""
     s = pd.Series(s).astype(float).dropna()
     n = len(s)
     if n == 0:
@@ -746,6 +768,11 @@ def forecast_series(s, H, g=None):
         g = robust_growth(arr)[0]
     t = np.arange(1, H + 1)
     trend = level * (1 + g) ** _sat_years(t / 12.0)            # smooth trend at the robust rate, SATURATING (boom decelerates)
+    if seasonal:                                               # repeat the calendar-month profile forward
+        fac = _seasonal_factors(s)
+        if fac is not None:
+            fut_month = (int(s.index[-1].month) - 1 + t) % 12  # 0-based calendar month of each future step
+            trend = trend * fac[fut_month]
     w = np.exp(-(t - 1) / 3.0)                                 # blend: start at last actual, converge to trend (~quarter)
     return np.clip(last * w + trend * (1 - w), 0, None)
 
@@ -1241,12 +1268,12 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         hist_mem = comp["mem_wash_count"].reindex(idx); hist_ret = comp["ret_wash_count"].reindex(idx)
         hist = hist_mem.add(hist_ret, fill_value=0)                                   # total = membership + retail
         hist_disp = hist.rolling(smooth, center=True, min_periods=1).mean() if (smooth and smooth > 1) else hist   # honor the smoothing slider
-        base_mem = forecast_series(hist_mem, H, g=mem_g)                              # membership forecast (central trend)
-        base_ret = forecast_series(hist_ret, H, g=ret_g)                              # retail forecast (central trend)
+        base_mem = forecast_series(hist_mem, H, g=mem_g, seasonal=True)               # membership forecast (central trend + yearly seasonality)
+        base_ret = forecast_series(hist_ret, H, g=ret_g, seasonal=True)               # retail forecast (central trend + yearly seasonality)
         base_fc = base_mem + base_ret                                                 # market total WITHOUT the new entrant
         # data-based confidence band: re-forecast at the trend's lo/hi CI rates → a noisy market self-widens
-        base_mem_lo = forecast_series(hist_mem, H, g=mem_lo); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi)
-        base_ret_lo = forecast_series(hist_ret, H, g=ret_lo); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi)
+        base_mem_lo = forecast_series(hist_mem, H, g=mem_lo, seasonal=True); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi, seasonal=True)
+        base_ret_lo = forecast_series(hist_ret, H, g=ret_lo, seasonal=True); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi, seasonal=True)
         # cannibalization hits RETAIL (LEARNED a·exp(-d/L) for this region), phased over the 1st year
         rec = (df[df.site_key.isin(keys)].sort_values("date").groupby("site_key").tail(12)
                .groupby("site_key").agg(ret=("ret_wash_count", "mean")).join(nbk.set_index("site_key").d))

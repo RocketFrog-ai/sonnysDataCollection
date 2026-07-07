@@ -352,11 +352,11 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         hist_ret = comp["ret_wash_count"].reindex(idx)
         hist = hist_mem.add(hist_ret, fill_value=0)
 
-        base_mem = forecast_series(hist_mem, H, g=mem_g)
-        base_ret = forecast_series(hist_ret, H, g=ret_g)
+        base_mem = forecast_series(hist_mem, H, g=mem_g, seasonal=True)
+        base_ret = forecast_series(hist_ret, H, g=ret_g, seasonal=True)
         base_fc = base_mem + base_ret
-        base_mem_lo = forecast_series(hist_mem, H, g=mem_lo); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi)
-        base_ret_lo = forecast_series(hist_ret, H, g=ret_lo); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi)
+        base_mem_lo = forecast_series(hist_mem, H, g=mem_lo, seasonal=True); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi, seasonal=True)
+        base_ret_lo = forecast_series(hist_ret, H, g=ret_lo, seasonal=True); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi, seasonal=True)
 
         nb_keyed = nb.set_index("site_key").loc[keys]
         dist_by_key = pd.Series(haversine_km(lat, lon, nb_keyed.lat.values, nb_keyed.lon.values), index=keys)
