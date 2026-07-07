@@ -27,7 +27,7 @@ import pandas as pd
 
 from app.pnl_analysis.modelling import data as D
 from app.pnl_analysis.modelling.data import haversine_km
-from app.pnl_analysis.modelling.market import compute_trajectory
+from app.pnl_analysis.modelling.market import age_periods, compute_trajectory
 from app.pnl_analysis.modelling.campaign import campaign_effect, campaign_conv_pct
 
 
@@ -363,6 +363,7 @@ def pnl_forecast(lat: float, lon: float, brand: Optional[str] = None,
     return {
         "lat": _f(lat), "lon": _f(lon), "brand": brand, "horizon_months": int(horizon_months),
         "months": [int(m) for m in months],
+        "years": age_periods(months)[0], "quarters": age_periods(months)[1],
         "asp": {
             "mem": _f(asp_mem), "ret": _f(asp_ret), "blend": _f(asp_blend), "used": _f(asp),
             "scope": asp_scope,
@@ -524,6 +525,7 @@ def expense_plan(lat: float, lon: float, brand: Optional[str] = None,
     return {
         "lat": _f(lat), "lon": _f(lon), "brand": brand, "horizon_months": int(horizon_months),
         "months": [int(m) for m in months],
+        "years": age_periods(months)[0], "quarters": age_periods(months)[1],
         "asp": {"blend": _f(asp_blend), "used_avg": _f(asp_used),
                 "by_year": {str(y): _f(v) for y, v in asp_by_year.items()} or None,
                 "monthly": _ser(asp_month),

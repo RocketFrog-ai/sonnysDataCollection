@@ -30,7 +30,7 @@ import pandas as pd
 
 from app.pnl_analysis.modelling import data as D
 from app.pnl_analysis.modelling.data import haversine_km
-from app.pnl_analysis.modelling.market import compute_trajectory
+from app.pnl_analysis.modelling.market import age_periods, compute_trajectory
 from app.pnl_analysis.modelling.trend import forecast_series
 
 
@@ -273,6 +273,7 @@ def eating_the_market(lat: float, lon: float, radius_km: float = 20.0, brand: Op
 
     return {
         "months": [int(m) for m in months],
+        "years": age_periods(months)[0], "quarters": age_periods(months)[1],
         "your_site": {
             "base": [float(v) for v in new_base],
             "with_campaign": [float(v) for v in new_camp],

@@ -2121,7 +2121,9 @@ def _key_insights_summary(blocks: dict) -> str:
 def _sources_md(srcs):
     if not srcs:
         return ""
-    lines = ["", "**Sources (live web search):**"]
+    # Blank line (two newlines) MUST separate this from the summary — a pipe-less line right after a GFM
+    # table is swallowed as a table row, so a single newline makes "Sources" render inside the table.
+    lines = ["", "", "**Sources (live web search):**", ""]
     for i, s in enumerate(srcs, 1):
         lines.append(f"{i}. [{(s.get('title') or s.get('url') or 'source').strip()}]({s.get('url')})")
     return "\n".join(lines)
@@ -2161,11 +2163,11 @@ elif gen_mode == MODE_COMPETE:
     _ckey = (loc_sig, _known_names)
     _out = compete_store.get(_ckey)
     if _out and build_competition_response:
-        _resp = build_competition_response(_out)          # POST /insights/competition → {table, summary}
+        _resp = build_competition_response(_out)          # POST /insights/competition → {summary}
         with st.container(border=True):
             st.markdown("#### 🏁 Competition Coverage")
             _react_md(_resp["summary"])
-            with st.expander("🔎 API response (JSON) — POST /insights/competition (table + summary)"):
+            with st.expander("🔎 API response (JSON) — POST /insights/competition"):
                 st.json(_resp)
 elif gen_mode == MODE_KEY:
     if group_insights:
