@@ -30,6 +30,27 @@ ROLE_COLOR = {"focal": "#e6194B", "entrant": "#f58231", "incumbent": "#5b8db8"}
 MIN_MONTHS_RICH = 36   # Explore "rich-history" filter — ≥3 full years, so no half-drawn KPI lines
 
 # the 6 KPIs grouped into 3 figures (col, label, unit) — matches the GROUPS in app.py
+def age_periods(months, n_years: int = 5) -> Tuple[List[int], List[int]]:
+    """Relative (year, quarter) labels for an AGE-indexed forecast series where month 0 = the site's
+    open month. `year` is the 1-based 12-month block (1..`n_years`) and `quarter` is 1..4 WITHIN that
+    year — so the frontend can filter e.g. "Year 2 / Q3". The trailing partial month past the horizon
+    (e.g. index 60 of a 61-point 5-year series) folds into the LAST year/Q4, matching `_year_slices`
+    and the annual rollups. Returns parallel int lists aligned to `months`."""
+    ms = [int(m) for m in months]
+    years = [min(m // 12 + 1, n_years) for m in ms]
+    quarters = [min((m - (y - 1) * 12) // 3 + 1, 4) for m, y in zip(ms, years)]
+    return years, quarters
+
+
+def calendar_periods(dates) -> Tuple[List[int], List[int]]:
+    """Calendar (year, quarter) labels for a DATE-indexed series. `dates` are 'YYYY-MM-DD' strings (or
+    Timestamps). `quarter` is the calendar quarter 1..4. Returns parallel int lists aligned to `dates`."""
+    ts = pd.to_datetime(list(dates))
+    years = [int(d.year) for d in ts]
+    quarters = [int((d.month - 1) // 3 + 1) for d in ts]
+    return years, quarters
+
+
 KPI_GROUPS: List[Tuple[str, List[Tuple[str, str, str]]]] = [
     ("Washes", [("tot_wash_count", "Total washes", "count"), ("ret_wash_count", "Retail washes", "count"),
                 ("mem_wash_count", "Membership washes", "count")]),
@@ -273,6 +294,7 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
                                             mem_growth_pct, ret_growth_pct, horizon_months)
     mem_g, ret_g = trends["mem_g"], trends["ret_g"]
     g = traj.set_index("month")
+    tj_years, tj_quarters = age_periods(g.index)
     return {
         "lat": lat, "lon": lon, "brand": brand,
         "summary": {
@@ -284,6 +306,7 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
         },
         "trajectory": {
             "months": [int(m) for m in g.index],
+            "years": tj_years, "quarters": tj_quarters,
             "total_med": [float(v) for v in g.total_med], "total_lo": [float(v) for v in g.total_lo],
             "total_hi": [float(v) for v in g.total_hi],
             "mem_med": [float(v) for v in g.mem_med], "ret_med": [float(v) for v in g.ret_med],
@@ -346,11 +369,15 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
 
+        hist_years, hist_quarters = calendar_periods(hist.index)
+        fc_years, fc_quarters = calendar_periods(fdates)
         out.update({
             "has_neighbours": True,
             "history": {"dates": [d.strftime("%Y-%m-%d") for d in hist.index],
+                        "years": hist_years, "quarters": hist_quarters,
                         "values": [None if pd.isna(v) else float(v) for v in hist.values]},
             "forecast": {"dates": [d.strftime("%Y-%m-%d") for d in fdates],
+                         "years": fc_years, "quarters": fc_quarters,
                          "with_new_site": [float(v) for v in with_fc],
                          "without_new_site": [float(v) for v in base_fc],
                          "band_lo": [float(v) for v in with_lo], "band_hi": [float(v) for v in with_hi],
@@ -358,10 +385,12 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
             "net_change_year5": float(with_fc[-1] - base_fc[-1]),
         })
     else:
+        fc_years, fc_quarters = calendar_periods(fdates)
         out.update({
             "has_neighbours": False,
-            "history": {"dates": [], "values": []},
+            "history": {"dates": [], "years": [], "quarters": [], "values": []},
             "forecast": {"dates": [d.strftime("%Y-%m-%d") for d in fdates],
+                         "years": fc_years, "quarters": fc_quarters,
                          "with_new_site": [float(v) for v in new_traj], "without_new_site": [0.0] * H,
                          "band_lo": [float(v) for v in new_lo], "band_hi": [float(v) for v in new_hi],
                          "new_entrant_journey": [float(v) for v in new_traj]},

@@ -160,8 +160,8 @@ def insights_location(req: LocationSummaryRequest):
 @router.post("/insights/competition")
 def insights_competition(req: CompetitionScaleRequest):
     """Tab 1 — competitive landscape (LLM sizes the full competitive set vs the client's own portfolio). Returns
-    JSON with both a structured `table` (counts, shares, saturation multiples, the typed competitor list — what the
-    frontend renders as the comparison table) and a react-markdown `summary`. 503 if no LLM answers."""
+    JSON `{summary}` — react-markdown that embeds the competitors table + saturation/positioning. 503 if no LLM
+    answers."""
     lat, lon = _resolve_lat_lon(req.latitude, req.longitude, req.address)
     known = _known_site_names(lat, lon, req.radius_km, req.min_months, req.demo)
     try:
