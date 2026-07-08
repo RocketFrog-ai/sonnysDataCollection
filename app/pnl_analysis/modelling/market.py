@@ -340,15 +340,26 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         if len(_lm):
             today = min(today, pd.Timestamp(_lm.index.max()))
     H = horizon_months
-    fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
-    new_traj = g["total_med"].reindex(range(H)).to_numpy()
-    new_lo = g["total_lo"].reindex(range(H)).to_numpy()
-    new_hi = g["total_hi"].reindex(range(H)).to_numpy()
+    fstart = today + pd.DateOffset(months=1)                                  # forecast starts the month AFTER the last data (contiguous)
+    fdates = pd.date_range(fstart, periods=H, freq="MS")
+    # the NEW SITE opens next CALENDAR month from today (real clock) — never before the forecast starts.
+    _now_m = pd.Timestamp.now().normalize().replace(day=1)
+    open_date = max(_now_m + pd.DateOffset(months=1), fstart)
+    open_off = (open_date.year - fstart.year) * 12 + (open_date.month - fstart.month)   # months from forecast start to opening
+    # place the entrant's own journey at its OPENING month within the horizon (0 before it opens)
+    _mt = g["total_med"].reindex(range(H)).to_numpy()
+    _ml = g["total_lo"].reindex(range(H)).to_numpy()
+    _mh = g["total_hi"].reindex(range(H)).to_numpy()
+    _n = max(0, H - open_off)
+    new_traj = np.zeros(H); new_lo = np.zeros(H); new_hi = np.zeros(H)
+    new_traj[open_off:open_off + _n] = _mt[:_n]
+    new_lo[open_off:open_off + _n] = _ml[:_n]
+    new_hi[open_off:open_off + _n] = _mh[:_n]
     cp = cm.cannib_params(art, lat, lon)
 
     out: Dict[str, Any] = {
         "lat": lat, "lon": lon, "brand": brand,
-        "open_date": (today + pd.DateOffset(months=1)).strftime("%Y-%m-%d"),
+        "open_date": open_date.strftime("%Y-%m-%d"),
     }
 
     if keys:
@@ -370,7 +381,7 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         rec_ret = (df[df.site_key.isin(keys)].sort_values("date").groupby("site_key").tail(12)
                    .groupby("site_key")["ret_wash_count"].mean())
         cannib_full = float((cm._cannib_ret(dist_by_key.reindex(rec_ret.index).values, cp) * rec_ret.values).sum())
-        phase = np.minimum(1.0, np.arange(1, H + 1) / 12.0)
+        phase = np.clip((np.arange(H) - open_off + 1) / 12.0, 0.0, 1.0)   # cannibalization ramps from the OPENING month (0 before)
 
         with_fc = np.clip(base_mem + np.clip(base_ret - cannib_full * phase, 0, None) + new_traj, 0, None)
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
@@ -388,7 +399,7 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
                          "with_new_site": [float(v) for v in with_fc],
                          "without_new_site": [float(v) for v in base_fc],
                          "band_lo": [float(v) for v in with_lo], "band_hi": [float(v) for v in with_hi],
-                         "new_entrant_journey": [float(v) for v in new_traj]},
+                         "new_entrant_journey": [None if i < open_off else float(new_traj[i]) for i in range(H)]},
             "net_change_year5": float(with_fc[-1] - base_fc[-1]),
         })
     else:
@@ -400,7 +411,7 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
                          "years": fc_years, "quarters": fc_quarters,
                          "with_new_site": [float(v) for v in new_traj], "without_new_site": [0.0] * H,
                          "band_lo": [float(v) for v in new_lo], "band_hi": [float(v) for v in new_hi],
-                         "new_entrant_journey": [float(v) for v in new_traj]},
+                         "new_entrant_journey": [None if i < open_off else float(new_traj[i]) for i in range(H)]},
             "net_change_year5": float(new_traj[-1]),
         })
     return out
