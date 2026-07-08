@@ -331,7 +331,8 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
     ret_g, ret_lo, ret_hi = trends["ret_g"], trends["ret_lo"], trends["ret_hi"]
 
     g = traj.set_index("month")
-    today = pd.Timestamp(df.date.max())
+    _mc = df.groupby("date").size()                                          # robust "now": last month with real coverage
+    today = pd.Timestamp(_mc[_mc >= 0.5 * _mc.median()].index.max())          # ignore sparse straggler months (e.g. a lone future row)
     H = horizon_months
     fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
     new_traj = g["total_med"].reindex(range(H)).to_numpy()
