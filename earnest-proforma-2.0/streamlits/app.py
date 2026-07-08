@@ -1252,7 +1252,8 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
 
     st.divider(); st.subheader("📈 Total local-market wash count — history + 5-year forecast")
     gmk = gran_picker("gran_market")
-    today = pd.Timestamp(df.date.max())
+    _mc = df.groupby("date").size()                                          # robust "now": last month with real coverage
+    today = pd.Timestamp(_mc[_mc >= 0.5 * _mc.median()].index.max())          # ignore sparse straggler months (e.g. a lone future row)
     H = 60
     fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
     _tj = traj.set_index("month")
@@ -2243,6 +2244,19 @@ for gi, (gname, panels) in enumerate(GROUPS):
     else:
         gfig.update_xaxes(tickformat=gran_date_tickformat(gk))
     st.plotly_chart(gfig, width="stretch", key=f"kpi_{gname}")
+    st.divider()
+
+# ───────────────────────── 🧭 Council verdict (deterministic adjudication over the insight seats) ─────────────────────────
+# Isolated council/ package: runs the four insight seats on this market and adjudicates a build/pass
+# verdict with a deterministic rulebook (internal data weighted highest; conflicts surfaced). Wrapped so
+# it can never take down the dashboard.
+_council_pin = st.session_state.get("pin")
+if _council_pin:
+    try:
+        import council.streamlit_view as _council_view
+        _council_view.render_council(_council_pin[0], _council_pin[1], radius_km=radius)
+    except Exception as _council_err:                             # keep the dashboard alive
+        st.caption(f"🧭 Council view unavailable: {_council_err}")
     st.divider()
 
 # ───────────────────────── Tunnel-length proxy (estimated metres) ─────────────────────────
