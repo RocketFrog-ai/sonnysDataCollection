@@ -333,6 +333,12 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
     g = traj.set_index("month")
     _mc = df.groupby("date").size()                                          # robust "now": last month with real coverage
     today = pd.Timestamp(_mc[_mc >= 0.5 * _mc.median()].index.max())          # ignore sparse straggler months (e.g. a lone future row)
+    if keys:                                                                  # anchor to THIS local market's last real month so the
+        _lm = (df[df.site_key.isin(keys)]                                     # forecast is CONTIGUOUS with history — no None-tail gap
+               .groupby("date")[["mem_wash_count", "ret_wash_count"]].sum().sum(axis=1))  # and no month-shifted seasonality
+        _lm = _lm[_lm > 0]
+        if len(_lm):
+            today = min(today, pd.Timestamp(_lm.index.max()))
     H = horizon_months
     fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
     new_traj = g["total_med"].reindex(range(H)).to_numpy()

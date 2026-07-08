@@ -1265,6 +1265,10 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     if len(nbk):
         keys = nbk.site_key.tolist()
         comp = df[df.site_key.isin(keys)].groupby("date")[["mem_wash_count", "ret_wash_count"]].sum()
+        _lm = comp.sum(axis=1); _lm = _lm[_lm > 0]                                    # anchor to THIS market's last real month so
+        if len(_lm):                                                                  # the forecast is contiguous (no gap/phase-shift)
+            today = min(today, pd.Timestamp(_lm.index.max()))
+            fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
         idx = pd.date_range(comp.index.min(), today, freq="MS")
         hist_mem = comp["mem_wash_count"].reindex(idx); hist_ret = comp["ret_wash_count"].reindex(idx)
         hist = hist_mem.add(hist_ret, fill_value=0)                                   # total = membership + retail
@@ -1297,8 +1301,9 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name="market total — forecast (with new site)"))
         fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name="market without the new site"))
         fig.add_trace(go.Scatter(x=ntr.index, y=ntr.values, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
-        fig.add_vline(x=today, line=dict(color="#c0392b", dash="dash", width=1.5))
-        fig.add_annotation(x=today, yref="paper", y=1.03, text="new site opens", showarrow=False, font=dict(color="#c0392b", size=11))
+        _open = today + pd.DateOffset(months=1)                                       # site opens the month AFTER the last actual
+        fig.add_vline(x=_open, line=dict(color="#c0392b", dash="dash", width=1.5))
+        fig.add_annotation(x=_open, yref="paper", y=1.03, text="new site opens", showarrow=False, font=dict(color="#c0392b", size=11))
         fig.update_layout(height=480, template="plotly_white", hovermode="x unified", xaxis_title="date",
                           yaxis_title=f"market total washes / {GRAN_UNIT[gmk]}", margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.28))
         fig.update_xaxes(tickformat=gran_date_tickformat(gmk))
