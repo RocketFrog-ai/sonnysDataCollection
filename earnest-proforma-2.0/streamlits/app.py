@@ -2257,18 +2257,19 @@ for gi, (gname, panels) in enumerate(GROUPS):
     st.plotly_chart(gfig, width="stretch", key=f"kpi_{gname}")
     st.divider()
 
-# ───────────────────────── 🧭 Council verdict (deterministic adjudication over the insight seats) ─────────────────────────
-# Isolated council/ package: runs the four insight seats on this market and adjudicates a build/pass
-# verdict with a deterministic rulebook (internal data weighted highest; conflicts surfaced). Wrapped so
-# it can never take down the dashboard.
-_council_pin = st.session_state.get("pin")
-if _council_pin:
-    try:
-        import council.streamlit_view as _council_view
+# ───────────────────────── 🧭 Council verdict (signal-driven; LLM seats = explanation) ─────────────────────────
+# Isolated council/ package: a leakage-clean data signal (market structure + operator scale) makes the
+# build/pass call; the LLM seats explain but don't decide. Also surfaces the honest out-of-fold backtest
+# report + rebuild meeting notes. Wrapped so it can never take down the dashboard.
+try:
+    import council.streamlit_view as _council_view
+    _council_pin = st.session_state.get("pin")
+    if _council_pin:
         _council_view.render_council(_council_pin[0], _council_pin[1], radius_km=radius)
-    except Exception as _council_err:                             # keep the dashboard alive
-        st.caption(f"🧭 Council view unavailable: {_council_err}")
-    st.divider()
+    _council_view.render_reports()                                # backtest report + meeting notes (always shown)
+except Exception as _council_err:                                 # keep the dashboard alive
+    st.caption(f"🧭 Council view unavailable: {_council_err}")
+st.divider()
 
 # ───────────────────────── Tunnel-length proxy (estimated metres) ─────────────────────────
 # Proxy for tunnel LENGTH in metres, from peak monthly volume:
