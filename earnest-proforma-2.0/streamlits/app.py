@@ -1257,8 +1257,6 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     H = 60
     fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
     _tj = traj.set_index("month")
-    new_traj = _tj["total_med"].reindex(range(H)).to_numpy()                           # the new entrant's own journey
-    new_lo = _tj["total_lo"].reindex(range(H)).to_numpy(); new_hi = _tj["total_hi"].reindex(range(H)).to_numpy()
     nbk = site[site.has_coords].copy(); nbk["d"] = haversine_km(lat, lon, nbk.lat.values, nbk.lon.values)
     nbk = nbk[(nbk.d <= radius) & (nbk.d > 1e-6)]
     fig = go.Figure()
@@ -1268,7 +1266,15 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         _lm = comp.sum(axis=1); _lm = _lm[_lm > 0]                                    # anchor to THIS market's last real month so
         if len(_lm):                                                                  # the forecast is contiguous (no gap/phase-shift)
             today = min(today, pd.Timestamp(_lm.index.max()))
-            fdates = pd.date_range(today + pd.DateOffset(months=1), periods=H, freq="MS")
+        fstart = today + pd.DateOffset(months=1)                                      # forecast starts the month after the last data
+        fdates = pd.date_range(fstart, periods=H, freq="MS")
+        _open = max(pd.Timestamp.now().normalize().replace(day=1) + pd.DateOffset(months=1), fstart)  # site opens next calendar month
+        open_off = (_open.year - fstart.year) * 12 + (_open.month - fstart.month)     # months from forecast start to opening
+        _n = max(0, H - open_off)                                                     # place the entrant at its OPENING month (0 before)
+        new_traj = np.zeros(H); new_lo = np.zeros(H); new_hi = np.zeros(H)
+        new_traj[open_off:open_off + _n] = _tj["total_med"].reindex(range(H)).to_numpy()[:_n]
+        new_lo[open_off:open_off + _n] = _tj["total_lo"].reindex(range(H)).to_numpy()[:_n]
+        new_hi[open_off:open_off + _n] = _tj["total_hi"].reindex(range(H)).to_numpy()[:_n]
         idx = pd.date_range(comp.index.min(), today, freq="MS")
         hist_mem = comp["mem_wash_count"].reindex(idx); hist_ret = comp["ret_wash_count"].reindex(idx)
         hist = hist_mem.add(hist_ret, fill_value=0)                                   # total = membership + retail
@@ -1284,14 +1290,15 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                .groupby("site_key").agg(ret=("ret_wash_count", "mean")).join(nbk.set_index("site_key").d))
         cp = cm.cannib_params(art, lat, lon)                                          # LEARNED a·exp(-d/L) for this region
         cannib_full = float((cm._cannib_ret(rec.d.values, cp) * rec.ret.values).sum())
-        phase = np.minimum(1.0, np.arange(1, H + 1) / 12.0)
+        phase = np.clip((np.arange(H) - open_off + 1) / 12.0, 0.0, 1.0)              # cannibalization ramps from the OPENING month
         with_fc = np.clip(base_mem + np.clip(base_ret - cannib_full * phase, 0, None) + new_traj, 0, None)
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
         MKT = "#0a84ff"    # bright blue — one colour for the market total: solid history -> dotted forecast
         hist_s = rs_dates(hist_disp.dropna(), gmk)                                  # history summed into the chosen window
         _fc = lambda a: rs_dates(pd.Series(np.asarray(a, float), index=fdates), gmk)
-        wfc, bfc, whi, wlo, ntr = _fc(with_fc), _fc(base_fc), _fc(with_hi), _fc(with_lo), _fc(new_traj)
+        _ent = new_traj.astype(float).copy(); _ent[:open_off] = np.nan               # entrant line only from its opening month
+        wfc, bfc, whi, wlo, ntr = _fc(with_fc), _fc(base_fc), _fc(with_hi), _fc(with_lo), _fc(_ent)
         last, last_x = float(hist_s.iloc[-1]), hist_s.index[-1]                     # connect forecast to history endpoint
         fig.add_trace(go.Scatter(x=[last_x] + list(whi.index) + list(whi.index[::-1]) + [last_x],
                                  y=[last] + list(whi.values) + list(wlo.values[::-1]) + [last],
@@ -1300,8 +1307,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         fig.add_trace(go.Scatter(x=hist_s.index, y=hist_s.values, line=dict(color=MKT, width=3.2), name="market total — actual history"))
         fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name="market total — forecast (with new site)"))
         fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name="market without the new site"))
-        fig.add_trace(go.Scatter(x=ntr.index, y=ntr.values, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
-        _open = today + pd.DateOffset(months=1)                                       # site opens the month AFTER the last actual
+        fig.add_trace(go.Scatter(x=ntr.dropna().index, y=ntr.dropna().values, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
         fig.add_vline(x=_open, line=dict(color="#c0392b", dash="dash", width=1.5))
         fig.add_annotation(x=_open, yref="paper", y=1.03, text="new site opens", showarrow=False, font=dict(color="#c0392b", size=11))
         fig.update_layout(height=480, template="plotly_white", hovermode="x unified", xaxis_title="date",
