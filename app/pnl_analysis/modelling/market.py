@@ -355,6 +355,8 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
     new_traj[open_off:open_off + _n] = _mt[:_n]
     new_lo[open_off:open_off + _n] = _ml[:_n]
     new_hi[open_off:open_off + _n] = _mh[:_n]
+    ent_dates = fdates[open_off:]                                             # the new site's OWN timeline (starts at open_date)
+    ent_years, ent_quarters = calendar_periods(ent_dates)
     cp = cm.cannib_params(art, lat, lon)
 
     out: Dict[str, Any] = {
@@ -396,10 +398,16 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
                         "values": [None if pd.isna(v) else float(v) for v in hist.values]},
             "forecast": {"dates": [d.strftime("%Y-%m-%d") for d in fdates],
                          "years": fc_years, "quarters": fc_quarters,
-                         "with_new_site": [float(v) for v in with_fc],
+                         # market baseline: seamless dotted continuation of history (starts the month after the last data)
                          "without_new_site": [float(v) for v in base_fc],
-                         "band_lo": [float(v) for v in with_lo], "band_hi": [float(v) for v in with_hi],
-                         "new_entrant_journey": [None if i < open_off else float(new_traj[i]) for i in range(H)]},
+                         # with-new-site total + its CI band only EXIST from the opening month (null before open_date)
+                         "with_new_site": [None if i < open_off else float(with_fc[i]) for i in range(H)],
+                         "band_lo": [None if i < open_off else float(with_lo[i]) for i in range(H)],
+                         "band_hi": [None if i < open_off else float(with_hi[i]) for i in range(H)],
+                         # the entrant's own journey as a self-contained dated series, starting at open_date
+                         "new_entrant_journey": [float(new_traj[i]) for i in range(open_off, H)],
+                         "new_entrant_dates": [d.strftime("%Y-%m-%d") for d in ent_dates],
+                         "new_entrant_years": ent_years, "new_entrant_quarters": ent_quarters},
             "net_change_year5": float(with_fc[-1] - base_fc[-1]),
         })
     else:
@@ -409,9 +417,13 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
             "history": {"dates": [], "years": [], "quarters": [], "values": []},
             "forecast": {"dates": [d.strftime("%Y-%m-%d") for d in fdates],
                          "years": fc_years, "quarters": fc_quarters,
-                         "with_new_site": [float(v) for v in new_traj], "without_new_site": [0.0] * H,
-                         "band_lo": [float(v) for v in new_lo], "band_hi": [float(v) for v in new_hi],
-                         "new_entrant_journey": [None if i < open_off else float(new_traj[i]) for i in range(H)]},
+                         "without_new_site": [0.0] * H,
+                         "with_new_site": [None if i < open_off else float(new_traj[i]) for i in range(H)],
+                         "band_lo": [None if i < open_off else float(new_lo[i]) for i in range(H)],
+                         "band_hi": [None if i < open_off else float(new_hi[i]) for i in range(H)],
+                         "new_entrant_journey": [float(new_traj[i]) for i in range(open_off, H)],
+                         "new_entrant_dates": [d.strftime("%Y-%m-%d") for d in ent_dates],
+                         "new_entrant_years": ent_years, "new_entrant_quarters": ent_quarters},
             "net_change_year5": float(new_traj[-1]),
         })
     return out
