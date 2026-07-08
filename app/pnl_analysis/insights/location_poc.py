@@ -497,7 +497,7 @@ def _competition_summary_md(result: Dict[str, Any]) -> str:
     exp, tot = data.get("estimated_express_tunnels") or {}, data.get("estimated_total_carwashes") or {}
     se = result.get("scale_express") or {}
     share = data.get("estimated_client_share") or {}
-    out: List[str] = ["## Competition Coverage", ""]
+    out: List[str] = ["## Nearby Carwash Analysis", ""]
 
     # headline
     head = f"The client runs **{n}** express site(s) of their own here"
