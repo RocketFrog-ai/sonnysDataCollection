@@ -82,3 +82,6 @@ zeta_modelling/outputs/
 # Contains a live Google Maps API key + generated review data — do not commit
 carwash_reviews_sentiment.py
 carwash_reviews.csv
+
+# Claude Code worktrees (shadow copies of the repo — never search or refactor these)
+.claude/worktrees/
