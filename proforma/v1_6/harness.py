@@ -4,10 +4,10 @@ Retrospective backtest runner — the manager's validation.
 For each focal build in the sample (sites that opened 2021–2024 with a realized maturity window and
 ≥2 pre-T neighbours, N≈492), freeze the clock at T = operational_start, run the council on the
 strictly-pre-T local market, and grade its go/no-go + projected level against the site's own post-T
-actuals. Writes a per-(site×seat) CSV and an aggregate markdown report to council/outputs/.
+actuals. Writes a per-(site×seat) CSV and an aggregate markdown report to proforma/v1_6/outputs/.
 
-Run:  python -m council.harness --limit 8            # cheap smoke over 8 sites
-      python -m council.harness                       # full N≈492 (many LLM calls)
+Run:  python -m proforma.v1_6.harness --limit 8       # cheap smoke over 8 sites
+      python -m proforma.v1_6.harness                  # full N≈492 (many LLM calls)
 """
 from __future__ import annotations
 

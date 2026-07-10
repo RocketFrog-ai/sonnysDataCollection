@@ -200,9 +200,10 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
   commits and removed later; the 249-byte blob remains reachable from history. It is gitignored and
   untracked today, and this restructure never touched it. Nothing here can fix that — it needs a
   history rewrite plus rotation of whatever keys it held, which is a separate, deliberate operation.
-- **Three `sys.path.insert` calls remain in `proforma/v1_5/ui/`** (the Streamlit entrypoints) and
-  three in `app/` (two feature scripts, one test). `streamlit/web/bootstrap.py:59` puts only
-  `dirname(main_script_path)` on `sys.path`, never the repo root, so an entrypoint cannot reach
-  `proforma.*` without one — and packaging (`pyproject.toml`) was explicitly out of scope. No
-  *library* module has one. The one that mattered, in
+- **Three `sys.path.insert` calls remain in `proforma/v1_5/ui/`** (the Streamlit entrypoints),
+  three in `app/` (two feature scripts, one test), and five in `datafetching/` (one per standalone
+  fetcher). `streamlit/web/bootstrap.py:59` puts only `dirname(main_script_path)` on `sys.path`,
+  never the repo root, so an entrypoint cannot reach `proforma.*` without one — and packaging
+  (`pyproject.toml`) was explicitly out of scope. Every remaining call sits in a script that is
+  invoked directly; no *library* module has one. The one that mattered, in
   `app/pnl_analysis/modelling/data.py`, is gone.
