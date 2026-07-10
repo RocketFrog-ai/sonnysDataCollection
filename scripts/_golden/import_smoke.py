@@ -29,9 +29,9 @@ REPO = Path(__file__).resolve().parents[2]
 UI_ENTRYPOINTS = {"app.py", "site_analysis_page.py", "site_visual_page.py", "streamlit_view.py"}
 
 # Trees that are SCRIPTS, not libraries: they run work at module level. Importing
-# app/site_analysis/features/** actually fires live LLM/HTTP calls (typeOfSite/test_o4_mini.py
-# hits an API and prints `Response: 403`; o4mini_images_classification.py calls a vision model
-# at module scope) and one calls sys.exit(). They are out of this refactor's scope by decision:
+# app/site_analysis/features/** fires live LLM/HTTP calls -- typeOfSite/o4mini_images_classification.py
+# calls a vision model at module scope. (typeOfSite/test_o4_mini.py, which hit an API and printed
+# `Response: 403` on import, was deleted as dead code in 2026-07.) They are out of scope by decision:
 # the startup scripts put their dirs on PYTHONPATH and they use bare intra-feature imports.
 # We syntax-check them and never import them. This narrows coverage, on purpose, in writing.
 #
