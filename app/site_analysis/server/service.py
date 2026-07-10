@@ -24,7 +24,7 @@ from fastapi import HTTPException
 
 from app.core import common as calib
 from app.site_analysis.server.schemas import (
-    AnalyseRequest,
+    AddressRequest,
     SiteContextRequest,
     SiteFeaturesRequest,
 )
@@ -97,7 +97,7 @@ def get_site_features(req: SiteFeaturesRequest):
 # Single-fetch utilities (synchronous, address in / data out)
 # -----------------------------------------------------------------------------
 
-def get_traffic_lights(features: AnalyseRequest):
+def get_traffic_lights(features: AddressRequest):
     try:
         lat, lon = _lat_lon_from_address_or_400(features.address)
         data = get_traffic_lights_summary(lat, lon)
@@ -109,7 +109,7 @@ def get_traffic_lights(features: AnalyseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-def get_nearby_stores(features: AnalyseRequest):
+def get_nearby_stores(features: AddressRequest):
     try:
         lat, lon = _lat_lon_from_address_or_400(features.address)
         try:

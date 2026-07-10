@@ -10,7 +10,7 @@ FAST_API_HOST = calib.FAST_API_HOST
 FAST_API_PORT = calib.FAST_API_PORT
 
 # Create FastAPI application — serves all three Streamlit features:
-#   • site_analysis_router → /v1/...                (Site analysis: async analyze-site + sync /site-context)
+#   • site_analysis_router → /v1/...                (Site analysis: sync /site-context, /site-features, …)
 #   • pnl_analysis_router  → /v1/pnl_analysis/...    (Explore-markets + Forecast)
 app = FastAPI(title="Earnest Proforma backend", version="2.0")
 
