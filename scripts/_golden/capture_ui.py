@@ -37,7 +37,38 @@ UI_DIR = next((d for d in _CANDIDATES if (d / "app.py").is_file()), _CANDIDATES[
 SCRIPT = UI_DIR / "app.py"
 
 
+def assert_no_auto_pages() -> None:
+    """A directory literally named `pages/` beside the entrypoint silently becomes multipage nav.
+
+    streamlit's `_mpa_v1` (runtime/scriptrunner/script_runner.py) globs `<entrypoint_dir>/pages/*.py`
+    and turns EVERY match into a sidebar nav page. Its only exclusions are names starting with `.`
+    and `__init__.py` -- a LEADING UNDERSCORE IS NOT SKIPPED in streamlit 1.58, contrary to a common
+    belief carried over from older versions.
+
+    So putting helper modules in `ui/pages/` adds phantom nav entries that execute those helpers as
+    standalone scripts when clicked. That happened here once: three helper modules under `ui/pages/`
+    turned a 1-page app into a 4-page one. AppTest renders only the default page, so the golden
+    widget surface did NOT catch it. Hence this explicit check. The helpers live in `ui/panels/`.
+    """
+    from pathlib import Path as _P
+
+    pages_dir = _P(SCRIPT).resolve().parent / "pages"
+    if not pages_dir.exists():
+        return
+    stray = sorted(
+        p.name for p in pages_dir.glob("*.py")
+        if not p.name.startswith(".") and p.name != "__init__.py"
+    )
+    if stray:
+        raise SystemExit(
+            f"[capture_ui] FAIL: {len(stray)} file(s) in {pages_dir} would become streamlit nav "
+            f"pages: {stray}\n  A leading underscore does NOT exempt them. Move them out of a "
+            f"directory named 'pages'."
+        )
+
+
 def main(out_dir: str) -> None:
+    assert_no_auto_pages()
     sys.path.insert(0, str(UI_DIR))  # exactly what streamlit run does; see docstring
     from streamlit.testing.v1 import AppTest
 

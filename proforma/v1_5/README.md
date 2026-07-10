@@ -12,7 +12,7 @@ v1_5/
 ├── MODELLING.md      the authoritative method reference — read this before changing math
 ├── models/           coldstart.py (the model), tunnel_capex.py
 ├── artifacts/        coldstart_artifacts.joblib — fitted; DO NOT refit casually
-├── ui/               Streamlit only. app.py is a thin entry; pages/ holds the modes
+├── ui/               Streamlit only. app.py is a thin entry; panels/ holds the modes
 ├── backtests/        the evidence behind the model's design choices. Scripts, not libraries.
 ├── notebooks/        exploration + the figures in MODELLING.md
 └── scripts/          process_main_data_v2.py — rebuilds the panel

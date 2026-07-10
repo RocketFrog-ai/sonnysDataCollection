@@ -71,7 +71,7 @@ The one wrinkle: `streamlit run` puts only the *script's own directory* on `sys.
 (`streamlit/web/bootstrap.py:59`), never the repo root. So the three Streamlit **entrypoints** under
 `proforma/v1_5/ui/` each bootstrap the repo root onto `sys.path` before importing `app.*` or
 `proforma.*`. No library module does this. Do not remove those lines without replacing them with a
-`PYTHONPATH` launcher — see `docs/DIVERGENCES.md` §7.
+`PYTHONPATH` launcher — see `docs/DIVERGENCES.md` §8.
 
 The startup scripts additionally put `app/site_analysis/features/...` on `PYTHONPATH` so that the
 feature modules' bare intra-feature imports resolve. That is why those modules cannot simply be
