@@ -13,5 +13,5 @@ Design constraints (see plan / README):
   • Single data source: proforma/data/panel/main-data-v2-stitched.csv.
   • Build date T = each site's `operational_start` (first-data-entry month).
   • Reuses the existing insight functions UNCHANGED — nothing under app/ is edited.
-  • Run from the repo root: `python -m council.harness`.
+  • Run from the repo root: `python -m proforma.v1_6.harness`.
 """

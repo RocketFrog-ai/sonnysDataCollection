@@ -87,6 +87,6 @@ def render_reports() -> None:
     report, notes = base / "outputs" / "retro_council_report.md", base / "COUNCIL_MEETING_NOTES.md"
     with st.expander("Backtest report — honest, out-of-fold (does it beat 'always build'?)"):
         st.markdown(report.read_text() if report.exists()
-                    else "_No backtest yet — run `python -m council.harness`._")
+                    else "_No backtest yet — run `python -m proforma.v1_6.harness`._")
     with st.expander("Council meeting notes — the multi-agent rebuild session"):
         st.markdown(notes.read_text() if notes.exists() else "_No meeting notes found._")

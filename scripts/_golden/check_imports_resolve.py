@@ -3,24 +3,30 @@
     python scripts/_golden/check_imports_resolve.py
 
 Parses each .py with `ast` and, for every `import X` / `from X import ...` whose root package is
-first-party (app, proforma, libs), asks importlib whether the dotted path resolves. `find_spec`
-walks the finders without running module code, so this is safe for the trees that fire live
-HTTP/LLM calls at import (app/site_analysis/features/**, proforma/v1_5/backtests/**).
+first-party, resolves the dotted path against the FILESYSTEM: `a.b.c` must be `a/b/c/` or `a/b/c.py`
+under the repo root.
+
+Why not `importlib.util.find_spec`, which is the obvious way to do this: `find_spec("a.b.c")`
+imports the parent packages `a` and `a.b` to ask them for their `__path__`. Only the leaf is spared.
+That is fatal here, because `app/site_analysis/features/**` is a tree we promise never to import --
+some of its modules fire live HTTP/LLM calls at module scope, and one calls sys.exit(). Concretely,
+`find_spec("app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors")` executes
+`nearbyCompetitors/__init__.py`, which re-exports from that very module, pulling seven modules under
+features/ into sys.modules. A filesystem check cannot execute anything, by construction.
 
 Why this exists: the 2026-07 restructure renamed app/utils -> app/core and the sweep missed
 datafetching/, which is not in any of import_smoke.py's TREES. Five modules there imported
-app.utils and were broken for two commits before an audit caught it. `find_spec` over the whole
-repo is cheap and would have caught it immediately. Exit 1 on any unresolved first-party import.
+app.utils and were broken for two commits before an audit caught it. Exit 1 on any unresolved
+first-party import.
 """
 from __future__ import annotations
 
 import ast
-import importlib.util
 import pathlib
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-FIRST_PARTY = ("app", "proforma", "libs")
+FIRST_PARTY = ("app", "proforma", "libs", "datafetching", "scripts")
 # Not our problem: vendored/legacy trees, and the venv.
 SKIP_DIRS = {"venv", ".claude", ".git", "__pycache__", "archive", "experiments", "node_modules"}
 
@@ -40,19 +46,32 @@ def first_party(mod: str) -> bool:
     return mod.split(".")[0] in FIRST_PARTY
 
 
+def resolves(dotted: str) -> bool:
+    """True iff `a.b.c` maps to REPO/a/b/c/ or REPO/a/b/c.py. Touches only the filesystem.
+
+    A bare directory counts: `app/`, `proforma/` and `proforma/v1_5/` are PEP 420 namespace
+    packages with no __init__.py, and `from proforma.v1_5.models import coldstart` resolves
+    through them at runtime.
+    """
+    p = REPO.joinpath(*dotted.split("."))
+    return p.is_dir() or p.with_suffix(".py").is_file()
+
+
 def main() -> int:
-    sys.path.insert(0, str(REPO))
     bad: list[tuple[str, int, str]] = []
     checked = 0
 
     for p in sorted(REPO.rglob("*.py")):
-        if any(s in p.parts for s in SKIP_DIRS):
+        rel = p.relative_to(REPO)
+        # Match the skip list against the REPO-RELATIVE path. Matching p.parts would test the
+        # absolute path, so a checkout living under any dir named like a SKIP_DIRS entry (a git
+        # worktree under .claude/, say) would silently skip every file and report 0 checked.
+        if any(s in rel.parts for s in SKIP_DIRS):
             continue
         try:
             tree = ast.parse(p.read_text(encoding="utf-8"), filename=str(p))
         except SyntaxError:
             continue  # import_smoke.py owns syntax errors
-        rel = p.relative_to(REPO)
         for node in ast.walk(tree):
             mods: list[str] = []
             if isinstance(node, ast.ImportFrom) and node.module and node.level == 0:
@@ -63,11 +82,7 @@ def main() -> int:
                 if not first_party(m):
                     continue
                 checked += 1
-                try:
-                    found = importlib.util.find_spec(m) is not None
-                except (ImportError, AttributeError, ValueError):
-                    found = False
-                if not found and (str(rel), m) not in KNOWN_BROKEN:
+                if not resolves(m) and (str(rel), m) not in KNOWN_BROKEN:
                     bad.append((str(rel), node.lineno, m))
 
     if bad:
