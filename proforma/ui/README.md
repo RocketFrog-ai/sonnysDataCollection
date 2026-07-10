@@ -7,7 +7,7 @@ Interactive companion to the notebooks. Two modes (top of the sidebar):
 streamlit run proforma/ui/app.py     # http://localhost:8501
 ```
 
-Runs in conda `proforma311` (python 3.11), not the backend env — see `docs/ENVIRONMENTS.md`.
+Runs in conda `sonnys` (python 3.11) — the one environment; see `docs/ENVIRONMENTS.md`.
 Reads `../data/panel/main-ds.csv` directly (cleans + density-aware clustering on first load, cached) — no notebook run required.
 
 ## 🗺️ Mode 1 — Explore markets

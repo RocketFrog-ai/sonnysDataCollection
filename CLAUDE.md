@@ -42,29 +42,33 @@ The **model** is shared. The **P&L / market math around it is implemented twice*
 of the three places a change belongs in *before* editing. Do not unify them as a drive-by; see
 `docs/DIVERGENCES.md` §1.
 
-## Environments (three of them — the classic footgun)
+## Environment (one of them)
 
 | Env | Python | Defined in | Runs |
 |-----|--------|-----------|------|
-| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend |
-| conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app |
-| `venv/` | 3.13 | not checked in | ad-hoc dev |
+| conda `sonnys` | 3.11 | `environment.yml` | backend, Streamlit, model, council |
+
+`conda env create -f environment.yml && conda activate sonnys`. There used to be three (a py3.9
+backend env, a py3.11 Streamlit env, a py3.13 `venv/`); nothing needed py3.9, so they collapsed.
+
+**`scipy` and `numpy` are pinned on purpose.** `opex_pct_curve_fit` uses `scipy.optimize.curve_fit`,
+which stops on a `1e-8` tolerance rather than exactly, so a different scipy build moves
+`expense_plan` by ~1e-9 relative. `smoke.sh` asserts the pinned version. To upgrade: bump, re-capture
+the baseline, and commit that diff **alone**. See `docs/ENVIRONMENTS.md`.
 
 **Unpickle rule:** `proforma/artifacts/coldstart_artifacts.joblib` is a plain pickle of
 lightgbm/sklearn/numpy objects — it holds **no reference to the module that wrote it**, so the model
 module can be renamed freely. It *is* coupled to library versions: **refit it in the env that will
-load it** (conda `sonnysDataCollection`). Inference-time logic needs no refit. Details, including
-the benign sklearn 1.6.1-vs-1.8.0 mismatch the Streamlit env produces, are in `docs/ENVIRONMENTS.md`.
+load it** (conda `sonnys`). Inference-time logic needs no refit. Details, including the benign
+sklearn 1.6.1-vs-1.8.0 mismatch, are in `docs/ENVIRONMENTS.md`.
 
 ## Common commands
 
 ```bash
-# Streamlit explorer (conda proforma311) — run from the repo root
-streamlit run proforma/ui/app.py                       # http://localhost:8501
-
-# Backends (conda sonnysDataCollection)
+# everything runs in `conda activate sonnys`, from the repo root
+streamlit run proforma/ui/app.py                            # the explorer, http://localhost:8501
 python -m app.main                                          # the API (only /v1/pnl_analysis/*)
-scripts/start_uvicorn_fast_api.sh                           # nohup launcher (sets PYTHONPATH)
+scripts/start_uvicorn_fast_api.sh                           # nohup launcher (needs CONDA_ENV_NAME=sonnys)
 
 # Rebuild the panel after upstream CSV changes
 python proforma/scripts/process_main_data_v2.py

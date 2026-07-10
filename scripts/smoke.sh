@@ -4,8 +4,8 @@
 #   scripts/smoke.sh                    verify current tree against the golden baseline
 #   scripts/smoke.sh --capture-baseline (re)write the baseline; only legitimate pre-refactor
 #
-# It checks, in the correct conda env for each component:
-#   1. the joblib artifact unpickles in the BACKEND env, un-refit      (the version-sensitive one)
+# It checks, in the one conda env (`sonnys`, py3.11 — see environment.yml):
+#   1. the joblib artifact unpickles, un-refit                          (the version-sensitive one)
 #   2. libs/carwash_type imports (no golden test covers it; see the note at the step)
 #   3. every first-party import in the repo resolves, statically       (nothing executed)
 #   4. coldstart predict_site / predict_neighbours / cannib_params     (24 cases, 3 real pins)
@@ -27,23 +27,30 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
 CONDA_BASE="$(conda info --base 2>/dev/null || echo /opt/homebrew/Caskroom/miniconda/base)"
-PY_BACKEND="$CONDA_BASE/envs/sonnysDataCollection/bin/python"   # py3.9  — FastAPI + the joblib artifact
-PY_UI="$CONDA_BASE/envs/proforma311/bin/python"                 # py3.11 — Streamlit
+PY="$CONDA_BASE/envs/sonnys/bin/python"   # the only interpreter: py3.11, backend + UI + model
 
 BASELINE="scripts/_golden/baseline"
 CAPTURE=0
 [[ "${1:-}" == "--capture-baseline" ]] && CAPTURE=1
 OUT="$([[ $CAPTURE == 1 ]] && echo "$BASELINE" || mktemp -d)"
 
-for p in "$PY_BACKEND" "$PY_UI"; do
-  [[ -x "$p" ]] || { echo "FATAL: missing interpreter $p"; echo "  create it: conda env create -f environment*.yml"; exit 2; }
-done
+[[ -x "$PY" ]] || { echo "FATAL: missing interpreter $PY"; echo "  create it: conda env create -f environment.yml"; exit 2; }
+
+# The baseline was captured against the pinned scipy in environment.yml. curve_fit terminates on a
+# tolerance, so a different scipy build silently moves expense_plan (see the environment.yml header).
+# Fail loudly here rather than let it surface as a mystery 1.4e-9 in step 8.
+"$PY" - <<'PY' || exit 2
+import sys, scipy
+if scipy.__version__ != "1.13.1":
+    sys.exit(f"FATAL: scipy {scipy.__version__} != 1.13.1 (pinned). "
+             "expense_plan will drift ~1e-9; re-baseline deliberately or reinstall the env.")
+PY
 
 # Hazard 4: a deleted module keeps importing from its .pyc. Purge before every pass.
 find . -name __pycache__ -not -path './venv/*' -not -path './.claude/*' -exec rm -rf {} + 2>/dev/null || true
 
-echo "== 1/8 joblib artifact unpickles in the BACKEND env (un-refit) =="
-"$PY_BACKEND" - <<'PY'
+echo "== 1/8 joblib artifact unpickles, un-refit =="
+"$PY" - <<'PY'
 import glob, joblib, sklearn
 hits = glob.glob("proforma/artifacts/coldstart_artifacts.joblib") or \
        glob.glob("earnest-proforma-2.0/notebooks/artifacts/coldstart_artifacts.joblib")  # pre-refactor fallback
@@ -60,7 +67,7 @@ PY
 # pipeline was removed. The package is now reached only by its own CLI (classify_site_types.py).
 # Kept as a check because the CLI is real; drop this step if the package goes.
 echo "== 2/8 libs/carwash_type imports (CLI-only since the Celery removal) =="
-"$PY_BACKEND" - <<'PY'
+"$PY" - <<'PY'
 import importlib, sys
 sys.path.insert(0, ".")
 for m in ("libs.carwash_type.config", "libs.carwash_type.scraper",
@@ -75,20 +82,20 @@ PY
 # imports a module's parent packages to ask for their __path__, which would execute
 # proforma/backtests/**, the tree we promise never to import. See the checker's docstring.
 echo "== 3/8 every first-party import resolves, repo-wide (static) =="
-"$PY_BACKEND" scripts/_golden/check_imports_resolve.py 2>&1 | tail -1
+"$PY" scripts/_golden/check_imports_resolve.py 2>&1 | tail -1
 
-echo "== 4/8 coldstart golden (backend env) =="
-"$PY_BACKEND" scripts/_golden/capture_model.py "$OUT" 2>&1 | grep -v "^\s*$" | tail -1
+echo "== 4/8 coldstart golden =="
+"$PY" scripts/_golden/capture_model.py "$OUT" 2>&1 | grep -v "^\s*$" | tail -1
 
-echo "== 5/8 pnl_analysis API golden (backend env) =="
-"$PY_BACKEND" scripts/_golden/capture_api.py "$OUT" 2>&1 | tail -1
+echo "== 5/8 pnl_analysis API golden =="
+"$PY" scripts/_golden/capture_api.py "$OUT" 2>&1 | tail -1
 
-echo "== 6/8 streamlit app body executes (AppTest, streamlit env) =="
-"$PY_UI" scripts/_golden/capture_ui.py "$OUT" 2>&1 | grep -viE "InconsistentVersion|scikit-learn|warnings.warn|ScriptRunContext|st.components" | tail -1
+echo "== 6/8 streamlit app body executes (AppTest) =="
+"$PY" scripts/_golden/capture_ui.py "$OUT" 2>&1 | grep -viE "InconsistentVersion|scikit-learn|warnings.warn|ScriptRunContext|st.components" | tail -1
 
 echo "== 7/8 import smoke =="
-"$PY_BACKEND" scripts/_golden/import_smoke.py "$OUT" backend 2>&1 | tail -1
-"$PY_UI"      scripts/_golden/import_smoke.py "$OUT" ui      2>&1 | tail -1
+"$PY" scripts/_golden/import_smoke.py "$OUT" backend 2>&1 | tail -1
+"$PY"      scripts/_golden/import_smoke.py "$OUT" ui      2>&1 | tail -1
 
 if [[ $CAPTURE == 1 ]]; then
   echo; echo "BASELINE CAPTURED -> $BASELINE"; exit 0
@@ -101,10 +108,10 @@ rc=0
 # imports_*.json are keyed by file path, so their strict surface is only the (empty) failure
 # maps; check_counts.py guards the informational counts against silent regression.
 for f in model.json api.json ui_render.json imports_backend.json imports_ui.json; do
-  "$PY_BACKEND" scripts/_golden/diff.py "$BASELINE/$f" "$OUT/$f" 1e-9 || rc=1
+  "$PY" scripts/_golden/diff.py "$BASELINE/$f" "$OUT/$f" 1e-9 || rc=1
 done
 for t in backend ui; do
-  "$PY_BACKEND" scripts/_golden/check_counts.py "$BASELINE/imports_$t.json" "$OUT/imports_$t.json" || rc=1
+  "$PY" scripts/_golden/check_counts.py "$BASELINE/imports_$t.json" "$OUT/imports_$t.json" || rc=1
 done
 rm -rf "$OUT"
 [[ $rc == 0 ]] && echo && echo "SMOKE PASS -- behavior preserved to 1e-9" || { echo; echo "SMOKE FAIL"; }

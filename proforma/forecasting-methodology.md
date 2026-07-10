@@ -342,5 +342,4 @@ AND 1.3× the trailing-6-month median** (interior months only).
 - Accuracy: `cm.evaluate_trajectory(n_folds=5)` → `{n, mape, mae}`.
 - Market trend: `market_trend(date×site pivot)` in `app.py` → `(g, g_lo, g_hi)`.
 - Campaign signal: reproduce the event study in `notebooks/book_v4.ipynb` on `proforma/data/opex/opex-data.csv`.
-- Companion deep-dive: `ui/PINPOINT_FORECAST.md`. Run from `proforma/ui/` with the
-  project venv (conda `sonnysDataCollection`).
+- Companion deep-dive: `ui/PINPOINT_FORECAST.md`. Run from `proforma/ui/` in conda `sonnys`.

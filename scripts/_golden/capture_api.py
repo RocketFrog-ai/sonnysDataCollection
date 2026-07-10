@@ -3,7 +3,7 @@
     python scripts/_golden/capture_api.py <out_dir>
 
 Runs the ASGI app in-process via httpx's ASGITransport -- no port, no uvicorn, no network.
-Requires the conda `sonnysDataCollection` env (it is the only one with fastapi).
+Requires the conda `sonnys` env.
 
 DELIBERATELY EXCLUDED: every /insights/* route. Those call an LLM, are non-deterministic
 by construction, and are documented as annotating rather than altering modelled numbers.

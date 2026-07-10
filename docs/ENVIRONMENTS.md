@@ -1,18 +1,65 @@
 # Environments
 
-There are **three** Python environments and they are not interchangeable. Picking the wrong one is
-the most common way to waste an afternoon here.
+There is **one** Python environment. Everything — the FastAPI backend, the Streamlit app, the model,
+the council — runs in it.
 
 | Env | Python | Defined in | Runs |
 |---|---|---|---|
-| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend (`app.main`) |
-| conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app (`proforma/ui/app.py`) |
-| `venv/` | 3.13 | not checked in (gitignored, ~1.2 GB) | ad-hoc dev |
+| conda `sonnys` | 3.11 | `environment.yml` | all of it |
 
 ```bash
-conda env create -f environment.yml               # backend
-conda env create -f environment-proforma311.yml   # streamlit  (needs --solver=libmamba on slow links)
+conda env create -f environment.yml     # add --solver=libmamba on slow links
+conda activate sonnys
+
+uvicorn app.main:app --port 8010        # the API
+streamlit run proforma/ui/app.py        # the UI
+scripts/smoke.sh                        # prove the numbers still match
 ```
+
+There used to be three: a py3.9 conda env `sonnysDataCollection` for the backend, a py3.11
+`proforma311` for Streamlit (py3.9 caps Streamlit at 1.50), and a py3.13 `venv/` for ad-hoc dev.
+Nothing actually needed py3.9. Remove the old ones once you have `sonnys`:
+
+```bash
+conda env remove -n sonnysDataCollection && conda env remove -n proforma311
+```
+
+If you use `scripts/start_uvicorn_fast_api.sh`, set `CONDA_ENV_NAME=sonnys` in `.env` — the script
+refuses to launch unless the active env matches.
+
+## The pinned dependencies, and why you may not casually bump them
+
+`environment.yml` pins `scipy==1.13.1` and `numpy==2.2.6`. This is not superstition.
+
+`app/pnl_analysis/modelling/pnl.py::opex_pct_curve_fit` fits the opex%-of-revenue decay curve with
+`scipy.optimize.curve_fit` — a bounded non-linear least-squares that terminates on a **tolerance**
+(`ftol`/`xtol`/`gtol` all default to `1e-8`), not on exactness. Its fitted parameters are therefore
+only defined to about `1e-8`, and different scipy builds walk different step paths and stop at
+different points. Measured across scipy 1.13.1 → 1.17.1, on inputs verified bit-identical by sha256:
+
+```
+hot  0.8743861484901816  ->  0.8743861486257372     (1.5e-10 relative)
+mat  0.38664364199564244 ->  0.3866436420304434     (9.0e-11 relative)
+tau  2.4609460487255252  ->  2.4609460460784720     (1.1e-9  relative)
+```
+
+`opex = shape × revenue` inherits that, and `net = revenue − expenses` amplifies it by cancellation
+to `1.4e-9` — past the `1e-9` the golden harness enforces. In dollars it is **$5.3e-06 on a monthly
+net of −$3,733.52**, i.e. nothing. Everything else in the repo — all 24 coldstart cases, the other 14
+API cases, the whole Streamlit render surface — is bit-identical across scipy versions, and pandas
+2.2→3.0 / numpy 2.0→2.4 change *nothing at all*.
+
+So the pin exists to keep a real (if microscopic) numeric change from being smuggled in under an
+unrelated commit. `scripts/smoke.sh` asserts the scipy version up front and fails loudly, rather than
+letting it surface as a mystery `1.4e-9` in the final diff.
+
+**To upgrade scipy:** bump it, run `scripts/smoke.sh --capture-baseline`, and commit the re-baselined
+`api.json` **on its own**, so the diff is attributable to the upgrade and to nothing else.
+
+The deeper lesson: a `1e-9` contract over an iterative optimizer's output was never really pinning
+*behavior* — it was pinning a build. If `expense_plan` ever needs to be genuinely reproducible across
+solver versions, tighten `curve_fit`'s tolerances so it converges to the true minimum instead of
+stopping near it.
 
 ## The joblib rule
 
@@ -25,16 +72,15 @@ where `coldstart_model` is not importable.
 
 What the artifact *is* coupled to is **library versions**:
 
-> **Refit the artifact in the environment that will load it.** For the backend that means conda
-> `sonnysDataCollection`. Refitting in the 3.13 `venv` produces an artifact the backend cannot
-> unpickle.
+> **Refit the artifact in the environment that will load it** — now unambiguously conda `sonnys`,
+> since there is only one. Refitting in some other interpreter can produce an artifact this one
+> cannot unpickle.
 
 Inference-time logic (anchor calibration, the ASP-corruption filter, breakeven) needs no refit.
 
 ### The mismatch you will see, and why it is currently benign
 
-The artifact was fitted under **scikit-learn 1.6.1** (the backend env). `environment-proforma311.yml`
-pins **scikit-learn 1.8.0**. So the Streamlit app loads a pickle written by a different sklearn and
+The artifact was fitted under **scikit-learn 1.6.1**. `environment.yml` pins **1.8.0**. So loading it
 emits:
 
 ```
@@ -42,33 +88,30 @@ InconsistentVersionWarning: Trying to unpickle estimator ExtraTreeRegressor
 from version 1.6.1 when using version 1.8.0
 ```
 
-This was checked rather than assumed: the full 24-case golden capture was run under **both** envs
-and the outputs were **bit-identical**. So today the warning is cosmetic.
+This was checked rather than assumed: the full 24-case golden capture was run under both sklearn
+versions and the outputs were **bit-identical**. So today the warning is cosmetic.
 
-sklearn does not *guarantee* that across versions, and the warning exists precisely because a
-future version could silently change a prediction. Treat it as a real risk that happens not to have
-bitten yet. If you refit, refit for the backend (1.6.1) — that is the env that must unpickle it —
-and re-run `scripts/smoke.sh` under both envs.
+sklearn does not *guarantee* that across versions, and the warning exists precisely because a future
+version could silently change a prediction. Treat it as a real risk that happens not to have bitten
+yet. If you refit, refit under `sonnys` and re-run `scripts/smoke.sh`.
 
 ## Verifying an environment
 
 ```bash
-./scripts/smoke.sh          # uses the right interpreter for each component automatically
+./scripts/smoke.sh
 ```
 
-`smoke.sh` resolves both conda envs from `conda info --base` and fails loudly if either is missing.
-It checks the artifact unpickles in the **backend** env specifically, since that is the one where a
-version mismatch would be fatal rather than cosmetic.
+It resolves `sonnys` from `conda info --base`, fails loudly if it is missing, asserts the pinned
+scipy, then checks the artifact unpickles before running any golden.
 
 ## Import resolution — there is no packaging
 
 By deliberate choice there is no `pyproject.toml` and nothing is `pip install -e .`'d. Imports
-resolve off the **repo root**, which must be the CWD (or on `PYTHONPATH`). `proforma`, `proforma`,
-`libs`, and `libs.carwash_type` are implicit namespace packages; `app` and `experiments.council` are
-regular packages.
+resolve off the **repo root**, which must be the CWD (or on `PYTHONPATH`). `proforma` and `libs` are
+implicit namespace packages; `app` and `experiments.council` are regular packages.
 
 The one wrinkle: `streamlit run` puts only the *script's own directory* on `sys.path`
-(`streamlit/web/bootstrap.py:59`), never the repo root. So the three Streamlit **entrypoints** under
+(`streamlit/web/bootstrap.py:59`), never the repo root. So the Streamlit **entrypoints** under
 `proforma/ui/` each bootstrap the repo root onto `sys.path` before importing `app.*` or
 `proforma.*`. No library module does this. Do not remove those lines without replacing them with a
 `PYTHONPATH` launcher — see `docs/DIVERGENCES.md` §8.

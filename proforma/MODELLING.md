@@ -127,10 +127,10 @@ Separate from the numbers — `app/pnl_analysis/insights/`. The explore-markets 
 
 ## 7. Running / retraining
 
-- **App:** `venv/bin/streamlit run proforma/ui/app.py`
+- **App:** `conda activate sonnys && streamlit run proforma/ui/app.py`
 - **Refit the cold-start artifact** (after changing the level model / ramp): run
-  `coldstart.py` in the conda `sonnysDataCollection` env (sklearn 1.6.1) so the FastAPI backend can
-  unpickle it — `coldstart_artifacts.joblib`. The anchor calibration and ASP/breakeven logic are
+  `coldstart.py` in the conda `sonnys` env, the same one that unpickles it —
+  `coldstart_artifacts.joblib`. The anchor calibration and ASP/breakeven logic are
   inference-time and need **no** refit.
 
 ---

@@ -1,4 +1,4 @@
-"""Capture the Streamlit app's RENDERED surface. Run in the conda `proforma311` env.
+"""Capture the Streamlit app's RENDERED surface. Run in the conda `sonnys` env.
 
     python scripts/_golden/capture_ui.py <out_dir>
 

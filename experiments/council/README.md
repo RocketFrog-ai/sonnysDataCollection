@@ -6,8 +6,8 @@ forecast the backend or the Streamlit app produces. `proforma` is the live versi
 **Reads:** `proforma/data/panel/main-data-v2-stitched.csv` only, from the shared store.
 **Writes:** `experiments/council/outputs/`.
 
-**Run:** `python -m experiments.council.harness --limit 8` — from the repo root, conda
-`sonnysDataCollection`. The full run is ~2000 LLM calls; start with `--limit`.
+**Run:** `python -m experiments.council.harness --limit 8` — from the repo root, conda `sonnys`.
+The full run is ~2000 LLM calls; start with `--limit`.
 
 It *does* import `app/pnl_analysis/insights/*` (the seats are the existing insight functions,
 called unchanged). That is the one direction of coupling: `v1_6` → `app`, never the reverse.

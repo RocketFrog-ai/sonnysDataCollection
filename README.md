@@ -15,8 +15,9 @@ sites (`client_id + site_id`, monthly, 2020→2027).
 | know what's already broken | `docs/DIVERGENCES.md` — read before "fixing" anything |
 
 ```bash
-streamlit run proforma/ui/app.py     # the explorer  (conda proforma311)
-python -m app.main                   # the API       (conda sonnysDataCollection)
+conda activate sonnys                # the one environment (py3.11)
+streamlit run proforma/ui/app.py     # the explorer
+python -m app.main                   # the API
 ./scripts/smoke.sh                   # prove you changed no numbers
 ```
 

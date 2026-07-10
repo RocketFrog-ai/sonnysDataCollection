@@ -48,10 +48,10 @@ From `data/`, never a private copy. See `data/README.md` and `../docs/DATA.md`.
 ## Running it
 
 ```bash
-# the Streamlit explorer — conda proforma311, from the repo root
+# the Streamlit explorer — conda sonnys, from the repo root
 streamlit run proforma/ui/app.py                         # http://localhost:8501
 
-# the model, directly — conda sonnysDataCollection
+# the model, directly
 python -c "from proforma.models import coldstart as cm; \
            traj, meta = cm.predict_site(29.798555, -95.719688); print(meta)"
 ```
@@ -77,8 +77,8 @@ before changing forecast behaviour.
 sklearn estimators. It carries **no reference to the module that wrote it**, so the module can be
 renamed freely — but it *is* coupled to library versions.
 
-> Refit it in the environment that will load it: conda `sonnysDataCollection`.
-> Refitting in the 3.13 `venv` produces an artifact the backend cannot unpickle.
+> Refit it in the environment that will load it: conda `sonnys`, the only one.
+> Refitting under some other interpreter can produce an artifact this one cannot unpickle.
 
 Refit with `cm.fit(save=True)`. Inference-time changes (anchor calibration, the ASP-corruption
 filter, breakeven) need no refit. After any refit, run `./scripts/smoke.sh`.

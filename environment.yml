@@ -1,64 +1,77 @@
-# Conda environment matching project venv / app dependencies.
-# Create: conda env create -f environment.yml
-# Update: conda env update -f environment.yml --prune
+# The one environment. Backend, Streamlit app, model, council -- all of it.
+#
+#   conda env create -f environment.yml
+#   conda activate sonnys
+#
+#   uvicorn app.main:app --port 8010          # the API
+#   streamlit run proforma/ui/app.py          # the UI
+#   scripts/smoke.sh                          # prove the numbers still match
+#
+# There used to be three interpreters (a py3.9 `sonnysDataCollection` for the backend, a py3.11
+# `proforma311` for Streamlit, and a py3.13 `venv/`), because py3.9 caps Streamlit at 1.50. Nothing
+# needed py3.9, so they collapsed into this. Remove the old ones:
+#   conda env remove -n sonnysDataCollection && conda env remove -n proforma311
+#
+# ---------------------------------------------------------------------------------------------
+# WHY scipy AND numpy ARE PINNED, AND WHY YOU MAY NOT CASUALLY BUMP THEM
+#
+# app/pnl_analysis/modelling/pnl.py::opex_pct_curve_fit fits the opex%-of-revenue decay curve with
+# scipy.optimize.curve_fit -- a bounded non-linear least-squares that terminates on a TOLERANCE
+# (ftol/xtol/gtol default to 1e-8), not on exactness. Its fitted parameters are therefore only
+# defined to ~1e-8, and different scipy builds walk different step paths and stop at different
+# points. Measured, scipy 1.13.1 -> 1.17.1, on bit-identical inputs (sha256-verified):
+#
+#     tau  2.4609460487255252  ->  2.4609460460784720     (1.1e-9 relative)
+#
+# `opex = shape x revenue` inherits that, and `net = revenue - expenses` amplifies it by
+# cancellation to 1.4e-9 -- past the 1e-9 the golden harness enforces. In dollars it is 5.3e-06 on
+# a monthly net of -3733.52, i.e. nothing. But it moves a number, so it is pinned here rather than
+# smuggled in under a restructure. scipy 1.13.1 caps numpy below 2.3, hence the numpy pin.
+#
+# To upgrade: bump scipy, run `scripts/smoke.sh --capture-baseline`, and commit the re-baselined
+# api.json ON ITS OWN, so the diff is attributable. See docs/ENVIRONMENTS.md.
+# ---------------------------------------------------------------------------------------------
 
-name: sonnysDataCollection
+name: sonnys
 
 channels:
   - conda-forge
   - defaults
 
 dependencies:
-  - python=3.9
+  - python=3.11
   - pip
 
   - pip:
-    - annotated-types==0.7.0
-    - anyio==3.7.1
-    - certifi==2026.1.4
-    - cffi==2.0.0
-    - charset-normalizer==3.4.4
-    - click==8.1.8
-    - cryptography==46.0.4
-    - distro==1.9.0
-    - et_xmlfile==2.0.0
-    - exceptiongroup==1.3.1
-    - fastapi==0.104.1
-    - google-auth==2.49.0.dev0
-    - google-genai==1.4.0
-    - h11==0.16.0
-    - httpcore==1.0.9
-    - httptools==0.7.1
+    # --- numeric core. Pinned; the golden baseline is captured against exactly these. ---
+    - numpy==2.2.6              # ceiling imposed by the scipy pin below
+    - pandas==3.0.2
+    - scipy==1.13.1             # PINNED -- see the header. Bumping this moves expense_plan.
+    - scikit-learn==1.8.0       # unpickles coldstart_artifacts.joblib (fitted under 1.6.1)
+    - lightgbm==4.6.0
+    - joblib==1.5.3
+
+    # --- Streamlit app (proforma/ui) ---
+    - streamlit==1.58.0         # needs py>=3.10; this is why the py3.9 env had to go
+    - plotly==6.6.0
+    - folium==0.20.0
+    - streamlit-folium==0.27.2
+
+    # --- FastAPI backend (app/) ---
+    - fastapi>=0.115            # <0.115 pins starlette<0.40, which streamlit 1.58 refuses
+    - uvicorn==0.51.0
     - httpx==0.28.1
-    - idna==3.11
-    - jiter==0.13.0
-    - langgraph>=0.2          # Explore-markets Key-Insights pipeline (2-node graph); falls back to a sequential runner if absent
-    - numpy==2.0.2
-    - openai==2.16.0
-    - opencv-python==4.13.0.90
-    - openpyxl==3.1.5
-    - pandas==2.2.3
-    - pyasn1==0.6.2
-    - pyasn1_modules==0.4.2
-    - pycparser==2.23
-    - pydantic==2.5.0
-    - pydantic_core==2.14.1
-    - python-dateutil==2.9.0.post0
-    - python-dotenv==1.0.0
-    - pytz==2025.2
-    - PyYAML==6.0.3
-    - scikit-learn
-    - requests==2.31.0
-    - six==1.17.0
-    - sniffio==1.3.1
-    - starlette==0.27.0
-    - tqdm==4.67.2
-    - typing_extensions==4.15.0
-    - tzdata==2025.3
-    - urllib3==2.6.3
-    - uvicorn==0.24.0
-    - uvloop==0.22.1
-    - watchfiles==1.1.1
-    - websockets==14.2
-    - scipy==1.13.1
-  - matplotlib>=3.7
+    - pydantic==2.13.4
+    - requests==2.32.5
+    - python-dotenv==1.2.2
+
+    # --- insights layer (app/pnl_analysis/insights). Lazily imported; the API serves without them. ---
+    - openai>=2.16              # Azure + local chat backends
+    - langgraph>=0.2            # 2-node Key-Insights graph; falls back to a sequential runner if absent
+    - beautifulsoup4>=4.12      # websearch result parsing
+    - ddgs>=9                   # web search (was `duckduckgo-search`; both names are handled)
+
+    # --- everything else that is actually imported ---
+    - openpyxl==3.1.5           # proforma/backtests reads .xlsx proformas
+    - rapidfuzz>=3              # libs/carwash_type name matching
+    - tqdm>=4.67                # experiments/council + experiments/datafetching
