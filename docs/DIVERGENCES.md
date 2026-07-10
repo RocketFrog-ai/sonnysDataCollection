@@ -209,9 +209,8 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
 - **`/v1/pnl_analysis/insights/*` are excluded** — they call an LLM and are non-deterministic by
   construction. They are documented as annotating, never altering, modelled numbers.
 - **`app/site_analysis/features/**` is `ast`-parsed but never imported.** Those modules run live
-  HTTP/LLM calls at module scope: `app/site_analysis/features/inactive/experimental_features/typeOfSite/test_o4_mini.py` fires an API request and prints a
-  `403` on import, and `.../typeOfSite/o4mini_images_classification.py` calls a vision model at module level.
-  Importing that tree costs money.
+  HTTP/LLM calls at module scope: `.../typeOfSite/o4mini_images_classification.py` calls a vision
+  model at module level. Importing that tree costs money.
 - **`app/site_analysis/*` endpoints have no golden outputs**, because they make live third-party
   calls. Their route paths and their full OpenAPI schema (every field name, type, default, and
   validation bound) were diffed against the `pre-refactor` tag once, by hand, and matched
