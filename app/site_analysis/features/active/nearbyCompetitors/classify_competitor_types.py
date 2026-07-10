@@ -1,9 +1,9 @@
 import logging
 import concurrent.futures
 from typing import List, Dict, Any
-from type_car_wash.scraper import scrape_site
-from type_car_wash.analyzer import classify_car_wash_with_ai
-from type_car_wash.finder import find_official_website
+from libs.carwash_type.scraper import scrape_site
+from libs.carwash_type.analyzer import classify_car_wash_with_ai
+from libs.carwash_type.finder import find_official_website
 from app.site_analysis.server.db_cache import get_cached_classification, save_classification
 
 logger = logging.getLogger(__name__)

@@ -2,7 +2,7 @@ import textwrap
 from openai import OpenAI
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from type_car_wash.config import AZURE_OPENAI_API_KEY
+from libs.carwash_type.config import AZURE_OPENAI_API_KEY
 
 # Expanded classification types
 VALID_TYPES = [

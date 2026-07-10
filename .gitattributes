@@ -1,11 +1,17 @@
-app/modelling/ds/datasets/data_age_less_2_with_daily_weather_merged.csv filter=lfs diff=lfs merge=lfs -text
-modelling2/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
-app/modelling/ds/datasets/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
-daily_data/daily-data-fetch/daily-data-eda/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
-daily_data/daily-data-modelling/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
-daily_data/daily-data-eda/master_daily_with_site_metadata.csv filter=lfs diff=lfs merge=lfs -text
-daily_data/daily-data-modelling/more_than-2yrs.csv filter=lfs diff=lfs merge=lfs -text
-daily_data/daily-data-modelling/master_more_than-2yrs.csv filter=lfs diff=lfs merge=lfs -text
-modelling2/master_daily_with_site_metadata.backup_before_daily_weather.csv filter=lfs diff=lfs merge=lfs -text
-daily_data/daily-data-modelling/clustering_v2/models/*/wash_count_model_12km.rf.joblib filter=lfs diff=lfs merge=lfs -text
-app/site_analysis/modelling/ds/datasets/*.csv filter=lfs diff=lfs merge=lfs -text
+# git-LFS is NOT in use in this repo.
+#
+# This file previously held 11 `filter=lfs` patterns. Every one of them was dead:
+#   * 9 matched files that exist on disk but are untracked (app/modelling/, modelling2/,
+#     daily_data/ -- none of which are committed);
+#   * 2 matched nothing at all.
+# `git lfs ls-files` reported zero LFS-tracked files at HEAD, both before and after the
+# 2026-07 restructure. The 13 real LFS objects that do exist live only in history, under
+# app/site_analysis/modelling/ds/datasets/, a path that no longer exists at HEAD.
+#
+# The one genuinely large tracked file, proforma/v1_5/artifacts/coldstart_artifacts.joblib
+# (~46 MB), is stored as an ordinary inline git blob, not an LFS pointer. Do not "fix" that
+# by adding an LFS pattern for it: converting an already-committed inline blob to LFS
+# rewrites how git stores existing history and buys nothing here.
+#
+# If you reintroduce LFS, add the pattern BEFORE committing the file, then verify with
+# `git lfs ls-files` -- a pattern added afterwards silently does nothing.

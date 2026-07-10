@@ -1,7 +1,7 @@
 """
 Self-contained carwash-type classifier for our own sites in main-ds.csv.
 
-Single file. No dependency on the type_car_wash package -- the website
+Single file. No dependency on the carwash_type package -- the website
 finder, the Jina scraper, and the Azure OpenAI classifier are all inlined
 below so this script can be copied/run anywhere with just:
 
