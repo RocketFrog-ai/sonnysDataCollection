@@ -5,7 +5,7 @@ the most common way to waste an afternoon here.
 
 | Env | Python | Defined in | Runs |
 |---|---|---|---|
-| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend (`app.main`, `app.pnl_only`) |
+| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend (`app.main`) |
 | conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app (`proforma/ui/app.py`) |
 | `venv/` | 3.13 | not checked in (gitignored, ~1.2 GB) | ad-hoc dev |
 
@@ -73,6 +73,5 @@ The one wrinkle: `streamlit run` puts only the *script's own directory* on `sys.
 `proforma.*`. No library module does this. Do not remove those lines without replacing them with a
 `PYTHONPATH` launcher — see `docs/DIVERGENCES.md` §8.
 
-The startup scripts additionally put `app/site_analysis/features/...` on `PYTHONPATH` so that the
-feature modules' bare intra-feature imports resolve. That is why those modules cannot simply be
-imported from the repo root.
+(The startup scripts used to put `app/site_analysis/features/...` on `PYTHONPATH` for that tree's
+bare intra-feature imports. The tree is gone; nothing needs `PYTHONPATH` any more.)

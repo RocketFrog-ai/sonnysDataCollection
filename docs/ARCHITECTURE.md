@@ -8,7 +8,7 @@ proforma/          ALL modelling. One tree; versions are git tags, not folders.
   models/          coldstart.py — THE model. plateau x ramp x cannibalization.
   ui/              Streamlit. app.py is a thin entry; panels/ holds the modes.
   artifacts/       the fitted joblib.
-app/               FastAPI backend. Two entrypoints (below).
+app/               FastAPI backend. main.py + server/ (routes) + core/ + pnl_analysis/.
 libs/carwash_type/ importable utility: classify a wash from its website.
 archive/           frozen prior work. Read for method history; do not build on it.
 experiments/       standalone, not on the import path (customer-churn, datafetching CLIs).
@@ -48,48 +48,44 @@ you change forecasting behaviour, work out which of the three places it belongs 
 edit. Read `docs/DIVERGENCES.md` §1. Unifying them is a separate project, and it needs a golden
 baseline covering the Streamlit side first.
 
-## Two backend entrypoints, on purpose
+## One backend, one entrypoint
 
 ```bash
-python -m app.main                    # site_analysis + pnl_analysis. Needs openai + the live fetchers.
-uvicorn app.pnl_only:app --port 8010  # pnl_analysis ONLY. No openai, no live fetchers.
+python -m app.main                       # host/port from FAST_API_HOST / FAST_API_PORT
+uvicorn app.main:app --port 8010
 ```
 
-This is **not** redundant code — it is two mount configurations with different dependency
-footprints. `app/pnl_only.py` exists so the forecasting API can be served without dragging in the
-live external-data fetchers or the OpenAI client. There is no `serve_pnl.py` shim: if a deploy
-script still says `serve_pnl:app`, point it at `app.pnl_only:app`.
+Everything is mounted under `/v1`, and `app/server` carries the prefix `/pnl_analysis`, so the paths
+are `/v1/pnl_analysis/...`. 22 routes: the market/forecast/campaign endpoints plus five `insights/*`.
 
-Both mount their routers under `/v1`. `app/pnl_analysis` additionally carries the prefix
-`/pnl_analysis`, so its full paths are `/v1/pnl_analysis/...`.
+### What used to be here, and why it isn't
 
-### There is no Celery, and no async pipeline
+- **Celery + an async pipeline.** `POST /v1/analyze-site` enqueued a task; you polled
+  `GET /v1/task/{id}`. The worker had been unable to boot for months (`celery_app.conf.include`
+  named a module deleted in `814fa37`), so callers polled forever. Removed 2026-07 with Redis and
+  the worker scripts.
+- **The whole `site_analysis` subsystem** — `server/`, `modelling/site_context.py`, `config.py`, and
+  feature fetchers for weather, gas, retail anchors, stores and traffic lights. It backed
+  `POST /v1/site-context`, `/site-features`, `/traffic-lights`, `/nearby-stores`. **Nothing rendered
+  any of it**: the Streamlit page that did (`site_analysis_page.py`) was never wired into the mode
+  dispatch, and Sitewise calls Google Places directly. Removed 2026-07.
+  Recover with `git checkout site-analysis-api -- app/site_analysis app/main.py`.
+- **The second entrypoint.** `app/pnl_only.py` existed only because `main` also mounted the
+  site_analysis router. With that gone the two apps were identical, so they were collapsed.
 
-There used to be. `app/tasks/` (once `app/celery/`) backed an async enrichment pipeline:
-`POST /v1/analyze-site` enqueued a task, you polled `GET /v1/task/{id}`, then read
-`GET /v1/{dimension}/data-by-task/{id}`. **All of it was removed in 2026-07**, along with Celery,
-Redis, the two worker scripts, and `app/site_analysis/modelling/site_analysis.py`.
-
-Why: the worker had been unable to start for months — `celery_app.conf.include` named a module
-deleted in `814fa37` — so every `POST /v1/analyze-site` enqueued work nothing would ever run and the
-caller polled forever. The capability had already migrated to a synchronous endpoint.
-
-**`POST /v1/site-context` is the replacement.** One call, one response: weather, competing car
-washes, retail anchors, gas stations, map markers, and rule-based insights. It fetches the same
-sources in parallel with a thread pool (`site_context.py`) instead of a task queue.
-
-If you need the async shape back, reintroduce it deliberately: it is a queue, a worker, and a result
-store, not a refactor.
+Two modules survived that removal, because Explore-markets still needs them: `app/core/places/`
+(`nearby_competitors`, `search_nearby`) anchors the **Competition Coverage** insight on real Google
+Places car washes rather than LLM guesswork.
 
 ## Inside `app/`
 
+- **`app/main.py`** — the FastAPI app. Mounts one router.
+- **`app/server/`** — the HTTP layer, global rather than nested under a feature: `router.py`
+  (parse, delegate, serialize), `schemas.py` (pydantic), `service.py` (shared handler logic).
 - **`app/core/`** (was `app/utils/`) — the config hub. Loads `.env` from the repo root regardless of
-  CWD; exposes API keys and geocoding helpers. Nearly everything imports it.
-- **`app/site_analysis/`** — synchronous external-data enrichment. `server/` splits into `router.py`
-  (parse, delegate, serialize), `schemas.py` (pydantic), `service.py` (the logic).
-  `features/` holds one module per data source.
-- **`app/pnl_analysis/`** — the P&L/market API. Same `router` / `schemas` / `service` split.
-  `modelling/` ports the Streamlit math; `insights/` is the LLM layer.
+  CWD; exposes API keys and geocoding helpers. `core/llm/` is the LLM transport, `core/places/` the
+  Google Places helpers.
+- **`app/pnl_analysis/`** — `modelling/` ports the Streamlit math; `insights/` is the LLM layer.
 - **`app/pnl_analysis/insights/`** — "context, not the model". `graph.py` is a 2-node LangGraph
   (compute metrics → generate narrative) with a sequential fallback if langgraph is absent.
   `llm.py` switches backend via `INSIGHTS_LLM_BACKEND=azure|local`.
@@ -97,13 +93,12 @@ store, not a refactor.
 
 ### Import gotchas that survive
 
-- `app/site_analysis/features/**` are **scripts, not libraries**. Several run live HTTP/LLM calls at
-  module import time. The startup scripts put their directories on `PYTHONPATH` so their bare
-  intra-feature imports resolve. Never `import` that tree to test it.
+- `proforma/backtests/**` are **scripts, not libraries**: they read data and fit models at module
+  scope. Never `import` that tree to test it.
 - The Streamlit **entrypoints** under `proforma/ui/` each put the repo root on `sys.path`.
   `streamlit run` only adds the script's own directory (`streamlit/web/bootstrap.py:59`), and there
   is deliberately no packaging. No library module does this.
-- `proforma`, `proforma`, `libs` are implicit namespace packages (no `__init__.py`).
+- `proforma`, `proforma.models`, `libs` are implicit namespace packages (no `__init__.py`).
   `app` and `experiments.council` are regular packages.
 
 ## Verifying you changed nothing

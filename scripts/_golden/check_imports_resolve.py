@@ -8,11 +8,9 @@ under the repo root.
 
 Why not `importlib.util.find_spec`, which is the obvious way to do this: `find_spec("a.b.c")`
 imports the parent packages `a` and `a.b` to ask them for their `__path__`. Only the leaf is spared.
-That is fatal here, because `app/site_analysis/features/**` is a tree we promise never to import --
-some of its modules fire live HTTP/LLM calls at module scope, and one calls sys.exit(). Concretely,
-`find_spec("app.site_analysis.features.nearbyCompetitors.get_nearby_competitors")` executes
-`nearbyCompetitors/__init__.py`, which re-exports from that very module, pulling seven modules under
-features/ into sys.modules. A filesystem check cannot execute anything, by construction.
+That was fatal when app/site_analysis/features/** existed -- some of its modules fired live HTTP/LLM
+calls at module scope. That tree is gone, but the same hazard applies to proforma/backtests/**, so
+the filesystem check stays: it cannot execute anything, by construction.
 
 Why this exists: the 2026-07 restructure renamed app/utils -> app/core and the sweep missed
 datafetching/ (now experiments/datafetching/), which is in none of import_smoke.py's TREES. Five modules there imported
@@ -30,16 +28,9 @@ FIRST_PARTY = ("app", "proforma", "libs", "datafetching", "scripts")
 # Not our problem: vendored/legacy trees, and the venv.
 SKIP_DIRS = {"venv", ".claude", ".git", "__pycache__", "archive", "experiments", "node_modules"}
 
-# Known-broken, recorded rather than hidden. test_endpoint.py is a root ad-hoc script (not pytest)
-# that imports `get_competitors_dynamics_endpoint` and `CompetitorsDynamicsRequest`. NEITHER SYMBOL
-# EXISTS in app/, and `git grep` at the pre-refactor tag shows neither existed then -- the script has
-# been broken for a long time. The restructure split routes.py/models.py into router/schemas/service,
-# so its failure moved from "module imports, symbol missing" to "module missing". Broken either way.
-# See docs/DIVERGENCES.md section 8. Delete this entry the day someone fixes or deletes the script.
-KNOWN_BROKEN = {
-    ("test_endpoint.py", "app.site_analysis.server.routes"),
-    ("test_endpoint.py", "app.site_analysis.server.models"),
-}
+# Known-broken imports, recorded rather than hidden. Empty since 2026-07: test_endpoint.py, the only
+# entry, imported two symbols that never existed, and was deleted with the site_analysis subsystem.
+KNOWN_BROKEN: set = set()
 
 
 def first_party(mod: str) -> bool:

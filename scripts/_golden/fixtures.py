@@ -11,7 +11,7 @@ when the module moves and its HERE-relative data paths are rewritten):
 Also resolves the two things the refactor relocates, tolerating either layout so
 one harness can capture the baseline AND verify the result:
   coldstart model  earnest-proforma-2.0/streamlits/coldstart_model.py -> proforma/models/coldstart.py
-  pnl-only ASGI    serve_pnl:app (exists only at the pre-refactor tag)     -> app/pnl_only.py:app
+  ASGI app         serve_pnl:app -> app/pnl_only.py:app -> app/main.py:app (entrypoints collapsed)
 """
 from __future__ import annotations
 
@@ -52,18 +52,18 @@ def load_coldstart():
 
 
 def load_pnl_app():
-    """Return (fastapi_app, origin_label). Prefers the post-refactor entrypoint.
-
-    Same rule as load_coldstart: fall back on ABSENCE, never on breakage.
-    """
+    """Return (fastapi_app, origin_label). Falls back on ABSENCE, never on breakage."""
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
 
-    if (REPO / "app" / "pnl_only.py").is_file():
-        from app.pnl_only import app  # noqa
+    # Older layouts are reached via importlib, not a static `import`, so the repo-wide import
+    # resolver does not flag modules that only exist at an older tag.
+    import importlib
 
-        return app, "app.pnl_only:app"
+    for path, mod in (("app/main.py", "app.main"),
+                      ("app/pnl_only.py", "app.pnl_only"),      # before the entrypoints were collapsed
+                      ("serve_pnl.py", "serve_pnl")):           # tag: pre-refactor
+        if (REPO / path).is_file():
+            return importlib.import_module(mod).app, f"{mod}:app"
 
-    from serve_pnl import app  # noqa
-
-    return app, "serve_pnl:app (legacy)"
+    raise ImportError("no FastAPI entrypoint found (looked for app/main.py, app/pnl_only.py, serve_pnl.py)")

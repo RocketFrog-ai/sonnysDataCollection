@@ -208,13 +208,10 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
   compares pixels. A layout or interaction regression will not be caught.
 - **`/v1/pnl_analysis/insights/*` are excluded** — they call an LLM and are non-deterministic by
   construction. They are documented as annotating, never altering, modelled numbers.
-- **`app/site_analysis/features/**` is `ast`-parsed but never imported.** Those modules run live
-  HTTP/LLM calls at module scope: `.../typeOfSite/o4mini_images_classification.py` calls a vision
-  model at module level. Importing that tree costs money.
-- **`app/site_analysis/*` endpoints have no golden outputs**, because they make live third-party
-  calls. Their route paths and their full OpenAPI schema (every field name, type, default, and
-  validation bound) were diffed against the `pre-refactor` tag once, by hand, and matched
-  byte-for-byte. That is a one-time check, not a standing test.
+- **`proforma/backtests/**` is `ast`-parsed but never imported.** Those scripts read data and fit
+  models at module scope.
+- **The five `/insights/*` endpoints have no golden outputs** and are the only remaining
+  third-party surface. They were exercised live once, by hand, and all returned 200.
 
 ---
 
@@ -229,21 +226,17 @@ verbatim during the split rather than deleted, because deleting code is not code
 they are the closest thing to a specification of what the API's copies are supposed to do. Delete
 them only together with a decision about §1.
 
-Related: `proforma/ui/site_analysis_page.py` is **not reachable** from `app.py`'s `MODES`
-dispatch (`MODES = ["🛰️ Sitewise", "🗺️ Explore markets", "📍 Pinpoint forecast"]`; Sitewise renders
-`site_visual_page`). It survives only in a comment. Left in place.
+Related: `proforma/ui/site_analysis_page.py` was **not reachable** from `app.py`'s `MODES`
+dispatch. It was deleted in 2026-07, and the whole `app/site_analysis` subsystem with it.
 
 ---
 
 ## 8. Sundry
 
-- **`test_endpoint.py` (repo root) has been broken for some time.** It does
-  `from app.site_analysis.server.routes import get_competitors_dynamics_endpoint` and
-  `from app.site_analysis.server.models import CompetitorsDynamicsRequest`. Neither symbol exists in
-  `app/` today, and `git grep` at the `pre-refactor` tag shows neither existed then. It is an ad-hoc
-  manual script, not a pytest. During the restructure `routes.py`/`models.py` were split into
-  `router.py` / `schemas.py` / `service.py`; keeping them alive as re-export shims would not have
-  helped, because the *symbols* are what is missing, not the modules. Left broken.
+- **`test_endpoint.py` (repo root) was broken for years and has been deleted.** It imported
+  `get_competitors_dynamics_endpoint` and `CompetitorsDynamicsRequest`; `git grep` at the
+  `pre-refactor` tag shows neither symbol ever existed. It went with the `site_analysis` subsystem
+  it referenced.
 - **`app/pnl_analysis/modelling/data.py`'s docstring** used to claim `load_panel()` reads
   `main-ds.csv`. It reads `main-data-v2-stitched.csv`; `main-ds.csv` is the superseded legacy
   schema. Docstring corrected during the restructure (prose only, no behavior change).

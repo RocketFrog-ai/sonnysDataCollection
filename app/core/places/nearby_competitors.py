@@ -7,7 +7,7 @@ import logging
 import requests
 from typing import Optional, Any
 
-from app.site_analysis.features.common.searchNearby import find_nearby_places
+from app.core.places.search_nearby import find_nearby_places
 
 logger = logging.getLogger(__name__)
 

@@ -26,22 +26,17 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[2]
 
 # UI files that execute on import (Streamlit scripts). ast-parsed, never imported.
-UI_ENTRYPOINTS = {"app.py", "site_analysis_page.py", "site_visual_page.py", "streamlit_view.py"}
+UI_ENTRYPOINTS = {"app.py", "site_visual_page.py", "streamlit_view.py"}
 
-# Trees that are SCRIPTS, not libraries: they run work at module level. Importing
-# app/site_analysis/features/** fires live LLM/HTTP calls -- typeOfSite/o4mini_images_classification.py
-# calls a vision model at module scope. (typeOfSite/test_o4_mini.py, which hit an API and printed
-# `Response: 403` on import, was deleted as dead code in 2026-07.) They are out of scope by decision:
-# the startup scripts put their dirs on PYTHONPATH and they use bare intra-feature imports.
-# We syntax-check them and never import them. This narrows coverage, on purpose, in writing.
+# Trees that are SCRIPTS, not libraries: they run work at module level.
+# (app/site_analysis/features/** used to live here; that whole subsystem was removed in 2026-07.)
 #
-# proforma/backtests/** are also scripts: backtest_features.py reads a CSV and fits a model
+# proforma/backtests/** are scripts: backtest_features.py reads a CSV and fits a model
 # at module level. Before the refactor they were never imported anyway -- their dotted path went
 # through "earnest-proforma-2.0", which is not a Python identifier, so mod_name() produced an
 # invalid name and they fell into the "skipped" bucket by accident. After the move the path IS
 # valid, so without this entry the smoke test would start running full backtests on every pass.
 AST_ONLY_PREFIXES = (
-    "app/site_analysis/features/",
     "proforma/backtests/",
 )
 

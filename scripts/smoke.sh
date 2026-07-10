@@ -19,10 +19,8 @@
 #     that appear after picking a mode / dropping a pin / clicking are never exercised, and nothing
 #     compares pixels. A layout or interaction regression will NOT be caught here.
 #   * /v1/pnl_analysis/insights/* are excluded: they call an LLM and are non-deterministic.
-#   * app/site_analysis/features/** is ast-parsed but never imported -- those modules run live
-#     HTTP/LLM calls at module scope. See scripts/_golden/import_smoke.py:AST_ONLY_PREFIXES.
-#   * app/site_analysis/* endpoints have no golden outputs -- they make live third-party calls.
-#     Their route paths and OpenAPI schema were diffed against the pre-refactor tag by hand, once.
+#   * proforma/backtests/** is ast-parsed but never imported -- those scripts fit models at module
+#     scope. See scripts/_golden/import_smoke.py:AST_ONLY_PREFIXES.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -75,7 +73,7 @@ PY
 # it never saw datafetching/ -- which is exactly where the app/utils -> app/core rename broke five
 # modules for two commits. Resolution is done against the FILESYSTEM, not importlib: find_spec()
 # imports a module's parent packages to ask for their __path__, which would execute
-# app/site_analysis/features/**, the tree we promise never to import. See the checker's docstring.
+# proforma/backtests/**, the tree we promise never to import. See the checker's docstring.
 echo "== 3/8 every first-party import resolves, repo-wide (static) =="
 "$PY_BACKEND" scripts/_golden/check_imports_resolve.py 2>&1 | tail -1
 

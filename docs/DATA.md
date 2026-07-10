@@ -47,7 +47,7 @@ list, and by the `moirai_ts` notebook).
 |---|---|
 | `proforma/data/opex/opex-data.csv` | Streamlit P&L, `app/pnl_analysis/modelling/{data,campaign}.py`. True opex = `cogs + expenses`; operator key is `client_id`. |
 | `proforma/data/ref/site_carwash_types.csv` | `proforma/ui/app.py` — the **resolved** wash-type table |
-| `proforma/data/ref/merged_all_sites.csv` | `app/site_analysis/server/site_features.py`, the Sitewise UI page, `backtest_features.py` |
+| `proforma/data/ref/merged_all_sites.csv` | the Sitewise UI page, `proforma/backtests/backtest_features.py` |
 | `proforma/data/ref/old-excel-proforma-data-enriched.csv` | `proforma/models/tunnel_capex.py` (187 real builds → tunnel-length→CAPEX) |
 | `proforma/data/ref/unknownsites_resolved.csv`, `proforma/data/ref/site_carwash_types.csv.bak-pre-resolved` | provenance for the resolved type table |
 | `proforma/data/ref/same_location_sites.csv` | the `same_location_timeline` notebook |

@@ -15,10 +15,9 @@ sites (`client_id + site_id`, monthly, 2020→2027).
 | know what's already broken | `docs/DIVERGENCES.md` — read before "fixing" anything |
 
 ```bash
-streamlit run proforma/ui/app.py     # the explorer     (conda proforma311)
-uvicorn app.pnl_only:app --port 8010      # P&L API only     (conda sonnysDataCollection)
-python -m app.main                        # full backend     (conda sonnysDataCollection)
-./scripts/smoke.sh                        # prove you changed no numbers
+streamlit run proforma/ui/app.py     # the explorer  (conda proforma311)
+python -m app.main                   # the API       (conda sonnysDataCollection)
+./scripts/smoke.sh                   # prove you changed no numbers
 ```
 
 `proforma/` is all the modelling — one tree, versioned with **git tags**, not folders

@@ -21,7 +21,7 @@ proforma/          ALL modelling. ONE tree. Versions are git tags, not folders.
   artifacts/       the fitted joblib (~46 MB).
   ui/              Streamlit only. app.py is a thin entry; panels/ holds the modes.
   backtests/       scripts (side effects at import). Run them; never import them.
-app/               FastAPI. app/main.py (full) and app/pnl_only.py (P&L only) are the entrypoints.
+app/               FastAPI. app/main.py is the single entrypoint; app/server/ is the router layer.
   core/            was app/utils/ — config, env, geocoding. Almost everything imports it.
 libs/carwash_type/ was type_car_wash/ — a real importable utility.
 archive/           frozen prior work. Read for history; do not build on it.
@@ -63,8 +63,7 @@ the benign sklearn 1.6.1-vs-1.8.0 mismatch the Streamlit env produces, are in `d
 streamlit run proforma/ui/app.py                       # http://localhost:8501
 
 # Backends (conda sonnysDataCollection)
-python -m app.main                                          # full: site_analysis + pnl_analysis
-uvicorn app.pnl_only:app --host 127.0.0.1 --port 8010       # pnl only; no openai / live fetchers
+python -m app.main                                          # the API (only /v1/pnl_analysis/*)
 scripts/start_uvicorn_fast_api.sh                           # nohup launcher (sets PYTHONPATH)
 
 # Rebuild the panel after upstream CSV changes
@@ -86,8 +85,7 @@ then diffs against `scripts/_golden/baseline/` at `1e-9`. If you *intend* to cha
 tell you exactly which ones moved — read that diff, don't silence it by re-baselining.
 
 Its coverage gaps are stated in its own header comment and in `docs/DIVERGENCES.md` §6: the UI is
-only first-render, `/insights/*` are LLM and excluded, `app/site_analysis/features/**` is never
-imported (module-scope live HTTP/LLM calls).
+only first-render, and `/insights/*` are LLM and excluded.
 
 There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc manual scripts;
 `test_endpoint.py` is itself broken (`docs/DIVERGENCES.md` §8).
@@ -97,8 +95,8 @@ There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc man
 - **The site key is `client_id + site_id`.** `site_id` alone is a within-brand index and collides.
 - **Data lives once**, under `proforma/data/`. Never copy a dataset into a model version. Artifacts
   are the opposite: they belong to a version, because they're welded to the code that fitted them.
-- **`app/site_analysis/features/**` and `proforma/backtests/**` are scripts, not libraries.**
-  They do real work — including live API calls — at module import. Never import them to test.
+- **`proforma/backtests/**` are scripts, not libraries.** They fit models at module import.
+  Never import them to test.
 - **`insights/` annotates; it must never alter a modelled number.**
 - **No packaging.** No `pyproject.toml`, no `pip install -e .`. Imports resolve off the repo root.
   The two conda envs and the version-sensitive joblib make packaging a separate, riskier project.

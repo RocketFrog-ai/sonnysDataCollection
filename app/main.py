@@ -1,20 +1,28 @@
+"""The FastAPI backend. One app, one entrypoint.
+
+    python -m app.main                              # host/port from FAST_API_HOST / FAST_API_PORT
+    uvicorn app.main:app --host 127.0.0.1 --port 8010
+
+Serves the Explore-markets + Forecast API under /v1/pnl_analysis/... — the same math the Streamlit
+app runs in-process (see docs/DIVERGENCES.md §1: it is a second implementation, not shared code).
+
+History, so nobody goes looking: there were two entrypoints (app/main.py + app/pnl_only.py) because
+`main` also mounted a `site_analysis` router with a heavier dependency footprint. Celery, that router
+and its whole subsystem were removed in 2026-07 — nothing rendered them — so the two entrypoints
+became the same app and were collapsed into this one.
+"""
 import uvicorn
 from fastapi import FastAPI
-from app.site_analysis.server.router import router as site_analysis_router
-from app.pnl_analysis.server.router import router as pnl_analysis_router
-from app.core import common as calib
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core import common as calib
+from app.server.router import router as pnl_analysis_router
 
 FAST_API_HOST = calib.FAST_API_HOST
 FAST_API_PORT = calib.FAST_API_PORT
 
-# Create FastAPI application — serves all three Streamlit features:
-#   • site_analysis_router → /v1/...                (Site analysis: sync /site-context, /site-features, …)
-#   • pnl_analysis_router  → /v1/pnl_analysis/...    (Explore-markets + Forecast)
 app = FastAPI(title="Earnest Proforma backend", version="2.0")
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Configure as needed for security
@@ -23,17 +31,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routes
-app.include_router(site_analysis_router, prefix="/v1")
 app.include_router(pnl_analysis_router, prefix="/v1")
 
-# Root endpoint
+
 @app.get("/")
 async def root():
     """Root endpoint with basic service information"""
-    return {
-        "status": "running"
-    }
+    return {"status": "running"}
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host=FAST_API_HOST, port=int(FAST_API_PORT))

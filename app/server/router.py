@@ -17,8 +17,8 @@ from app.pnl_analysis.modelling import campaign as campaign_engine
 from app.pnl_analysis.insights.graph import market_insights as _insights_pipeline
 from app.pnl_analysis.insights import location_poc as _loc
 from app.pnl_analysis.insights import llm as _llm
-from app.pnl_analysis.server import service
-from app.pnl_analysis.server.schemas import (
+from app.server import service
+from app.server.schemas import (
     ExploreMarketRequest,
     ExploreKpisRequest,
     InsightsRequest,
