@@ -22,7 +22,7 @@ The LLM council (4 seats → adjudicated build/pass) scored **~30% go/no-go vs a
 ## Decision
 
 **Rebuild the council as signal-first:**
-- A new **data signal seat** (`council/decider.py` over `council/features.py`) makes the go/no-go call — leakage-clean, honestly out-of-fold evaluated.
+- A new **data signal seat** (`proforma/v1_6/decider.py` over `proforma/v1_6/features.py`) makes the go/no-go call — leakage-clean, honestly out-of-fold evaluated.
 - The four LLM seats are **demoted to context/explanation** — they annotate and can flag disagreement, but **can no longer flip the verdict**.
 - The trained-forecast level model is **not** wired in for greenfield (it's leakage); kept as a FUTURE task only for the operator-anchored regime with a proper as-of-T refit.
 

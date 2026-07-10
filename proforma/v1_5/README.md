@@ -24,11 +24,11 @@ From the shared store at `proforma/data/` — never a private copy:
 
 | file | used for |
 |---|---|
-| `data/panel/main-data-v2-stitched.csv` | the site panel: levels, ramps, neighbours, clusters |
-| `data/opex/opex-data.csv` | the P&L |
-| `data/ref/site_carwash_types.csv` | wash types (express vs not) |
-| `data/ref/old-excel-proforma-data-enriched.csv` | tunnel length → build CAPEX |
-| `data/ref/merged_all_sites.csv` | site coordinate lookup (UI + backtests) |
+| `../data/panel/main-data-v2-stitched.csv` | the site panel: levels, ramps, neighbours, clusters |
+| `../data/opex/opex-data.csv` | the P&L |
+| `../data/ref/site_carwash_types.csv` | wash types (express vs not) |
+| `../data/ref/old-excel-proforma-data-enriched.csv` | tunnel length → build CAPEX |
+| `../data/ref/merged_all_sites.csv` | site coordinate lookup (UI + backtests) |
 
 ## Running it
 
@@ -68,7 +68,7 @@ renamed freely — but it *is* coupled to library versions.
 > Refitting in the 3.13 `venv` produces an artifact the backend cannot unpickle.
 
 Refit with `cm.fit(save=True)`. Inference-time changes (anchor calibration, the ASP-corruption
-filter, breakeven) need no refit. After any refit, run `./scripts/smoke.sh` — it will tell you
+filter, breakeven) need no refit. After any refit, run `scripts/smoke.sh` — it will tell you
 exactly which numbers moved.
 
 ## Backtests

@@ -44,13 +44,13 @@ list, and by the `moirai_ts` notebook).
 
 | file | consumer |
 |---|---|
-| `opex/opex-data.csv` | Streamlit P&L, `app/pnl_analysis/modelling/{data,campaign}.py`. True opex = `cogs + expenses`; operator key is `client_id`. |
-| `ref/site_carwash_types.csv` | `proforma/v1_5/ui/app.py` — the **resolved** wash-type table |
-| `ref/merged_all_sites.csv` | `app/site_analysis/server/site_features.py`, the Sitewise UI page, `backtest_features.py` |
-| `ref/old-excel-proforma-data-enriched.csv` | `proforma/v1_5/models/tunnel_capex.py` (187 real builds → tunnel-length→CAPEX) |
-| `ref/unknownsites_resolved.csv`, `ref/site_carwash_types.csv.bak-pre-resolved` | provenance for the resolved type table |
-| `ref/same_location_sites.csv`, `ref/merged_sites_with_2025_...csv` | no current code reader |
-| `derived/cannibalization_entrants.csv` | no current code reader; output of the entry-cannibalization study |
+| `proforma/data/opex/opex-data.csv` | Streamlit P&L, `app/pnl_analysis/modelling/{data,campaign}.py`. True opex = `cogs + expenses`; operator key is `client_id`. |
+| `proforma/data/ref/site_carwash_types.csv` | `proforma/v1_5/ui/app.py` — the **resolved** wash-type table |
+| `proforma/data/ref/merged_all_sites.csv` | `app/site_analysis/server/site_features.py`, the Sitewise UI page, `backtest_features.py` |
+| `proforma/data/ref/old-excel-proforma-data-enriched.csv` | `proforma/v1_5/models/tunnel_capex.py` (187 real builds → tunnel-length→CAPEX) |
+| `proforma/data/ref/unknownsites_resolved.csv`, `proforma/data/ref/site_carwash_types.csv.bak-pre-resolved` | provenance for the resolved type table |
+| `proforma/data/ref/same_location_sites.csv`, `proforma/data/ref/merged_sites_with_2025_wash_counts_nonzero_with_region_state.csv` | no current code reader |
+| `proforma/data/derived/cannibalization_entrants.csv` | no current code reader; output of the entry-cannibalization study |
 
 ## Provenance of the collapse (2026-07)
 
