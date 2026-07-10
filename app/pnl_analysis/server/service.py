@@ -35,7 +35,7 @@ def resolve_lat_lon(latitude, longitude, address) -> Tuple[float, float]:
 def grounded_inputs(lat, lon, radius_km, min_months, demo):
     """Build (panel, meta, focal) for the grounded Key-Insights pipeline over the local market — the SAME subset
     the KPI panels draw, with ASP recomputed per the Streamlit definitions. Returns None if no rich-history sites.
-    Used by /insights."""
+    Shared by /insights and /insights/pollinated."""
     df, site = D.load_panel()
     site_rich = site[site.n_obs >= min_months]
     nb = market._neighbourhood(site_rich, lat, lon, radius_km)

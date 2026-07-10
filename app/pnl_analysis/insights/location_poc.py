@@ -157,6 +157,7 @@ def location_market_analysis(lat: float, lon: float, *, address: Optional[str] =
             "sources": sources, "web_used": bool(sources), "place": place}
 
 
+# ─────────────────────────── pollination (qualitative × quantitative) ───────────────────────────
 # A THIRD, separate LLM call. It takes (A) the location-only qualitative commentary from the call above
 # and (B) the grounded quantitative Key-Insights (from the LangGraph pipeline, computed off THIS market's
 # real numbers), and fuses them: world-knowledge "why" against data "what's actually happening", with the
@@ -187,7 +188,123 @@ POLLINATE_SYSTEM_PROMPT = (
 )
 
 
+def _format_quant_insights(quantitative: Any) -> str:
+    """Render the grounded insights (a {'Washes','Revenue','ASPs'} markdown dict, or any text) into a block."""
+    if isinstance(quantitative, dict):
+        parts = [f"### {g}\n{quantitative[g]}" for g in ("Washes", "Revenue", "ASPs")
+                 if quantitative.get(g)]
+        return "\n\n".join(parts) if parts else "(no grounded quantitative insights available)"
+    return str(quantitative or "(no grounded quantitative insights available)")
+
+
 _NO_COMPETITION = "(no competition-scale read available)"
+
+
+def _format_competition(competition: Any) -> str:
+    """Render a compact (C) block for the pollination prompt. Accepts, in order of preference:
+      • the `{"table","summary"}` response the /insights/competition route returns → use its markdown `summary`;
+      • a JSON string of either that response or the bare model JSON → parsed and re-dispatched;
+      • an already-formatted markdown/prose string → used verbatim;
+      • the rich dict `competition_scale_analysis` returns (has a `data` key) → rendered here;
+    so it works whether the caller passes the pre-computed API response (the new flow) or the raw result dict
+    (the Streamlit flow). Returns a placeholder when no competition read is available."""
+    if not competition:
+        return _NO_COMPETITION
+    if isinstance(competition, str):
+        s = competition.strip()
+        if not s:
+            return _NO_COMPETITION
+        try:                                          # a JSON string? parse and re-dispatch
+            return _format_competition(json.loads(s))
+        except Exception:
+            return s                                  # already a markdown/prose summary
+    if not isinstance(competition, dict) or not competition:
+        return _NO_COMPETITION
+    if competition.get("summary"):                    # the {"table","summary"} route response
+        return str(competition["summary"])
+    if "data" not in competition and ("estimated_total_carwashes" in competition or "competitors" in competition):
+        competition = {"data": competition,           # bare model JSON — wrap it as a rich result
+                       "known_count": len(competition.get("client_sites_recognized") or [])}
+    data = competition.get("data") or {}
+    n_known = competition.get("known_count") or 0
+    tot = data.get("estimated_total_carwashes") or {}
+    exp = data.get("estimated_express_tunnels") or {}
+    se = competition.get("scale_express") or {}
+    parts = []
+    parts.append(f"Client runs {n_known} express site(s) of their own here.")
+    if exp:
+        line = f"Estimated {exp.get('low', '?')}–{exp.get('high', '?')} express tunnels operate in the radius"
+        if se:
+            line += f" -> client faces ~{se.get('low', '?')}x–{se.get('high', '?')}x its own count in express rivals"
+        parts.append(line + ".")
+    if tot:
+        parts.append(f"Estimated {tot.get('low', '?')}–{tot.get('high', '?')} car washes of all types in the radius.")
+    share = data.get("estimated_client_share") or {}
+    if share:
+        parts.append(f"Est. client share of express tunnels: ~{share.get('low', '?')}–{share.get('high', '?')}%.")
+    for label, key in [("Saturation", "saturation"), ("Competitive intensity", "competitive_intensity"),
+                       ("Headroom", "headroom"), ("Client position", "client_position")]:
+        if data.get(key):
+            parts.append(f"{label}: {data[key]}.")
+    rivals = [c.get("name") for c in (data.get("competitors") or []) if isinstance(c, dict) and c.get("name")]
+    if rivals:
+        parts.append("Named rivals: " + ", ".join(str(r) for r in rivals[:8]) + ".")
+    nearby = competition.get("nearby_washes") or []
+    if nearby:
+        obs = ", ".join(str(w.get("name")) for w in nearby[:6] if w.get("name"))
+        parts.append(f"Grounded on {len(nearby)} real washes observed via Google Places nearby ({obs}).")
+    return " ".join(parts)
+
+
+def build_pollination_messages(qualitative_text: str, quantitative: Any, *, lat: float, lon: float,
+                               radius_km: float = 20, competition: Any = None) -> List[dict]:
+    """Construct the fusion request — the analyses verbatim plus the required combined-read shape. The optional
+    competition read (C) folds in the competitive-saturation dimension."""
+    user = (
+        "NEW CAR-WASH SITE — FINAL CONSOLIDATED SUMMARY (fuse the three analyses below into ONE short read)\n\n"
+        f"LOCATION: {lat:.5f}, {lon:.5f} · local trade-area radius {radius_km:g} km.\n\n"
+        "You are given three analyses of the same local market: the Key Insights from the operating data (B), the "
+        "Local Market Analysis (A), and the Competition Coverage (C). Distil ALL THREE into ONE brief, decision-"
+        "useful summary that ends in a clear verdict and recommendation.\n\n"
+        "══════ (A) LOCAL MARKET ANALYSIS — location / world-knowledge read (NO operating data) ══════\n"
+        f"{(qualitative_text or '').strip() or '(no local market analysis available)'}\n\n"
+        "══════ (B) KEY INSIGHTS — grounded in THIS market's actual operating data / plots ══════\n"
+        f"{_format_quant_insights(quantitative)}\n\n"
+        "══════ (C) COMPETITION COVERAGE — client footprint vs total trade-area competition (estimate) ══════\n"
+        f"{_format_competition(competition)}\n\n"
+        "Now write the FINAL summary as clean, react-markdown-compatible Markdown, and NOTHING else.\n\n"
+        "RULES:\n"
+        "- Write in ONE unified analyst voice. Do NOT label statements with (A)/(B)/(C) or mention 'the location "
+        "analysis says' — just state the conclusion, weaving the three sources together seamlessly.\n"
+        "- Be CONCISE — the whole thing must fit in roughly 90–130 words. No long paragraphs; short, number-led bullets only.\n"
+        "- DATA-FIRST, FEW ADJECTIVES: lead each bullet with a figure or fact, not a descriptor; cut hype adjectives "
+        "('strong', 'healthy', 'attractive'). One point per bullet, each adding something new — never repeat a figure.\n"
+        "- When the data (B) and the location story (A) disagree, trust the data. Quote only hard numbers that "
+        "appear in (B); treat (A) and (C) as context/estimates. Never invent figures.\n"
+        "- **Bold** the few key figures and the verdict call itself.\n\n"
+        "USE EXACTLY THIS STRUCTURE:\n"
+        "## Summary\n"
+        "One **bold** sentence with the overall takeaway, then 3–4 short `- ` bullets covering demand & the market's "
+        "trajectory, the business/pricing model, and competitive saturation. Keep each bullet to one line.\n\n"
+        "## Verdict\n"
+        "One line: **Build**, **Pass**, or **Conditional** + a half-sentence why.\n"
+        "**Recommendation:** one concise line — the action to take and the single condition that would change the call."
+    )
+    return [{"role": "system", "content": POLLINATE_SYSTEM_PROMPT}, {"role": "user", "content": user}]
+
+
+def pollinate_analysis(qualitative_text: str, quantitative: Any, *, lat: float, lon: float,
+                       radius_km: float = 20, competition: Any = None, backend: Optional[str] = None,
+                       max_tokens: int = 2000, temperature: float = 0.4) -> Dict[str, Any]:
+    """Fuse a location-only qualitative commentary (A) with the grounded quantitative insights (B) — and, when
+    supplied, the competitive-saturation read (C) — into one combined read, via a fresh LLM call. Azure-first
+    (cascades to local). Raises LLMUnavailable on failure."""
+    messages = build_pollination_messages(qualitative_text, quantitative, lat=lat, lon=lon, radius_km=radius_km,
+                                          competition=competition)
+    text, used = llm_client.complete_cascade(messages, backend=backend, max_tokens=max_tokens,
+                                             temperature=temperature, json_mode=False)
+    logger.info("Pollinated analysis generated via %s backend.", used)
+    return {"text": (text or "").strip(), "backend": used, "prompt": messages[-1]["content"]}
 
 
 # ─────────────────── competition scale (client footprint vs total competitive landscape — saturation) ───────────────────
@@ -469,6 +586,66 @@ INDEPENDENT_RESEARCH_SYSTEM_PROMPT = (
 )
 
 
+def build_independent_research_messages(lat: float, lon: float, radius_miles: float, *, address: Optional[str] = None,
+                                        web_sources: Optional[List[dict]] = None) -> List[dict]:
+    """One blind, per-radius request: estimate the car-wash market metrics for this location within `radius_miles`,
+    from world knowledge only (plus optional web results). Strict JSON; null-with-reason when a metric can't be sized."""
+    addr = (address or "").strip() or "(not provided — infer the place from the coordinates)"
+    km = radius_miles * 1.60934
+    web_section = ""
+    if web_sources:
+        web_section = (
+            "\nFRESH WEB SEARCH RESULTS (retrieved just now for this location — treat as current ground truth and prefer "
+            f"over static memory when they conflict):\n{_format_web_sources(web_sources)}\n"
+        )
+    know_src = "your world knowledge and the web results below" if web_sources else "your world knowledge"
+    user = (
+        "INDEPENDENT CAR-WASH MARKET RESEARCH — JSON ONLY (NO internal/operator data supplied)\n\n"
+        "LOCATION:\n"
+        f"- Latitude, Longitude: {lat:.5f}, {lon:.5f}\n"
+        f"- Approx address / description: {addr}\n"
+        f"- Trade-area radius for THIS analysis: {radius_miles:g} miles (≈ {km:.1f} km)\n"
+        f"{web_section}\n"
+        f"From {know_src}, estimate the following for a NEW express-tunnel car wash at this location, considering the "
+        f"{radius_miles:g}-mile trade area. Base every figure on what you actually know about this place. "
+        "ESTIMATE, DON'T DECLINE: give a best-effort RANGE for every metric you can reasonably approximate (with an "
+        "explicit confidence — Low is fine). Use \"estimate\": null ONLY for a metric you genuinely cannot approximate "
+        "even roughly, and then say why in \"basis\". Do not fabricate false precision, but do not over-use null — for "
+        "a recognisable place, demand, volume, revenue and ASP can all be approximated.\n\n"
+        "CRITICAL — SITE CAPACITY vs MARKET SIZE (read carefully): the metrics below describe ONE new express tunnel, "
+        "not the whole market. A single express tunnel has a FINITE monthly throughput — a mature site typically does "
+        "on the order of ~5,000–15,000 washes/month and physically cannot exceed its capacity. The trade-area RADIUS "
+        "changes the addressable MARKET (customer_demand) and the competitive set, but it does NOT multiply a single "
+        "site's own wash volume or revenue: almost all express-wash customers come from within ~3–5 miles, so a 9-mile "
+        "radius does not mean the one site washes 3x the cars it would at 3 miles. Keep the SITE-LEVEL metrics "
+        "(wash counts, revenues, ASPs) essentially consistent across radii — do NOT scale them up with the radius; if "
+        "they barely change, say so in the basis. Only customer_demand / market_opportunity should grow with radius.\n"
+        "Keep the numbers internally consistent: total washes = retail + membership washes; total revenue = retail + "
+        "membership revenue; each revenue ≈ its wash count × its ASP.\n\n"
+        "Return STRICT JSON with EXACTLY these keys, each an object {\"estimate\", \"unit\", \"confidence\", \"basis\"}:\n"
+        "{\n"
+        '  "market_opportunity":     {"estimate": str, "unit": "", "confidence": "High|Medium|Low", "basis": str},   // overall qualitative read; MAY grow with radius\n'
+        '  "customer_demand":        {"estimate": str|null, "unit": "households / vehicles in radius", "confidence": "...", "basis": "..."},   // addressable MARKET size; grows with radius\n'
+        '  "wash_volume":            {"estimate": str|null, "unit": "washes/month", "confidence": "...", "basis": "..."},   // the NEW SITE\'s OWN total washes/mo at maturity (capacity-bound; ~radius-independent)\n'
+        '  "retail_wash_count":      {"estimate": str|null, "unit": "washes/month", "confidence": "...", "basis": "..."},   // of that total, the retail (pay-per-wash) portion\n'
+        '  "membership_wash_count":  {"estimate": str|null, "unit": "washes/month", "confidence": "...", "basis": "..."},   // of that total, the unlimited-membership portion\n'
+        '  "total_revenue":          {"estimate": str|null, "unit": "$/month", "confidence": "...", "basis": "..."},   // the site\'s total monthly revenue at maturity\n'
+        '  "retail_revenue":         {"estimate": str|null, "unit": "$/month", "confidence": "...", "basis": "..."},   // retail portion of monthly revenue\n'
+        '  "membership_revenue":     {"estimate": str|null, "unit": "$/month", "confidence": "...", "basis": "..."},   // membership portion of monthly revenue\n'
+        '  "revenue_potential":      {"estimate": str|null, "unit": "$/year", "confidence": "...", "basis": "..."},   // the site\'s annual revenue potential / upside ceiling\n'
+        '  "asp_retail":             {"estimate": str|null, "unit": "$/retail wash", "confidence": "...", "basis": "..."},   // typical retail average selling price per wash\n'
+        '  "asp_membership":         {"estimate": str|null, "unit": "$/membership wash", "confidence": "...", "basis": "..."}   // EFFECTIVE revenue per membership wash (monthly plan price ÷ washes/member/month)\n'
+        "}\n"
+        "Give ranges (e.g. \"8,000–12,000\") where appropriate. \"estimate\" must be null (not 0, not a guess) whenever "
+        "you cannot responsibly size it from knowledge.\n"
+        "KEEP IT SHORT: every \"basis\" is ONE short clause (about 8–14 words) in plain English — the single key reason only, "
+        "fact/number-led, no hype adjectives, and do NOT restate the estimate inside it. The three radii are shown side by "
+        "side in ONE table, so keep the \"basis\" for a given metric consistent across radii (the reasoning does not change "
+        "with radius for site-level figures). This report is read at a glance, so brevity matters."
+    )
+    return [{"role": "system", "content": INDEPENDENT_RESEARCH_SYSTEM_PROMPT}, {"role": "user", "content": user}]
+
+
 # Plain-English labels; unit lives in the label so the number cells stay bare (no "/mo" clutter repeated per radius).
 _INDEP_METRICS = [
     ("market_opportunity", "Market opportunity (overall read)"),
@@ -491,3 +668,126 @@ def _md_cell(s: Any) -> str:
     return str(s if s is not None else "").replace("\r", " ").replace("\n", " ").replace("|", "\\|").strip()
 
 
+def _short(s: str, limit: int = 140) -> str:
+    """Backstop the 'keep it short' rule: trim over-long text to one clause at a word boundary."""
+    s = (s or "").strip()
+    if len(s) <= limit:
+        return s
+    cut = s[:limit].rsplit(" ", 1)[0].rstrip(" ,.;:—-")
+    return cut + "…"
+
+
+def _fmt_est_cell(v: Dict[str, Any]) -> str:
+    """One estimate → a compact cell. Nullish → '—'; prepend '$' for money metrics that lack it; trim long
+    qualitative reads so a single row stays scannable across all three radius columns."""
+    est = v.get("estimate")
+    nullish = (est if not isinstance(est, str) else str(est).strip().lower()) in _INDEP_NULLISH
+    if nullish:
+        return "—"
+    est_s = str(est).strip()
+    unit = v.get("unit") or ""
+    if "$" in unit and "$" not in est_s and any(ch.isdigit() for ch in est_s):
+        est_s = "$" + est_s
+    return _md_cell(_short(est_s, 90))
+
+
+def _independent_summary_md(results: List[Dict[str, Any]]) -> str:
+    """Render the external-knowledge estimates as ONE compact react-markdown table: each metric is a row, the
+    trade-area radii (3 / 6 / 9 mile) are columns, plus Confidence and a short plain-English 'Why'. Site-level
+    figures barely move across radii (only nearby market size grows), so a single table reads far easier than
+    three. '—' = the model could not responsibly size it (reason shown in 'Why'), never a fabricated value."""
+    res = [r for r in (results or []) if r]
+    res.sort(key=lambda d: d.get("radius_miles") or 0)
+    out: List[str] = [
+        "# Independent Market Research — external LLM knowledge only",
+        "",
+        "_World-knowledge estimate for this location (no internal data). Site figures barely change with radius — "
+        "only nearby market size grows. '—' = not sized rather than guessed._",
+        "",
+    ]
+    if not res or not any((r.get("metrics") or {}) for r in res):
+        out.append("_The model returned no parseable estimate._")
+        return "\n".join(out).strip()
+
+    # Qualitative overall read is radius-independent — show it once as a takeaway, not thrice in a table row.
+    overall = next((str(mo.get("estimate")).strip() for r in res
+                    for mo in [((r.get("metrics") or {}).get("market_opportunity") or {})]
+                    if mo.get("estimate") and str(mo.get("estimate")).strip().lower() not in _INDEP_NULLISH), "")
+    if overall:
+        out += [f"**Overall:** {_md_cell(_short(overall, 220))}", ""]
+
+    radii = [r.get("radius_miles") or 0 for r in res]
+    out += [
+        "| Metric | " + " | ".join(f"{rm:g} mi" for rm in radii) + " | Confidence | Why |",
+        "| --- | " + " | ".join("---" for _ in radii) + " | --- | --- |",
+    ]
+    for key, label in _INDEP_METRICS:
+        if key == "market_opportunity":                    # shown above as the one-line takeaway
+            continue
+        cells, rep_conf, rep_basis = [], "", ""
+        for r in res:
+            m = r.get("metrics") or {}
+            v = m.get(key) if isinstance(m.get(key), dict) else {}
+            cells.append(_fmt_est_cell(v))
+            if not rep_basis:                              # first available reasoning (radius-independent for site metrics)
+                b = (v.get("basis") or "").strip()
+                if b:
+                    rep_conf, rep_basis = (v.get("confidence") or "").strip(), b
+        out.append(f"| **{label}** | " + " | ".join(cells) +
+                   f" | {_md_cell(rep_conf) or '—'} | {_md_cell(_short(rep_basis, 110)) or '—'} |")
+    return "\n".join(out).strip()
+
+
+def independent_market_research(lat: float, lon: float, *, address: Optional[str] = None,
+                                radii_miles: Any = (3, 6, 9), backend: Optional[str] = None,
+                                max_tokens: int = 1500, temperature: float = 0.3,
+                                use_web_search: bool = False) -> Dict[str, Any]:
+    """Can an external LLM size a NEW car-wash market from PUBLIC knowledge alone (no internal data)? Runs one blind
+    LLM call PER radius (default 3/6/9 mi), each estimating the requested business metrics as strict JSON with a hard
+    'say-null-if-you-cannot' rule. Radius calls run concurrently. When `use_web_search` is on and a provider is
+    configured, fresh web results for the location are fed in as citable ground truth. Raises LLMUnavailable if no
+    backend answers any radius."""
+    radii = [float(x) for x in (radii_miles or (3, 6, 9)) if _is_pos(x)][:6] or [3.0, 6.0, 9.0]
+    sources: List[dict] = []
+    place = (address or "").strip()
+    if use_web_search:
+        try:
+            sources, place = websearch.gather_location_sources(lat, lon, address=address,
+                                                               radius_km=max(radii) * 1.60934)
+        except Exception as e:                                     # search must never break the analysis
+            logger.warning("Independent-research web grounding failed, continuing without it: %s", e)
+            sources = []
+
+    def _one(r: float) -> Dict[str, Any]:
+        messages = build_independent_research_messages(lat, lon, r, address=address, web_sources=sources)
+        text, used = llm_client.complete_cascade(messages, backend=backend, max_tokens=max_tokens,
+                                                 temperature=temperature, json_mode=True)
+        return {"radius_miles": r, "metrics": _parse_json_lax(text), "backend": used}
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=len(radii)) as ex:         # radii are independent → size them concurrently
+        results = list(ex.map(_one, radii))
+    results.sort(key=lambda d: d["radius_miles"])
+    used = next((r.get("backend") for r in results if r.get("backend")), None)
+    logger.info("Independent market research via %s backend (radii=%s, web_sources=%d).",
+                used, [r["radius_miles"] for r in results], len(sources))
+    return {"radii": results, "summary": _independent_summary_md(results),
+            "sources": sources, "web_used": bool(sources), "place": place, "backend": used}
+
+
+def _is_pos(x: Any) -> bool:
+    try:
+        return float(x) > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def build_independent_research_response(result: Dict[str, Any]) -> Dict[str, Any]:
+    """Shape the independent-research result into the API response: per-radius `radii` (radius + metrics), the
+    react-markdown `summary`, and any web `sources` (title/url) used. Required keys only."""
+    return {
+        "radii": [{"radius_miles": r.get("radius_miles"), "metrics": r.get("metrics") or {}}
+                  for r in (result.get("radii") or [])],
+        "summary": result.get("summary") or "",
+        "sources": [{"title": s.get("title"), "url": s.get("url")} for s in (result.get("sources") or [])],
+    }
