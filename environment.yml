@@ -13,23 +13,28 @@
 #   conda env remove -n sonnysDataCollection && conda env remove -n proforma311
 #
 # ---------------------------------------------------------------------------------------------
-# WHY scipy AND numpy ARE PINNED, AND WHY YOU MAY NOT CASUALLY BUMP THEM
+# WHY scipy IS PINNED TO AN EXACT VERSION, AND WHY YOU MAY NOT CASUALLY BUMP IT
+#
+# It is pinned to the version the golden baseline was CAPTURED under -- not to an old one. Bumping
+# it moves a number, so the bump has to be its own commit.
 #
 # app/pnl_analysis/modelling/pnl.py::opex_pct_curve_fit fits the opex%-of-revenue decay curve with
 # scipy.optimize.curve_fit -- a bounded non-linear least-squares that terminates on a TOLERANCE
 # (ftol/xtol/gtol default to 1e-8), not on exactness. Its fitted parameters are therefore only
 # defined to ~1e-8, and different scipy builds walk different step paths and stop at different
-# points. Measured, scipy 1.13.1 -> 1.17.1, on bit-identical inputs (sha256-verified):
+# points. Measured, scipy 1.13.1 -> 1.17.1, on inputs verified bit-identical by sha256:
 #
 #     tau  2.4609460487255252  ->  2.4609460460784720     (1.1e-9 relative)
 #
 # `opex = shape x revenue` inherits that, and `net = revenue - expenses` amplifies it by
 # cancellation to 1.4e-9 -- past the 1e-9 the golden harness enforces. In dollars it is 5.3e-06 on
-# a monthly net of -3733.52, i.e. nothing. But it moves a number, so it is pinned here rather than
-# smuggled in under a restructure. scipy 1.13.1 caps numpy below 2.3, hence the numpy pin.
+# a monthly net of -3733.52, i.e. nothing. Nothing else in the repo is affected: pandas 2.2 -> 3.0
+# and numpy 2.0 -> 2.4 change no number anywhere.
 #
-# To upgrade: bump scipy, run `scripts/smoke.sh --capture-baseline`, and commit the re-baselined
-# api.json ON ITS OWN, so the diff is attributable. See docs/ENVIRONMENTS.md.
+# To upgrade: bump scipy, run `scripts/smoke.sh --capture-baseline`, verify that ONLY
+# cases.expense_plan moves, and commit the re-baselined api.json ON ITS OWN so the diff is
+# attributable. scripts/smoke.sh asserts this version up front and fails loudly, so a stray
+# `pip install -U scipy` cannot surface later as a mystery 1.4e-9. See docs/ENVIRONMENTS.md.
 # ---------------------------------------------------------------------------------------------
 
 name: sonnys
@@ -44,9 +49,9 @@ dependencies:
 
   - pip:
     # --- numeric core. Pinned; the golden baseline is captured against exactly these. ---
-    - numpy==2.2.6              # ceiling imposed by the scipy pin below
+    - numpy==2.4.4
     - pandas==3.0.2
-    - scipy==1.13.1             # PINNED -- see the header. Bumping this moves expense_plan.
+    - scipy==1.17.1             # PINNED -- see the header. Bumping this moves expense_plan.
     - scikit-learn==1.8.0       # unpickles coldstart_artifacts.joblib (fitted under 1.6.1)
     - lightgbm==4.6.0
     - joblib==1.5.3

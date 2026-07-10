@@ -41,9 +41,10 @@ OUT="$([[ $CAPTURE == 1 ]] && echo "$BASELINE" || mktemp -d)"
 # Fail loudly here rather than let it surface as a mystery 1.4e-9 in step 8.
 "$PY" - <<'PY' || exit 2
 import sys, scipy
-if scipy.__version__ != "1.13.1":
-    sys.exit(f"FATAL: scipy {scipy.__version__} != 1.13.1 (pinned). "
-             "expense_plan will drift ~1e-9; re-baseline deliberately or reinstall the env.")
+if scipy.__version__ != "1.17.1":
+    sys.exit(f"FATAL: scipy {scipy.__version__} != 1.17.1 (the version baseline/api.json was captured "
+             "under). expense_plan will drift ~1e-9. Reinstall the env, or bump the pin, re-capture, "
+             "and commit the re-baselined api.json on its own.")
 PY
 
 # Hazard 4: a deleted module keeps importing from its .pyc. Purge before every pass.

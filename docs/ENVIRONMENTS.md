@@ -27,15 +27,17 @@ conda env remove -n sonnysDataCollection && conda env remove -n proforma311
 If you use `scripts/start_uvicorn_fast_api.sh`, set `CONDA_ENV_NAME=sonnys` in `.env` — the script
 refuses to launch unless the active env matches.
 
-## The pinned dependencies, and why you may not casually bump them
+## Why `scipy` is pinned to an exact version
 
-`environment.yml` pins `scipy==1.13.1` and `numpy==2.2.6`. This is not superstition.
+`environment.yml` pins `scipy==1.17.1`. Not because 1.17.1 is special, but because it is **the
+version `scripts/_golden/baseline/api.json` was captured under**. Bumping scipy moves a number.
 
 `app/pnl_analysis/modelling/pnl.py::opex_pct_curve_fit` fits the opex%-of-revenue decay curve with
 `scipy.optimize.curve_fit` — a bounded non-linear least-squares that terminates on a **tolerance**
 (`ftol`/`xtol`/`gtol` all default to `1e-8`), not on exactness. Its fitted parameters are therefore
 only defined to about `1e-8`, and different scipy builds walk different step paths and stop at
-different points. Measured across scipy 1.13.1 → 1.17.1, on inputs verified bit-identical by sha256:
+different points. Measured across scipy 1.13.1 → 1.17.1, on inputs verified bit-identical by sha256
+(`age`, `y`, `w` all matching; `p0` equal to the last digit):
 
 ```
 hot  0.8743861484901816  ->  0.8743861486257372     (1.5e-10 relative)
@@ -45,21 +47,23 @@ tau  2.4609460487255252  ->  2.4609460460784720     (1.1e-9  relative)
 
 `opex = shape × revenue` inherits that, and `net = revenue − expenses` amplifies it by cancellation
 to `1.4e-9` — past the `1e-9` the golden harness enforces. In dollars it is **$5.3e-06 on a monthly
-net of −$3,733.52**, i.e. nothing. Everything else in the repo — all 24 coldstart cases, the other 14
-API cases, the whole Streamlit render surface — is bit-identical across scipy versions, and pandas
-2.2→3.0 / numpy 2.0→2.4 change *nothing at all*.
+net of −$3,733.52**. Everything else in the repo — all 24 coldstart cases, the other 14 API cases,
+the whole Streamlit render surface — is bit-identical across scipy versions, and pandas 2.2→3.0 /
+numpy 2.0→2.4 change *nothing at all*.
 
 So the pin exists to keep a real (if microscopic) numeric change from being smuggled in under an
-unrelated commit. `scripts/smoke.sh` asserts the scipy version up front and fails loudly, rather than
-letting it surface as a mystery `1.4e-9` in the final diff.
+unrelated commit. `scripts/smoke.sh` asserts the scipy version before running anything, so a stray
+`pip install -U scipy` fails loudly instead of surfacing as a mystery `1.4e-9` in the final diff.
 
-**To upgrade scipy:** bump it, run `scripts/smoke.sh --capture-baseline`, and commit the re-baselined
-`api.json` **on its own**, so the diff is attributable to the upgrade and to nothing else.
+**To upgrade scipy:** bump the pin, run `scripts/smoke.sh --capture-baseline`, confirm that *only*
+`cases.expense_plan` moved, and commit the re-baselined `api.json` **on its own** so the diff is
+attributable to the upgrade and to nothing else. That is exactly how 1.13.1 → 1.17.1 landed; see
+`docs/DIVERGENCES.md` §9.
 
 The deeper lesson: a `1e-9` contract over an iterative optimizer's output was never really pinning
-*behavior* — it was pinning a build. If `expense_plan` ever needs to be genuinely reproducible across
-solver versions, tighten `curve_fit`'s tolerances so it converges to the true minimum instead of
-stopping near it.
+*behavior* — it was pinning a build. It only ever passed because both captures used the same scipy.
+If `expense_plan` needs to be genuinely reproducible across solver versions, tighten `curve_fit`'s
+tolerances so it converges to the true minimum instead of stopping near it.
 
 ## The joblib rule
 

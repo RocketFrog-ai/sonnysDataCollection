@@ -260,10 +260,50 @@ dispatch. It was deleted in 2026-07, and the whole `app/site_analysis` subsystem
   commits and removed later; the 249-byte blob remains reachable from history. It is gitignored and
   untracked today, and this restructure never touched it. Nothing here can fix that — it needs a
   history rewrite plus rotation of whatever keys it held, which is a separate, deliberate operation.
-- **Three `sys.path.insert` calls remain in `proforma/ui/`** (the Streamlit entrypoints),
-  three in `app/` (two feature scripts, one test), and five in `experiments/datafetching/` (one per standalone
-  fetcher). `streamlit/web/bootstrap.py:59` puts only `dirname(main_script_path)` on `sys.path`,
-  never the repo root, so an entrypoint cannot reach `proforma.*` without one — and packaging
-  (`pyproject.toml`) was explicitly out of scope. Every remaining call sits in a script that is
-  invoked directly; no *library* module has one. The one that mattered, in
-  `app/pnl_analysis/modelling/data.py`, is gone.
+- **Eight `sys.path.insert` calls remain**: two in `proforma/ui/` (`app.py`, `site_visual_page.py` —
+  the Streamlit entrypoints), one in `app/` (`insights/tests/test_metrics.py`), and five in
+  `experiments/datafetching/` (one per standalone fetcher). `streamlit/web/bootstrap.py:59` puts only
+  `dirname(main_script_path)` on `sys.path`, never the repo root, so an entrypoint cannot reach
+  `proforma.*` without one — and packaging (`pyproject.toml`) was explicitly out of scope. Every
+  remaining call sits in a script that is invoked directly; no *library* module has one. The one that
+  mattered, in `app/pnl_analysis/modelling/data.py`, is gone. (The count was six in `app/` before the
+  `site_analysis` removal took the feature scripts with it.)
+
+---
+
+## 9. `expense_plan` is reproducible only against a pinned `scipy`
+
+**Status: accepted and pinned.** This is the one place where "the same code on the same data" does
+not mean "the same number."
+
+`opex_pct_curve_fit` (`app/pnl_analysis/modelling/pnl.py`) fits the opex%-of-revenue decay with
+`scipy.optimize.curve_fit`, a bounded non-linear least-squares. It stops when `ftol`/`xtol`/`gtol`
+(all `1e-8` by default) are satisfied — **near** the minimum, not **at** it. Its fitted parameters
+are consequently only defined to about `1e-8`, and different scipy builds take different steps and
+halt at different points.
+
+Consolidating onto one Python 3.11 environment moved scipy 1.13.1 → 1.17.1. The fit's inputs are
+bit-identical across both (`age`, `y`, `w` sha256-matched; `p0` equal to the last digit) — pandas
+2.2→3.0 and numpy 2.0→2.4 change nothing. Only the output moves:
+
+```
+tau  2.4609460487255252  ->  2.4609460460784720     (1.1e-9 relative)
+```
+
+`opex = shape × revenue` inherits it; `net = revenue − expenses` amplifies it by cancellation to
+`1.4e-9`, past the harness's `1e-9`. Blast radius: **209 floats, all inside `cases.expense_plan`**,
+worst absolute move `1.128e-05` on `combined_expenses[0] ≈ 86,410`, and exactly **two** values
+(`net[5]`, `net[6]`) exceeding `1e-9` on both the absolute and relative test. In money: half a
+millionth of a dollar on a monthly net of −$3,733.52. The other 14 API cases, all 24 coldstart cases
+and the whole Streamlit render surface are bit-identical.
+
+The upgrade was therefore landed as its own commit, re-baselining `api.json` alone, so the diff is
+attributable. `environment.yml` pins `scipy==1.17.1` — the version the baseline was captured under —
+and `scripts/smoke.sh` asserts it before running any golden.
+
+**What this really says:** a `1e-9` contract over an iterative optimizer's output was never pinning
+*behavior*; it was pinning a *build*. It passed before the upgrade only because both captures used
+the same scipy. The honest fix, if `expense_plan` ever needs cross-solver reproducibility, is to
+tighten `curve_fit`'s tolerances (`ftol=xtol=gtol=1e-14`) so it converges to the true minimum rather
+than stopping near it. That is a modelling change, not a restructure, and it would move the numbers
+again — so it was not done here.
