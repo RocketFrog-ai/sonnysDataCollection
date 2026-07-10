@@ -47,7 +47,28 @@ def enc(obj):
 
 def main(out_dir: str) -> None:
     cm, origin = load_coldstart()
+
+    # The module resolves both of these relative to its own __file__. Moving the module
+    # without fixing the depth leaves CSV/MODEL_PATH pointing at nothing -- and `load()`
+    # would then raise, or worse, a future `fit()` would silently write to a new location.
+    assert Path(cm.CSV).is_file(), f"coldstart CSV does not resolve: {cm.CSV}"
+    assert Path(cm.MODEL_PATH).is_file(), f"coldstart artifact does not resolve: {cm.MODEL_PATH}"
+
     art = cm.load()
+
+    # The pickled Model-3 ExtraTreesRegressor carries n_jobs=-1. sklearn's forest predict
+    # sums each tree's contribution into a shared buffer from a joblib thread pool, so the
+    # summation ORDER varies run to run and the last bits of the float64 wander. Measured
+    # spread: 1.9e-15 relative, ~9x machine epsilon, confined to the model_kind="et" cases.
+    # (OMP_NUM_THREADS does not fix this -- it governs BLAS/OpenMP, not joblib's pool.)
+    #
+    # Pin it to 1 for capture ONLY, so the golden file is byte-stable and an empty diff is
+    # a real signal rather than a coin flip. This does not touch the artifact on disk and
+    # does not change production, which keeps n_jobs=-1. The 1e-9 tolerance in diff.py sits
+    # far above this noise either way; the pin just removes churn.
+    et = art.get("models", {}).get("et")
+    if et is not None and getattr(et, "n_jobs", None) != 1:
+        et.n_jobs = 1
 
     # a real brand id, chosen deterministically so the brand-known branch is exercised
     brand = sorted(art["brand_mean"].keys())[0]
@@ -61,7 +82,8 @@ def main(out_dir: str) -> None:
             "FEAT": list(cm.FEAT),
             "CAT": list(cm.CAT),
         },
-        # relative so the golden file is location-independent, but still catches a broken path
+        # Recorded for the human reader. NOT relied on for the diff: `_` keys are
+        # informational there, so the hard check is the assert below.
         "_paths_exist": {
             "CSV": Path(cm.CSV).is_file(),
             "MODEL_PATH": Path(cm.MODEL_PATH).is_file(),
