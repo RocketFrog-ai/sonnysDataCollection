@@ -1,7 +1,7 @@
 """
 Campaign engine for the Forecast tab — the "should this site run a promotion?" decision and its evidence.
 
-Backs four Streamlit sections from earnest-proforma-2.0/streamlits/app.py (drop_pin_ui):
+Backs four Streamlit sections from proforma/v1_5/ui/app.py (drop_pin_ui):
 
   campaign_verdict(...)        — the "🎯 Campaign — should this site run a promotion?" block: established
                                  incumbents, neighbours' membership share, this site's predicted membership,

@@ -14,7 +14,7 @@ that the backend can serve directly. This is the lat/lon counterpart to the asyn
 app/site_analysis/modelling/site_analysis.py (which keys on a geocoded address).
 
 The maths, thresholds, windows and fallbacks are ported verbatim from
-earnest-proforma-2.0/streamlits/site_analysis_page.py — see render()/fetch_features()/build_markers()
+proforma/v1_5/ui/site_analysis_page.py — see render()/fetch_features()/build_markers()
 and the rule_* functions there. The only changes are: no streamlit/folium/plotly, no @st.cache_data,
 and all numbers coerced to plain float/int/None (never NaN) so the result is JSON-serializable.
 """

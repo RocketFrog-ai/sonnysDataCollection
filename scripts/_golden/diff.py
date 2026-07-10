@@ -70,7 +70,12 @@ def main() -> int:
     for k in sorted(set(base) | set(cand)):
         if k.startswith("_"):
             if base.get(k) != cand.get(k):
-                info.append(f"  (info) {k}: {base.get(k)!r} -> {cand.get(k)!r}")
+                b, c = base.get(k), cand.get(k)
+                # `_detail_*` are whole per-file maps; printing them buries the real signal.
+                if isinstance(b, dict) and isinstance(c, dict) and len(b) + len(c) > 8:
+                    info.append(f"  (info) {k}: {len(b)} -> {len(c)} entries (paths moved; see the file)")
+                else:
+                    info.append(f"  (info) {k}: {b!r} -> {c!r}")
             continue
         walk(base.get(k), cand.get(k), k)
 

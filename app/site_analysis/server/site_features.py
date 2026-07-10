@@ -20,7 +20,7 @@ import pandas as pd
 
 # <repo>/app/site_analysis/server/site_features.py -> parents[3] == <repo>
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_CSV = _REPO_ROOT / "earnest-proforma-2.0" / "data" / "merged_all_sites.csv"
+_DEFAULT_CSV = _REPO_ROOT / "proforma" / "data" / "ref" / "merged_all_sites.csv"
 CSV_PATH = Path(os.environ.get("MERGED_SITES_CSV", str(_DEFAULT_CSV)))
 
 # Site lat/lon live in the lowercase `lat`/`lon` columns (the capitalized `Latitude`/`Longitude`

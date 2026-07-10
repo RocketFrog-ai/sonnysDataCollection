@@ -29,13 +29,20 @@ PINS = [
 
 
 def load_coldstart():
-    """Return (module, origin_label). Prefers the post-refactor location."""
-    try:
+    """Return (module, origin_label). Prefers the post-refactor location.
+
+    Falls back to the legacy module ONLY when the new package genuinely does not exist on
+    disk. A broken new module must raise, not silently fall through -- otherwise the smoke
+    test would keep passing against the old code while the new code is broken.
+    """
+    if str(REPO) not in sys.path:
+        sys.path.insert(0, str(REPO))
+
+    if (REPO / "proforma" / "v1_5" / "models" / "coldstart.py").is_file():
         from proforma.v1_5.models import coldstart as cm  # noqa
 
         return cm, "proforma.v1_5.models.coldstart"
-    except Exception:
-        pass
+
     legacy = REPO / "earnest-proforma-2.0" / "streamlits"
     if str(legacy) not in sys.path:
         sys.path.insert(0, str(legacy))
@@ -45,15 +52,18 @@ def load_coldstart():
 
 
 def load_pnl_app():
-    """Return (fastapi_app, origin_label). Prefers the post-refactor entrypoint."""
+    """Return (fastapi_app, origin_label). Prefers the post-refactor entrypoint.
+
+    Same rule as load_coldstart: fall back on ABSENCE, never on breakage.
+    """
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
-    try:
+
+    if (REPO / "app" / "pnl_only.py").is_file():
         from app.pnl_only import app  # noqa
 
         return app, "app.pnl_only:app"
-    except Exception:
-        pass
+
     from serve_pnl import app  # noqa
 
     return app, "serve_pnl:app (legacy)"
