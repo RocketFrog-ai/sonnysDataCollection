@@ -60,27 +60,8 @@ class CompetitionScaleRequest(_PinRequest):
     demo: bool = Field(False, description="Anonymized demo: don't send the client's real site names to the LLM.")
 
 
-class PollinatedSummaryRequest(_PinRequest):
-    """Tab 1 — the fused ('pollinated') read: it CONSUMES the three insight responses the frontend already
-    fetched — Key Insights (B, from /insights), Local Market Analysis (A, from /insights/location) and
-    Competition Coverage (C, from /insights/competition) — and synthesises them into one consolidated summary
-    with a Final Verdict. It does NOT recompute A/B/C, so it makes a single LLM call. Pass the responses through."""
-    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Local-market radius in km (prompt context only).")
-    key_insights: Optional[str] = Field(None, description="(B) The /insights response text (grounded data/plots). Optional but recommended.")
-    location_analysis: Optional[str] = Field(None, description="(A) The /insights/location response text (Local Market Analysis).")
-    competition: Optional[str] = Field(None, description="(C) The /insights/competition response — pass its `summary` markdown (or the whole JSON as a string).")
-    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = env default.")
 
 
-class IndependentResearchRequest(_PinRequest):
-    """Tab 1 — the independent, EXTERNAL-KNOWLEDGE-ONLY market research: can a capable LLM size a new car-wash
-    market for this pin from its own world knowledge (plus optional web search) with NO internal/operator data? Run
-    separately per radius; each returns the requested business metrics, and any metric it can't responsibly size is
-    returned as null-with-reason rather than fabricated."""
-    radii_miles: List[float] = Field(default=[3.0, 6.0, 9.0], min_length=1, max_length=6,
-                                     description="Trade-area radii (miles) to size independently, e.g. [3, 6, 9].")
-    use_web_search: bool = Field(False, description="Ground the estimate on fresh web results (returns citable sources) when a provider is configured.")
-    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = env default.")
 
 
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────
