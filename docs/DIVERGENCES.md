@@ -120,21 +120,34 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
 
 `scripts/smoke.sh` proves a lot, and these things it does **not** prove:
 
-- **The Streamlit UI has no golden output.** A Streamlit entrypoint executes on import, so the UI
-  files are only `ast.parse`d. A visual or behavioural regression in the UI will not be caught.
+- **The Streamlit UI is only covered on its first render.** `scripts/_golden/capture_ui.py` uses
+  `streamlit.testing.v1.AppTest`, which genuinely *executes* the script body (imports, data load,
+  model load, widget construction) and freezes the rendered widget surface. But widgets that appear
+  only after a user picks a mode, drops a pin, or clicks a button are never exercised, and nothing
+  compares pixels. A layout or interaction regression will not be caught.
 - **`/v1/pnl_analysis/insights/*` are excluded** — they call an LLM and are non-deterministic by
   construction. They are documented as annotating, never altering, modelled numbers.
 - **`app/site_analysis/features/**` is `ast`-parsed but never imported.** Those modules run live
-  HTTP/LLM calls at module scope: `typeOfSite/test_o4_mini.py` fires an API request and prints a
-  `403` on import, and `o4mini_images_classification.py` calls a vision model at module level.
+  HTTP/LLM calls at module scope: `app/site_analysis/features/inactive/experimental_features/typeOfSite/test_o4_mini.py` fires an API request and prints a
+  `403` on import, and `.../typeOfSite/o4mini_images_classification.py` calls a vision model at module level.
   Importing that tree costs money.
 - **The Celery pipeline is not exercised** (needs Redis — and see §2).
-- **`app/site_analysis/*` endpoints have no golden outputs** for the same reason.
+- **`app/site_analysis/*` endpoints have no golden outputs**, because they need Redis/Celery. Their
+  route paths and their full OpenAPI schema (every field name, type, default, and validation bound)
+  were diffed against the `pre-refactor` tag once, by hand, and matched byte-for-byte. That is a
+  one-time check, not a standing test.
 
 ---
 
 ## 7. Sundry
 
+- **`test_endpoint.py` (repo root) has been broken for some time.** It does
+  `from app.site_analysis.server.routes import get_competitors_dynamics_endpoint` and
+  `from app.site_analysis.server.models import CompetitorsDynamicsRequest`. Neither symbol exists in
+  `app/` today, and `git grep` at the `pre-refactor` tag shows neither existed then. It is an ad-hoc
+  manual script, not a pytest. During the restructure `routes.py`/`models.py` were split into
+  `router.py` / `schemas.py` / `service.py`; keeping them alive as re-export shims would not have
+  helped, because the *symbols* are what is missing, not the modules. Left broken.
 - **`app/pnl_analysis/modelling/data.py`'s docstring** used to claim `load_panel()` reads
   `main-ds.csv`. It reads `main-data-v2-stitched.csv`; `main-ds.csv` is the superseded legacy
   schema. Docstring corrected during the restructure (prose only, no behavior change).

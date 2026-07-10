@@ -1,7 +1,7 @@
 # Drop-a-Pin Forecast — How It Works
 
 *A detailed but plain-English guide to the two charts in the **📍 Drop-a-pin** mode.*
-Code: [`coldstart_model.py`](coldstart_model.py) (the model) + [`app.py`](app.py) (the charts & trend logic).
+Code: [`coldstart.py`](../models/coldstart.py) (the model) + [`app.py`](app.py) (the charts & trend logic).
 
 ---
 

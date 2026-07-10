@@ -1,7 +1,7 @@
 # New-site forecasting — methodology, models, plots, accuracy
 
 This documents every **forecasting plot** in the **"Forecasting for a new site"** (📍 Drop-a-pin) tab of
-`earnest-proforma-2.0/streamlits/app.py` + `coldstart_model.py`: how each is modelled, which model
+`proforma/v1_5/ui/app.py` + `coldstart.py`: how each is modelled, which model
 produces it, the data behind it, a worked **dry run** with real numbers, and a measured **accuracy /
 evaluation**.
 
@@ -11,8 +11,8 @@ There are **four forecasting plots** in the tab, all built off one cold-start mo
 3. **Monthly P&L** — revenue vs operating expense vs net, 5-yr, with an optional campaign overlay.
 4. **Eating the market** — the new site vs each incumbent, each forecast forward 5 yr, drifting on campaign.
 
-Data sources: `data/main-ds.csv` (monthly washes/revenue per site, the *operational* panel) and
-`data/opex-data.csv` (monthly P&L: income, cogs, expenses). site_key = `client_id::site_id` (joins both).
+Data sources: `proforma/data/panel/main-ds.csv` (monthly washes/revenue per site, the *operational* panel) and
+`proforma/data/opex/opex-data.csv` (monthly P&L: income, cogs, expenses). site_key = `client_id::site_id` (joins both).
 Panel spans ~2,000 sites, Jan 2020 – mid 2026; 1,272 of them are old enough to train the plateau model.
 
 > **No operator input.** The forecast tab takes **only a dropped pin (lat/lon)** — `brand=None` always
@@ -341,6 +341,6 @@ AND 1.3× the trailing-6-month median** (interior months only).
 - New-site forecast: `cm.predict_site(lat, lon, brand=None)` → `(traj, info)`.
 - Accuracy: `cm.evaluate_trajectory(n_folds=5)` → `{n, mape, mae}`.
 - Market trend: `market_trend(date×site pivot)` in `app.py` → `(g, g_lo, g_hi)`.
-- Campaign signal: reproduce the event study in `notebooks/book_v4.ipynb` on `data/opex-data.csv`.
-- Companion deep-dive: `streamlits/PINPOINT_FORECAST.md`. Run from `earnest-proforma-2.0/streamlits/` with the
+- Campaign signal: reproduce the event study in `notebooks/book_v4.ipynb` on `proforma/data/opex/opex-data.csv`.
+- Companion deep-dive: `ui/PINPOINT_FORECAST.md`. Run from `proforma/v1_5/ui/` with the
   project venv (conda `sonnysDataCollection`).

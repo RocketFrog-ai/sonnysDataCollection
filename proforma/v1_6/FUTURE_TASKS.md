@@ -21,8 +21,8 @@ value. See the approved plan at `~/.claude/plans/temporal-wandering-prism.md`.
       Gemini" council; exclude Fable), internal still weighted max. **Consult the `claude-api` skill** for the
       current Messages-API shape, headers, and model IDs — don't hand-wire from memory.
 
-- [ ] **Streamlit tab (proper).** v1 renders a live council section inline (`council/streamlit_view.py`,
-      wired near the KPI charts in `earnest-proforma-2.0/streamlits/app.py`). Promote it to a real tab with an
+- [ ] **Streamlit tab (proper).** v1 renders a live council section inline (`proforma/v1_6/streamlit_view.py`,
+      wired near the KPI charts in `proforma/v1_5/ui/app.py`). Promote it to a real tab with an
       "as-of year" slider so you can watch the *retrospective* verdict too, not just the present-day one.
 
 - [ ] **`POST /insights/council` route** mirroring `/insights/pollinated` (deferred from the plan).
@@ -47,7 +47,7 @@ value. See the approved plan at `~/.claude/plans/temporal-wandering-prism.md`.
 
 ## Follow-ups from the first backtest
 
-- [ ] **Run the full N≈420** for stable numbers (`python -m council.harness`, ~1700 LLM calls), and once with
+- [ ] **Run the full N≈420** for stable numbers (`python -m proforma.v1_6.harness`, ~1700 LLM calls), and once with
       `--backend local` to compare vendors.
 - [ ] **Investigate the competition seat's edge.** In the 40-site run it was the most discriminating
       (~70% go/no-go accuracy vs ~30% for the bullish LLM seats). Understand why (it says Pass when saturated)

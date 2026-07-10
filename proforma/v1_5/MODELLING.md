@@ -3,8 +3,8 @@
 How the cold-start car-wash proforma turns a dropped pin into a 5-year P&L. Wash count comes
 **strictly from the model**; ASP/OPEX/CAPEX are dashboard knobs applied on top.
 
-Code: [`streamlits/coldstart_model.py`](streamlits/coldstart_model.py) (the forecaster),
-[`streamlits/app.py`](streamlits/app.py) (UI + P&L), `data/main-ds.csv` (panel).
+Code: [`models/coldstart.py`](models/coldstart.py) (the forecaster),
+[`ui/app.py`](ui/app.py) (UI + P&L), `proforma/data/panel/main-ds.csv` (panel).
 
 ---
 
@@ -92,7 +92,7 @@ fallback.
 
 ## 5. P&L layer — washes → dollars
 
-In [`app.py`](streamlits/app.py):
+In [`app.py`](ui/app.py):
 
 - **Revenue** = `membership_purchases × $/purchase + retail_washes × $/wash`, where membership washes are
   converted to purchases via the cluster purchases-per-wash ratio. The **ASPs are cluster-derived** (the
@@ -127,9 +127,9 @@ Separate from the numbers — `app/pnl_analysis/insights/`. The explore-markets 
 
 ## 7. Running / retraining
 
-- **App:** `venv/bin/streamlit run earnest-proforma-2.0/streamlits/app.py`
+- **App:** `venv/bin/streamlit run proforma/v1_5/ui/app.py`
 - **Refit the cold-start artifact** (after changing the level model / ramp): run
-  `coldstart_model.py` in the conda `sonnysDataCollection` env (sklearn 1.6.1) so the FastAPI backend can
+  `coldstart.py` in the conda `sonnysDataCollection` env (sklearn 1.6.1) so the FastAPI backend can
   unpickle it — `coldstart_artifacts.joblib`. The anchor calibration and ASP/breakeven logic are
   inference-time and need **no** refit.
 
