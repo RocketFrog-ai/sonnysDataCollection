@@ -24,8 +24,6 @@ from app.pnl_analysis.server.schemas import (
     InsightsRequest,
     LocationSummaryRequest,
     CompetitionScaleRequest,
-    PollinatedSummaryRequest,
-    IndependentResearchRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
     ExpensePlanRequest,
@@ -96,8 +94,7 @@ def insights(req: InsightsRequest):
 @router.post("/insights/location")
 def insights_location(req: LocationSummaryRequest):
     """Tab 1 — location-only LLM market read (world-knowledge from the pin alone). Returns JSON `{summary}` — the
-    full Local Market Analysis markdown (no verdict; the verdict lives only in the pollinated summary). 503 if no
-    LLM backend answers."""
+    full Local Market Analysis markdown. 503 if no LLM backend answers."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     try:
         text = _loc.location_market_analysis(lat, lon, address=req.address, radius_km=req.radius_km,
@@ -118,47 +115,6 @@ def insights_competition(req: CompetitionScaleRequest):
         result = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
                                                  radius_km=req.radius_km, backend=req.backend)
         return _loc.build_competition_response(result)
-    except _llm.LLMUnavailable as e:
-        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
-
-
-@router.post("/insights/pollinated")
-def insights_pollinated(req: PollinatedSummaryRequest):
-    """Tab 1 — the fused ('pollinated') summary. CONSUMES the three insight responses the frontend already
-    fetched — Key Insights (B), Local Market Analysis (A) and Competition Coverage (C) — passed in on the request,
-    and synthesises them into one consolidated summary ending in a Final Verdict. One LLM call, no recomputation
-    of A/B/C. Returns JSON: the consolidated `summary` plus, under `sources`, the exact three summary responses it
-    consumed (so the frontend can render everything from this one payload). 503 if no LLM answers."""
-    if not any((req.key_insights, req.location_analysis, req.competition)):
-        raise HTTPException(status_code=400,
-                            detail="Provide at least one of key_insights, location_analysis or competition.")
-    lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    try:
-        out = _loc.pollinate_analysis(req.location_analysis, req.key_insights, lat=lat, lon=lon,
-                                      radius_km=req.radius_km, competition=req.competition, backend=req.backend)
-        return {
-            "summary": out["text"],
-            "sources": {
-                "key_insights": req.key_insights,
-                "location_analysis": req.location_analysis,
-                "competition": req.competition,
-            },
-        }
-    except _llm.LLMUnavailable as e:
-        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
-
-
-@router.post("/insights/independent-research")
-def insights_independent_research(req: IndependentResearchRequest):
-    """Tab 1 — independent EXTERNAL-LLM market research: can the model size a NEW car-wash market for this pin from
-    world knowledge ALONE (no internal/operator data; optional web search)? Sizes each radius separately (default
-    3/6/9 mi) and estimates the requested business metrics, returning null-with-reason for anything it can't
-    responsibly estimate rather than fabricating. Returns JSON `{radii, summary, sources}`. 503 if no LLM answers."""
-    lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    try:
-        result = _loc.independent_market_research(lat, lon, address=req.address, radii_miles=req.radii_miles,
-                                                  backend=req.backend, use_web_search=req.use_web_search)
-        return _loc.build_independent_research_response(result)
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
