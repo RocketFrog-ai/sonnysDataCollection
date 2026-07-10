@@ -41,9 +41,8 @@ uvicorn app.pnl_only:app --port 8010  # pnl_analysis ONLY. No openai, no live fe
 
 This is **not** redundant code — it is two mount configurations with different dependency
 footprints. `app/pnl_only.py` exists so the forecasting API can be served without dragging in the
-live external-data fetchers or the OpenAI client. `serve_pnl.py` at the root is a one-line
-back-compat shim re-exporting the same FastAPI object (`serve_pnl.app is app.pnl_only.app`), kept
-because `serve_pnl:app` may be baked into deploy scripts.
+live external-data fetchers or the OpenAI client. There is no `serve_pnl.py` shim: if a deploy
+script still says `serve_pnl:app`, point it at `app.pnl_only:app`.
 
 Both mount their routers under `/v1`. `app/pnl_analysis` additionally carries the prefix
 `/pnl_analysis`, so its full paths are `/v1/pnl_analysis/...`.
@@ -70,7 +69,7 @@ store, not a refactor.
 
 - **`app/core/`** (was `app/utils/`) — the config hub. Loads `.env` from the repo root regardless of
   CWD; exposes API keys and geocoding helpers. Nearly everything imports it.
-- **`app/site_analysis/`** — async external-data enrichment. `server/` splits into `router.py`
+- **`app/site_analysis/`** — synchronous external-data enrichment. `server/` splits into `router.py`
   (parse, delegate, serialize), `schemas.py` (pydantic), `service.py` (the logic).
   `features/` holds one module per data source.
 - **`app/pnl_analysis/`** — the P&L/market API. Same `router` / `schemas` / `service` split.

@@ -54,7 +54,7 @@ because its slider shows the user `$/membership purchase`, which is a number an 
 
 | | |
 |---|---|
-| UI (`_pinpoint_forecast.py:1128`) | `revenue = mem × cl_mem + ret × cl_ret` — each leg priced with its own ASP, **every month** |
+| UI (`_pinpoint_forecast.py:1129,1134`) | `mem_purch = mem × ppw`; `revenue = mem_purch × cl_mem_pp + ret × cl_ret` — i.e. `mem × cl_mem + ret × cl_ret`, each leg priced with its own ASP, **every month** |
 | API (`pnl.py:309,316`) | `asp_blend = mem_share × cl_mem + (1−mem_share) × cl_ret`, then `revenue = (mem+ret) × asp_blend` — one blended `$/wash`, and `mem_share` is the **mature** share, a scalar |
 
 These agree only where the month's membership share equals the mature share. It does not during the

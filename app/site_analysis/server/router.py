@@ -20,7 +20,7 @@ from fastapi import APIRouter
 from app.site_analysis.server import service
 from app.site_analysis.server.db_cache import get_all_site_analysis_cache
 from app.site_analysis.server.schemas import (
-    AnalyseRequest,
+    AddressRequest,
     SiteContextRequest,
     SiteFeaturesRequest,
 )
@@ -61,12 +61,12 @@ def get_site_features(req: SiteFeaturesRequest):
 # -----------------------------------------------------------------------------
 
 @router.post("/traffic-lights")
-def get_traffic_lights_endpoint(features: AnalyseRequest):
+def get_traffic_lights_endpoint(features: AddressRequest):
     return service.get_traffic_lights(features)
 
 
 @router.post("/nearby-stores")
-def get_nearby_stores_endpoint(features: AnalyseRequest):
+def get_nearby_stores_endpoint(features: AddressRequest):
     return service.get_nearby_stores(features)
 
 

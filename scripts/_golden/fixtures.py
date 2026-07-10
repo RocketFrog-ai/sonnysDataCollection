@@ -11,7 +11,7 @@ when the module moves and its HERE-relative data paths are rewritten):
 Also resolves the two things the refactor relocates, tolerating either layout so
 one harness can capture the baseline AND verify the result:
   coldstart model  earnest-proforma-2.0/streamlits/coldstart_model.py -> proforma/v1_5/models/coldstart.py
-  pnl-only ASGI    serve_pnl:app                                      -> app/pnl_only.py:app
+  pnl-only ASGI    serve_pnl:app (exists only at the pre-refactor tag)     -> app/pnl_only.py:app
 """
 from __future__ import annotations
 
