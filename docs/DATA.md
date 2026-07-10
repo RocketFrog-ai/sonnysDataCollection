@@ -36,7 +36,8 @@ main-data-v2.csv            raw export
 python proforma/v1_5/scripts/process_main_data_v2.py    # from the repo root
 ```
 
-Also in `panel/`: `main-data-6yr.csv` (older 6-year cut, no current code reader) and `main-ds.csv`
+Also in `panel/`: `main-data-6yr.csv` (older 6-year cut; no `.py` reader, but the
+`same_location_timeline` and `tunnel_length_backtest` notebooks read it) and `main-ds.csv`
 (**legacy schema, superseded** — read only by `libs/carwash_type/classify_site_types.py` as a site
 list, and by the `moirai_ts` notebook).
 
@@ -49,7 +50,8 @@ list, and by the `moirai_ts` notebook).
 | `proforma/data/ref/merged_all_sites.csv` | `app/site_analysis/server/site_features.py`, the Sitewise UI page, `backtest_features.py` |
 | `proforma/data/ref/old-excel-proforma-data-enriched.csv` | `proforma/v1_5/models/tunnel_capex.py` (187 real builds → tunnel-length→CAPEX) |
 | `proforma/data/ref/unknownsites_resolved.csv`, `proforma/data/ref/site_carwash_types.csv.bak-pre-resolved` | provenance for the resolved type table |
-| `proforma/data/ref/same_location_sites.csv`, `proforma/data/ref/merged_sites_with_2025_wash_counts_nonzero_with_region_state.csv` | no current code reader |
+| `proforma/data/ref/same_location_sites.csv` | the `same_location_timeline` notebook |
+| `proforma/data/ref/merged_sites_with_2025_wash_counts_nonzero_with_region_state.csv` | no current reader |
 | `proforma/data/derived/cannibalization_entrants.csv` | no current code reader; output of the entry-cannibalization study |
 
 ## Provenance of the collapse (2026-07)

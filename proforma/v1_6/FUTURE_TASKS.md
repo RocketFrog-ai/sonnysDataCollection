@@ -6,7 +6,7 @@ value. See the approved plan at `~/.claude/plans/temporal-wandering-prism.md`.
 ## Bigger pieces (Phase C)
 
 - [ ] **Refit-as-of-T internal seat.** Add the cold-start forecast as a numeric internal seat, but trained
-      *only on data `< T`* so it's leakage-clean. Concretely: refactor `coldstart_model.fit` to accept an
+      *only on data `< T`* so it's leakage-clean. Concretely: refactor `coldstart.fit` to accept an
       optional `panel`/`as_of` (one line: filter the panel to `date < T` before `build_features`), cache one
       `art_asof` per **quarter** (~10 trains across 2021–2024, not one per site), and pass it into
       `compute_trajectory(..., art=art_asof)` to get `plateau_med` as the internal projection. Report the
