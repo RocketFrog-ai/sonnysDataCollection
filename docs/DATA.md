@@ -1,7 +1,7 @@
 # Data
 
 All datasets live **once**, under `proforma/data/`, versioned by **filename**, not by folder.
-Model versions (`proforma/v1_5`, `proforma/v1_6`) declare in their own README which datasets they
+Model versions (`proforma`, `experiments/council`) declare in their own README which datasets they
 consume. Nothing under `proforma/data/` is version-specific; nothing should be edited by hand.
 
 ```
@@ -21,8 +21,8 @@ proforma/data/
 - The real site key is **`client_id + site_id`**. `site_id` alone is a within-brand index and
   collides across operators.
 
-Read by `proforma/v1_5/models/coldstart.py`, `proforma/v1_5/ui/app.py`,
-`app/pnl_analysis/modelling/data.py`, and `proforma/v1_6/data_1_6.py`.
+Read by `proforma/models/coldstart.py`, `proforma/ui/app.py`,
+`app/pnl_analysis/modelling/data.py`, and `experiments/council/data_1_6.py`.
 
 ### Build chain
 
@@ -33,7 +33,7 @@ main-data-v2.csv            raw export
 ```
 
 ```bash
-python proforma/v1_5/scripts/process_main_data_v2.py    # from the repo root
+python proforma/scripts/process_main_data_v2.py    # from the repo root
 ```
 
 Also in `panel/`: `main-data-6yr.csv` (older 6-year cut; no `.py` reader, but the
@@ -46,9 +46,9 @@ list, and by the `moirai_ts` notebook).
 | file | consumer |
 |---|---|
 | `proforma/data/opex/opex-data.csv` | Streamlit P&L, `app/pnl_analysis/modelling/{data,campaign}.py`. True opex = `cogs + expenses`; operator key is `client_id`. |
-| `proforma/data/ref/site_carwash_types.csv` | `proforma/v1_5/ui/app.py` — the **resolved** wash-type table |
+| `proforma/data/ref/site_carwash_types.csv` | `proforma/ui/app.py` — the **resolved** wash-type table |
 | `proforma/data/ref/merged_all_sites.csv` | `app/site_analysis/server/site_features.py`, the Sitewise UI page, `backtest_features.py` |
-| `proforma/data/ref/old-excel-proforma-data-enriched.csv` | `proforma/v1_5/models/tunnel_capex.py` (187 real builds → tunnel-length→CAPEX) |
+| `proforma/data/ref/old-excel-proforma-data-enriched.csv` | `proforma/models/tunnel_capex.py` (187 real builds → tunnel-length→CAPEX) |
 | `proforma/data/ref/unknownsites_resolved.csv`, `proforma/data/ref/site_carwash_types.csv.bak-pre-resolved` | provenance for the resolved type table |
 | `proforma/data/ref/same_location_sites.csv` | the `same_location_timeline` notebook |
 | `proforma/data/ref/merged_sites_with_2025_wash_counts_nonzero_with_region_state.csv` | no current reader |
@@ -67,7 +67,7 @@ The panel used to exist in **two** trees, `earnest-proforma-2.0/data/` and
 | `main-data-v2.csv` | 13,578,108 |
 
 ~40 MB of duplication removed, and `process_main_data_v2.py` no longer has to write two copies to
-keep them in sync. The council (`proforma/v1_6`) previously read the 1.6 copy specifically; it now
+keep them in sync. The council (`experiments/council`) previously read the 1.6 copy specifically; it now
 reads the shared one, which is the same bytes.
 
 **`site_carwash_types.csv` was NOT collapsed.** `proforma/data/ref/` and `libs/carwash_type/data/`
@@ -82,7 +82,7 @@ the classifier's raw output. See `docs/DIVERGENCES.md` §3.
   **not** exclude `0.0, 0.0`. Pre-existing; not addressed by the restructure.
 - Some operators' revenue collapses to ~0 while wash counts hold, corrupting cluster ASP. The
   models defend against this with an ASP-corruption filter (`_drop_corrupt_asp_rows`, ASP > $200 →
-  null the revenue leg). See `proforma/v1_5/MODELLING.md`.
+  null the revenue leg). See `proforma/MODELLING.md`.
 
 ## git-LFS
 
@@ -90,6 +90,6 @@ the classifier's raw output. See `docs/DIVERGENCES.md` §3.
 restructure too. `.gitattributes` used to carry 11 `filter=lfs` patterns, all dead — 9 matched
 untracked files, 2 matched nothing. It now carries an explanation instead.
 
-The largest tracked file, `proforma/v1_5/artifacts/coldstart_artifacts.joblib` (~46 MB), is an
+The largest tracked file, `proforma/artifacts/coldstart_artifacts.joblib` (~46 MB), is an
 ordinary inline git blob. Do not convert it to LFS after the fact: a pattern added after a file is
 committed silently does nothing to the existing history.

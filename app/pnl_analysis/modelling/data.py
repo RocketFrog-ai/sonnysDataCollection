@@ -13,7 +13,7 @@ artifacts are read once and shared in-process:
   • load_pnl_monthly()   — per-(location, state, year, month) opex + monthly wash snapshot (with age).
   • load_campaign_panel()— opex-data.csv keyed by site_key (for campaign-spike detection / snapshots).
 
-These mirror the loaders in proforma/v1_5/ui/app.py (PNL_EXCLUDE, the ASP>200 nulling, the
+These mirror the loaders in proforma/ui/app.py (PNL_EXCLUDE, the ASP>200 nulling, the
 adaptive cluster assignment), so the API returns the same numbers as the app. "Mirror" is literal:
 this is a second implementation of the same math, and the two have drifted. See docs/DIVERGENCES.md
 before changing either.
@@ -26,7 +26,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 import pandas as pd
 
-from proforma.v1_5.models import coldstart as cm
+from proforma.models import coldstart as cm
 
 ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "proforma" / "data"
@@ -38,7 +38,7 @@ EARTH_KM = 6371.0088
 # sites kept OUT of the P&L analysis (matched on client_id) — mirrors the UI's PNL_EXCLUDE
 PNL_EXCLUDE = {"alpinecarwash_000087"}
 
-# "express only" mode — mirrors proforma/v1_5/ui/panels/_shared.py exactly.
+# "express only" mode — mirrors proforma/ui/panels/_shared.py exactly.
 EXPRESS_TYPE = "Express Tunnel"   # the filter keeps just this primary_carwash_type
 EXPRESS_MIN_MONTHS = 30           # express mode also requires >=30 monthly records -> richer history
 
@@ -77,7 +77,7 @@ def load_carwash_types() -> pd.Series:
 def load_panel(express_only: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Monthly site-level panel `df` + per-site table `site` (with adaptive local-market clusters).
 
-    Mirrors `load_data()` in proforma/v1_5/ui/panels/_shared.py: builds tot/share columns, nulls
+    Mirrors `load_data()` in proforma/ui/panels/_shared.py: builds tot/share columns, nulls
     implausible ASP (>$200/wash), aggregates one row per site_key, tags left-censored / has_coords,
     and assigns the adopted adaptive clusters. Cached per `express_only` for the process lifetime.
 

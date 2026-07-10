@@ -30,8 +30,9 @@ REPO = Path(__file__).resolve().parents[2]
 # `pre-refactor` tag in a worktree and prove the golden is a pre-refactor artifact, not a
 # post-refactor one blessed after the fact.
 _CANDIDATES = [
-    REPO / "proforma" / "v1_5" / "ui",
-    REPO / "earnest-proforma-2.0" / "streamlits",
+    REPO / "proforma" / "ui",                        # current
+    REPO / "proforma" / "v1_5" / "ui",               # tag proforma-v1.5
+    REPO / "earnest-proforma-2.0" / "streamlits",    # tag pre-refactor
 ]
 UI_DIR = next((d for d in _CANDIDATES if (d / "app.py").is_file()), _CANDIDATES[0])
 SCRIPT = UI_DIR / "app.py"

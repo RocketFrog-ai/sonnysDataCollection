@@ -16,14 +16,14 @@ The forecasting/P&L math is implemented **twice**:
 
 | | |
 |---|---|
-| `proforma/v1_5/ui/app.py` | the original, in-process with the Streamlit UI |
+| `proforma/ui/app.py` | the original, in-process with the Streamlit UI |
 | `app/pnl_analysis/modelling/{market,pnl,campaign,trend}.py` | a port of the same math, exposed as API endpoints |
 
 `app/pnl_analysis/modelling/data.py` says its loaders "mirror the loaders in
-`proforma/v1_5/ui/app.py`". *Mirror* is doing real work in that sentence — it is a second
+`proforma/ui/app.py`". *Mirror* is doing real work in that sentence — it is a second
 implementation, not a shared one.
 
-Only the shared parts are genuinely shared: `proforma/v1_5/models/coldstart.py`
+Only the shared parts are genuinely shared: `proforma/models/coldstart.py`
 (`predict_site`, `predict_neighbours`, `assign_clusters`, the cannibalization fit) is imported by
 both, so plateau × ramp × cannibalization is computed once.
 
@@ -167,7 +167,7 @@ verified byte-identical by sha256 before the duplicate was removed. See `docs/DA
 
 ## 4. `predict_site` does not return what its docstring says
 
-`proforma/v1_5/models/coldstart.py::predict_site` is documented as:
+`proforma/models/coldstart.py::predict_site` is documented as:
 
 > Return DataFrame[month, total_med/lo/hi, mem, ret]
 
@@ -221,7 +221,7 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
 ## 7. Six P&L functions are dead in the UI and live in the API
 
 `load_pnl`, `regional_opex`, `opex_per_wash`, `opex_ramp`, `opex_trend_hist`, and `asp_refs` are
-defined in `proforma/v1_5/ui/panels/_pinpoint_forecast.py` and called **nowhere** in `proforma/`.
+defined in `proforma/ui/panels/_pinpoint_forecast.py` and called **nowhere** in `proforma/`.
 Their namesakes in `app/pnl_analysis/modelling/pnl.py` *are* called (`pnl.py:282`, `pnl.py:311`, …).
 
 So the API port kept them live while the Streamlit side stopped using them. They were relocated
@@ -229,7 +229,7 @@ verbatim during the split rather than deleted, because deleting code is not code
 they are the closest thing to a specification of what the API's copies are supposed to do. Delete
 them only together with a decision about §1.
 
-Related: `proforma/v1_5/ui/site_analysis_page.py` is **not reachable** from `app.py`'s `MODES`
+Related: `proforma/ui/site_analysis_page.py` is **not reachable** from `app.py`'s `MODES`
 dispatch (`MODES = ["🛰️ Sitewise", "🗺️ Explore markets", "📍 Pinpoint forecast"]`; Sitewise renders
 `site_visual_page`). It survives only in a comment. Left in place.
 
@@ -268,8 +268,8 @@ dispatch (`MODES = ["🛰️ Sitewise", "🗺️ Explore markets", "📍 Pinpoin
   commits and removed later; the 249-byte blob remains reachable from history. It is gitignored and
   untracked today, and this restructure never touched it. Nothing here can fix that — it needs a
   history rewrite plus rotation of whatever keys it held, which is a separate, deliberate operation.
-- **Three `sys.path.insert` calls remain in `proforma/v1_5/ui/`** (the Streamlit entrypoints),
-  three in `app/` (two feature scripts, one test), and five in `datafetching/` (one per standalone
+- **Three `sys.path.insert` calls remain in `proforma/ui/`** (the Streamlit entrypoints),
+  three in `app/` (two feature scripts, one test), and five in `experiments/datafetching/` (one per standalone
   fetcher). `streamlit/web/bootstrap.py:59` puts only `dirname(main_script_path)` on `sys.path`,
   never the repo root, so an entrypoint cannot reach `proforma.*` without one — and packaging
   (`pyproject.toml`) was explicitly out of scope. Every remaining call sits in a script that is

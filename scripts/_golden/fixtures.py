@@ -10,7 +10,7 @@ when the module moves and its HERE-relative data paths are rewritten):
 
 Also resolves the two things the refactor relocates, tolerating either layout so
 one harness can capture the baseline AND verify the result:
-  coldstart model  earnest-proforma-2.0/streamlits/coldstart_model.py -> proforma/v1_5/models/coldstart.py
+  coldstart model  earnest-proforma-2.0/streamlits/coldstart_model.py -> proforma/models/coldstart.py
   pnl-only ASGI    serve_pnl:app (exists only at the pre-refactor tag)     -> app/pnl_only.py:app
 """
 from __future__ import annotations
@@ -38,10 +38,10 @@ def load_coldstart():
     if str(REPO) not in sys.path:
         sys.path.insert(0, str(REPO))
 
-    if (REPO / "proforma" / "v1_5" / "models" / "coldstart.py").is_file():
-        from proforma.v1_5.models import coldstart as cm  # noqa
+    if (REPO / "proforma" / "models" / "coldstart.py").is_file():
+        from proforma.models import coldstart as cm  # noqa
 
-        return cm, "proforma.v1_5.models.coldstart"
+        return cm, "proforma.models.coldstart"
 
     legacy = REPO / "earnest-proforma-2.0" / "streamlits"
     if str(legacy) not in sys.path:
