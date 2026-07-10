@@ -29,7 +29,7 @@ from app.site_analysis.features.nearbyGasStations.get_nearby_gas_stations import
 from app.site_analysis.features.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.site_analysis.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
 from app.site_analysis.features.weather.open_meteo import fetch_climate_for_site, get_default_weather_range
-from app.site_analysis.server.config import (
+from app.site_analysis.config import (
     GAS_RADIUS_FAR_MILES,
     RETAIL_RADIUS_FAR_MILES,
     WEATHER_METRIC_CONFIG,

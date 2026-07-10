@@ -1,12 +1,11 @@
 """
-Server-level config: route constants and API configs (e.g. weather metrics).
+Feature constants for the site-analysis fetchers: radii, gas-brand list, weather metric mapping.
 
-The Redis/Celery block that used to live here went with the async task pipeline (2026-07).
+Lived under server/ until 2026-07, when it turned out nothing in server/ used it -- its only consumer
+is modelling/site_context.py. The Redis/Celery block it once held went with the async pipeline.
 """
 
 from typing import Literal, Optional, Tuple
-
-from app.core import common as calib
 
 
 # -----------------------------------------------------------------------------
@@ -40,7 +39,6 @@ WEATHER_METRIC_DISPLAY: dict = {
 
 
 # Competition (nearby car washes within 4 miles)
-COMPETITION_RADIUS_MILES = 4.0
 
 COMPETITION_METRIC_DISPLAY: dict = {
     "same-format-count": ("Nearby Same-format Car Washes", "Within 4 miles"),
@@ -55,7 +53,6 @@ COMPETITION_METRIC_DISPLAY: dict = {
 # Retail proximity: anchor retailers within 1 and 3 miles
 # -----------------------------------------------------------------------------
 
-RETAIL_RADIUS_NEAR_MILES = 1.0
 RETAIL_RADIUS_FAR_MILES = 3.0
 
 # Anchor type by keyword in name (lower-case)
@@ -90,23 +87,12 @@ RETAILER_CATEGORY_TYPE: dict = {
 }
 
 
-def anchor_type_from_name_or_category(name: Optional[str], category: Optional[str] = None) -> str:
-    """Derive anchor retail type from place name (keyword match) or category."""
-    if name:
-        name_lower = name.lower()
-        for keyword, anchor_type in ANCHOR_TYPE_BY_KEYWORD.items():
-            if keyword in name_lower:
-                return anchor_type
-    if category:
-        return RETAILER_CATEGORY_TYPE.get(category, category)
-    return "Retail"
 
 
 # -----------------------------------------------------------------------------
 # Gas stations
 # -----------------------------------------------------------------------------
 
-GAS_RADIUS_NEAR_MILES = 1.0
 GAS_RADIUS_FAR_MILES = 3.0
 
 # High-traffic fuel brands (lower-case keywords)
