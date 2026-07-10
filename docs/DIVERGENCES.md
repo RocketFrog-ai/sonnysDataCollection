@@ -34,7 +34,7 @@ revenue-nulling in the panel loader; `ASP_MIN_WASH = 200`, `ASP_FLOOR_MEM = 4.0`
 
 |  | |
 |---|---|
-| UI | `proforma/v1_5/ui/pages/_pinpoint_forecast.py:44` — `def global_healthy_asp(express_only=False)` returns a **3-tuple** `(cl_mem_pp, ppw, cl_ret)`: membership dollars per **purchase**, plus a **purchases-per-wash** factor, plus retail $/wash. |
+| UI | `proforma/v1_5/ui/panels/_pinpoint_forecast.py:44` — `def global_healthy_asp(express_only=False)` returns a **3-tuple** `(cl_mem_pp, ppw, cl_ret)`: membership dollars per **purchase**, plus a **purchases-per-wash** factor, plus retail $/wash. |
 | API | `app/pnl_analysis/modelling/pnl.py:55` — `def global_healthy_asp(df)` returns a **2-tuple** `(mem_$/wash, ret_$/wash)`. Membership economics are collapsed to dollars per wash; there is no purchases-per-wash term. |
 
 Callers match their own side (`_pinpoint_forecast.py:1116` unpacks three, `pnl.py:298` unpacks two),
@@ -167,7 +167,24 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
 
 ---
 
-## 7. Sundry
+## 7. Six P&L functions are dead in the UI and live in the API
+
+`load_pnl`, `regional_opex`, `opex_per_wash`, `opex_ramp`, `opex_trend_hist`, and `asp_refs` are
+defined in `proforma/v1_5/ui/panels/_pinpoint_forecast.py` and called **nowhere** in `proforma/`.
+Their namesakes in `app/pnl_analysis/modelling/pnl.py` *are* called (`pnl.py:282`, `pnl.py:311`, …).
+
+So the API port kept them live while the Streamlit side stopped using them. They were relocated
+verbatim during the split rather than deleted, because deleting code is not code motion and because
+they are the closest thing to a specification of what the API's copies are supposed to do. Delete
+them only together with a decision about §1.
+
+Related: `proforma/v1_5/ui/site_analysis_page.py` is **not reachable** from `app.py`'s `MODES`
+dispatch (`MODES = ["🛰️ Sitewise", "🗺️ Explore markets", "📍 Pinpoint forecast"]`; Sitewise renders
+`site_visual_page`). It survives only in a comment. Left in place.
+
+---
+
+## 8. Sundry
 
 - **`test_endpoint.py` (repo root) has been broken for some time.** It does
   `from app.site_analysis.server.routes import get_competitors_dynamics_endpoint` and

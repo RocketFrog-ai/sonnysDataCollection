@@ -36,7 +36,7 @@ if _APP_DIR.is_dir() and ("app" not in sys.modules or not hasattr(sys.modules.ge
 
 import streamlit as st
 import site_visual_page as svp
-from proforma.v1_5.ui.pages import _shared, _pinpoint_forecast, _explore_markets
+from proforma.v1_5.ui.panels import _shared, _pinpoint_forecast, _explore_markets
 
 # ───────────────────────────── UI ─────────────────────────────
 st.set_page_config(page_title="Local Market Explorer", layout="wide")

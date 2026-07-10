@@ -35,7 +35,7 @@ SKIP_DIRS = {"venv", ".claude", ".git", "__pycache__", "archive", "experiments",
 # EXISTS in app/, and `git grep` at the pre-refactor tag shows neither existed then -- the script has
 # been broken for a long time. The restructure split routes.py/models.py into router/schemas/service,
 # so its failure moved from "module imports, symbol missing" to "module missing". Broken either way.
-# See docs/DIVERGENCES.md section 7. Delete this entry the day someone fixes or deletes the script.
+# See docs/DIVERGENCES.md section 8. Delete this entry the day someone fixes or deletes the script.
 KNOWN_BROKEN = {
     ("test_endpoint.py", "app.site_analysis.server.routes"),
     ("test_endpoint.py", "app.site_analysis.server.models"),
