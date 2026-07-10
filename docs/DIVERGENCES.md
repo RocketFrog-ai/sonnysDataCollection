@@ -31,21 +31,56 @@ both, so plateau × ramp × cannibalization is computed once.
 revenue-nulling in the panel loader; `ASP_MIN_WASH = 200`, `ASP_FLOOR_MEM = 4.0`,
 `ASP_FLOOR_RET = 5.0`; and the row predicate inside `_drop_corrupt_asp_rows`.
 
-### 1a. Membership ASP is modelled differently — this moves revenue
+### 1a. Revenue is priced per-leg in the UI and by one blended ASP in the API
 
-|  | |
+An earlier version of this entry claimed the two sides compute membership ASP as *different
+quantities*. That was wrong, and the correction is worth keeping because the wrong version is the
+plausible one.
+
+**Not a divergence.** The UI's `global_healthy_asp` returns `(cl_mem_pp, ppw, cl_ret)` — dollars per
+membership *purchase*, times purchases-per-wash — while the API's returns `(cl_mem, cl_ret)` in
+dollars per *wash*. But over the same row subset,
+
+```
+cl_mem_pp * ppw = Σmem_revenue/Σmem_purchase_count * Σmem_purchase_count/Σmem_wash_count
+                = Σmem_revenue/Σmem_wash_count = cl_mem
+```
+
+Measured on the real panel: `59.18531174297621 × 0.3220765744212813 = 19.062202462233410` vs the
+API's `19.062202462233408` — a difference of `3.6e-15`. The UI merely keeps the factorization,
+because its slider shows the user `$/membership purchase`, which is a number an operator recognises.
+
+**The real divergence is one level up: how the legs are combined.**
+
+| | |
 |---|---|
-| UI | `proforma/v1_5/ui/panels/_pinpoint_forecast.py:44` — `def global_healthy_asp(express_only=False)` returns a **3-tuple** `(cl_mem_pp, ppw, cl_ret)`: membership dollars per **purchase**, plus a **purchases-per-wash** factor, plus retail $/wash. |
-| API | `app/pnl_analysis/modelling/pnl.py:55` — `def global_healthy_asp(df)` returns a **2-tuple** `(mem_$/wash, ret_$/wash)`. Membership economics are collapsed to dollars per wash; there is no purchases-per-wash term. |
+| UI (`_pinpoint_forecast.py:1128`) | `revenue = mem × cl_mem + ret × cl_ret` — each leg priced with its own ASP, **every month** |
+| API (`pnl.py:309,316`) | `asp_blend = mem_share × cl_mem + (1−mem_share) × cl_ret`, then `revenue = (mem+ret) × asp_blend` — one blended `$/wash`, and `mem_share` is the **mature** share, a scalar |
 
-Callers match their own side (`_pinpoint_forecast.py:1116` unpacks three, `pnl.py:298` unpacks two),
-so neither is *broken* — they compute a different quantity. A membership plan sold once and used
-several times a month is exactly the case where `$/purchase × purchases/wash` and `$/wash` diverge.
-`app/pnl_analysis/insights/metrics.py:417` sides with the UI (`mem_revenue / mem_purchase_count`)
-and its docstring says so explicitly — so within `app/` the **insights** layer and the **P&L** layer
-already disagree with each other about what membership ASP means.
+These agree only where the month's membership share equals the mature share. It does not during the
+ramp: membership share climbs from ~0.36 at open to ~0.73 by month 60, while `mem_share` is fixed
+at 0.6656. Measured at the dense Houston pin (`cl_mem = $17.70`, `cl_ret = $19.36`):
 
-**Would change:** cluster ASP, hence forecast revenue, hence the P&L and breakeven.
+```
+month  0:  UI $59,639   API $58,044   -2.67%
+month  6:  UI $131,423  API $130,541  -0.67%
+month 24:  UI $155,871  API $155,944  +0.05%
+month 60:  UI $150,445  API $151,303  +0.57%
+5-yr total: UI $8,890,118  API $8,897,825  +0.09%
+```
+
+The API under-prices the early ramp and over-prices maturity. The error scales with
+`|cl_mem − cl_ret|`, which is only $1.65 here — in a market where membership and retail ASPs sit
+further apart it will be materially larger.
+
+Consequently `asp_override` means different things on each side: the API documents it as
+"Blended $/wash" and applies it to total washes; the UI's slider is `$/membership purchase` applied
+to the membership leg only. A client sending the number a user read off the Streamlit slider will
+get the wrong revenue.
+
+**Would change:** forecast revenue, hence the P&L, breakeven, and the campaign ROI. Not fixed here:
+picking a winner moves numbers people have signed off on, and the Streamlit side has no golden
+baseline to verify the move against (§6).
 
 ### 1b. ~~`express_only` exists only in the UI~~ — RESOLVED (2026-07)
 
