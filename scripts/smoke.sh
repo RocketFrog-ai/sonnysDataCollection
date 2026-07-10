@@ -10,7 +10,7 @@
 #   3. every deterministic /v1/pnl_analysis/* endpoint, in-process     (15 cases)
 #   4. the Streamlit app body actually executes (AppTest), widget surface frozen
 #   5. ast-parse + import smoke over app/ and the UI/model trees       (pass/fail set frozen)
-# then diffs 2-5 against docs/_refactor/baseline/ at 1e-9.
+# then diffs 2-5 against scripts/_golden/baseline/ at 1e-9.
 #
 # WHAT THIS DOES NOT COVER, honestly:
 #   * The Streamlit UI is executed (step 5, via AppTest) but only its FIRST render pass. Widgets
@@ -32,7 +32,7 @@ CONDA_BASE="$(conda info --base 2>/dev/null || echo /opt/homebrew/Caskroom/minic
 PY_BACKEND="$CONDA_BASE/envs/sonnysDataCollection/bin/python"   # py3.9  — FastAPI + Celery + the joblib artifact
 PY_UI="$CONDA_BASE/envs/proforma311/bin/python"                 # py3.11 — Streamlit
 
-BASELINE="docs/_refactor/baseline"
+BASELINE="scripts/_golden/baseline"
 CAPTURE=0
 [[ "${1:-}" == "--capture-baseline" ]] && CAPTURE=1
 OUT="$([[ $CAPTURE == 1 ]] && echo "$BASELINE" || mktemp -d)"

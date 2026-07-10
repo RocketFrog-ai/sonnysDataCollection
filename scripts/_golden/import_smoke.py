@@ -8,10 +8,10 @@ freeze the exact pass/fail set, so the refactor is required to change it in no w
 A module that starts failing -- or one that starts passing for a surprising reason -- shows
 up as a diff.
 
-STREAMLIT COVERAGE IS DELIBERATELY PARTIAL. Importing a Streamlit entrypoint executes the
-whole script top to bottom (it is a script, not a library), so we `ast.parse` every UI file
-but only *import* the non-entrypoint modules. This is a real gap, not an oversight: the UI
-has no golden output, and this file is where that is written down rather than papered over.
+STREAMLIT ENTRYPOINTS ARE NEVER IMPORTED HERE. Importing one executes the whole script top to
+bottom (it is a script, not a library), so we `ast.parse` every UI file and only *import* the
+non-entrypoint modules. The entrypoints are covered separately, and properly, by
+scripts/_golden/capture_ui.py, which runs them under streamlit's AppTest.
 """
 from __future__ import annotations
 
@@ -142,5 +142,5 @@ def main(out_dir: str, tag: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "docs/_refactor/baseline",
+    main(sys.argv[1] if len(sys.argv) > 1 else "scripts/_golden/baseline",
          sys.argv[2] if len(sys.argv) > 2 else "backend")

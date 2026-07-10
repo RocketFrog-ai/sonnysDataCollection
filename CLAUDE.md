@@ -87,7 +87,7 @@ streamlit run proforma/v1_6/streamlit_view.py
 
 `./scripts/smoke.sh` captures the cold-start model over three fixed pins, every deterministic
 `/v1/pnl_analysis/*` endpoint, the Streamlit app's rendered widget surface, and an import sweep,
-then diffs against `docs/_refactor/baseline/` at `1e-9`. If you *intend* to change numbers, it will
+then diffs against `scripts/_golden/baseline/` at `1e-9`. If you *intend* to change numbers, it will
 tell you exactly which ones moved — read that diff, don't silence it by re-baselining.
 
 Its coverage gaps are stated in its own header comment and in `docs/DIVERGENCES.md` §6: the UI is
