@@ -4,16 +4,18 @@
 #   scripts/smoke.sh                    verify current tree against the golden baseline
 #   scripts/smoke.sh --capture-baseline (re)write the baseline; only legitimate pre-refactor
 #
-# It captures, in the correct conda env for each component:
-#   1. joblib artifact unpickles in the BACKEND env, un-refit          (the version-sensitive one)
-#   2. coldstart predict_site / predict_neighbours / cannib_params     (24 cases, 3 real pins)
-#   3. every deterministic /v1/pnl_analysis/* endpoint, in-process     (15 cases)
-#   4. the Streamlit app body actually executes (AppTest), widget surface frozen
-#   5. ast-parse + import smoke over app/ and the UI/model trees       (pass/fail set frozen)
-# then diffs 2-5 against scripts/_golden/baseline/ at 1e-9.
+# It checks, in the correct conda env for each component:
+#   1. the joblib artifact unpickles in the BACKEND env, un-refit      (the version-sensitive one)
+#   2. libs/carwash_type imports (a live dependency no golden test covers)
+#   3. every first-party import in the repo resolves, statically       (nothing executed)
+#   4. coldstart predict_site / predict_neighbours / cannib_params     (24 cases, 3 real pins)
+#   5. every deterministic /v1/pnl_analysis/* endpoint, in-process     (15 cases)
+#   6. the Streamlit app body actually executes (AppTest), widget surface frozen
+#   7. ast-parse + import smoke over app/ and the UI/model trees       (pass/fail set frozen)
+# then diffs 4-7 against scripts/_golden/baseline/ at 1e-9.
 #
 # WHAT THIS DOES NOT COVER, honestly:
-#   * The Streamlit UI is executed (step 5, via AppTest) but only its FIRST render pass. Widgets
+#   * The Streamlit UI is executed (step 6, via AppTest) but only its FIRST render pass. Widgets
 #     that appear after picking a mode / dropping a pin / clicking are never exercised, and nothing
 #     compares pixels. A layout or interaction regression will NOT be caught here.
 #   * /v1/pnl_analysis/insights/* are excluded: they call an LLM and are non-deterministic.
@@ -44,7 +46,7 @@ done
 # Hazard 4: a deleted module keeps importing from its .pyc. Purge before every pass.
 find . -name __pycache__ -not -path './venv/*' -not -path './.claude/*' -exec rm -rf {} + 2>/dev/null || true
 
-echo "== 1/7 joblib artifact unpickles in the BACKEND env (un-refit) =="
+echo "== 1/8 joblib artifact unpickles in the BACKEND env (un-refit) =="
 "$PY_BACKEND" - <<'PY'
 import glob, joblib, sklearn
 hits = glob.glob("proforma/v1_5/artifacts/coldstart_artifacts.joblib") or \
@@ -59,7 +61,7 @@ PY
 # feature, which lives under the ast-only features/ tree -- so no golden test covers it. Its
 # config.py resolves .env by walking up from __file__; a move at the wrong depth makes
 # load_dotenv() no-op silently and the module raises. Check it explicitly.
-echo "== 2/7 libs/carwash_type imports (live nearbyCompetitors dependency) =="
+echo "== 2/8 libs/carwash_type imports (live nearbyCompetitors dependency) =="
 "$PY_BACKEND" - <<'PY'
 import importlib, sys
 sys.path.insert(0, ".")
@@ -69,16 +71,23 @@ for m in ("libs.carwash_type.config", "libs.carwash_type.scraper",
 print("   ok  4 modules import; .env resolved from repo root")
 PY
 
-echo "== 3/7 coldstart golden (backend env) =="
+# Whole-repo static import resolution. import_smoke.py only walks app/ and the proforma trees, so
+# it never saw datafetching/ -- which is exactly where the app/utils -> app/core rename broke five
+# modules for two commits. find_spec resolves a dotted path WITHOUT executing the module, so this is
+# safe even for the trees that fire live HTTP/LLM calls at import.
+echo "== 3/8 every first-party import resolves, repo-wide (static) =="
+"$PY_BACKEND" scripts/_golden/check_imports_resolve.py 2>&1 | tail -1
+
+echo "== 4/8 coldstart golden (backend env) =="
 "$PY_BACKEND" scripts/_golden/capture_model.py "$OUT" 2>&1 | grep -v "^\s*$" | tail -1
 
-echo "== 4/7 pnl_analysis API golden (backend env) =="
+echo "== 5/8 pnl_analysis API golden (backend env) =="
 "$PY_BACKEND" scripts/_golden/capture_api.py "$OUT" 2>&1 | tail -1
 
-echo "== 5/7 streamlit app body executes (AppTest, streamlit env) =="
+echo "== 6/8 streamlit app body executes (AppTest, streamlit env) =="
 "$PY_UI" scripts/_golden/capture_ui.py "$OUT" 2>&1 | grep -viE "InconsistentVersion|scikit-learn|warnings.warn|ScriptRunContext|st.components" | tail -1
 
-echo "== 6/7 import smoke =="
+echo "== 7/8 import smoke =="
 "$PY_BACKEND" scripts/_golden/import_smoke.py "$OUT" backend 2>&1 | tail -1
 "$PY_UI"      scripts/_golden/import_smoke.py "$OUT" ui      2>&1 | tail -1
 
@@ -86,7 +95,7 @@ if [[ $CAPTURE == 1 ]]; then
   echo; echo "BASELINE CAPTURED -> $BASELINE"; exit 0
 fi
 
-echo "== 7/7 diff vs baseline (tol 1e-9) =="
+echo "== 8/8 diff vs baseline (tol 1e-9) =="
 rc=0
 # model.json / api.json are the behavior contract: keyed by logical case name, frozen forever.
 # ui_render.json is the app's first-pass widget surface, also keyed by logical name.
