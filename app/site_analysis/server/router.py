@@ -18,7 +18,6 @@ retail-anchor / gas data, plus map markers and insights, in a single call. See d
 from fastapi import APIRouter
 
 from app.site_analysis.server import service
-from app.site_analysis.server.db_cache import get_all_site_analysis_cache
 from app.site_analysis.server.schemas import (
     AddressRequest,
     SiteContextRequest,
@@ -71,20 +70,9 @@ def get_nearby_stores_endpoint(features: AddressRequest):
 
 
 # -----------------------------------------------------------------------------
-# Health & cache
+# Health
 # -----------------------------------------------------------------------------
 
 @router.get("/health")
 def health_check():
     return {"status": "healthy", "service": "site-analysis-pipeline"}
-
-
-@router.get("/cache/site-analysis/all")
-def get_site_analysis_cache_all():
-    """Read-only view of the Postgres site-analysis cache.
-
-    NOTE: nothing writes this cache any more. Its only writer was the Celery task
-    (`run_site_analysis`), removed with the async pipeline. Rows already in the table are still
-    served; no new rows appear. Kept because the data is real and the route is harmless.
-    """
-    return get_all_site_analysis_cache(page=1, page_size=50, include_response=True)
