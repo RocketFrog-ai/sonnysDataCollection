@@ -24,9 +24,22 @@ import pathlib
 import sys
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-FIRST_PARTY = ("app", "proforma", "libs", "datafetching", "scripts")
-# Not our problem: vendored/legacy trees, and the venv.
-SKIP_DIRS = {"venv", ".claude", ".git", "__pycache__", "archive", "experiments", "node_modules"}
+
+# Every top-level package this repo owns. `experiments` is here because proforma/ui imports
+# experiments.council.streamlit_view, and the council imports app.pnl_analysis.insights back.
+FIRST_PARTY = ("app", "proforma", "libs", "experiments", "scripts")
+
+# Not our problem: vendored trees and the venv. `experiments` is deliberately NOT in this set --
+# see the note below.
+SKIP_DIRS = {"venv", ".claude", ".git", "__pycache__", "archive", "node_modules"}
+
+# A trap this checker fell into, recorded so it is not re-set: it once skipped `experiments/` and
+# listed `datafetching` (not `experiments`) as first-party. Both were true before datafetching/ was
+# quarantined into experiments/. After the move, the exact regression this file was written to catch
+# -- a rename breaking experiments/datafetching's `app.*` imports -- became invisible to it, and the
+# `experiments.council` import in proforma/ui/panels/_explore_markets.py was never first-party at
+# all, so a tree with no council/ still reported "ok". Moving a directory can disarm the guard that
+# watches it. If you quarantine a tree, check what stopped looking at it.
 
 # Known-broken imports, recorded rather than hidden. Empty since 2026-07: test_endpoint.py, the only
 # entry, imported two symbols that never existed, and was deleted with the site_analysis subsystem.

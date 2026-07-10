@@ -260,14 +260,22 @@ dispatch. It was deleted in 2026-07, and the whole `app/site_analysis` subsystem
   commits and removed later; the 249-byte blob remains reachable from history. It is gitignored and
   untracked today, and this restructure never touched it. Nothing here can fix that — it needs a
   history rewrite plus rotation of whatever keys it held, which is a separate, deliberate operation.
-- **Eight `sys.path.insert` calls remain**: two in `proforma/ui/` (`app.py`, `site_visual_page.py` —
-  the Streamlit entrypoints), one in `app/` (`insights/tests/test_metrics.py`), and five in
-  `experiments/datafetching/` (one per standalone fetcher). `streamlit/web/bootstrap.py:59` puts only
+- **Five `sys.path.insert` calls remain**: two in `proforma/ui/` (`app.py`, `site_visual_page.py` —
+  the Streamlit entrypoints), one in `app/` (`insights/tests/test_metrics.py`), and two in
+  `experiments/datafetching/competition/`. `streamlit/web/bootstrap.py:59` puts only
   `dirname(main_script_path)` on `sys.path`, never the repo root, so an entrypoint cannot reach
   `proforma.*` without one — and packaging (`pyproject.toml`) was explicitly out of scope. Every
   remaining call sits in a script that is invoked directly; no *library* module has one. The one that
-  mattered, in `app/pnl_analysis/modelling/data.py`, is gone. (The count was six in `app/` before the
-  `site_analysis` removal took the feature scripts with it.)
+  mattered, in `app/pnl_analysis/modelling/data.py`, is gone.
+
+- **Moving a tree disarmed the guard that watched it.** `check_imports_resolve.py` exists because the
+  `app/utils` → `app/core` rename broke five modules in `datafetching/` and nobody noticed for two
+  commits. Then `datafetching/` was quarantined into `experiments/`, and the checker's `SKIP_DIRS`
+  contained `experiments` while its `FIRST_PARTY` tuple still said `datafetching`. So it stopped
+  scanning the exact tree it was written to protect, and `experiments.council` was never first-party
+  at all. It reported `ok 64` on a tree with eight broken imports. Fixed 2026-07: `experiments` is
+  first-party and no longer skipped, verified with two negative controls. **If you quarantine a
+  directory, check what stopped looking at it.**
 
 ---
 

@@ -11,7 +11,7 @@ proforma/          ALL modelling. One tree; versions are git tags, not folders.
 app/               FastAPI backend. main.py + server/ (routes) + core/ + pnl_analysis/.
 libs/carwash_type/ importable utility: classify a wash from its website.
 archive/           frozen prior work. Read for method history; do not build on it.
-experiments/       standalone, not on the import path (customer-churn, datafetching CLIs).
+experiments/       council/ (imported by the Explore-markets panel), datafetching/ CLIs, customer-churn/.
 ```
 
 ## Versioning: git, not folders
