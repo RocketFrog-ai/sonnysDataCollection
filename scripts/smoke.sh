@@ -73,8 +73,9 @@ PY
 
 # Whole-repo static import resolution. import_smoke.py only walks app/ and the proforma trees, so
 # it never saw datafetching/ -- which is exactly where the app/utils -> app/core rename broke five
-# modules for two commits. find_spec resolves a dotted path WITHOUT executing the module, so this is
-# safe even for the trees that fire live HTTP/LLM calls at import.
+# modules for two commits. Resolution is done against the FILESYSTEM, not importlib: find_spec()
+# imports a module's parent packages to ask for their __path__, which would execute
+# app/site_analysis/features/**, the tree we promise never to import. See the checker's docstring.
 echo "== 3/8 every first-party import resolves, repo-wide (static) =="
 "$PY_BACKEND" scripts/_golden/check_imports_resolve.py 2>&1 | tail -1
 

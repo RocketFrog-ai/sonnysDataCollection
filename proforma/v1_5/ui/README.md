@@ -3,11 +3,11 @@
 Interactive companion to the notebooks. Two modes (top of the sidebar):
 
 ```bash
-cd proforma/v1_5/streamlits
-streamlit run app.py            # http://localhost:8501
+# from the repo root
+streamlit run proforma/v1_5/ui/app.py     # http://localhost:8501
 ```
 
-Runs in the repo's main `venv` (streamlit, plotly, folium, streamlit-folium, lightgbm, scikit-learn).
+Runs in conda `proforma311` (python 3.11), not the backend env — see `docs/ENVIRONMENTS.md`.
 Reads `../../data/panel/main-ds.csv` directly (cleans + density-aware clustering on first load, cached) — no notebook run required.
 
 ## 🗺️ Mode 1 — Explore markets
