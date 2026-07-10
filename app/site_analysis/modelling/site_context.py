@@ -21,10 +21,8 @@ and all numbers coerced to plain float/int/None (never NaN) so the result is JSO
 """
 from __future__ import annotations
 
-import socket
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
-from urllib.parse import urlparse
 
 from app.core import common as calib
 from app.site_analysis.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
@@ -115,43 +113,6 @@ def fetch_features(lat: float, lon: float) -> dict:
             except Exception:
                 pass
     return out
-
-
-def _llm_reachable(timeout: float = 2.0) -> bool:
-    """Fast socket pre-check on the internal LLM host:port — so requesting AI summaries never hangs
-    on the client's long retry timeout when the endpoint is down (e.g. off-network). Returns False
-    when no LLM URL is configured or the host/port can't be opened within `timeout` seconds."""
-    url = calib.LLM_REALTIME_URL or ""
-    if not url:
-        return False
-    p = urlparse(url)
-    host, port = p.hostname, (p.port or (443 if p.scheme == "https" else 80))
-    if not host:
-        return False
-    try:
-        with socket.create_connection((host, port), timeout=timeout):
-            return True
-    except OSError:
-        return False
-
-
-def ai_summaries(fetched: dict) -> dict:
-    """Internal-LLM write-ups per dimension. Returns {} when the LLM is unreachable (fast pre-check).
-
-    The AI summaries module is imported lazily inside the reachable branch (mirrors the reference) so
-    that requesting AI never imports/initialises the LLM client when the endpoint is down.
-    """
-    if not _llm_reachable():
-        return {}
-    from app.site_analysis.modelling.ai import (
-        summarize_weather, summarize_competition, summarize_retail, summarize_gas,
-    )
-    return {
-        "weather": summarize_weather(fetched.get("climate") or {}),
-        "competition": summarize_competition(fetched.get("competitors_data") or {}),
-        "retail": summarize_retail(fetched.get("retail_anchors") or {}),
-        "gas": summarize_gas(fetched.get("gas_stations") or []),
-    }
 
 
 def build_markers(lat, lon, fetched, address=None):
@@ -287,15 +248,15 @@ def rule_gas(gas: list) -> dict:
 
 # ───────────────────────── orchestrator ─────────────────────────
 def analyze_site_context(lat: float, lon: float, address: Optional[str] = None,
-                         include_ai: bool = False, demo: bool = False) -> Dict[str, Any]:
+                         demo: bool = False) -> Dict[str, Any]:
     """One synchronous call that backs the whole "🔎 Site analysis" page for a (lat, lon) pin.
 
     Fetches the four external dimensions in parallel (fetch_features), then assembles headline
-    metrics, map markers and per-dimension data + rule-based insights — exactly what render() shows.
-    When include_ai is True and the internal LLM is reachable (2 s socket pre-check), per-dimension
-    AI write-ups are attached under each dimension's "ai_insight"; if unreachable the key is omitted
-    and the rule-based insight stands (the page's "showing rule-based insights instead" fallback).
+    metrics, map markers and per-dimension data + rule-based insights.
     demo=True hides the origin address on the map markers (passes address=None to build_markers).
+
+    The optional per-dimension LLM write-ups (include_ai / ai_summaries / modelling/ai) were removed
+    in 2026-07: nothing rendered them. The rule-based insights are what callers actually show.
 
     Returns a fully JSON-serializable dict (plain float/int/None — never NaN, no numpy scalars).
     """
@@ -323,17 +284,6 @@ def analyze_site_context(lat: float, lon: float, address: Optional[str] = None,
     # ── map markers (demo hides the origin address) ──
     markers = build_markers(lat, lon, fetched, None if demo else address)
 
-    # ── optional AI write-ups (rule insight always stays; ai_insight attached only when present) ──
-    ai: Dict[str, Any] = {}
-    if include_ai:
-        ai = ai_summaries(fetched)
-
-    def _attach_ai(dim: str, base: Dict[str, Any]) -> Dict[str, Any]:
-        d = (ai.get(dim) or {}) if include_ai else {}
-        if any(d.get(k) for k in ("insight", "pro", "con", "conclusion")):
-            base["ai_insight"] = d
-        return base
-
     # ── competition dimension (Competition tab) ──
     competition = {
         "count": int(len(comps)),
@@ -356,7 +306,6 @@ def analyze_site_context(lat: float, lon: float, address: Optional[str] = None,
         } for c in comps],
         "insight": rule_competition(cdata),
     }
-    _attach_ai("competition", competition)
 
     # ── retail dimension (Retail anchors tab) ──
     retail_dim = {
@@ -375,7 +324,6 @@ def analyze_site_context(lat: float, lon: float, address: Optional[str] = None,
         "food_0_5mi": int(retail.get("food_count_0_5miles") or 0),
         "insight": rule_retail(retail),
     }
-    _attach_ai("retail", retail_dim)
 
     # ── gas dimension (Gas stations tab — sorted within-radius, matching the table) ──
     gas_sorted = sorted(gas_in, key=lambda s: s["distance_miles"])
@@ -392,7 +340,6 @@ def analyze_site_context(lat: float, lon: float, address: Optional[str] = None,
         } for s in gas_sorted],
         "insight": rule_gas(gas),
     }
-    _attach_ai("gas", gas_dim)
 
     # ── weather dimension (Weather tab — per-metric values via the config mapping) ──
     weather_metrics: List[Dict[str, Any]] = []
@@ -411,7 +358,6 @@ def analyze_site_context(lat: float, lon: float, address: Optional[str] = None,
         "metrics": weather_metrics,
         "insight": rule_weather(climate),
     }
-    _attach_ai("weather", weather_dim)
 
     return {
         "lat": _f(lat),

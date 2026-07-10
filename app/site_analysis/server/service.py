@@ -9,11 +9,9 @@ per-dimension `get_*_data` / `get_*_summary` readers, `get_map_data`, and the th
 returns the same weather / competing-wash / retail-anchor / gas data, plus markers and insights, in
 one synchronous call. See docs/ARCHITECTURE.md.
 
-Dropping those handlers also dropped their module-level imports of
-`app.site_analysis.features.nearbyCompetitors.classify_competitor_types` and
-`app.site_analysis.modelling.ai`, so importing this module no longer pulls that tree (and its
-import-time HTTP/LLM calls) into the process. `site_context.py` imports the feature fetchers it
-needs itself, lazily, inside `get_site_context`.
+Dropping those handlers also dropped their module-level imports of the feature tree, so importing
+this module no longer pulls it (and its import-time HTTP/LLM calls) into the process.
+`site_context.py` imports the feature fetchers it needs itself, lazily, inside `get_site_context`.
 """
 from __future__ import annotations
 
@@ -68,7 +66,7 @@ def get_site_context(req: SiteContextRequest):
     else:
         raise HTTPException(status_code=400, detail="Provide either latitude/longitude or address.")
     try:
-        return analyze_site_context(lat, lon, address=address, include_ai=req.include_ai, demo=req.demo)
+        return analyze_site_context(lat, lon, address=address, demo=req.demo)
     except Exception as e:
         logger.exception("Site context fetch failed")
         raise HTTPException(status_code=500, detail=str(e))

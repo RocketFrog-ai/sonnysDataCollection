@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 import requests
 
 from app.core import common as calib
-from app.site_analysis.modelling.ai.common import extract_llm_text
+from app.core.llm.local_llm import extract_llm_text
 
 logger = logging.getLogger(__name__)
 

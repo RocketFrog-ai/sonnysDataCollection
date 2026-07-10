@@ -105,14 +105,19 @@ def get_llm_text(
             max_new_tokens=max_new_tokens,
             use_batch=use_batch,
         )
-        return _extract_text(resp)
+        return extract_llm_text(resp)
     except Exception as exc:
         logger.warning("get_llm_text failed: %s", exc)
         return ""
 
 
-def _extract_text(response: Dict[str, Any]) -> str:
-    """Extract generated text from any response shape the server may return."""
+def extract_llm_text(response: Dict[str, Any]) -> str:
+    """Extract generated text from any response shape the server may return.
+
+    Public because app/pnl_analysis/insights/llm.py needs it to parse Azure responses. It used to be
+    duplicated verbatim as app/site_analysis/modelling/ai/common.py::extract_llm_text; the two were
+    verified identical over 14 response shapes before that copy was deleted.
+    """
     if not response:
         return ""
     # Direct text fields
