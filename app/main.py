@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
-from app.site_analysis.server.routes import router as site_analysis_router
-from app.pnl_analysis.server.routes import router as pnl_analysis_router
+from app.site_analysis.server.router import router as site_analysis_router
+from app.pnl_analysis.server.router import router as pnl_analysis_router
 from app.core import common as calib
 from fastapi.middleware.cors import CORSMiddleware
 

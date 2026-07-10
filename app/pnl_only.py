@@ -8,7 +8,7 @@ server doesn't require its heavy deps (celery, openai, …). Same /v1/pnl_analys
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.pnl_analysis.server.routes import router as pnl_analysis_router
+from app.pnl_analysis.server.router import router as pnl_analysis_router
 
 app = FastAPI(title="Earnest Proforma backend (pnl_analysis)", version="2.0")
 

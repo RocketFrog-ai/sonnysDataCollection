@@ -8,16 +8,21 @@
 #   1. joblib artifact unpickles in the BACKEND env, un-refit          (the version-sensitive one)
 #   2. coldstart predict_site / predict_neighbours / cannib_params     (24 cases, 3 real pins)
 #   3. every deterministic /v1/pnl_analysis/* endpoint, in-process     (15 cases)
-#   4. ast-parse + import smoke over app/ and the UI/model trees       (pass/fail set frozen)
-# then diffs 2-4 against docs/_refactor/baseline/ at 1e-9.
+#   4. the Streamlit app body actually executes (AppTest), widget surface frozen
+#   5. ast-parse + import smoke over app/ and the UI/model trees       (pass/fail set frozen)
+# then diffs 2-5 against docs/_refactor/baseline/ at 1e-9.
 #
 # WHAT THIS DOES NOT COVER, honestly:
-#   * The Streamlit UI has no golden output. A Streamlit entrypoint executes on import, so it is
-#     only ast-parsed. A visual/behavioural regression in the UI will NOT be caught here.
+#   * The Streamlit UI is executed (step 5, via AppTest) but only its FIRST render pass. Widgets
+#     that appear after picking a mode / dropping a pin / clicking are never exercised, and nothing
+#     compares pixels. A layout or interaction regression will NOT be caught here.
 #   * /v1/pnl_analysis/insights/* are excluded: they call an LLM and are non-deterministic.
 #   * app/site_analysis/features/** is ast-parsed but never imported -- those modules run live
 #     HTTP/LLM calls at module scope. See scripts/_golden/import_smoke.py:AST_ONLY_PREFIXES.
-#   * The Celery async pipeline (POST /v1/analyze-site) is not exercised; it needs Redis.
+#   * app/site_analysis/* endpoints have no golden outputs (they need Redis/Celery). Their route
+#     paths and OpenAPI schema were diffed against the pre-refactor tag by hand, once.
+#   * The Celery async pipeline (POST /v1/analyze-site) is not exercised; it needs Redis, and it is
+#     broken anyway for an unrelated pre-existing reason -- see docs/DIVERGENCES.md section 2.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -39,7 +44,7 @@ done
 # Hazard 4: a deleted module keeps importing from its .pyc. Purge before every pass.
 find . -name __pycache__ -not -path './venv/*' -not -path './.claude/*' -exec rm -rf {} + 2>/dev/null || true
 
-echo "== 1/6 joblib artifact unpickles in the BACKEND env (un-refit) =="
+echo "== 1/7 joblib artifact unpickles in the BACKEND env (un-refit) =="
 "$PY_BACKEND" - <<'PY'
 import glob, joblib, sklearn
 hits = glob.glob("proforma/v1_5/artifacts/coldstart_artifacts.joblib") or \
@@ -54,7 +59,7 @@ PY
 # feature, which lives under the ast-only features/ tree -- so no golden test covers it. Its
 # config.py resolves .env by walking up from __file__; a move at the wrong depth makes
 # load_dotenv() no-op silently and the module raises. Check it explicitly.
-echo "== 2/6 libs/carwash_type imports (live nearbyCompetitors dependency) =="
+echo "== 2/7 libs/carwash_type imports (live nearbyCompetitors dependency) =="
 "$PY_BACKEND" - <<'PY'
 import importlib, sys
 sys.path.insert(0, ".")
@@ -64,13 +69,16 @@ for m in ("libs.carwash_type.config", "libs.carwash_type.scraper",
 print("   ok  4 modules import; .env resolved from repo root")
 PY
 
-echo "== 3/6 coldstart golden (backend env) =="
+echo "== 3/7 coldstart golden (backend env) =="
 "$PY_BACKEND" scripts/_golden/capture_model.py "$OUT" 2>&1 | grep -v "^\s*$" | tail -1
 
-echo "== 4/6 pnl_analysis API golden (backend env) =="
+echo "== 4/7 pnl_analysis API golden (backend env) =="
 "$PY_BACKEND" scripts/_golden/capture_api.py "$OUT" 2>&1 | tail -1
 
-echo "== 5/6 import smoke =="
+echo "== 5/7 streamlit app body executes (AppTest, streamlit env) =="
+"$PY_UI" scripts/_golden/capture_ui.py "$OUT" 2>&1 | grep -viE "InconsistentVersion|scikit-learn|warnings.warn|ScriptRunContext|st.components" | tail -1
+
+echo "== 6/7 import smoke =="
 "$PY_BACKEND" scripts/_golden/import_smoke.py "$OUT" backend 2>&1 | tail -1
 "$PY_UI"      scripts/_golden/import_smoke.py "$OUT" ui      2>&1 | tail -1
 
@@ -78,12 +86,13 @@ if [[ $CAPTURE == 1 ]]; then
   echo; echo "BASELINE CAPTURED -> $BASELINE"; exit 0
 fi
 
-echo "== 6/6 diff vs baseline (tol 1e-9) =="
+echo "== 7/7 diff vs baseline (tol 1e-9) =="
 rc=0
 # model.json / api.json are the behavior contract: keyed by logical case name, frozen forever.
+# ui_render.json is the app's first-pass widget surface, also keyed by logical name.
 # imports_*.json are keyed by file path, so their strict surface is only the (empty) failure
 # maps; check_counts.py guards the informational counts against silent regression.
-for f in model.json api.json imports_backend.json imports_ui.json; do
+for f in model.json api.json ui_render.json imports_backend.json imports_ui.json; do
   "$PY_BACKEND" scripts/_golden/diff.py "$BASELINE/$f" "$OUT/$f" 1e-9 || rc=1
 done
 for t in backend ui; do
