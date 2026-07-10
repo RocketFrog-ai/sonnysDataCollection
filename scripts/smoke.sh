@@ -6,7 +6,7 @@
 #
 # It checks, in the correct conda env for each component:
 #   1. the joblib artifact unpickles in the BACKEND env, un-refit      (the version-sensitive one)
-#   2. libs/carwash_type imports (a live dependency no golden test covers)
+#   2. libs/carwash_type imports (no golden test covers it; see the note at the step)
 #   3. every first-party import in the repo resolves, statically       (nothing executed)
 #   4. coldstart predict_site / predict_neighbours / cannib_params     (24 cases, 3 real pins)
 #   5. every deterministic /v1/pnl_analysis/* endpoint, in-process     (15 cases)
@@ -55,11 +55,13 @@ assert isinstance(a, dict) and "models" in a and "ramps" in a, "artifact shape c
 print(f"   ok  {hits[0]}  ({len(a)} keys, sklearn {sklearn.__version__})")
 PY
 
-# Assertion, not a golden diff. libs/carwash_type is consumed by the live nearbyCompetitors
-# feature, which lives under the ast-only features/ tree -- so no golden test covers it. Its
-# config.py resolves .env by walking up from __file__; a move at the wrong depth makes
-# load_dotenv() no-op silently and the module raises. Check it explicitly.
-echo "== 2/8 libs/carwash_type imports (live nearbyCompetitors dependency) =="
+# Assertion, not a golden diff. libs/carwash_type's config.py resolves .env by walking up from
+# __file__; a move at the wrong depth makes load_dotenv() no-op silently and the module raises, and
+# nothing else would catch it. NOTE (2026-07): its only importer,
+# features/active/nearbyCompetitors/classify_competitor_types.py, became unreachable when the Celery
+# pipeline was removed. The package is now reached only by its own CLI (classify_site_types.py).
+# Kept as a check because the CLI is real; drop this step if the package goes.
+echo "== 2/8 libs/carwash_type imports (CLI-only since the Celery removal) =="
 "$PY_BACKEND" - <<'PY'
 import importlib, sys
 sys.path.insert(0, ".")
