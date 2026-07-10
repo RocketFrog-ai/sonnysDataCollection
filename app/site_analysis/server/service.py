@@ -1,9 +1,19 @@
+"""Logic the /v1/* site_analysis route handlers used to inline: task-result fetching/validation, the
+per-dimension raw-data and AI-summary shaping, map-marker assembly, and the synchronous site-context /
+site-features / traffic-lights / nearby-stores handlers. Split out of the former monolithic routes.py
+so router.py's handlers stay thin delegators.
+
+Note: several imports below (the app.site_analysis.features.active.* tree) execute live HTTP/LLM calls
+at MODULE IMPORT time — this mirrors exactly what the original routes.py imported at module scope; the
+import side effects are unchanged, only which file performs them."""
+from __future__ import annotations
+
 import logging
 import requests
 from typing import Any, Dict, List, Optional, Tuple
 
 from celery.result import AsyncResult
-from fastapi import APIRouter, HTTPException
+from fastapi import HTTPException
 
 from app.core import common as calib
 from app.site_analysis.server.config import (
@@ -16,7 +26,7 @@ from app.site_analysis.server.config import (
     GAS_RADIUS_FAR_MILES,
     is_high_traffic_gas_brand,
 )
-from app.site_analysis.server.models import (
+from app.site_analysis.server.schemas import (
     AnalyseRequest,
     SiteContextRequest,
     SiteFeaturesRequest,
@@ -28,7 +38,6 @@ from app.site_analysis.server.site_features import nearest_site_features
 from app.site_analysis.features.active.trafficLights.nearby_traffic_lights import get_traffic_lights_summary
 from app.site_analysis.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
 from app.site_analysis.features.active.nearbyCompetitors.classify_competitor_types import classify_competitors
-from app.site_analysis.server.db_cache import get_all_site_analysis_cache
 from app.site_analysis.modelling.site_analysis import run_site_analysis
 from app.site_analysis.modelling.ai import (
     summarize_weather,
@@ -39,7 +48,6 @@ from app.site_analysis.modelling.ai import (
 from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 
 # Retail / map: cap how many anchors we show per type.
@@ -155,8 +163,7 @@ def _resolve_marker_coordinates(raw: Dict[str, Any]) -> Tuple[Optional[float], O
 # Analyse-site: kick off the external-data fetch pipeline
 # -----------------------------------------------------------------------------
 
-@router.post("/analyze-site")
-def analyze_site_endpoint(features: AnalyseRequest):
+def analyze_site(features: AnalyseRequest):
     """
     Enqueue the fetch pipeline: geocode → fetch weather / competitors / gas / retail (in parallel).
     Returns task_id; poll GET /task/{task_id} until success, then read the per-dimension
@@ -179,8 +186,7 @@ def analyze_site_endpoint(features: AnalyseRequest):
 # Per-dimension raw DATA (fast — no LLM). Reads only the stored `fetched` payload.
 # -----------------------------------------------------------------------------
 
-@router.get("/weather/data-by-task/{task_id}")
-def get_weather_data_by_task(task_id: str):
+def get_weather_data(task_id: str):
     """Raw weather metrics (rainy days, snowfall, comfortable days, freezing days) from the fetch."""
     result = _get_task_result_or_raise(task_id)
     climate = (result.get("fetched") or {}).get("climate") or {}
@@ -207,8 +213,7 @@ def get_weather_data_by_task(task_id: str):
     }
 
 
-@router.get("/competition/data-by-task/{task_id}")
-def get_competition_data_by_task(task_id: str):
+def get_competition_data(task_id: str):
     """Raw nearby same-format car washes (within 4 miles) from the fetch."""
     result = _get_task_result_or_raise(task_id)
     competitors_data = (result.get("fetched") or {}).get("competitors_data") or {}
@@ -248,8 +253,7 @@ def get_competition_data_by_task(task_id: str):
     }
 
 
-@router.get("/retail/data-by-task/{task_id}")
-def get_retail_data_by_task(task_id: str):
+def get_retail_data(task_id: str):
     """Raw nearby retail anchors (within 1 and 3 miles) from the fetch."""
     result = _get_task_result_or_raise(task_id)
     retail_anchors_data = (result.get("fetched") or {}).get("retail_anchors") or {}
@@ -303,8 +307,7 @@ def get_retail_data_by_task(task_id: str):
     }
 
 
-@router.get("/gas/data-by-task/{task_id}")
-def get_gas_data_by_task(task_id: str):
+def get_gas_data(task_id: str):
     """Raw nearby gas stations (within 1 and 3 miles) from the fetch."""
     result = _get_task_result_or_raise(task_id)
     gas_list_raw = (result.get("fetched") or {}).get("gas_stations") or []
@@ -345,29 +348,25 @@ def get_gas_data_by_task(task_id: str):
 # Per-dimension AI SUMMARIES (on-demand — one LLM call, grounded on raw fetched data).
 # -----------------------------------------------------------------------------
 
-@router.get("/weather/summary-by-task/{task_id}")
-def get_weather_summary_by_task(task_id: str):
+def get_weather_summary(task_id: str):
     result = _get_task_result_or_raise(task_id)
     climate = (result.get("fetched") or {}).get("climate") or {}
     return {"task_id": task_id, "summary": summarize_weather(climate)}
 
 
-@router.get("/competition/summary-by-task/{task_id}")
-def get_competition_summary_by_task(task_id: str):
+def get_competition_summary(task_id: str):
     result = _get_task_result_or_raise(task_id)
     competitors_data = (result.get("fetched") or {}).get("competitors_data") or {}
     return {"task_id": task_id, "summary": summarize_competition(competitors_data)}
 
 
-@router.get("/retail/summary-by-task/{task_id}")
-def get_retail_summary_by_task(task_id: str):
+def get_retail_summary(task_id: str):
     result = _get_task_result_or_raise(task_id)
     retail_anchors = (result.get("fetched") or {}).get("retail_anchors") or {}
     return {"task_id": task_id, "summary": summarize_retail(retail_anchors)}
 
 
-@router.get("/gas/summary-by-task/{task_id}")
-def get_gas_summary_by_task(task_id: str):
+def get_gas_summary(task_id: str):
     result = _get_task_result_or_raise(task_id)
     gas_stations = (result.get("fetched") or {}).get("gas_stations") or []
     return {"task_id": task_id, "summary": summarize_gas(gas_stations)}
@@ -377,8 +376,7 @@ def get_gas_summary_by_task(task_id: str):
 # Map markers
 # -----------------------------------------------------------------------------
 
-@router.get("/map/data-by-task/{task_id}")
-def get_map_data_by_task(task_id: str):
+def get_map_data(task_id: str):
     """Map-ready markers: origin site + nearby gas stations, competitors, and retail anchors."""
     result = _get_task_result_or_raise(task_id)
     fetched = result.get("fetched") or {}
@@ -462,7 +460,6 @@ def get_map_data_by_task(task_id: str):
 # Synchronous lat/lon site analysis (the shared map pin) — one call, no task polling
 # -----------------------------------------------------------------------------
 
-@router.post("/site-context")
 def get_site_context(req: SiteContextRequest):
     """
     Synchronous "what surrounds this location" for a lat/lon pin (or address): weather, competing car washes,
@@ -490,7 +487,6 @@ def get_site_context(req: SiteContextRequest):
 # Nearest-site features (offline) — lat/lon in, precomputed dataset features out
 # -----------------------------------------------------------------------------
 
-@router.post("/site-features")
 def get_site_features(req: SiteFeaturesRequest):
     """
     Look up the single closest site in the precomputed dataset (merged_all_sites.csv) by haversine
@@ -510,8 +506,7 @@ def get_site_features(req: SiteFeaturesRequest):
 # Single-fetch utilities (synchronous, address in / data out)
 # -----------------------------------------------------------------------------
 
-@router.post("/traffic-lights")
-def get_traffic_lights_endpoint(features: AnalyseRequest):
+def get_traffic_lights(features: AnalyseRequest):
     try:
         lat, lon = _lat_lon_from_address_or_400(features.address)
         data = get_traffic_lights_summary(lat, lon)
@@ -523,8 +518,7 @@ def get_traffic_lights_endpoint(features: AnalyseRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/nearby-stores")
-def get_nearby_stores_endpoint(features: AnalyseRequest):
+def get_nearby_stores(features: AnalyseRequest):
     try:
         lat, lon = _lat_lon_from_address_or_400(features.address)
         try:
@@ -544,8 +538,7 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
 # Task status
 # -----------------------------------------------------------------------------
 
-@router.get("/task/{task_id}", response_model=TaskStatusResponse)
-def get_task_status(task_id: str):
+def get_task_status(task_id: str) -> TaskStatusResponse:
     """Task status and result from Celery. Full `result` is present only when status is success."""
     task_result = AsyncResult(task_id, app=celery_app)
     status_str = task_result.state
@@ -569,7 +562,6 @@ def get_task_status(task_id: str):
     return response
 
 
-@router.get("/result/{task_id}")
 def get_result_by_task(task_id: str):
     """Get analyse-site result by task_id. Poll until status = success."""
     task_result = AsyncResult(task_id, app=celery_app)
@@ -584,17 +576,3 @@ def get_result_by_task(task_id: str):
             "result": None,
         }
     return {"task_id": task_id, "status": task_result.state.lower(), "result": None}
-
-
-# -----------------------------------------------------------------------------
-# Health & cache
-# -----------------------------------------------------------------------------
-
-@router.get("/health")
-def health_check():
-    return {"status": "healthy", "service": "site-analysis-pipeline"}
-
-
-@router.get("/cache/site-analysis/all")
-def get_site_analysis_cache_all():
-    return get_all_site_analysis_cache(page=1, page_size=50, include_response=True)

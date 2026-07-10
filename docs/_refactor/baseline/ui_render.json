@@ -1,0 +1,24 @@
+{
+ "_script": "proforma/v1_5/ui/app.py",
+ "button_labels": [
+  "Drop pin here",
+  "Geocode address"
+ ],
+ "counts": {
+  "button": 2,
+  "checkbox": 0,
+  "error": 0,
+  "markdown": 1,
+  "radio": 0,
+  "selectbox": 0,
+  "sidebar_radio": 0,
+  "sidebar_selectbox": 0,
+  "slider": 0,
+  "tabs": 0,
+  "text_input": 1
+ },
+ "markdown_head": "<style>\n/* theme-agnostic: semi-transparent grey tints work on BOTH light and dark backgrounds (no hardcoded white) */\n[data-testid=\"stMetric\"]{background:rgba(128,128,128,.10);border:1px solid rgba(1",
+ "text_input_labels": [
+  "Address"
+ ]
+}
