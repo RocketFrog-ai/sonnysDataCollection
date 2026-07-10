@@ -47,12 +47,19 @@ already disagree with each other about what membership ASP means.
 
 **Would change:** cluster ASP, hence forecast revenue, hence the P&L and breakeven.
 
-### 1b. `express_only` exists only in the UI
+### 1b. ~~`express_only` exists only in the UI~~ — RESOLVED (2026-07)
 
-17 references under `proforma/v1_5/ui/`, **zero** under `app/pnl_analysis/`. The Streamlit app can
-restrict the local market and the level anchor to express-tunnel sites — the shared model supports
-it via `coldstart.predict_site(anchor_keys=...)` — and the API has no such path. An API caller
-cannot reproduce an express-only forecast the UI shows.
+The API now accepts `express_only: bool = False` on the 8 pin-based modelling requests
+(ExploreMarket, ExploreKpis, PinpointForecast, PnlForecast, ExpensePlan, CampaignVerdict,
+EatingMarket, LocalCampaigns; not on `/insights/*`, which annotate rather than model). It applies
+the UI's two filters in the UI's order — `primary_carwash_type == "Express Tunnel"`, then
+`n_obs >= 30` — re-clusters the subset, and passes `anchor_keys` to
+`coldstart.predict_site` so only the level anchor is scoped while the LightGBM neighbour features
+stay on the full site set.
+
+Verified against the UI in both conda envs: **742 sites, 35,778 rows, identical `site_key` sets and
+identical cluster labels.** The default (`false`) leaves every number bit-for-bit unchanged —
+`api.json` and `model.json` still match the frozen baselines.
 
 ### Why this is not fixed here
 

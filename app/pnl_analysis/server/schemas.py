@@ -21,6 +21,7 @@ class ExploreMarketRequest(_PinRequest):
     min_months: int = Field(36, ge=1, le=72, description="Keep rich-history sites (>= this many monthly records). 36 = the Explore view (≥3 yrs).")
     operator: Optional[str] = Field(None, description="Operator client_name (see GET /operators) to plot its whole footprint on the map.")
     demo: bool = Field(False, description="Anonymized client demo: hide names, drop exact site dots, shade cluster regions.")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class ExploreKpisRequest(_PinRequest):
@@ -29,6 +30,7 @@ class ExploreKpisRequest(_PinRequest):
     smoothing: int = Field(1, ge=1, le=12, description="Centered rolling-mean window in months (1 = none).")
     min_months: int = Field(36, ge=1, le=72, description="Keep only sites with >= this many monthly records (rich-history filter).")
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class InsightsRequest(_PinRequest):
@@ -89,6 +91,7 @@ class PinpointForecastRequest(_PinRequest):
     mem_growth_pct: float = Field(0.0, ge=-15.0, le=25.0, description="Extra yr3-5 membership drift (%/yr) on top of the market trend.")
     ret_growth_pct: float = Field(0.0, ge=-20.0, le=15.0, description="Extra yr3-5 retail drift (%/yr) on top of the market trend.")
     horizon_months: int = Field(60, ge=12, le=60, description="Forecast horizon in months (<=60).")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class PnlForecastRequest(_PinRequest):
@@ -104,6 +107,7 @@ class PnlForecastRequest(_PinRequest):
     campaign_intensity: float = Field(1.0, ge=0.5, le=1.5, description="Campaign intensity (× a typical observed campaign).")
     window: int = Field(6, ge=1, le=12, description="Campaign impact window in months.")
     horizon_months: int = Field(60, ge=12, le=60, description="Forecast horizon in months (<=60).")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class ExpensePlanRequest(_PinRequest):
@@ -125,6 +129,7 @@ class ExpensePlanRequest(_PinRequest):
     capex: Dict[int, float] = Field(default_factory=dict, description="CAPEX $ per year, e.g. {1: 500000, 2: 100000}.")
     opex_growth_pct: float = Field(0.0, ge=-10.0, le=15.0, description="OPEX %/yr escalation applied to years past the last one supplied in `opex`.")
     horizon_months: int = Field(60, ge=12, le=60, description="Forecast horizon in months (<=60).")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class CampaignVerdictRequest(_PinRequest):
@@ -134,6 +139,7 @@ class CampaignVerdictRequest(_PinRequest):
     plateau_override: Optional[float] = Field(None, ge=0, description="Override mature total washes/mo.")
     mem_growth_pct: float = Field(0.0, ge=-15.0, le=25.0, description="Extra membership drift (%/yr).")
     ret_growth_pct: float = Field(0.0, ge=-20.0, le=15.0, description="Extra retail drift (%/yr).")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class EatingMarketRequest(_PinRequest):
@@ -148,6 +154,7 @@ class EatingMarketRequest(_PinRequest):
     campaign_intensity: float = Field(1.0, ge=0.5, le=1.5, description="Campaign intensity.")
     window: int = Field(6, ge=1, le=12, description="Campaign impact window in months.")
     max_incumbents: int = Field(6, ge=1, le=12, description="Max incumbents drawn (largest by recent volume).")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
 class LocalCampaignsRequest(_PinRequest):
@@ -156,3 +163,4 @@ class LocalCampaignsRequest(_PinRequest):
     metric: str = Field("mem_share_wash", description="Series: mem_share_wash | mem_wash_count | ret_wash_count.")
     max_sites: int = Field(8, ge=1, le=20, description="Max (nearest) in-market sites drawn.")
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")

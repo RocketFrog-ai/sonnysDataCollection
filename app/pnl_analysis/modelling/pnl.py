@@ -260,7 +260,7 @@ def pnl_forecast(lat: float, lon: float, brand: Optional[str] = None,
                  ret_growth_pct: float = 0.0, asp_override: Optional[float] = None,
                  opex_growth_pct: float = 0.0, campaign_on: bool = False, campaign_launch: int = 13,
                  campaign_intensity: float = 1.0, window: int = 6,
-                 horizon_months: int = 60) -> Dict[str, Any]:
+                 horizon_months: int = 60, express_only: bool = False) -> Dict[str, Any]:
     """Forecast-tab P&L: expected monthly revenue (forecast washes × ASP) vs operating expense over 5 years,
     with an optional retail→membership campaign overlay. Reproduces the math in app.py's drop_pin_ui P&L block.
 
@@ -270,14 +270,15 @@ def pnl_forecast(lat: float, lon: float, brand: Optional[str] = None,
     """
     radius = 20.0  # the cold-start trajectory & ASP/incumbent neighbourhood radius (compute_trajectory default)
 
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     art = D.load_model()
     pnl = D.load_pnl_annual()
     pm_monthly = D.load_pnl_monthly()
 
     # 1) the new site's 5-year monthly trajectory + the trends/info it used
     traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
-                                            mem_growth_pct, ret_growth_pct, horizon_months)
+                                            mem_growth_pct, ret_growth_pct, horizon_months,
+                                            express_only=express_only)
     state, region = info.get("state"), info.get("region")
     yo, opex_scope = regional_opex(pnl, art, state, region)
 
@@ -428,7 +429,8 @@ def expense_plan(lat: float, lon: float, brand: Optional[str] = None,
                  asp_by_year: Optional[Dict[int, float]] = None,
                  opex_pct_by_year: Optional[Dict[int, float]] = None,
                  capex_by_year: Optional[Dict[int, float]] = None,
-                 opex_growth_pct: float = 0.0, horizon_months: int = 60) -> Dict[str, Any]:
+                 opex_growth_pct: float = 0.0, horizon_months: int = 60,
+                 express_only: bool = False) -> Dict[str, Any]:
     """User-driven expense plan over the 5-year horizon: monthly OPEX, CAPEX and combined expenses.
 
     OPEX is given as a % of revenue PER YEAR ({1: 55, 2: 48, 3: 45}) and is FITTED onto the LEARNED new-site opex
@@ -442,13 +444,14 @@ def expense_plan(lat: float, lon: float, brand: Optional[str] = None,
     capex_by_year = {int(k): float(v) for k, v in (capex_by_year or {}).items()}
     asp_by_year = {int(k): float(v) for k, v in (asp_by_year or {}).items()}
 
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     art = D.load_model()
     pm_monthly = D.load_pnl_monthly()
 
     # 1) the new site's 5-year monthly wash trajectory (mem/ret) — drives revenue
     traj, info, _trends = compute_trajectory(lat, lon, brand, plateau_override,
-                                             mem_growth_pct, ret_growth_pct, horizon_months)
+                                             mem_growth_pct, ret_growth_pct, horizon_months,
+                                             express_only=express_only)
     state, region = info.get("state"), info.get("region")
     tj = traj.set_index("month")
     months = np.arange(0, 61)
