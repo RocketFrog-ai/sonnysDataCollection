@@ -38,13 +38,17 @@ def render(df, site, pins, demo, express_only, radius, smooth):
     # ── POC (kept deliberately separate from the grounded pipeline above): raw-GPT market analysis from the
     #    pin's location alone, no data fed in. Its own module/prompt; reuses only the shared Azure transport. ──
     try:
-        from app.pnl_analysis.insights.location_poc import (location_market_analysis,
-                                                            competition_scale_analysis, build_competition_response)
+        from app.pnl_analysis.insights.location_poc import (location_market_analysis, pollinate_analysis,
+                                                            competition_scale_analysis, build_competition_response,
+                                                            independent_market_research, build_independent_research_response)
         _LOC_POC_OK = True
     except Exception:                                             # pragma: no cover
         location_market_analysis = None
+        pollinate_analysis = None
         competition_scale_analysis = None
         build_competition_response = None
+        independent_market_research = None
+        build_independent_research_response = None
         _LOC_POC_OK = False
 
     # Optional web-search grounding for the location-only market read (returns citable links). Best-effort:
@@ -232,8 +236,11 @@ def render(df, site, pins, demo, express_only, radius, smooth):
     # support for that market, so switching the dropdown only renders already-prepared output.
     insights_store = st.session_state.setdefault("insights_store", {})
     loc_poc_store = st.session_state.setdefault("loc_poc_store", {})
+    pollinate_store = st.session_state.setdefault("pollinate_store", {})
     compete_store = st.session_state.setdefault("compete_store", {})
+    independent_store = st.session_state.setdefault("independent_store", {})
     loc_sig = (round(plat, 5), round(plon, 5), int(radius))
+    _INDEP_RADII = (3.0, 6.0, 9.0)                                # miles — sized independently by the external-LLM research
 
 
     @st.cache_data(show_spinner=False, ttl=3600)
@@ -262,6 +269,14 @@ def render(df, site, pins, demo, express_only, radius, smooth):
 
 
     @st.cache_data(show_spinner=False, ttl=3600)
+    def _pollinate_cached(_sig, _qual_text, _quant, _comp, lat, lon, radius_km, backend):
+        """Fusion of the summaries, cached per market signature `_sig` (text/dict args underscore-prefixed → not hashed).
+        `_comp` is the competition-scale read (or None) folded in as the competitive-saturation dimension."""
+        return pollinate_analysis(_qual_text, _quant, lat=lat, lon=lon, radius_km=radius_km, competition=_comp,
+                                  backend=backend)
+
+
+    @st.cache_data(show_spinner=False, ttl=3600)
     def _compete_cached(_sig, lat, lon, radius_km, known_sites, backend, _nearby):
         """LLM competitive-saturation estimate — client footprint vs total landscape, anchored to the real nearby
         washes `_nearby` (name + distance from Google Places). Cached per (location, radius, known set)."""
@@ -269,15 +284,28 @@ def render(df, site, pins, demo, express_only, radius, smooth):
                                           nearby_washes=list(_nearby or []))
 
 
+    @st.cache_data(show_spinner=False, ttl=3600)
+    def _independent_cached(_sig, lat, lon, radii_miles, backend, use_web):
+        """Independent EXTERNAL-LLM market research — sizes each radius (3/6/9 mi) from world knowledge only, NO internal
+        data. Cached per (location, radii, backend, web on/off). `use_web` grounds it on fresh web results."""
+        return independent_market_research(lat, lon, radii_miles=list(radii_miles), backend=backend, use_web_search=use_web)
+
+
     MODE_KEY = "✨ Key Insights — grounded in this market's data"
     MODE_DIRECT = "🌍 Direct LLM summary — location only, no data"
+    MODE_POLLINATE = "🔀 Pollinated summary — data × location × competition → verdict"
     MODE_COMPETE = "🏁 Competitive saturation — client footprint vs the trade area"
+    MODE_INDEPENDENT = "🌐 Independent research — external LLM only, per 3/6/9-mi radius"
     _modes = []
     if _INSIGHTS_OK:
         _modes.append(MODE_KEY)
-    if (not demo) and _LOC_POC_OK:                                # Direct / Competition reveal the city → not in demo
+    if (not demo) and _LOC_POC_OK:                                # Direct/Pollinated/Competition/Independent reveal the city → not in demo
         _modes.append(MODE_DIRECT)
+        if _INSIGHTS_OK:
+            _modes.append(MODE_POLLINATE)
         _modes.append(MODE_COMPETE)
+        if independent_market_research:
+            _modes.append(MODE_INDEPENDENT)
     if not _modes:
         _modes = [MODE_KEY]
 
@@ -291,22 +319,22 @@ def render(df, site, pins, demo, express_only, radius, smooth):
     # ── one central "Try again" — wipe every cached/stored insight so ALL views regenerate from scratch ──
     if _llm_ready and (_INSIGHTS_OK or _LOC_POC_OK):
         if st.button("🔄 Try again — regenerate all insights",
-                     help="Clear the cached Key Insights / location read / competition summaries and "
+                     help="Clear the cached Key Insights / location read / competition / pollinated summaries and "
                           "rebuild them all fresh for this market (the model output varies each time)."):
-            for _fn in (_market_insights_cached, _location_poc_cached,
-                        _compete_cached, _nearby_washes_cached):
+            for _fn in (_market_insights_cached, _location_poc_cached, _pollinate_cached,
+                        _compete_cached, _nearby_washes_cached, _independent_cached):
                 try:
                     _fn.clear()                                   # drop the st.cache_data memoization
                 except Exception:
                     pass
-            for _store in (insights_store, loc_poc_store, compete_store):
+            for _store in (insights_store, loc_poc_store, pollinate_store, compete_store, independent_store):
                 _store.clear()                                    # drop the per-session stored results
             st.rerun()
 
     if not _llm_ready:
         st.caption(f"⚠️ `{insights_backend}` LLM endpoint unavailable — summaries can't be prepared right now.")
     else:
-        # ── Prepare A / B / C CONCURRENTLY. They are independent of each other (each its own network/LLM call), so on a cold market
+        # ── Prepare A / B / C CONCURRENTLY. They are independent (each its own network/LLM call), so on a cold market
         #    we fan them out in a thread pool and wait for all three — cold-start ≈ max(A,B,C) instead of A+B+C. Cached
         #    results are served instantly on rerun (the `… not in …store` guards), so the pool only spins on a new pin. ──
         import threading
@@ -317,6 +345,7 @@ def render(df, site, pins, demo, express_only, radius, smooth):
             add_script_run_ctx = get_script_run_ctx = None
 
         _ckey = (loc_sig, _known_names)
+        _ikey = (loc_sig, _INDEP_RADII, _web_on)                  # independent-research cache key (per location, radii, web)
         _loc_ok = (not demo) and _LOC_POC_OK
 
         def _prep_B():                                             # Key Insights — grounded on the market's data
@@ -329,14 +358,19 @@ def render(df, site, pins, demo, express_only, radius, smooth):
             _nearby = _nearby_washes_cached(plat, plon, 11)
             return _compete_cached(_ckey, plat, plon, int(radius), _known_names, insights_backend, _nearby)
 
+        def _prep_D():                                             # Independent research — external LLM only, per 3/6/9-mi radius
+            return _independent_cached(_ikey, plat, plon, _INDEP_RADII, insights_backend, _web_on)
+
         _jobs = [(k, fn) for k, fn, go in (
             ("B", _prep_B, _INSIGHTS_OK and isig not in insights_store),
             ("A", _prep_A, _loc_ok and loc_sig not in loc_poc_store),
             ("C", _prep_C, _loc_ok and _ckey not in compete_store),
+            ("D", _prep_D, _loc_ok and bool(independent_market_research) and _ikey not in independent_store),
         ) if go]
 
         if _jobs:
-            _LABEL = {"A": "Location summary", "B": "Key Insights", "C": "Competition estimate"}
+            _LABEL = {"A": "Location summary", "B": "Key Insights", "C": "Competition estimate",
+                      "D": "Independent research"}
             _ctx = get_script_run_ctx() if get_script_run_ctx else None
 
             def _with_ctx(fn):                                     # attach the ScriptRunContext so st.cache_data works off-thread
@@ -346,7 +380,7 @@ def render(df, site, pins, demo, express_only, radius, smooth):
                     return fn()
                 return _inner
 
-            with st.spinner("Preparing insights for this market (Key Insights · location · competition, in parallel)…"):
+            with st.spinner("Preparing insights for this market (Key Insights · location · competition · independent, in parallel)…"):
                 with ThreadPoolExecutor(max_workers=len(_jobs)) as _ex:
                     _futs = {k: _ex.submit(_with_ctx(fn)) for k, fn in _jobs}
                     for k, f in _futs.items():
@@ -356,10 +390,23 @@ def render(df, site, pins, demo, express_only, radius, smooth):
                                 insights_store[isig] = _res
                             elif k == "A":
                                 loc_poc_store[loc_sig] = _res
-                            else:
+                            elif k == "C":
                                 compete_store[_ckey] = _res
+                            else:
+                                independent_store[_ikey] = _res
                         except Exception as e:
                             st.caption(f"_{_LABEL[k]} couldn't be prepared: {e}_")
+
+        # ── Then pollinate — needs all three in hand (runs after the parallel prep resolves). ──
+        _qual, _quant, _out_c = loc_poc_store.get(loc_sig), insights_store.get(isig), compete_store.get(_ckey)
+        if _loc_ok and _qual and _quant and _out_c and isig not in pollinate_store:
+            try:
+                with st.spinner("Combining Key Insights × location × competition → Final Verdict…"):
+                    pollinate_store[isig] = _pollinate_cached(
+                        isig, _qual["text"], _quant, _out_c, plat, plon, int(radius), insights_backend
+                    )
+            except Exception as e:
+                st.caption(f"_Pollinated summary couldn't be prepared: {e}_")
 
     gen_mode = st.selectbox("Analysis — pick a view (all summaries prepare automatically when you choose a pin)", _modes,
                             key="analysis_mode")
@@ -454,6 +501,27 @@ def render(df, site, pins, demo, express_only, radius, smooth):
                 _react_md(_strip_leading_h1(_out["text"]) + _sources_md(_out.get("sources")))
                 with st.expander("🔎 API response (JSON) — POST /insights/location"):
                     st.json(_resp)
+    elif gen_mode == MODE_POLLINATE:
+        _qual, _quant = loc_poc_store.get(loc_sig), insights_store.get(isig)
+        if _qual and _quant:
+            _ckey = (loc_sig, _known_names)
+            _out_c = compete_store.get(_ckey)
+            _out = pollinate_store.get(isig)
+            if _out:
+                _comp_summary = build_competition_response(_out_c)["summary"] if (build_competition_response and _out_c) else None
+                _resp = {                                     # POST /insights/pollinated → {summary, sources}
+                    "summary": _out["text"],
+                    "sources": {
+                        "key_insights": _key_insights_summary(_quant),
+                        "location_analysis": _qual["text"],
+                        "competition": _comp_summary,
+                    },
+                }
+                with st.container(border=True):
+                    st.markdown("#### 🔀 Pollinated summary — final consolidated read + verdict")
+                    _react_md(_strip_leading_h1(_out["text"]))
+                    with st.expander("🔎 API response (JSON) — POST /insights/pollinated (summary + the 3 source responses)"):
+                        st.json(_resp)
     elif gen_mode == MODE_COMPETE:
         _ckey = (loc_sig, _known_names)
         _out = compete_store.get(_ckey)
@@ -472,6 +540,19 @@ def render(df, site, pins, demo, express_only, radius, smooth):
                 _react_md(_summary)
                 with st.expander("🔎 API response (JSON) — POST /insights"):
                     st.json({"summary": _summary})
+    elif gen_mode == MODE_INDEPENDENT:
+        _ikey = (loc_sig, _INDEP_RADII, _web_on)
+        _out_d = independent_store.get(_ikey)
+        if _out_d and build_independent_research_response:
+            _resp = build_independent_research_response(_out_d)   # POST /insights/independent-research → {radii, summary, sources}
+            with st.container(border=True):
+                st.markdown("#### 🌐 Independent market research — external LLM knowledge only")
+                st.caption("No internal/operator data used — each radius (3 / 6 / 9 mi) sized from public knowledge alone"
+                           + (" (web-grounded)." if _resp.get("sources") else "; web search off.")
+                           + " Anything it can't responsibly size is shown as **Not estimable** (never fabricated).")
+                _react_md(_strip_leading_h1(_resp["summary"]) + _sources_md(_resp.get("sources")))
+                with st.expander("🔎 API response (JSON) — POST /insights/independent-research (per-radius metrics)"):
+                    st.json(_resp)
 
     for gi, (gname, panels) in enumerate(GROUPS):
         gk = gran_picker(f"gran_kpi_{gname}")
