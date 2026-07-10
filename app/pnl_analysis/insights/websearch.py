@@ -30,7 +30,7 @@ from typing import List, Optional, Tuple
 
 import requests
 
-from app.utils import common as calib
+from app.core import common as calib
 
 logger = logging.getLogger(__name__)
 

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from celery.result import AsyncResult
 from fastapi import APIRouter, HTTPException
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.server.config import (
     WEATHER_METRIC_CONFIG,
     WEATHER_METRIC_DISPLAY,
@@ -36,7 +36,7 @@ from app.site_analysis.modelling.ai import (
     summarize_retail,
     summarize_gas,
 )
-from app.celery.celery_app import celery_app
+from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

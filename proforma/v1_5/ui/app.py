@@ -1934,7 +1934,7 @@ def _nearby_washes_cached(lat, lon, radius_miles=11):
     competitive-saturation read. Cached per (rounded location, radius). [] if the key/fetch is unavailable."""
     try:
         from app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
-        from app.utils import common as _calib
+        from app.core import common as _calib
         key = _calib.GOOGLE_MAPS_API_KEY or ""
         if not key:
             return []

@@ -1,6 +1,6 @@
 import json
 import requests
-from app.utils import common as calib
+from app.core import common as calib
 
 def get_nearby_traffic_lights(lat, lon, radius=3218.68):
     """

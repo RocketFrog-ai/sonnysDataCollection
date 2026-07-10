@@ -308,7 +308,7 @@ if __name__ == "__main__":
     elif "--address" in sys.argv:
         idx = sys.argv.index("--address")
         address = sys.argv[idx + 1] if idx + 1 < len(sys.argv) else "1208-1398 N Griffith Park Dr, Burbank, CA 91506, USA"
-        from app.utils.common import get_lat_long
+        from app.core.common import get_lat_long
         geo = get_lat_long(address)
         if not geo or geo.get("lat") is None:
             print("Could not geocode:", address)

@@ -41,7 +41,7 @@ bs_log_fn="proforma-fastapi-$(date +"%d-%b-%Y-%H-%M-%S").log"
 bs_log_pfn="$REPO_ROOT/logs/$bs_log_fn"
 echo "start_uvicorn_fast_api.sh - MESSAGE: Starting the server now logs available in: $bs_log_pfn"
 
-nohup python -m app.site_analysis.server.main > "$bs_log_pfn" 2>&1 &
+nohup python -m app.main > "$bs_log_pfn" 2>&1 &
 echo $! > "$REPO_ROOT/fastapi_${ENV_NAME}.pid"
 
 echo "FastAPI server started successfully with PID $(cat "$REPO_ROOT/fastapi_${ENV_NAME}.pid")"

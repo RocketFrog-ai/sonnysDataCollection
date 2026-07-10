@@ -1,5 +1,5 @@
 from celery import Celery
-from app.utils import common as calib
+from app.core import common as calib
 
 CELERY_BROKER_URL = calib.CELERY_BROKER_URL
 CELERY_RESULT_BACKEND = calib.CELERY_RESULT_BACKEND
@@ -13,7 +13,7 @@ celery_app = Celery(
     include=[
         "app.site_analysis.modelling.site_analysis",
         "app.pnl_analysis.modelling.zeta_pnl",
-        "app.celery.tasks",
+        "app.tasks.tasks",
     ]
 )
 

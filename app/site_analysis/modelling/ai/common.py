@@ -37,7 +37,7 @@ def get_llm_text(
     max_new_tokens: int = 256,
 ) -> Optional[str]:
     """Run local LLM and return stripped text if present."""
-    from app.utils.llm import local_llm as llm
+    from app.core.llm import local_llm as llm
 
     raw = llm.get_llm_response(
         prompt,

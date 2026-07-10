@@ -2,7 +2,7 @@
 Nearest Target store by straight-line distance. Uses Places API searchText "Target"
 and filters to places whose displayName contains "target" (so we get Target stores only).
 """
-from app.utils import common as calib
+from app.core import common as calib
 
 API_KEY = calib.GOOGLE_MAPS_API_KEY
 
