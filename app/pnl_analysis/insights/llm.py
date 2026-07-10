@@ -3,8 +3,8 @@ LLM client for the Key-Insights pipeline — a thin backend toggle.
 
 `INSIGHTS_LLM_BACKEND` (env, default "azure") selects:
   • azure  — the verified Azure GPT-4o deployment, via a thin requests POST that mirrors the working
-             curl (endpoint / deployment / api-version / api-key from app.utils.common).
-  • local  — the internal LLM server, via app.utils.llm.local_llm.get_llm_text.
+             curl (endpoint / deployment / api-version / api-key from app.core.common).
+  • local  — the internal LLM server, via app.core.llm.local_llm.get_llm_text.
 
 `complete(messages, backend=...)` returns the assistant text. It raises `LLMUnavailable` when the
 chosen backend isn't configured/reachable, so the graph node can fall back to rule-based insights and
@@ -20,7 +20,7 @@ from urllib.parse import urlparse
 
 import requests
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.modelling.ai.common import extract_llm_text
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def _azure_complete(messages: List[dict], max_tokens: int, temperature: float, j
 def _local_complete(messages: List[dict], max_tokens: int, temperature: float, json_mode: bool) -> str:
     if not local_reachable():
         raise LLMUnavailable("Local LLM server is not reachable (LLM_REALTIME_URL).")
-    from app.utils.llm.local_llm import get_llm_text
+    from app.core.llm.local_llm import get_llm_text
     prompt = "\n\n".join(m.get("content", "") for m in messages if m.get("content"))
     if json_mode:
         prompt += "\n\nReturn ONLY the JSON object, with no prose or code fences."

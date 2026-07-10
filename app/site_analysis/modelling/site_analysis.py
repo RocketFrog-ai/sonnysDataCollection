@@ -6,7 +6,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
 from app.site_analysis.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
@@ -17,7 +17,7 @@ from app.site_analysis.server.db_cache import (
     get_cached_site_analysis_by_latlon,
     save_site_analysis_response,
 )
-from app.celery.celery_app import celery_app
+from app.tasks.celery_app import celery_app
 
 logger = logging.getLogger(__name__)
 

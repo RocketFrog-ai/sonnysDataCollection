@@ -229,7 +229,7 @@ if __name__ == "__main__":
     import json
     import os
     from dotenv import load_dotenv
-    from app.utils import common as calib
+    from app.core import common as calib
 
     load_dotenv()
     api_key = os.getenv("GOOGLE_MAPS_API_KEY")

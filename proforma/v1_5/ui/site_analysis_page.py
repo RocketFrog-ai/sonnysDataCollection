@@ -47,7 +47,7 @@ if _APP_DIR.is_dir() and (
     _app_mod.__path__ = [str(_APP_DIR)]
     sys.modules["app"] = _app_mod
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
 from app.site_analysis.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors

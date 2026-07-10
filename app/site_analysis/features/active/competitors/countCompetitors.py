@@ -3,7 +3,7 @@ import sys
 import time
 import traceback
 import pandas as pd
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.active.competitors.utils.competitor_matcher import match_competitors
 from app.site_analysis.features.active.competitors.utils.keyword_classification import keywordclassifier
 from app.site_analysis.features.active.competitors.utils.gpt_images_classification import visionModelResponse

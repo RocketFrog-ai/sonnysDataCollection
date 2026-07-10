@@ -25,7 +25,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
 from app.site_analysis.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
 from app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors

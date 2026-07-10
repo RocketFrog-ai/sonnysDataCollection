@@ -7,7 +7,7 @@ import openai
 from openai import AzureOpenAI
 from pydantic import BaseModel, Field
 from typing import Literal
-from app.utils import common as calib
+from app.core import common as calib
 
 # --- Azure OpenAI Configuration ---
 AZURE_OPENAI_ENDPOINT = calib.AZURE_OPENAI_ENDPOINT

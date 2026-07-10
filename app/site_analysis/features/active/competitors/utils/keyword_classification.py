@@ -1,6 +1,6 @@
 import json
 import time
-from app.utils.llm import local_llm as llm
+from app.core.llm import local_llm as llm
 
 
 CLASSIFIER_PROMPT = """You are a smart classifier for car wash businesses. Your goal is to decide whether a business is a Competitor or Not a Competitor based on its name or description.

@@ -6,7 +6,7 @@ from typing import Tuple
 import numpy as np
 from fastapi import APIRouter, HTTPException
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.pnl_analysis.modelling import data as D
 from app.pnl_analysis.modelling import market
 from app.pnl_analysis.modelling import pnl as pnl_engine

@@ -1,7 +1,7 @@
 import os
 import json
 import requests
-from app.utils import common as calib
+from app.core import common as calib
 
 API_KEY = calib.GOOGLE_MAPS_API_KEY
 

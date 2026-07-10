@@ -1,7 +1,7 @@
 import os
 import sys
 import requests
-from app.utils import common as calib
+from app.core import common as calib
 
 # Replace with your Google Static Maps API key
 API_KEY = calib.GOOGLE_MAPS_API_KEY

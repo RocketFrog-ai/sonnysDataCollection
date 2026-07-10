@@ -56,7 +56,7 @@ if _APP_DIR.is_dir() and (
     _app_mod.__path__ = [str(_APP_DIR)]
     sys.modules["app"] = _app_mod
 
-from app.utils import common as calib  # noqa: E402
+from app.core import common as calib  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 CSV = _REPO_ROOT / "proforma" / "data" / "ref" / "merged_all_sites.csv"

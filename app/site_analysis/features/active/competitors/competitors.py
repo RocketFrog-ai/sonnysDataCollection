@@ -1,5 +1,5 @@
 import time
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.active.competitors.utils.competitor_matcher import match_competitors
 from app.site_analysis.features.active.competitors.utils.keyword_classification import keywordclassifier
 from app.site_analysis.features.active.competitors.utils.google_maps_utils import find_nearby_places

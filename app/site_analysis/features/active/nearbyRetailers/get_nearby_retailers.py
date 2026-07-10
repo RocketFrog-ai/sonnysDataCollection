@@ -8,7 +8,7 @@ from typing import Optional, Any
 
 logger = logging.getLogger(__name__)
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.inactive.experimental_features.operationalHours.searchNearby import find_nearby_places
 
 DEFAULT_RADIUS_MILES = 2
