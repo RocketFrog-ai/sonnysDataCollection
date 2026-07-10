@@ -21,17 +21,15 @@
 #   * /v1/pnl_analysis/insights/* are excluded: they call an LLM and are non-deterministic.
 #   * app/site_analysis/features/** is ast-parsed but never imported -- those modules run live
 #     HTTP/LLM calls at module scope. See scripts/_golden/import_smoke.py:AST_ONLY_PREFIXES.
-#   * app/site_analysis/* endpoints have no golden outputs (they need Redis/Celery). Their route
-#     paths and OpenAPI schema were diffed against the pre-refactor tag by hand, once.
-#   * The Celery async pipeline (POST /v1/analyze-site) is not exercised; it needs Redis, and it is
-#     broken anyway for an unrelated pre-existing reason -- see docs/DIVERGENCES.md section 2.
+#   * app/site_analysis/* endpoints have no golden outputs -- they make live third-party calls.
+#     Their route paths and OpenAPI schema were diffed against the pre-refactor tag by hand, once.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
 
 CONDA_BASE="$(conda info --base 2>/dev/null || echo /opt/homebrew/Caskroom/miniconda/base)"
-PY_BACKEND="$CONDA_BASE/envs/sonnysDataCollection/bin/python"   # py3.9  — FastAPI + Celery + the joblib artifact
+PY_BACKEND="$CONDA_BASE/envs/sonnysDataCollection/bin/python"   # py3.9  — FastAPI + the joblib artifact
 PY_UI="$CONDA_BASE/envs/proforma311/bin/python"                 # py3.11 — Streamlit
 
 BASELINE="scripts/_golden/baseline"

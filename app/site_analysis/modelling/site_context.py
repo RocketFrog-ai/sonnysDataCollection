@@ -2,7 +2,7 @@
 Synchronous lat/lon site-analysis — the FastAPI counterpart to the Streamlit "🔎 Site analysis" page.
 
 Given a (lat, lon) pin (the same one Explore markets & Forecast use) this pulls live location
-context around the site in ONE synchronous call (no celery, no task polling):
+context around the site in ONE synchronous call:
   • weather / climate     (Open-Meteo)
   • competing car washes  (Google Places, ≤4 mi driving)
   • retail anchors        (Google Places, ≤3 mi: warehouse clubs, big box, grocery, food)
@@ -10,8 +10,9 @@ context around the site in ONE synchronous call (no celery, no task polling):
 
 It then assembles the exact same per-dimension data the page shows — headline metrics, map markers,
 and rule-based insights (plus optional internal-LLM write-ups) — into a single JSON-serializable dict
-that the backend can serve directly. This is the lat/lon counterpart to the async, celery-wrapped
-app/site_analysis/modelling/site_analysis.py (which keys on a geocoded address).
+that the backend can serve directly. It backs POST /v1/site-context. (It used to be the lat/lon
+counterpart to an async, celery-wrapped site_analysis.py; that pipeline was removed in 2026-07 and
+this is now the only path.)
 
 The maths, thresholds, windows and fallbacks are ported verbatim from
 proforma/v1_5/ui/site_analysis_page.py — see render()/fetch_features()/build_markers()
@@ -67,7 +68,7 @@ def _i(x: Any) -> Optional[int]:
 def fetch_features(lat: float, lon: float) -> dict:
     """Parallel external fetch around (lat, lon): {climate, gas_stations, retail_anchors, competitors_data}.
 
-    Mirrors app/site_analysis fetch_all_features, calling the feature fetchers directly. Synchronous
+    Calls the feature fetchers directly. (Once mirrored the deleted site_analysis.fetch_all_features.) Synchronous
     (one ThreadPoolExecutor, blocks until all four finish). Each fetcher degrades to an empty
     container on missing API key or failure, so the page never errors on partial data.
     """

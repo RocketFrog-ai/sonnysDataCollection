@@ -10,8 +10,7 @@ drop a pin on a US map for a site that doesn't exist yet, get a 5-year monthly w
 (`client_id + site_id`, monthly, 2020→2027).
 
 Start with `README.md`, then `docs/ARCHITECTURE.md`. **Read `docs/DIVERGENCES.md` before "fixing"
-anything that looks wrong** — several things are knowingly broken, and one of them (the Celery
-worker) has been broken for months.
+anything that looks wrong** — several things are knowingly broken.
 
 ## Layout
 
@@ -24,7 +23,6 @@ proforma/          ALL modelling, versioned.  v1_5 = LIVE.  v1_6 = experiment (c
   v1_5/backtests/  scripts (side effects at import). Run them; never import them.
 app/               FastAPI. app/main.py (full) and app/pnl_only.py (P&L only) are the entrypoints.
   core/            was app/utils/ — config, env, geocoding. Almost everything imports it.
-  tasks/           was app/celery/ — renamed so it can't shadow the real `celery` package.
 libs/carwash_type/ was type_car_wash/ — a real importable utility.
 archive/           frozen prior work. Read for history; do not build on it.
 experiments/       standalone; not on the import path.
@@ -48,7 +46,7 @@ of the three places a change belongs in *before* editing. Do not unify them as a
 
 | Env | Python | Defined in | Runs |
 |-----|--------|-----------|------|
-| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend + Celery |
+| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend |
 | conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app |
 | `venv/` | 3.13 | not checked in | ad-hoc dev |
 
@@ -66,11 +64,8 @@ streamlit run proforma/v1_5/ui/app.py                       # http://localhost:8
 
 # Backends (conda sonnysDataCollection)
 python -m app.main                                          # full: site_analysis + pnl_analysis
-uvicorn app.pnl_only:app --host 127.0.0.1 --port 8010       # pnl only; no celery/openai deps
+uvicorn app.pnl_only:app --host 127.0.0.1 --port 8010       # pnl only; no openai / live fetchers
 scripts/start_uvicorn_fast_api.sh                           # nohup launcher (sets PYTHONPATH)
-
-# Celery worker — NOTE: currently cannot start, see docs/DIVERGENCES.md §2
-scripts/start_celery_worker.sh                              # celery -A app.tasks.celery_app worker
 
 # Rebuild the panel after upstream CSV changes
 python proforma/v1_5/scripts/process_main_data_v2.py
@@ -92,7 +87,7 @@ tell you exactly which ones moved — read that diff, don't silence it by re-bas
 
 Its coverage gaps are stated in its own header comment and in `docs/DIVERGENCES.md` §6: the UI is
 only first-render, `/insights/*` are LLM and excluded, `app/site_analysis/features/**` is never
-imported (module-scope live HTTP/LLM calls), and Celery is not exercised.
+imported (module-scope live HTTP/LLM calls).
 
 There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc manual scripts;
 `test_endpoint.py` is itself broken (`docs/DIVERGENCES.md` §8).

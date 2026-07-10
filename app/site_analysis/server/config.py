@@ -1,22 +1,12 @@
 """
-Server-level config: Redis/Celery, route constants, and API configs (e.g. weather metrics).
+Server-level config: route constants and API configs (e.g. weather metrics).
+
+The Redis/Celery block that used to live here went with the async task pipeline (2026-07).
 """
 
 from typing import Literal, Optional, Tuple
 
 from app.core import common as calib
-
-
-# -----------------------------------------------------------------------------
-# Redis & Celery
-# -----------------------------------------------------------------------------
-
-REDIS_HOST = calib.REDIS_HOST
-REDIS_PORT = calib.REDIS_PORT
-REDIS_DB = calib.REDIS_DB
-REDIS_PASSWORD = calib.REDIS_PASSWORD
-CELERY_BROKER_URL = calib.CELERY_BROKER_URL
-CELERY_RESULT_BACKEND = calib.CELERY_RESULT_BACKEND
 
 
 # -----------------------------------------------------------------------------

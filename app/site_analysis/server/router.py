@@ -1,7 +1,20 @@
 """Route decorators ONLY for the site_analysis endpoints mounted under /v1: parse the request, delegate
-to service.py, serialize the response. Split out of the former monolithic routes.py; see routes.py in
-this package for why that module still exists, and schemas.py / service.py for the request models and
-the extracted helper/handler logic respectively."""
+to service.py, serialize the response. See schemas.py / service.py for the request models and the
+extracted helper/handler logic respectively.
+
+Celery and the async task pipeline were removed in 2026-07. The endpoints that existed only to
+enqueue and poll a Celery task are gone:
+
+    POST /analyze-site
+    GET  /task/{task_id}
+    GET  /result/{task_id}
+    GET  /{weather,competition,retail,gas}/data-by-task/{task_id}
+    GET  /{weather,competition,retail,gas}/summary-by-task/{task_id}
+    GET  /map/data-by-task/{task_id}
+
+`POST /site-context` is their synchronous replacement: it returns the same weather / competing-wash /
+retail-anchor / gas data, plus map markers and insights, in a single call. See docs/ARCHITECTURE.md.
+"""
 from fastapi import APIRouter
 
 from app.site_analysis.server import service
@@ -10,86 +23,9 @@ from app.site_analysis.server.schemas import (
     AnalyseRequest,
     SiteContextRequest,
     SiteFeaturesRequest,
-    TaskStatusResponse,
 )
 
 router = APIRouter()
-
-
-# -----------------------------------------------------------------------------
-# Analyse-site: kick off the external-data fetch pipeline
-# -----------------------------------------------------------------------------
-
-@router.post("/analyze-site")
-def analyze_site_endpoint(features: AnalyseRequest):
-    """
-    Enqueue the fetch pipeline: geocode → fetch weather / competitors / gas / retail (in parallel).
-    Returns task_id; poll GET /task/{task_id} until success, then read the per-dimension
-    /{dimension}/data-by-task endpoints (fast) and /{dimension}/summary-by-task endpoints (LLM).
-    """
-    return service.analyze_site(features)
-
-
-# -----------------------------------------------------------------------------
-# Per-dimension raw DATA (fast — no LLM). Reads only the stored `fetched` payload.
-# -----------------------------------------------------------------------------
-
-@router.get("/weather/data-by-task/{task_id}")
-def get_weather_data_by_task(task_id: str):
-    """Raw weather metrics (rainy days, snowfall, comfortable days, freezing days) from the fetch."""
-    return service.get_weather_data(task_id)
-
-
-@router.get("/competition/data-by-task/{task_id}")
-def get_competition_data_by_task(task_id: str):
-    """Raw nearby same-format car washes (within 4 miles) from the fetch."""
-    return service.get_competition_data(task_id)
-
-
-@router.get("/retail/data-by-task/{task_id}")
-def get_retail_data_by_task(task_id: str):
-    """Raw nearby retail anchors (within 1 and 3 miles) from the fetch."""
-    return service.get_retail_data(task_id)
-
-
-@router.get("/gas/data-by-task/{task_id}")
-def get_gas_data_by_task(task_id: str):
-    """Raw nearby gas stations (within 1 and 3 miles) from the fetch."""
-    return service.get_gas_data(task_id)
-
-
-# -----------------------------------------------------------------------------
-# Per-dimension AI SUMMARIES (on-demand — one LLM call, grounded on raw fetched data).
-# -----------------------------------------------------------------------------
-
-@router.get("/weather/summary-by-task/{task_id}")
-def get_weather_summary_by_task(task_id: str):
-    return service.get_weather_summary(task_id)
-
-
-@router.get("/competition/summary-by-task/{task_id}")
-def get_competition_summary_by_task(task_id: str):
-    return service.get_competition_summary(task_id)
-
-
-@router.get("/retail/summary-by-task/{task_id}")
-def get_retail_summary_by_task(task_id: str):
-    return service.get_retail_summary(task_id)
-
-
-@router.get("/gas/summary-by-task/{task_id}")
-def get_gas_summary_by_task(task_id: str):
-    return service.get_gas_summary(task_id)
-
-
-# -----------------------------------------------------------------------------
-# Map markers
-# -----------------------------------------------------------------------------
-
-@router.get("/map/data-by-task/{task_id}")
-def get_map_data_by_task(task_id: str):
-    """Map-ready markers: origin site + nearby gas stations, competitors, and retail anchors."""
-    return service.get_map_data(task_id)
 
 
 # -----------------------------------------------------------------------------
@@ -101,7 +37,7 @@ def get_site_context(req: SiteContextRequest):
     """
     Synchronous "what surrounds this location" for a lat/lon pin (or address): weather, competing car washes,
     retail anchors and gas stations + map markers + rule-based insights (optionally LLM-rewritten), all in ONE
-    response. The lat/lon counterpart to the async /analyze-site pipeline; mirrors the Streamlit Site-analysis page.
+    response. Mirrors the Streamlit Site-analysis page.
     """
     return service.get_site_context(req)
 
@@ -135,22 +71,6 @@ def get_nearby_stores_endpoint(features: AnalyseRequest):
 
 
 # -----------------------------------------------------------------------------
-# Task status
-# -----------------------------------------------------------------------------
-
-@router.get("/task/{task_id}", response_model=TaskStatusResponse)
-def get_task_status(task_id: str):
-    """Task status and result from Celery. Full `result` is present only when status is success."""
-    return service.get_task_status(task_id)
-
-
-@router.get("/result/{task_id}")
-def get_result_by_task(task_id: str):
-    """Get analyse-site result by task_id. Poll until status = success."""
-    return service.get_result_by_task(task_id)
-
-
-# -----------------------------------------------------------------------------
 # Health & cache
 # -----------------------------------------------------------------------------
 
@@ -161,4 +81,10 @@ def health_check():
 
 @router.get("/cache/site-analysis/all")
 def get_site_analysis_cache_all():
+    """Read-only view of the Postgres site-analysis cache.
+
+    NOTE: nothing writes this cache any more. Its only writer was the Celery task
+    (`run_site_analysis`), removed with the async pipeline. Rows already in the table are still
+    served; no new rows appear. Kept because the data is real and the route is harmless.
+    """
     return get_all_site_analysis_cache(page=1, page_size=50, include_response=True)

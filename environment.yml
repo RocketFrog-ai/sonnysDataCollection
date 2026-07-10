@@ -17,7 +17,6 @@ dependencies:
     - anyio==3.7.1
     - certifi==2026.1.4
     - cffi==2.0.0
-    - celery
     - charset-normalizer==3.4.4
     - click==8.1.8
     - cryptography==46.0.4
@@ -48,7 +47,6 @@ dependencies:
     - python-dotenv==1.0.0
     - pytz==2025.2
     - PyYAML==6.0.3
-    - redis
     - scikit-learn
     - requests==2.31.0
     - six==1.17.0
