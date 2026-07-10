@@ -35,14 +35,14 @@ UI_ENTRYPOINTS = {"app.py", "site_analysis_page.py", "site_visual_page.py", "str
 # the startup scripts put their dirs on PYTHONPATH and they use bare intra-feature imports.
 # We syntax-check them and never import them. This narrows coverage, on purpose, in writing.
 #
-# proforma/v1_5/backtests/** are also scripts: backtest_features.py reads a CSV and fits a model
+# proforma/backtests/** are also scripts: backtest_features.py reads a CSV and fits a model
 # at module level. Before the refactor they were never imported anyway -- their dotted path went
 # through "earnest-proforma-2.0", which is not a Python identifier, so mod_name() produced an
 # invalid name and they fell into the "skipped" bucket by accident. After the move the path IS
 # valid, so without this entry the smoke test would start running full backtests on every pass.
 AST_ONLY_PREFIXES = (
     "app/site_analysis/features/",
-    "proforma/v1_5/backtests/",
+    "proforma/backtests/",
 )
 
 TREES = {
@@ -50,8 +50,13 @@ TREES = {
     # out at the pre-refactor tag; py_files() silently skips roots that do not exist.
     "backend": ["app"],
     "ui": [
-        "proforma/v1_5/models", "proforma/v1_5/ui", "proforma/v1_5/backtests", "proforma/v1_6",
-        "earnest-proforma-2.0/streamlits", "council",   # pre-refactor locations
+        "proforma/models", "proforma/ui", "proforma/backtests",
+        # the council still runs (python -m experiments.council.harness), so keep it swept even
+        # though experiments/ is otherwise off the import path.
+        "experiments/council",
+        # older layouts, so this still works when checked out at an old tag:
+        "proforma/v1_5/models", "proforma/v1_5/ui", "proforma/v1_6",
+        "earnest-proforma-2.0/streamlits", "council",
     ],
 }
 

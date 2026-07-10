@@ -8,7 +8,7 @@
 # 2026-07 restructure. The 13 real LFS objects that do exist live only in history, under
 # app/site_analysis/modelling/ds/datasets/, a path that no longer exists at HEAD.
 #
-# The one genuinely large tracked file, proforma/v1_5/artifacts/coldstart_artifacts.joblib
+# The one genuinely large tracked file, proforma/artifacts/coldstart_artifacts.joblib
 # (~46 MB), is stored as an ordinary inline git blob, not an LFS pointer. Do not "fix" that
 # by adding an LFS pattern for it: converting an already-committed inline blob to LFS
 # rewrites how git stores existing history and buys nothing here.

@@ -15,7 +15,7 @@ some of its modules fire live HTTP/LLM calls at module scope, and one calls sys.
 features/ into sys.modules. A filesystem check cannot execute anything, by construction.
 
 Why this exists: the 2026-07 restructure renamed app/utils -> app/core and the sweep missed
-datafetching/, which is not in any of import_smoke.py's TREES. Five modules there imported
+datafetching/ (now experiments/datafetching/), which is in none of import_smoke.py's TREES. Five modules there imported
 app.utils and were broken for two commits before an audit caught it. Exit 1 on any unresolved
 first-party import.
 """
@@ -49,8 +49,8 @@ def first_party(mod: str) -> bool:
 def resolves(dotted: str) -> bool:
     """True iff `a.b.c` maps to REPO/a/b/c/ or REPO/a/b/c.py. Touches only the filesystem.
 
-    A bare directory counts: `app/`, `proforma/` and `proforma/v1_5/` are PEP 420 namespace
-    packages with no __init__.py, and `from proforma.v1_5.models import coldstart` resolves
+    A bare directory counts: `app/`, `proforma/` and `proforma/` are PEP 420 namespace
+    packages with no __init__.py, and `from proforma.models import coldstart` resolves
     through them at runtime.
     """
     p = REPO.joinpath(*dotted.split("."))

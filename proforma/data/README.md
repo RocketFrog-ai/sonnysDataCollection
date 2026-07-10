@@ -9,15 +9,15 @@ file is the map.
 
 | path | what | who reads it |
 |---|---|---|
-| `panel/main-data-v2-stitched.csv` | **the canonical monthly site panel.** 2020-01→2027-01, 71,701 rows, 2,103 `client_id+site_id` keys, handoffs stitched | `../v1_5/models/coldstart.py`, `../v1_5/ui/app.py`, `app/pnl_analysis/modelling/data.py`, `../v1_6/data_1_6.py` |
-| `panel/main-data-v2.csv` | raw export — input to the build script | `../v1_5/scripts/process_main_data_v2.py` |
+| `panel/main-data-v2-stitched.csv` | **the canonical monthly site panel.** 2020-01→2027-01, 71,701 rows, 2,103 `client_id+site_id` keys, handoffs stitched | `../models/coldstart.py`, `../ui/app.py`, `app/pnl_analysis/modelling/data.py`, `../../experiments/council/data_1_6.py` |
+| `panel/main-data-v2.csv` | raw export — input to the build script | `../scripts/process_main_data_v2.py` |
 | `panel/main-data-v2-processed.csv` | intermediate, pre-stitch | same |
 | `panel/main-data-6yr.csv` | older 6-year cut | the `same_location_timeline` + `tunnel_length_backtest` notebooks |
 | `panel/main-ds.csv` | **legacy schema, superseded** by the stitched panel | `libs/carwash_type/classify_site_types.py` (as a site list) |
-| `opex/opex-data.csv` | operating P&L. True opex = `cogs + expenses`; operator key `client_id` | `../v1_5/ui/app.py`, `app/pnl_analysis/modelling/{data,campaign}.py` |
-| `ref/site_carwash_types.csv` | **resolved** wash-type per site | `../v1_5/ui/app.py` |
-| `ref/merged_all_sites.csv` | site coordinate/name lookup | `app/site_analysis/server/site_features.py`, `../v1_5/ui/site_visual_page.py`, `../v1_5/backtests/backtest_features.py` |
-| `ref/old-excel-proforma-data-enriched.csv` | 187 real builds (tunnel length → CAPEX) | `../v1_5/models/tunnel_capex.py` |
+| `opex/opex-data.csv` | operating P&L. True opex = `cogs + expenses`; operator key `client_id` | `../ui/app.py`, `app/pnl_analysis/modelling/{data,campaign}.py` |
+| `ref/site_carwash_types.csv` | **resolved** wash-type per site | `../ui/app.py` |
+| `ref/merged_all_sites.csv` | site coordinate/name lookup | `app/site_analysis/server/site_features.py`, `../ui/site_visual_page.py`, `../backtests/backtest_features.py` |
+| `ref/old-excel-proforma-data-enriched.csv` | 187 real builds (tunnel length → CAPEX) | `../models/tunnel_capex.py` |
 | `ref/unknownsites_resolved.csv` | provenance for the resolved type table | *no current code reader* |
 | `ref/site_carwash_types.csv.bak-pre-resolved` | pre-resolution snapshot | *no current code reader* |
 | `ref/same_location_sites.csv` | same-address site pairs | the `same_location_timeline` notebook |
@@ -27,7 +27,7 @@ file is the map.
 ## Rebuilding the panel
 
 ```bash
-python proforma/v1_5/scripts/process_main_data_v2.py    # run from the repo root
+python proforma/scripts/process_main_data_v2.py    # run from the repo root
 ```
 
 Reads `panel/main-data-v2.csv`, writes `-processed` and `-stitched` beside it. It used to write two

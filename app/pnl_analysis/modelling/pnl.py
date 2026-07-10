@@ -2,7 +2,7 @@
 P&L engine for the Forecast tab — expected revenue (forecast washes × ASP) vs operating expense.
 
 Backs the Forecast tab's "💰 P&L — expected revenue vs operating expense" section. Every helper here
-is ported verbatim from the Streamlit reference (proforma/v1_5/ui/app.py); the only
+is ported verbatim from the Streamlit reference (proforma/ui/app.py); the only
 change is that each one builds the state→region map via `D.state_to_region(art)` instead of inline, and
 reads the operating P&L through `D.load_pnl_annual()` / `D.load_pnl_monthly()` (same data as app.py's
 `load_pnl()` / `load_pnl_monthly()`).

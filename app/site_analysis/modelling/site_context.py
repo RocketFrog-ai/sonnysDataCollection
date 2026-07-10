@@ -15,7 +15,7 @@ counterpart to an async, celery-wrapped site_analysis.py; that pipeline was remo
 this is now the only path.)
 
 The maths, thresholds, windows and fallbacks are ported verbatim from
-proforma/v1_5/ui/site_analysis_page.py — see render()/fetch_features()/build_markers()
+proforma/ui/site_analysis_page.py — see render()/fetch_features()/build_markers()
 and the rule_* functions there. The only changes are: no streamlit/folium/plotly, no @st.cache_data,
 and all numbers coerced to plain float/int/None (never NaN) so the result is JSON-serializable.
 """

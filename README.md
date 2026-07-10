@@ -10,16 +10,17 @@ sites (`client_id + site_id`, monthly, 2020→2027).
 |---|---|
 | understand the system | `docs/ARCHITECTURE.md` |
 | run something | `docs/ENVIRONMENTS.md` — **three** conda/venv envs, not interchangeable |
-| change the forecast | `proforma/v1_5/MODELLING.md`, then `proforma/v1_5/models/coldstart.py` |
+| change the forecast | `proforma/MODELLING.md`, then `proforma/models/coldstart.py` |
 | find a dataset | `docs/DATA.md` — everything lives once, under `proforma/data/` |
 | know what's already broken | `docs/DIVERGENCES.md` — read before "fixing" anything |
 
 ```bash
-streamlit run proforma/v1_5/ui/app.py     # the explorer     (conda proforma311)
+streamlit run proforma/ui/app.py     # the explorer     (conda proforma311)
 uvicorn app.pnl_only:app --port 8010      # P&L API only     (conda sonnysDataCollection)
 python -m app.main                        # full backend     (conda sonnysDataCollection)
 ./scripts/smoke.sh                        # prove you changed no numbers
 ```
 
-`proforma/` is all modelling, versioned (`v1_5` live, `v1_6` experimental). `app/` is the FastAPI
-backend. `archive/` and `experiments/` are frozen — read for history, don't build on them.
+`proforma/` is all the modelling — one tree, versioned with **git tags**, not folders
+(`proforma-v1.5` is the current model). `app/` is the FastAPI backend. `archive/` and
+`experiments/` are off the import path — read for history, don't build on them.

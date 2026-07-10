@@ -15,12 +15,12 @@ anything that looks wrong** — several things are knowingly broken.
 ## Layout
 
 ```
-proforma/          ALL modelling, versioned.  v1_5 = LIVE.  v1_6 = experiment (council).
-  data/            every dataset, exactly once. Shared; versioned by FILENAME, not folder.
-  v1_5/models/     coldstart.py — the model. tunnel_capex.py.
-  v1_5/artifacts/  the fitted joblib (~46 MB). Owned by the version.
-  v1_5/ui/         Streamlit only. app.py is a thin entry; panels/ holds the modes.
-  v1_5/backtests/  scripts (side effects at import). Run them; never import them.
+proforma/          ALL modelling. ONE tree. Versions are git tags, not folders.
+  data/            every dataset, exactly once.
+  models/          coldstart.py — the model. tunnel_capex.py.
+  artifacts/       the fitted joblib (~46 MB).
+  ui/              Streamlit only. app.py is a thin entry; panels/ holds the modes.
+  backtests/       scripts (side effects at import). Run them; never import them.
 app/               FastAPI. app/main.py (full) and app/pnl_only.py (P&L only) are the entrypoints.
   core/            was app/utils/ — config, env, geocoding. Almost everything imports it.
 libs/carwash_type/ was type_car_wash/ — a real importable utility.
@@ -30,15 +30,15 @@ experiments/       standalone; not on the import path.
 
 ## The one thing to understand first
 
-Forecasting math lives in **`proforma/v1_5/models/coldstart.py`** (plateau × ramp ×
-cannibalization; see `proforma/v1_5/MODELLING.md`). It has **two consumers**:
+Forecasting math lives in **`proforma/models/coldstart.py`** (plateau × ramp ×
+cannibalization; see `proforma/MODELLING.md`). It has **two consumers**:
 
 1. the Streamlit app, in-process;
-2. the FastAPI backend, via `from proforma.v1_5.models import coldstart as cm` in
+2. the FastAPI backend, via `from proforma.models import coldstart as cm` in
    `app/pnl_analysis/modelling/data.py`.
 
 The **model** is shared. The **P&L / market math around it is implemented twice** — once in
-`proforma/v1_5/ui/`, once in `app/pnl_analysis/modelling/*` — and the two have drifted. Decide which
+`proforma/ui/`, once in `app/pnl_analysis/modelling/*` — and the two have drifted. Decide which
 of the three places a change belongs in *before* editing. Do not unify them as a drive-by; see
 `docs/DIVERGENCES.md` §1.
 
@@ -50,7 +50,7 @@ of the three places a change belongs in *before* editing. Do not unify them as a
 | conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app |
 | `venv/` | 3.13 | not checked in | ad-hoc dev |
 
-**Unpickle rule:** `proforma/v1_5/artifacts/coldstart_artifacts.joblib` is a plain pickle of
+**Unpickle rule:** `proforma/artifacts/coldstart_artifacts.joblib` is a plain pickle of
 lightgbm/sklearn/numpy objects — it holds **no reference to the module that wrote it**, so the model
 module can be renamed freely. It *is* coupled to library versions: **refit it in the env that will
 load it** (conda `sonnysDataCollection`). Inference-time logic needs no refit. Details, including
@@ -60,7 +60,7 @@ the benign sklearn 1.6.1-vs-1.8.0 mismatch the Streamlit env produces, are in `d
 
 ```bash
 # Streamlit explorer (conda proforma311) — run from the repo root
-streamlit run proforma/v1_5/ui/app.py                       # http://localhost:8501
+streamlit run proforma/ui/app.py                       # http://localhost:8501
 
 # Backends (conda sonnysDataCollection)
 python -m app.main                                          # full: site_analysis + pnl_analysis
@@ -68,11 +68,11 @@ uvicorn app.pnl_only:app --host 127.0.0.1 --port 8010       # pnl only; no opena
 scripts/start_uvicorn_fast_api.sh                           # nohup launcher (sets PYTHONPATH)
 
 # Rebuild the panel after upstream CSV changes
-python proforma/v1_5/scripts/process_main_data_v2.py
+python proforma/scripts/process_main_data_v2.py
 
 # Council backtest (experiment, isolated)
-python -m proforma.v1_6.harness --limit 8                   # cheap smoke; full run is ~2000 LLM calls
-streamlit run proforma/v1_6/streamlit_view.py
+python -m experiments.council.harness --limit 8                   # cheap smoke; full run is ~2000 LLM calls
+streamlit run experiments/council/streamlit_view.py
 
 # Prove you changed no numbers
 ./scripts/smoke.sh
@@ -97,7 +97,7 @@ There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc man
 - **The site key is `client_id + site_id`.** `site_id` alone is a within-brand index and collides.
 - **Data lives once**, under `proforma/data/`. Never copy a dataset into a model version. Artifacts
   are the opposite: they belong to a version, because they're welded to the code that fitted them.
-- **`app/site_analysis/features/**` and `proforma/v1_5/backtests/**` are scripts, not libraries.**
+- **`app/site_analysis/features/**` and `proforma/backtests/**` are scripts, not libraries.**
   They do real work — including live API calls — at module import. Never import them to test.
 - **`insights/` annotates; it must never alter a modelled number.**
 - **No packaging.** No `pyproject.toml`, no `pip install -e .`. Imports resolve off the repo root.

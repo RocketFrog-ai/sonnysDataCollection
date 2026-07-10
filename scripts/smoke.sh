@@ -47,7 +47,7 @@ find . -name __pycache__ -not -path './venv/*' -not -path './.claude/*' -exec rm
 echo "== 1/8 joblib artifact unpickles in the BACKEND env (un-refit) =="
 "$PY_BACKEND" - <<'PY'
 import glob, joblib, sklearn
-hits = glob.glob("proforma/v1_5/artifacts/coldstart_artifacts.joblib") or \
+hits = glob.glob("proforma/artifacts/coldstart_artifacts.joblib") or \
        glob.glob("earnest-proforma-2.0/notebooks/artifacts/coldstart_artifacts.joblib")  # pre-refactor fallback
 assert hits, "coldstart_artifacts.joblib not found in either location"
 a = joblib.load(hits[0])

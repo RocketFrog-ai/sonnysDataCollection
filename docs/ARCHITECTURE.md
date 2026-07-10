@@ -3,31 +3,47 @@
 ## The shape of it
 
 ```
-proforma/          ALL modelling, versioned. v1_5 is live; v1_6 is an experiment.
-  data/            every dataset, once. Shared across versions, versioned by filename.
-  v1_5/models/     coldstart.py — THE model. plateau x ramp x cannibalization.
-  v1_5/ui/         Streamlit. app.py is a thin entry; panels/ holds the modes.
-  v1_5/artifacts/  the fitted joblib. Belongs to the version, not the repo.
+proforma/          ALL modelling. One tree; versions are git tags, not folders.
+  data/            every dataset, once.
+  models/          coldstart.py — THE model. plateau x ramp x cannibalization.
+  ui/              Streamlit. app.py is a thin entry; panels/ holds the modes.
+  artifacts/       the fitted joblib.
 app/               FastAPI backend. Two entrypoints (below).
 libs/carwash_type/ importable utility: classify a wash from its website.
-datafetching/      live ingestion feeding app/site_analysis.
 archive/           frozen prior work. Read for method history; do not build on it.
-experiments/       standalone, not on the import path.
+experiments/       standalone, not on the import path (customer-churn, datafetching CLIs).
 ```
+
+## Versioning: git, not folders
+
+There used to be `proforma/v1_5/` and `proforma/v1_6/`. That layout implied `v1_6` succeeded `v1_5`.
+It did not: `v1_6` (the council) imported **nothing** from `v1_5` — no `coldstart`, no shared code.
+It was an orthogonal experiment that happened to read the same panel. Meanwhile a directory cannot
+express "v1.6 is v1.5 plus a delta"; only git can.
+
+So: **one `proforma/` tree, versioned by git tag.** The council moved to `experiments/council/`.
+
+```bash
+git tag -l                                   # proforma-v1.5, council-v1.6, pre-refactor
+git checkout proforma-v1.5 -- proforma       # recover the v1.5 tree exactly
+```
+
+To ship a new model version: branch, change `proforma/models/`, refit `proforma/artifacts/`,
+run `./scripts/smoke.sh` to see exactly which numbers moved, then tag on merge.
 
 ## The one thing to understand first
 
-The forecasting math lives in **`proforma/v1_5/models/coldstart.py`** and has **two consumers**:
+The forecasting math lives in **`proforma/models/coldstart.py`** and has **two consumers**:
 
-1. **In-process by the Streamlit app** — `proforma/v1_5/ui/` imports it directly, no HTTP.
+1. **In-process by the Streamlit app** — `proforma/ui/` imports it directly, no HTTP.
 2. **By the FastAPI backend** — `app/pnl_analysis/modelling/data.py` does
-   `from proforma.v1_5.models import coldstart as cm`.
+   `from proforma.models import coldstart as cm`.
 
 Historically (2) reached (1) through a `sys.path.insert` that pointed into the Streamlit directory.
 That is gone; both now import the same package off the repo root.
 
 **The model is shared. The P&L and market math around it is not.** It is implemented twice — once
-inside `proforma/v1_5/ui/`, once in `app/pnl_analysis/modelling/*` — and the two have drifted. When
+inside `proforma/ui/`, once in `app/pnl_analysis/modelling/*` — and the two have drifted. When
 you change forecasting behaviour, work out which of the three places it belongs in *before* you
 edit. Read `docs/DIVERGENCES.md` §1. Unifying them is a separate project, and it needs a golden
 baseline covering the Streamlit side first.
@@ -84,11 +100,11 @@ store, not a refactor.
 - `app/site_analysis/features/**` are **scripts, not libraries**. Several run live HTTP/LLM calls at
   module import time. The startup scripts put their directories on `PYTHONPATH` so their bare
   intra-feature imports resolve. Never `import` that tree to test it.
-- The Streamlit **entrypoints** under `proforma/v1_5/ui/` each put the repo root on `sys.path`.
+- The Streamlit **entrypoints** under `proforma/ui/` each put the repo root on `sys.path`.
   `streamlit run` only adds the script's own directory (`streamlit/web/bootstrap.py:59`), and there
   is deliberately no packaging. No library module does this.
-- `proforma`, `proforma.v1_5`, `libs` are implicit namespace packages (no `__init__.py`).
-  `app` and `proforma.v1_6` are regular packages.
+- `proforma`, `proforma`, `libs` are implicit namespace packages (no `__init__.py`).
+  `app` and `experiments.council` are regular packages.
 
 ## Verifying you changed nothing
 

@@ -6,7 +6,7 @@ the most common way to waste an afternoon here.
 | Env | Python | Defined in | Runs |
 |---|---|---|---|
 | conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend (`app.main`, `app.pnl_only`) |
-| conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app (`proforma/v1_5/ui/app.py`) |
+| conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app (`proforma/ui/app.py`) |
 | `venv/` | 3.13 | not checked in (gitignored, ~1.2 GB) | ad-hoc dev |
 
 ```bash
@@ -16,11 +16,11 @@ conda env create -f environment-proforma311.yml   # streamlit  (needs --solver=l
 
 ## The joblib rule
 
-`proforma/v1_5/artifacts/coldstart_artifacts.joblib` is a **plain pickle of library objects** — a
+`proforma/artifacts/coldstart_artifacts.joblib` is a **plain pickle of library objects** — a
 dict of numpy arrays plus `lightgbm.Booster` / `LGBMRegressor` / `sklearn` `ExtraTreesRegressor`
 estimators. It contains **no reference to the module that wrote it**, verified by walking every
 `GLOBAL`/`STACK_GLOBAL` opcode in the pickle. That is why `coldstart_model.py` could be renamed to
-`proforma/v1_5/models/coldstart.py` without a compat shim, and why it loads fine from a directory
+`proforma/models/coldstart.py` without a compat shim, and why it loads fine from a directory
 where `coldstart_model` is not importable.
 
 What the artifact *is* coupled to is **library versions**:
@@ -63,13 +63,13 @@ version mismatch would be fatal rather than cosmetic.
 ## Import resolution — there is no packaging
 
 By deliberate choice there is no `pyproject.toml` and nothing is `pip install -e .`'d. Imports
-resolve off the **repo root**, which must be the CWD (or on `PYTHONPATH`). `proforma`, `proforma.v1_5`,
-`libs`, and `libs.carwash_type` are implicit namespace packages; `app` and `proforma.v1_6` are
+resolve off the **repo root**, which must be the CWD (or on `PYTHONPATH`). `proforma`, `proforma`,
+`libs`, and `libs.carwash_type` are implicit namespace packages; `app` and `experiments.council` are
 regular packages.
 
 The one wrinkle: `streamlit run` puts only the *script's own directory* on `sys.path`
 (`streamlit/web/bootstrap.py:59`), never the repo root. So the three Streamlit **entrypoints** under
-`proforma/v1_5/ui/` each bootstrap the repo root onto `sys.path` before importing `app.*` or
+`proforma/ui/` each bootstrap the repo root onto `sys.path` before importing `app.*` or
 `proforma.*`. No library module does this. Do not remove those lines without replacing them with a
 `PYTHONPATH` launcher — see `docs/DIVERGENCES.md` §8.
 
