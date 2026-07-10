@@ -23,12 +23,27 @@ There was, briefly, alongside a `v1_6/`. That implied `v1_6` superseded `v1_5`. 
 (the council) imported nothing from `v1_5`, not even `coldstart`. It was an orthogonal experiment,
 and it now lives at `../experiments/council/`.
 
-A directory cannot express "v1.6 = v1.5 + a delta". Git can. So versions are tags:
+A directory cannot express "v1.6 = v1.5 + a delta". Git can. So versions are **tags for history** and
+**branches for work**:
 
 ```bash
 git tag -l                                  # proforma-v1.5, council-v1.6, pre-refactor
-git checkout proforma-v1.5 -- proforma      # recover the v1.5 tree exactly
+git checkout proforma-v1.5 -- proforma/v1_5 # recover the old folder-per-version tree exactly
+
+git branch -l 'proforma-1.*'                # proforma-1.5, proforma-1.6
 ```
+
+`proforma-1.5` is the forecaster line: `proforma/` + `app/`. `proforma-1.6` is that **plus** the
+council experiment at `experiments/council/`.
+
+**They point at the same commit today, and that is not an oversight.** 1.6 is not a fork of 1.5 — it
+is a layer on top of it, and the two are entangled in both directions: the council imports
+`app.pnl_analysis.insights`, and the live Explore-markets panel imports
+`experiments.council.streamlit_view` back. Delete `experiments/council/` and
+`scripts/_golden/check_imports_resolve.py` fails on that import (verified). So a "1.5 without the
+council" branch is not a checkout, it is an edit — and one that would conflict with every future
+change to `panels/_explore_markets.py`. The branches exist so each line has a home to evolve into;
+the tags preserve what the folder layout used to be.
 
 **To ship a new model version:** branch, change `models/`, refit `artifacts/` in the env that will
 load it, run `./scripts/smoke.sh` to see exactly which numbers moved, tag on merge.
