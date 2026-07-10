@@ -2,8 +2,8 @@
 
     python scripts/_golden/capture_api.py <out_dir>
 
-Runs the ASGI app in-process via starlette's TestClient -- no port, no uvicorn, no
-network. Requires the conda `sonnysDataCollection` env (it is the only one with fastapi).
+Runs the ASGI app in-process via httpx's ASGITransport -- no port, no uvicorn, no network.
+Requires the conda `sonnysDataCollection` env (it is the only one with fastapi).
 
 DELIBERATELY EXCLUDED: every /insights/* route. Those call an LLM, are non-deterministic
 by construction, and are documented as annotating rather than altering modelled numbers.
@@ -95,4 +95,4 @@ def main(out_dir: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "docs/_refactor/baseline")
+    main(sys.argv[1] if len(sys.argv) > 1 else "scripts/_golden/baseline")

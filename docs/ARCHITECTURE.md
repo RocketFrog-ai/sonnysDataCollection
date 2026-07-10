@@ -102,7 +102,7 @@ shadow the real distribution on `sys.path`.
 
 Captures the cold-start model over three fixed pins, every deterministic
 `/v1/pnl_analysis/*` endpoint, the Streamlit app's rendered widget surface, and an import sweep —
-then diffs all of it against `docs/_refactor/baseline/` at `1e-9`. What it does **not** cover is
+then diffs all of it against `scripts/_golden/baseline/` at `1e-9`. What it does **not** cover is
 listed in its own header comment, and in `docs/DIVERGENCES.md` §6. There is no other test suite;
 `test_*.py` at the root are ad-hoc manual scripts, not pytest (and `test_endpoint.py` has been
 broken for some time — `docs/DIVERGENCES.md` §7).
