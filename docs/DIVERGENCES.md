@@ -1,9 +1,10 @@
 # Divergences and known defects
 
 Things that are wrong, duplicated, or surprising in this repo, found during the 2026-07
-restructure and **deliberately left alone**. The restructure was behavior-preserving: fixing any
-of these would have changed a number or changed broken-to-working, which is a separate decision
-with a separate review. Each entry says what it is, how it was verified, and what the fix would be.
+restructure. Most were **deliberately left alone**: the restructure was behavior-preserving, and
+fixing them would have moved a number or flipped broken-to-working, each a separate decision with a
+separate review. Entries that have since been *resolved* say so and are kept for the record.
+Each says what it is, how it was verified, and what the fix would be.
 
 Nothing here is a regression introduced by the restructure.
 
@@ -62,35 +63,45 @@ first render (§6), so a unification done now would be unverifiable on the side 
 
 ---
 
-## 2. The Celery worker cannot start (pre-existing, breaks `POST /v1/analyze-site`)
+## 2. ~~The Celery worker cannot start~~ — RESOLVED by removing Celery (2026-07)
 
-`app/tasks/celery_app.py` declares:
+*Kept for the record; the defect and the subsystem are both gone.*
 
-```python
-include=[
-    "app.site_analysis.modelling.site_analysis",
-    "app.pnl_analysis.modelling.zeta_pnl",   # <-- does not exist
-    "app.tasks.tasks",
-]
-```
-
-`app/pnl_analysis/modelling/zeta_pnl.py` does not exist and does not exist at the `pre-refactor`
-tag either. It was deleted in `814fa37` ("cleaning dead code") and the `include` list was never
-updated.
-
-Verified by doing exactly what a worker does at startup:
+`app/tasks/celery_app.py` declared `include=[..., "app.pnl_analysis.modelling.zeta_pnl", ...]`.
+That module did not exist, and did not exist at the `pre-refactor` tag either — it was deleted in
+`814fa37` ("cleaning dead code") without updating the list. Verified by doing exactly what a worker
+does at startup:
 
 ```
 >>> celery_app.loader.import_default_modules()
 ModuleNotFoundError: No module named 'app.pnl_analysis.modelling.zeta_pnl'
 ```
 
-**Consequence:** `celery -A app.tasks.celery_app worker` fails to boot, so the async
-`POST /v1/analyze-site` → `GET /v1/task/{id}` pipeline is dead. The synchronous
-`POST /v1/site-context` variant and the entire `/v1/pnl_analysis/*` surface are unaffected, which
-is presumably why nobody noticed.
+So `celery -A app.tasks.celery_app worker` could not boot. `POST /v1/analyze-site` enqueued work
+nothing would ever run, and the caller polled forever. Nobody noticed because the synchronous
+`POST /v1/site-context` already did the same job in one call.
 
-**Fix:** delete that one line. Not done here because it flips behavior from broken to working.
+**Resolution.** Celery was removed rather than repaired, on the reasoning that a subsystem broken
+for months with a working synchronous replacement is not a subsystem anyone depends on. Deleted:
+`app/tasks/`, `app/site_analysis/modelling/site_analysis.py`, `scripts/start_celery_worker.sh`,
+`scripts/stop_celery_worker.sh`, `scripts/test_weather_api.py`, the `celery` and `redis` deps, and
+these 12 endpoints:
+
+```
+POST /v1/analyze-site
+GET  /v1/task/{task_id}
+GET  /v1/result/{task_id}
+GET  /v1/{weather,competition,retail,gas}/data-by-task/{task_id}
+GET  /v1/{weather,competition,retail,gas}/summary-by-task/{task_id}
+GET  /v1/map/data-by-task/{task_id}
+```
+
+Route count on `app.main` went 40 → 28; `/v1/pnl_analysis/*` was untouched (22 routes, identical),
+and `model.json` / `api.json` were unchanged, so no forecast number moved.
+
+**Residue, on purpose:** `GET /v1/cache/site-analysis/all` still serves the Postgres cache, but its
+only writer was the Celery task, so the table is now read-only and will go stale. The `REDIS_*` /
+`CELERY_*` keys may still sit in your `.env`; nothing reads them.
 
 ---
 
@@ -159,11 +170,10 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
   HTTP/LLM calls at module scope: `app/site_analysis/features/inactive/experimental_features/typeOfSite/test_o4_mini.py` fires an API request and prints a
   `403` on import, and `.../typeOfSite/o4mini_images_classification.py` calls a vision model at module level.
   Importing that tree costs money.
-- **The Celery pipeline is not exercised** (needs Redis — and see §2).
-- **`app/site_analysis/*` endpoints have no golden outputs**, because they need Redis/Celery. Their
-  route paths and their full OpenAPI schema (every field name, type, default, and validation bound)
-  were diffed against the `pre-refactor` tag once, by hand, and matched byte-for-byte. That is a
-  one-time check, not a standing test.
+- **`app/site_analysis/*` endpoints have no golden outputs**, because they make live third-party
+  calls. Their route paths and their full OpenAPI schema (every field name, type, default, and
+  validation bound) were diffed against the `pre-refactor` tag once, by hand, and matched
+  byte-for-byte. That is a one-time check, not a standing test.
 
 ---
 

@@ -5,7 +5,7 @@ the most common way to waste an afternoon here.
 
 | Env | Python | Defined in | Runs |
 |---|---|---|---|
-| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend (`app.main`, `app.pnl_only`) + Celery |
+| conda `sonnysDataCollection` | 3.9 | `environment.yml` | FastAPI backend (`app.main`, `app.pnl_only`) |
 | conda `proforma311` | 3.11 | `environment-proforma311.yml` | the Streamlit app (`proforma/v1_5/ui/app.py`) |
 | `venv/` | 3.13 | not checked in (gitignored, ~1.2 GB) | ad-hoc dev |
 

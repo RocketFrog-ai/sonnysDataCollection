@@ -1,7 +1,8 @@
 """Lightweight API entrypoint — mounts ONLY the pnl_analysis router (Explore-markets + Forecast).
 
 Mirrors app/site_analysis/server/main.py's mounting/CORS, but skips the site_analysis router so the
-server doesn't require its heavy deps (celery, openai, …). Same /v1/pnl_analysis/... paths as main.py.
+server doesn't require its heavy deps (openai, the live feature fetchers). Same /v1/pnl_analysis/...
+paths as main.py.
 
     uvicorn app.pnl_only:app --host 127.0.0.1 --port 8010
 """

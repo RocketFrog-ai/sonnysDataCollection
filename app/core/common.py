@@ -13,12 +13,9 @@ load_dotenv(_project_root / ".env")
 load_dotenv()  # still allow override from current cwd
 
 RFW_HOME = os.getenv("RFW_HOME","")
-REDIS_HOST = os.getenv("REDIS_HOST", "")
-REDIS_PORT = os.getenv("REDIS_PORT", "")
-REDIS_DB = os.getenv("REDIS_DB", "")
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", "")
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "")
+# REDIS_* / CELERY_* were removed in 2026-07 with the async task pipeline. Redis was only ever the
+# Celery broker + result backend; nothing else in the codebase used it. The .env keys are harmless
+# if left behind.
 FAST_API_HOST = os.getenv("FAST_API_HOST", "")
 FAST_API_PORT = os.getenv("FAST_API_PORT", "8002")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY","")
@@ -40,9 +37,7 @@ LLM_BATCH_URL    = os.getenv("LLM_BATCH_URL",    f"{_LLM_BASE}/batch/completions
 # Legacy alias kept for any code still referencing LOCAL_LLM_URL directly
 LOCAL_LLM_URL = LLM_REALTIME_URL
 
-# Celery task retry settings (delay in seconds)
-TASK_RETRY_DELAY = int(os.getenv("TASK_RETRY_DELAY", "60"))
-TASK_MAX_RETRIES = int(os.getenv("TASK_MAX_RETRIES", "3"))
+# (Celery task retry settings removed in 2026-07 with the async pipeline; nothing read them.)
 
 # External service (optional, for tasks)
 EXTERNAL_SERVICE_URL = os.getenv("EXTERNAL_SERVICE_URL", "")

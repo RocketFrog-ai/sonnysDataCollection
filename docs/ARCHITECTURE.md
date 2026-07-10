@@ -35,39 +35,36 @@ baseline covering the Streamlit side first.
 ## Two backend entrypoints, on purpose
 
 ```bash
-python -m app.main                    # site_analysis + pnl_analysis. Needs celery, openai, redis.
-uvicorn app.pnl_only:app --port 8010  # pnl_analysis ONLY. No celery, no openai.
+python -m app.main                    # site_analysis + pnl_analysis. Needs openai + the live fetchers.
+uvicorn app.pnl_only:app --port 8010  # pnl_analysis ONLY. No openai, no live fetchers.
 ```
 
 This is **not** redundant code — it is two mount configurations with different dependency
 footprints. `app/pnl_only.py` exists so the forecasting API can be served without dragging in the
-async enrichment stack. `serve_pnl.py` at the root is a one-line back-compat shim re-exporting the
-same FastAPI object (`serve_pnl.app is app.pnl_only.app`), kept because `serve_pnl:app` may be
-baked into deploy scripts.
+live external-data fetchers or the OpenAI client. `serve_pnl.py` at the root is a one-line
+back-compat shim re-exporting the same FastAPI object (`serve_pnl.app is app.pnl_only.app`), kept
+because `serve_pnl:app` may be baked into deploy scripts.
 
 Both mount their routers under `/v1`. `app/pnl_analysis` additionally carries the prefix
 `/pnl_analysis`, so its full paths are `/v1/pnl_analysis/...`.
 
-### Why Celery exists
+### There is no Celery, and no async pipeline
 
-`app/tasks/` (formerly `app/celery/`) backs the **async** site-analysis pipeline:
+There used to be. `app/tasks/` (once `app/celery/`) backed an async enrichment pipeline:
+`POST /v1/analyze-site` enqueued a task, you polled `GET /v1/task/{id}`, then read
+`GET /v1/{dimension}/data-by-task/{id}`. **All of it was removed in 2026-07**, along with Celery,
+Redis, the two worker scripts, and `app/site_analysis/modelling/site_analysis.py`.
 
-```
-POST /v1/analyze-site      -> enqueues a Celery task, returns a task id
-GET  /v1/task/{id}         -> poll status
-GET  /v1/{dimension}/data-by-task/{id}   -> weather | gas | retail | competition | map
-```
+Why: the worker had been unable to start for months — `celery_app.conf.include` named a module
+deleted in `814fa37` — so every `POST /v1/analyze-site` enqueued work nothing would ever run and the
+caller polled forever. The capability had already migrated to a synchronous endpoint.
 
-Enrichment for a lat/lon means several slow third-party calls (weather, competing washes, retail
-anchors, gas stations), so it is queued rather than served inline. `POST /v1/site-context` is the
-**synchronous** single-call variant for callers that would rather block.
+**`POST /v1/site-context` is the replacement.** One call, one response: weather, competing car
+washes, retail anchors, gas stations, map markers, and rule-based insights. It fetches the same
+sources in parallel with a thread pool (`site_context.py`) instead of a task queue.
 
-> The worker does not currently start. `celery_app.conf.include` names a module that was deleted
-> without updating the list. Pre-existing; see `docs/DIVERGENCES.md` §2. The synchronous endpoints
-> and the whole `/v1/pnl_analysis/*` surface are unaffected.
-
-The package was renamed `app/celery` → `app/tasks` because a local package named `celery` can
-shadow the real distribution on `sys.path`.
+If you need the async shape back, reintroduce it deliberately: it is a queue, a worker, and a result
+store, not a refactor.
 
 ## Inside `app/`
 
