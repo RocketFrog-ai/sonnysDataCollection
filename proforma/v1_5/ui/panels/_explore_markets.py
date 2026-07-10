@@ -18,7 +18,7 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
-from proforma.v1_5.ui.pages._shared import (
+from proforma.v1_5.ui.panels._shared import (
     EXPRESS_MIN_MONTHS, ASP_MIN_WASH, ASP_FLOOR_MEM, ASP_FLOOR_RET,
     neighbourhood, add_cluster_regions, add_all_site_dots, pick_default_pin, anon_names,
     gran_picker, rs_dates, gran_date_tickformat,

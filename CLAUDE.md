@@ -20,7 +20,7 @@ proforma/          ALL modelling, versioned.  v1_5 = LIVE.  v1_6 = experiment (c
   data/            every dataset, exactly once. Shared; versioned by FILENAME, not folder.
   v1_5/models/     coldstart.py — the model. tunnel_capex.py.
   v1_5/artifacts/  the fitted joblib (~46 MB). Owned by the version.
-  v1_5/ui/         Streamlit only. app.py is a thin entry; pages/ holds the modes.
+  v1_5/ui/         Streamlit only. app.py is a thin entry; panels/ holds the modes.
   v1_5/backtests/  scripts (side effects at import). Run them; never import them.
 app/               FastAPI. app/main.py (full) and app/pnl_only.py (P&L only) are the entrypoints.
   core/            was app/utils/ — config, env, geocoding. Almost everything imports it.
@@ -95,7 +95,7 @@ only first-render, `/insights/*` are LLM and excluded, `app/site_analysis/featur
 imported (module-scope live HTTP/LLM calls), and Celery is not exercised.
 
 There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc manual scripts;
-`test_endpoint.py` is itself broken (`docs/DIVERGENCES.md` §7).
+`test_endpoint.py` is itself broken (`docs/DIVERGENCES.md` §8).
 
 ## Rules of the road
 
