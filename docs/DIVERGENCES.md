@@ -254,14 +254,13 @@ dispatch (`MODES = ["🛰️ Sitewise", "🗺️ Explore markets", "📍 Pinpoin
   renaming the package `app/celery` → `app/tasks` (which was necessary: a local package named
   `celery` can shadow the real distribution). Renaming the module too would have been churn beyond
   code motion.
-- **The startup scripts put a nonexistent directory on `PYTHONPATH`.** Both
-  `scripts/start_uvicorn_fast_api.sh` and `scripts/start_celery_worker.sh` export
-  `PYTHONPATH=".../app/site_analysis/features/competitors:.../app/site_analysis/features"`. There is
-  no `features/competitors` — it is `features/active/competitors`. `git ls-tree pre-refactor` shows
-  the path never existed. A nonexistent `sys.path` entry is silently ignored, so this is harmless
-  today, but it means the intra-feature bare imports resolve via the `features/` entry alone, not
-  the one someone intended. Left alone: correcting it *adds* a directory to `sys.path`, which can
-  change import resolution, and that is a behavior change.
+- **~~The startup scripts put a nonexistent directory on `PYTHONPATH`~~ — FIXED (2026-07).**
+  `scripts/start_uvicorn_fast_api.sh` exported
+  `PYTHONPATH=".../app/site_analysis/features/competitors:.../app/site_analysis/features"`. There was
+  never a `features/competitors` (it was `features/active/competitors`, since deleted as dead code),
+  and `git ls-tree pre-refactor` confirms the path never existed. Removing it is a no-op: Python
+  silently ignores a nonexistent `sys.path` entry, so imports resolved via the `features/` entry the
+  whole time. `start_celery_worker.sh` carried the same line and was deleted with Celery.
 - **`.gitattributes` had 11 dead git-LFS patterns.** `git lfs ls-files` reported zero LFS-tracked
   files at HEAD both before and after. Replaced with an explanation. See `docs/DATA.md`.
 - **`.env` is present in the repo's earliest git history.** It was committed in the first two

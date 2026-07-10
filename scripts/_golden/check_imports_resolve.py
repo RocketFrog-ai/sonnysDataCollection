@@ -10,7 +10,7 @@ Why not `importlib.util.find_spec`, which is the obvious way to do this: `find_s
 imports the parent packages `a` and `a.b` to ask them for their `__path__`. Only the leaf is spared.
 That is fatal here, because `app/site_analysis/features/**` is a tree we promise never to import --
 some of its modules fire live HTTP/LLM calls at module scope, and one calls sys.exit(). Concretely,
-`find_spec("app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors")` executes
+`find_spec("app.site_analysis.features.nearbyCompetitors.get_nearby_competitors")` executes
 `nearbyCompetitors/__init__.py`, which re-exports from that very module, pulling seven modules under
 features/ into sys.modules. A filesystem check cannot execute anything, by construction.
 

@@ -33,7 +33,7 @@ REPO_ROOT="$RFW_HOME/sonnysDataCollection"
 cd "$REPO_ROOT" || exit 3
 
 # Ensure imports resolve
-export PYTHONPATH="${REPO_ROOT}/app/site_analysis/features/competitors:${REPO_ROOT}/app/site_analysis/features${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="${REPO_ROOT}/app/site_analysis/features${PYTHONPATH:+:$PYTHONPATH}"
 
 mkdir -p "$REPO_ROOT/logs"
 
