@@ -22,7 +22,7 @@ except Exception:                                             # pragma: no cover
     tcx = None
     _CAPEX_OK = False
 
-from proforma.v1_5.ui.pages._shared import (
+from proforma.v1_5.ui.panels._shared import (
     _PROFORMA, GRAN_STEP, GRAN_UNIT, ASP_MIN_WASH, ASP_FLOOR_MEM, ASP_FLOOR_RET,
     load_data, haversine_km, add_all_site_dots, anon_names, gran_picker, rs_dates,
     gran_date_tickformat,

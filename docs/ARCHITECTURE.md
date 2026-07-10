@@ -6,7 +6,7 @@
 proforma/          ALL modelling, versioned. v1_5 is live; v1_6 is an experiment.
   data/            every dataset, once. Shared across versions, versioned by filename.
   v1_5/models/     coldstart.py — THE model. plateau x ramp x cannibalization.
-  v1_5/ui/         Streamlit. app.py is a thin entry; pages/ holds the modes.
+  v1_5/ui/         Streamlit. app.py is a thin entry; panels/ holds the modes.
   v1_5/artifacts/  the fitted joblib. Belongs to the version, not the repo.
 app/               FastAPI backend. Two entrypoints (below).
 libs/carwash_type/ importable utility: classify a wash from its website.
@@ -105,4 +105,4 @@ Captures the cold-start model over three fixed pins, every deterministic
 then diffs all of it against `scripts/_golden/baseline/` at `1e-9`. What it does **not** cover is
 listed in its own header comment, and in `docs/DIVERGENCES.md` §6. There is no other test suite;
 `test_*.py` at the root are ad-hoc manual scripts, not pytest (and `test_endpoint.py` has been
-broken for some time — `docs/DIVERGENCES.md` §7).
+broken for some time — `docs/DIVERGENCES.md` §8).
