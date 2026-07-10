@@ -108,7 +108,7 @@ def _cluster_regions(site: pd.DataFrame, plat: float, plon: float, max_km: float
 # ─────────────────────────── tab 1a: explore market (the map + header counts) ───────────────────────────
 def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: int = 10,
                    min_months: int = MIN_MONTHS_RICH, operator: Optional[str] = None,
-                   demo: bool = False) -> Dict[str, Any]:
+                   demo: bool = False, express_only: bool = False) -> Dict[str, Any]:
     """The Explore-markets MAP + header counts for the pin's local market (NO time series — that's the
     job of explore_market_kpis, the 8 KPI panels).
 
@@ -119,7 +119,7 @@ def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: i
       • cluster_regions  — demo mode only: shaded local-market footprints instead of exact dots.
     `min_months` keeps rich-history sites (≥3 yrs, matching the Explore view — that's why the count is small).
     """
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     pool = site[site.n_obs >= min_months] if min_months > 1 else site
 
     nb_full = _neighbourhood(pool, lat, lon, radius_km)
@@ -178,10 +178,11 @@ def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: i
 
 # ─────────────────────────── tab 1b: local-market KPI panels ───────────────────────────
 def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int,
-                        min_months: int = MIN_MONTHS_RICH, demo: bool = False) -> Dict[str, Any]:
+                        min_months: int = MIN_MONTHS_RICH, demo: bool = False,
+                        express_only: bool = False) -> Dict[str, Any]:
     """The 6 grouped per-site KPI series (Washes ×3 / Revenue ×3 / ASP ×2) for the whole local market —
     every in-radius site with ≥`min_months` of history. Mirrors the "Local-market KPIs over time" panels."""
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     pool = site[site.n_obs >= min_months] if min_months > 1 else site
     nb_full = _neighbourhood(pool, lat, lon, radius_km)
     focal_key = _focal_key(nb_full)
@@ -244,7 +245,8 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
                        plateau_override: Optional[float] = None, mem_growth_pct: float = 0.0,
                        ret_growth_pct: float = 0.0, horizon_months: int = 60,
                        radius_km: float = 20.0,
-                       model_kind: str = "et") -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
+                       model_kind: str = "et",
+                       express_only: bool = False) -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
     """The cold-start 5-yr monthly trajectory for a pin + the local-market per-component trends it used.
 
     Learns this market's membership / retail trends from the ≤`radius_km` neighbours' own series
@@ -253,7 +255,7 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
     slider fractions, so callers can reuse them consistently (e.g. the market baseline forecast uses the
     raw trend while the entrant's trajectory uses raw+slider). Shared by pinpoint_forecast / pnl / campaign.
     """
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     art = D.load_model()
     gm, gr = mem_growth_pct / 100.0, ret_growth_pct / 100.0
 
@@ -269,11 +271,18 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
     else:
         mem_g = mem_lo = mem_hi = ret_g = ret_lo = ret_hi = 0.0
 
+    # express only: restrict the model's LOCAL-MATURED level anchor to the express sites, exactly as
+    # _pinpoint_forecast.drop_pin_ui does (`anchor_keys = set(site.site_key) if express_only else None`).
+    # The LightGBM neighbour features stay on the full site set so they remain on the training
+    # distribution; only the anchor is scoped. None => the model's default behaviour, unchanged.
+    anchor_keys = set(site.site_key) if express_only else None
+
     traj, info = cm.predict_site(
         lat, lon, brand=brand, plateau_override=(plateau_override or None),
         annual_mem_growth=mem_g + gm, annual_ret_change=ret_g + gr,
         mem_growth_band=(mem_lo + gm, mem_hi + gm), ret_change_band=(ret_lo + gr, ret_hi + gr),
         horizon=horizon_months, art=art, model_kind=model_kind,   # default "et" = Model 3 (most accurate)
+        anchor_keys=anchor_keys,
     )
     trends = {"mem_g": mem_g, "mem_lo": mem_lo, "mem_hi": mem_hi,
               "ret_g": ret_g, "ret_lo": ret_lo, "ret_hi": ret_hi,
@@ -283,7 +292,8 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
 
 # ─────────────────────────── tab 2a: the new site's 5-year trajectory ───────────────────────────
 def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
-                      mem_growth_pct: float, ret_growth_pct: float, horizon_months: int) -> Dict[str, Any]:
+                      mem_growth_pct: float, ret_growth_pct: float, horizon_months: int,
+                      express_only: bool = False) -> Dict[str, Any]:
     """The NEW SITE's own 5-year monthly trajectory (the "Predicted 5-year trajectory" chart) + the summary
     KPI cards. Total / membership / retail washes with a P10–P90 band.
 
@@ -291,7 +301,8 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
     The whole-market history+forecast plot is a SEPARATE endpoint — see `market_forecast`.
     """
     traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
-                                            mem_growth_pct, ret_growth_pct, horizon_months)
+                                            mem_growth_pct, ret_growth_pct, horizon_months,
+                                            express_only=express_only)
     mem_g, ret_g = trends["mem_g"], trends["ret_g"]
     g = traj.set_index("month")
     tj_years, tj_quarters = age_periods(g.index)
@@ -316,16 +327,18 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
 
 # ─────────────────────────── tab 2b: total local-market wash count (history + forecast) ───────────────────────────
 def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
-                    mem_growth_pct: float, ret_growth_pct: float, horizon_months: int) -> Dict[str, Any]:
+                    mem_growth_pct: float, ret_growth_pct: float, horizon_months: int,
+                    express_only: bool = False) -> Dict[str, Any]:
     """The TOTAL LOCAL-MARKET wash count: actual history + 5-year forecast (the "Total local-market wash
     count" growth plot). The forecast carries every neighbour forward at the local trend, subtracts the new
     site's (distance-learned, retail) cannibalization phased over the first year, and adds the entrant's own
     journey. Returns history + four forecast series; the cannibalization params themselves are internal.
     """
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     art = D.load_model()
     traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
-                                            mem_growth_pct, ret_growth_pct, horizon_months)
+                                            mem_growth_pct, ret_growth_pct, horizon_months,
+                                            express_only=express_only)
     keys = trends["neighbour_keys"]
     mem_g, mem_lo, mem_hi = trends["mem_g"], trends["mem_lo"], trends["mem_hi"]
     ret_g, ret_lo, ret_hi = trends["ret_g"], trends["ret_lo"], trends["ret_hi"]

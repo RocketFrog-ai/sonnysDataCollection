@@ -132,7 +132,7 @@ def _campaigns_df() -> pd.DataFrame:
 # ─────────────────────────── 1) campaign verdict ───────────────────────────
 def campaign_verdict(lat: float, lon: float, radius_km: float = 20.0, brand: Optional[str] = None,
                      plateau_override: Optional[float] = None, mem_growth_pct: float = 0.0,
-                     ret_growth_pct: float = 0.0) -> Dict[str, Any]:
+                     ret_growth_pct: float = 0.0, express_only: bool = False) -> Dict[str, Any]:
     """The "🎯 Campaign — should this site run a promotion?" decision (app.py lines ~882-920).
 
     Established incumbents = in-radius sites with ≥2yr history (n_obs ≥ 24). Neighbours' membership share =
@@ -140,7 +140,7 @@ def campaign_verdict(lat: float, lon: float, radius_km: float = 20.0, brand: Opt
     predicted membership = its 5-yr trajectory's settled split (mem[36:61] / (mem+ret)[36:61]). Verdict ladder:
     <2 incumbents → not recommended; nb share <45% → not recommended; ≥82% → marginal; else recommended.
     """
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
 
     traj, info, _ = compute_trajectory(lat, lon, brand=brand, plateau_override=plateau_override,
                                        mem_growth_pct=mem_growth_pct, ret_growth_pct=ret_growth_pct,
@@ -203,7 +203,8 @@ def campaign_verdict(lat: float, lon: float, radius_km: float = 20.0, brand: Opt
 def eating_the_market(lat: float, lon: float, radius_km: float = 20.0, brand: Optional[str] = None,
                       plateau_override: Optional[float] = None, mem_growth_pct: float = 0.0,
                       ret_growth_pct: float = 0.0, campaign_on: bool = False, campaign_launch: int = 13,
-                      campaign_intensity: float = 1.0, window: int = 6, max_incumbents: int = 6) -> Dict[str, Any]:
+                      campaign_intensity: float = 1.0, window: int = 6, max_incumbents: int = 6,
+                      express_only: bool = False) -> Dict[str, Any]:
     """The "📈 Eating the market" chart data (app.py lines ~959-1010): your site (base vs with-campaign) and
     the top `max_incumbents` incumbents each forecast forward 5 years, drifting down as your promo steals share.
 
@@ -211,7 +212,7 @@ def eating_the_market(lat: float, lon: float, radius_km: float = 20.0, brand: Op
     steal_peak = 0.06 · min(1, n_inc/4) · (intensity if campaign on else 1); phased over `window`, then recovering.
     Your site's with-campaign curve uses the same settled mem-share `ms` the verdict reads off the trajectory.
     """
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
     traj, info, _ = compute_trajectory(lat, lon, brand=brand, plateau_override=plateau_override,
                                        mem_growth_pct=mem_growth_pct, ret_growth_pct=ret_growth_pct,
                                        horizon_months=60, radius_km=radius_km)
@@ -378,13 +379,13 @@ _METRIC_COLS = {"mem_share_wash", "mem_wash_count", "ret_wash_count"}
 
 def local_campaign_evidence(lat: float, lon: float, radius_km: float = 20.0,
                             metric: str = "mem_share_wash", max_sites: int = 8,
-                            demo: bool = False) -> Dict[str, Any]:
+                            demo: bool = False, express_only: bool = False) -> Dict[str, Any]:
     """The "Real campaigns in this local market" evidence panel (campaign_cluster_panel, app.py ~654-689):
     the up-to-`max_sites` nearest in-radius sites' monthly series for `metric` (one of mem_share_wash |
     mem_wash_count | ret_wash_count) plus each site's detected campaign months. `demo` anonymizes names to
     "Site N" by opening order."""
     col = metric if metric in _METRIC_COLS else "mem_share_wash"
-    df, site = D.load_panel()
+    df, site = D.load_panel(express_only)
 
     g = site[site.has_coords].copy()
     g["d"] = haversine_km(lat, lon, g.lat.values, g.lon.values)

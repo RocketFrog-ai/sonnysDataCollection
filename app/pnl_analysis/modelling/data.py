@@ -32,10 +32,15 @@ ROOT = Path(__file__).resolve().parents[3]
 DATA = ROOT / "proforma" / "data"
 MAIN_CSV = DATA / "panel" / "main-data-v2-stitched.csv"
 OPEX_CSV = DATA / "opex" / "opex-data.csv"
+TYPES_CSV = DATA / "ref" / "site_carwash_types.csv"
 EARTH_KM = 6371.0088
 
 # sites kept OUT of the P&L analysis (matched on client_id) — mirrors the UI's PNL_EXCLUDE
 PNL_EXCLUDE = {"alpinecarwash_000087"}
+
+# "express only" mode — mirrors proforma/v1_5/ui/panels/_shared.py exactly.
+EXPRESS_TYPE = "Express Tunnel"   # the filter keeps just this primary_carwash_type
+EXPRESS_MIN_MONTHS = 30           # express mode also requires >=30 monthly records -> richer history
 
 # Explore-markets metric label <-> dataframe column
 METRICS: Dict[str, str] = {
@@ -59,15 +64,36 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 
 # ─────────────────────────── monthly panel (main-ds) ───────────────────────────
-def load_panel() -> Tuple[pd.DataFrame, pd.DataFrame]:
+def load_carwash_types() -> pd.Series:
+    """site_key -> primary_carwash_type. Mirrors `_shared.load_carwash_types()` in the UI."""
+    if "types" not in _CACHE:
+        t = pd.read_csv(TYPES_CSV, low_memory=False)
+        t["site_key"] = t.client_id.astype(str) + "::" + t.site_id.astype(str)
+        t = t.dropna(subset=["primary_carwash_type"]).drop_duplicates("site_key", keep="first")
+        _CACHE["types"] = t.set_index("site_key").primary_carwash_type
+    return _CACHE["types"]
+
+
+def load_panel(express_only: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Monthly site-level panel `df` + per-site table `site` (with adaptive local-market clusters).
 
-    Mirrors `load_data()` in streamlits/app.py: builds tot/share columns, nulls implausible ASP
-    (>$200/wash), aggregates one row per site_key, tags left-censored / has_coords, and assigns the
-    adopted adaptive clusters. Cached for the process lifetime.
+    Mirrors `load_data()` in proforma/v1_5/ui/panels/_shared.py: builds tot/share columns, nulls
+    implausible ASP (>$200/wash), aggregates one row per site_key, tags left-censored / has_coords,
+    and assigns the adopted adaptive clusters. Cached per `express_only` for the process lifetime.
+
+    express_only=True keeps only `EXPRESS_TYPE` sites with >= `EXPRESS_MIN_MONTHS` monthly records,
+    then re-clusters that subset — so neighbours, the cluster gate and the level anchor all see
+    express sites only. Same two filters, in the same order, as the UI.
+
+    When express_only=False this function is byte-for-byte what it always was: the `carwash_type` /
+    `is_express` columns are attached ONLY in express mode, so the default panel's column set is
+    unchanged and no downstream consumer sees a new field. (The UI attaches them unconditionally;
+    that asymmetry is deliberate here, to keep the default API response identical.)
     """
-    if "df" in _CACHE:
-        return _CACHE["df"], _CACHE["site"]
+    ckey = "df_express" if express_only else "df"
+    skey = "site_express" if express_only else "site"
+    if ckey in _CACHE:
+        return _CACHE[ckey], _CACHE[skey]
 
     raw = pd.read_csv(MAIN_CSV, low_memory=False)
     raw["date"] = pd.to_datetime(dict(year=raw.year, month=raw.month, day=1))
@@ -83,6 +109,14 @@ def load_panel() -> Tuple[pd.DataFrame, pd.DataFrame]:
     df["tot_revenue"] = df[["mem_revenue", "ret_revenue"]].sum(axis=1, min_count=1)
     df["mem_share_wash"] = np.where(df.tot_wash_count > 0, df.mem_wash_count / df.tot_wash_count, np.nan)
 
+    # express only: drop Flex / full-service / etc. up front, so the market, cluster and level-anchor
+    # views all operate on express sites. Mirrors _shared.load_data.
+    types = None
+    if express_only:
+        types = load_carwash_types()
+        df["carwash_type"] = df.site_key.map(types)
+        df = df[df.carwash_type == EXPRESS_TYPE].copy()
+
     site = (
         df.groupby("site_key")
         .agg(client_id=("client_id", "first"), client_name=("client_name", "first"),
@@ -91,12 +125,23 @@ def load_panel() -> Tuple[pd.DataFrame, pd.DataFrame]:
              first_obs=("date", "min"), last_obs=("date", "max"), n_obs=("date", "size"))
         .reset_index()
     )
+    if express_only:
+        site["carwash_type"] = site.site_key.map(types)
+        site["is_express"] = site.carwash_type.eq(EXPRESS_TYPE)
     site["left_censored"] = site.op_start <= pd.Timestamp("2020-01-01")
     site["has_coords"] = site[["lat", "lon"]].notna().all(axis=1)
+
+    # express only: keep just the richer-history sites (>=30 monthly records) BEFORE clustering, so
+    # series, clusters and forecasts are well-grounded. Order matters: filter, then cluster.
+    if express_only:
+        rich_keys = set(site.site_key[site.n_obs >= EXPRESS_MIN_MONTHS])
+        site = site[site.site_key.isin(rich_keys)].reset_index(drop=True)
+        df = df[df.site_key.isin(rich_keys)].copy()
+
     site["cluster"] = cm.assign_clusters(site, "adaptive")
 
-    _CACHE["df"] = df
-    _CACHE["site"] = site
+    _CACHE[ckey] = df
+    _CACHE[skey] = site
     return df, site
 
 

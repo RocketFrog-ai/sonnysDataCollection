@@ -1,7 +1,12 @@
 """Route decorators ONLY for /v1/pnl_analysis/*: parse the request, delegate to the modelling engines
 (app.pnl_analysis.modelling.*) or to service.py for shared helper logic, serialize the response. Split
-out of the former monolithic routes.py; see routes.py in this package for why that module still exists,
-and schemas.py / service.py for the request models and the extracted helper logic respectively."""
+out of the former monolithic routes.py; see schemas.py / service.py for the request models and the
+extracted helper logic respectively.
+
+Every pin-based forecast/market endpoint accepts `express_only` (default False). It restricts the
+local market, the cluster gate and the model's level anchor to Express Tunnel sites with >=30 months
+of history, mirroring the Streamlit "Express-only sites" toggle. The /insights/* endpoints do not
+take it -- they annotate, they do not model."""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -56,6 +61,7 @@ def explore_market(req: ExploreMarketRequest):
     return market.explore_market(
         lat=lat, lon=lon, radius_km=req.radius_km, max_sites=req.max_sites,
         min_months=req.min_months, operator=req.operator, demo=req.demo,
+        express_only=req.express_only,
     )
 
 
@@ -67,6 +73,7 @@ def explore_market_kpis(req: ExploreKpisRequest):
     return market.explore_market_kpis(
         lat=lat, lon=lon, radius_km=req.radius_km, smoothing=req.smoothing,
         min_months=req.min_months, demo=req.demo,
+        express_only=req.express_only,
     )
 
 
@@ -166,6 +173,7 @@ def pinpoint_forecast(req: PinpointForecastRequest):
         lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
         horizon_months=req.horizon_months,
+        express_only=req.express_only,
     )
 
 
@@ -178,6 +186,7 @@ def market_forecast(req: PinpointForecastRequest):
         lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
         horizon_months=req.horizon_months,
+        express_only=req.express_only,
     )
 
 
@@ -193,6 +202,7 @@ def pnl_forecast(req: PnlForecastRequest):
         asp_override=req.asp_override, opex_growth_pct=req.opex_growth_pct,
         campaign_on=req.campaign_on, campaign_launch=req.campaign_launch,
         campaign_intensity=req.campaign_intensity, window=req.window, horizon_months=req.horizon_months,
+        express_only=req.express_only,
     )
 
 
@@ -207,6 +217,7 @@ def expense_plan(req: ExpensePlanRequest):
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
         asp_by_year=req.asp, opex_pct_by_year=req.opex, capex_by_year=req.capex,
         opex_growth_pct=req.opex_growth_pct, horizon_months=req.horizon_months,
+        express_only=req.express_only,
     )
 
 
@@ -218,6 +229,7 @@ def campaign_verdict(req: CampaignVerdictRequest):
     return campaign_engine.campaign_verdict(
         lat=lat, lon=lon, radius_km=req.radius_km, brand=req.brand, plateau_override=req.plateau_override,
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
+        express_only=req.express_only,
     )
 
 
@@ -231,6 +243,7 @@ def eating_the_market(req: EatingMarketRequest):
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
         campaign_on=req.campaign_on, campaign_launch=req.campaign_launch,
         campaign_intensity=req.campaign_intensity, window=req.window, max_incumbents=req.max_incumbents,
+        express_only=req.express_only,
     )
 
 
@@ -250,4 +263,5 @@ def local_campaign_evidence(req: LocalCampaignsRequest):
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     return campaign_engine.local_campaign_evidence(
         lat=lat, lon=lon, radius_km=req.radius_km, metric=req.metric, max_sites=req.max_sites, demo=req.demo,
+        express_only=req.express_only,
     )
