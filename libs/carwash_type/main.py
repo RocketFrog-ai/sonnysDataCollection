@@ -1,6 +1,6 @@
 import sys
-from type_car_wash.scraper import scrape_site
-from type_car_wash.analyzer import classify_car_wash_with_ai
+from libs.carwash_type.scraper import scrape_site
+from libs.carwash_type.analyzer import classify_car_wash_with_ai
 
 def main():
     print("🚗 Car Wash Scraper & AI Classifier 🚗")
@@ -17,7 +17,7 @@ def main():
     url = query
     # If the user didn't provide a URL (no http and no common tld), assume it's a name and search for it
     if not query.startswith(('http://', 'https://')) and '.' not in query:
-        from type_car_wash.finder import find_official_website
+        from libs.carwash_type.finder import find_official_website
         
         found_url, confidence = find_official_website(query)
         if not found_url:

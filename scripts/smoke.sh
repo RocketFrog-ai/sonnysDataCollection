@@ -39,7 +39,7 @@ done
 # Hazard 4: a deleted module keeps importing from its .pyc. Purge before every pass.
 find . -name __pycache__ -not -path './venv/*' -not -path './.claude/*' -exec rm -rf {} + 2>/dev/null || true
 
-echo "== 1/5 joblib artifact unpickles in the BACKEND env (un-refit) =="
+echo "== 1/6 joblib artifact unpickles in the BACKEND env (un-refit) =="
 "$PY_BACKEND" - <<'PY'
 import glob, joblib, sklearn
 hits = glob.glob("proforma/v1_5/artifacts/coldstart_artifacts.joblib") or \
@@ -50,13 +50,27 @@ assert isinstance(a, dict) and "models" in a and "ramps" in a, "artifact shape c
 print(f"   ok  {hits[0]}  ({len(a)} keys, sklearn {sklearn.__version__})")
 PY
 
-echo "== 2/5 coldstart golden (backend env) =="
+# Assertion, not a golden diff. libs/carwash_type is consumed by the live nearbyCompetitors
+# feature, which lives under the ast-only features/ tree -- so no golden test covers it. Its
+# config.py resolves .env by walking up from __file__; a move at the wrong depth makes
+# load_dotenv() no-op silently and the module raises. Check it explicitly.
+echo "== 2/6 libs/carwash_type imports (live nearbyCompetitors dependency) =="
+"$PY_BACKEND" - <<'PY'
+import importlib, sys
+sys.path.insert(0, ".")
+for m in ("libs.carwash_type.config", "libs.carwash_type.scraper",
+          "libs.carwash_type.analyzer", "libs.carwash_type.finder"):
+    importlib.import_module(m)
+print("   ok  4 modules import; .env resolved from repo root")
+PY
+
+echo "== 3/6 coldstart golden (backend env) =="
 "$PY_BACKEND" scripts/_golden/capture_model.py "$OUT" 2>&1 | grep -v "^\s*$" | tail -1
 
-echo "== 3/5 pnl_analysis API golden (backend env) =="
+echo "== 4/6 pnl_analysis API golden (backend env) =="
 "$PY_BACKEND" scripts/_golden/capture_api.py "$OUT" 2>&1 | tail -1
 
-echo "== 4/5 import smoke =="
+echo "== 5/6 import smoke =="
 "$PY_BACKEND" scripts/_golden/import_smoke.py "$OUT" backend 2>&1 | tail -1
 "$PY_UI"      scripts/_golden/import_smoke.py "$OUT" ui      2>&1 | tail -1
 
@@ -64,7 +78,7 @@ if [[ $CAPTURE == 1 ]]; then
   echo; echo "BASELINE CAPTURED -> $BASELINE"; exit 0
 fi
 
-echo "== 5/5 diff vs baseline (tol 1e-9) =="
+echo "== 6/6 diff vs baseline (tol 1e-9) =="
 rc=0
 for f in model.json api.json imports_backend.json imports_ui.json; do
   "$PY_BACKEND" scripts/_golden/diff.py "$BASELINE/$f" "$OUT/$f" 1e-9 || rc=1

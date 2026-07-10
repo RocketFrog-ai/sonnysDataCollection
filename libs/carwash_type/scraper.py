@@ -1,7 +1,7 @@
 import requests
 import re
 from urllib.parse import urljoin, urlparse
-from type_car_wash.config import JINA_API_KEY
+from libs.carwash_type.config import JINA_API_KEY
 
 def scrape_with_jina(url: str) -> str:
     """
