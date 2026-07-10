@@ -22,8 +22,9 @@ not affect any forecast. Its headline finding is that greenfield mature-*level* 
 unpredictable on this data, and the only leakage-clean edge is a small go/no-go signal
 (out-of-fold AUC 0.57) that beats "always build".
 
-Older work is not here. `earnest-proforma-1.5`, the two-track LightGBM forecaster, and the IDW
-neighbour baseline are frozen under `archive/` — read them for method history, don't build on them.
+Older work is not here. The old `earnest-proforma-1.5` tree (now `archive/proforma-v1_0/`), the
+two-track LightGBM forecaster, and the IDW neighbour baseline are frozen under `archive/` — read
+them for method history, don't build on them.
 
 ## Data lives once
 

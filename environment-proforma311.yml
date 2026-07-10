@@ -1,11 +1,16 @@
-# Conda env for running the earnest-proforma-2.0 Streamlit app on Python 3.11
-# (the base `sonnysDataCollection` env is Python 3.9, which caps Streamlit at 1.50).
-# Versions mirror the known-good dev venv that runs the full app (forecast + campaign + maps),
-# so the trained model artifact (notebooks/artifacts) unpickles cleanly.
+# Conda env for running the proforma/v1_5 Streamlit app on Python 3.11
+# (the backend `sonnysDataCollection` env is Python 3.9, which caps Streamlit at 1.50).
 #
-# Create:   conda env create -f environment-proforma311.yml
+# NOTE on the artifact: this env pins scikit-learn 1.8.0, but
+# proforma/v1_5/artifacts/coldstart_artifacts.joblib was fitted under scikit-learn 1.6.1 (the
+# BACKEND env). Loading it here emits InconsistentVersionWarning. As of 2026-07 the outputs are
+# bit-identical across the two versions -- verified by running the full golden capture under both
+# envs -- so the warning is cosmetic today. sklearn does not guarantee that. Refit for the env
+# that must unpickle it, which is the backend. See docs/ENVIRONMENTS.md.
+#
+# Create:   conda env create -f environment-proforma311.yml   # add --solver=libmamba on slow links
 # Activate: conda activate proforma311
-# Run:      streamlit run earnest-proforma-2.0/streamlits/app.py \
+# Run:      streamlit run proforma/v1_5/ui/app.py \
 #               --server.port 8080 --server.address 0.0.0.0 --server.headless true
 
 name: proforma311
