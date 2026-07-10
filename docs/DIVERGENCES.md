@@ -20,17 +20,45 @@ The forecasting/P&L math is implemented **twice**:
 
 `app/pnl_analysis/modelling/data.py` says its loaders "mirror the loaders in
 `proforma/v1_5/ui/app.py`". *Mirror* is doing real work in that sentence — it is a second
-implementation, not a shared one. `pnl.py`'s own docstring claims it "is ported verbatim from the
-Streamlit reference … the only [difference] …", which is an admission that a difference exists.
-
-**Do not unify these as a drive-by.** Unifying them means picking a winner for every place they
-disagree, and each choice moves a number that someone has already looked at. That is the *next*
-project, and it needs its own golden baseline covering the Streamlit side (which today has none —
-see §6).
+implementation, not a shared one.
 
 Only the shared parts are genuinely shared: `proforma/v1_5/models/coldstart.py`
 (`predict_site`, `predict_neighbours`, `assign_clusters`, the cannibalization fit) is imported by
 both, so plateau × ramp × cannibalization is computed once.
+
+**These are agreed** (checked, identical): `PNL_EXCLUDE = {"alpinecarwash_000087"}`; the ASP>200
+revenue-nulling in the panel loader; `ASP_MIN_WASH = 200`, `ASP_FLOOR_MEM = 4.0`,
+`ASP_FLOOR_RET = 5.0`; and the row predicate inside `_drop_corrupt_asp_rows`.
+
+### 1a. Membership ASP is modelled differently — this moves revenue
+
+|  | |
+|---|---|
+| UI | `proforma/v1_5/ui/pages/_pinpoint_forecast.py:44` — `def global_healthy_asp(express_only=False)` returns a **3-tuple** `(cl_mem_pp, ppw, cl_ret)`: membership dollars per **purchase**, plus a **purchases-per-wash** factor, plus retail $/wash. |
+| API | `app/pnl_analysis/modelling/pnl.py:55` — `def global_healthy_asp(df)` returns a **2-tuple** `(mem_$/wash, ret_$/wash)`. Membership economics are collapsed to dollars per wash; there is no purchases-per-wash term. |
+
+Callers match their own side (`_pinpoint_forecast.py:1116` unpacks three, `pnl.py:298` unpacks two),
+so neither is *broken* — they compute a different quantity. A membership plan sold once and used
+several times a month is exactly the case where `$/purchase × purchases/wash` and `$/wash` diverge.
+`app/pnl_analysis/insights/metrics.py:417` sides with the UI (`mem_revenue / mem_purchase_count`)
+and its docstring says so explicitly — so within `app/` the **insights** layer and the **P&L** layer
+already disagree with each other about what membership ASP means.
+
+**Would change:** cluster ASP, hence forecast revenue, hence the P&L and breakeven.
+
+### 1b. `express_only` exists only in the UI
+
+17 references under `proforma/v1_5/ui/`, **zero** under `app/pnl_analysis/`. The Streamlit app can
+restrict the local market and the level anchor to express-tunnel sites — the shared model supports
+it via `coldstart.predict_site(anchor_keys=...)` — and the API has no such path. An API caller
+cannot reproduce an express-only forecast the UI shows.
+
+### Why this is not fixed here
+
+Unifying means picking a winner at each disagreement, and each choice moves a number someone has
+already signed off on. It is the *next* project, and it needs a golden baseline over the Streamlit
+P&L first. Today `scripts/smoke.sh` freezes the **API** numbers exactly and the UI only at its
+first render (§6), so a unification done now would be unverifiable on the side that matters most.
 
 ---
 
