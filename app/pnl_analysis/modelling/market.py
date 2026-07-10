@@ -1,7 +1,7 @@
 """
 Local-market engine for the Explore-markets + Forecast backend.
 
-Plot-ready data for the Streamlit app's first two modes (earnest-proforma-2.0/streamlits/app.py):
+Plot-ready data for the Streamlit app's first two modes (proforma/v1_5/ui/app.py):
 
   explore_market(...)        — header counts + role-tagged map markers + per-site monthly series for one
                                metric, for every site within `radius_km` of the pin (the line explorer).

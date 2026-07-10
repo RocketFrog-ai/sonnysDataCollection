@@ -34,13 +34,25 @@ UI_ENTRYPOINTS = {"app.py", "site_analysis_page.py", "site_visual_page.py", "str
 # at module scope) and one calls sys.exit(). They are out of this refactor's scope by decision:
 # the startup scripts put their dirs on PYTHONPATH and they use bare intra-feature imports.
 # We syntax-check them and never import them. This narrows coverage, on purpose, in writing.
-AST_ONLY_PREFIXES = ("app/site_analysis/features/",)
+#
+# proforma/v1_5/backtests/** are also scripts: backtest_features.py reads a CSV and fits a model
+# at module level. Before the refactor they were never imported anyway -- their dotted path went
+# through "earnest-proforma-2.0", which is not a Python identifier, so mod_name() produced an
+# invalid name and they fell into the "skipped" bucket by accident. After the move the path IS
+# valid, so without this entry the smoke test would start running full backtests on every pass.
+AST_ONLY_PREFIXES = (
+    "app/site_analysis/features/",
+    "proforma/v1_5/backtests/",
+)
 
 TREES = {
-    # tag -> (roots to walk, roots to import-as-package)
+    # tag -> roots to walk. Pre-refactor roots are kept so this script still works when checked
+    # out at the pre-refactor tag; py_files() silently skips roots that do not exist.
     "backend": ["app"],
-    "ui": ["earnest-proforma-2.0/streamlits", "proforma/v1_5/ui", "proforma/v1_5/models",
-           "proforma/v1_6", "council"],
+    "ui": [
+        "proforma/v1_5/models", "proforma/v1_5/ui", "proforma/v1_5/backtests", "proforma/v1_6",
+        "earnest-proforma-2.0/streamlits", "council",   # pre-refactor locations
+    ],
 }
 
 

@@ -25,8 +25,8 @@ Resume: re-running skips (client_id, site_id) pairs already in the output.
 Env (.env at repo root): AZURE_OPENAI_API_KEY required, JINA_API_KEY optional.
 
 Usage:
-    python earnest-proforma-2.0/classify_site_types.py --limit 8   # test batch
-    python earnest-proforma-2.0/classify_site_types.py             # full run
+    python libs/carwash_type/classify_site_types.py --limit 8   # test batch
+    python libs/carwash_type/classify_site_types.py             # full run
 """
 
 import argparse
@@ -49,8 +49,8 @@ from openai import AzureOpenAI
 # --------------------------------------------------------------------------
 # CONFIG
 # --------------------------------------------------------------------------
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.dirname(HERE)
+HERE = os.path.dirname(os.path.abspath(__file__))          # libs/carwash_type
+REPO_ROOT = os.path.dirname(os.path.dirname(HERE))         # libs/carwash_type -> libs -> repo root
 load_dotenv(os.path.join(REPO_ROOT, ".env"))
 
 JINA_API_KEY = os.getenv("JINA_API_KEY")
@@ -66,7 +66,7 @@ AZURE_ENDPOINT = os.getenv(
 AZURE_API_VERSION = "2024-02-15-preview"
 DEPLOYMENT = "gpt-4o"
 
-DEFAULT_INPUT = os.path.join(REPO_ROOT, "earnest-proforma-2.0", "data", "main-data-v2-stitched.csv")
+DEFAULT_INPUT = os.path.join(REPO_ROOT, "proforma", "data", "panel", "main-data-v2-stitched.csv")
 DEFAULT_OUTPUT = os.path.join(HERE, "data", "site_carwash_types.csv")
 
 VALID_TYPES = [

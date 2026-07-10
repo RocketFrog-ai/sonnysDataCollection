@@ -4,39 +4,38 @@ Shared, cached data loaders for the pnl_analysis backend (Explore-markets + Fore
 Every modelling module (market / pnl / campaign) loads its data through here so the heavy
 artifacts are read once and shared in-process:
 
-  • load_panel()         — the monthly site panel (main-ds.csv) + a per-site table with adaptive
-                            local-market clusters. The single source of truth for "the sites".
+  • load_panel()         — the monthly site panel (proforma/data/panel/main-data-v2-stitched.csv)
+                            + a per-site table with adaptive local-market clusters. The single
+                            source of truth for "the sites". (This docstring used to say
+                            main-ds.csv; that is the superseded legacy schema and is not read here.)
   • load_model()         — the cold-start LightGBM artifacts (plateau + ramp + cannibalization).
   • load_pnl_annual()    — per-(location, state, year) operating P&L from opex-data.csv.
   • load_pnl_monthly()   — per-(location, state, year, month) opex + monthly wash snapshot (with age).
   • load_campaign_panel()— opex-data.csv keyed by site_key (for campaign-spike detection / snapshots).
 
-These mirror the loaders in earnest-proforma-2.0/streamlits/app.py exactly (PNL_EXCLUDE, the
-ASP>200 nulling, the adaptive cluster assignment), so the API returns the same numbers as the app.
+These mirror the loaders in proforma/v1_5/ui/app.py (PNL_EXCLUDE, the ASP>200 nulling, the
+adaptive cluster assignment), so the API returns the same numbers as the app. "Mirror" is literal:
+this is a second implementation of the same math, and the two have drifted. See docs/DIVERGENCES.md
+before changing either.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
 
+from proforma.v1_5.models import coldstart as cm
+
 ROOT = Path(__file__).resolve().parents[3]
-PROFORMA = ROOT / "earnest-proforma-2.0"
-COLDSTART_DIR = PROFORMA / "streamlits"
-MAIN_CSV = PROFORMA / "data" / "main-data-v2-stitched.csv"
-OPEX_CSV = PROFORMA / "data" / "opex-data.csv"
+DATA = ROOT / "proforma" / "data"
+MAIN_CSV = DATA / "panel" / "main-data-v2-stitched.csv"
+OPEX_CSV = DATA / "opex" / "opex-data.csv"
 EARTH_KM = 6371.0088
 
-# sites kept OUT of the P&L analysis (matched on client_id) — mirrors app.py PNL_EXCLUDE
+# sites kept OUT of the P&L analysis (matched on client_id) — mirrors the UI's PNL_EXCLUDE
 PNL_EXCLUDE = {"alpinecarwash_000087"}
-
-# import the cold-start model module (lives alongside the Streamlit app)
-if str(COLDSTART_DIR) not in sys.path:
-    sys.path.insert(0, str(COLDSTART_DIR))
-import coldstart_model as cm  # noqa: E402
 
 # Explore-markets metric label <-> dataframe column
 METRICS: Dict[str, str] = {
