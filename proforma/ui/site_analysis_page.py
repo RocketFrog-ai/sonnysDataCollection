@@ -48,10 +48,10 @@ if _APP_DIR.is_dir() and (
     sys.modules["app"] = _app_mod
 
 from app.core import common as calib
-from app.site_analysis.features.active.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
-from app.site_analysis.features.active.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
-from app.site_analysis.features.active.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
-from app.site_analysis.features.active.weather.open_meteo import fetch_climate_for_site, get_default_weather_range
+from app.site_analysis.features.nearbyGasStations.get_nearby_gas_stations import get_nearby_gas_stations
+from app.site_analysis.features.nearbyRetailers.get_nearby_retail_anchors import get_nearby_retail_anchors
+from app.site_analysis.features.nearbyCompetitors.get_nearby_competitors import get_nearby_competitors
+from app.site_analysis.features.weather.open_meteo import fetch_climate_for_site, get_default_weather_range
 from app.site_analysis.server.config import (
     GAS_RADIUS_FAR_MILES,
     RETAIL_RADIUS_FAR_MILES,

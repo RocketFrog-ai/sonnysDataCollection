@@ -10,7 +10,7 @@ returns the same weather / competing-wash / retail-anchor / gas data, plus marke
 one synchronous call. See docs/ARCHITECTURE.md.
 
 Dropping those handlers also dropped their module-level imports of
-`app.site_analysis.features.active.nearbyCompetitors.classify_competitor_types` and
+`app.site_analysis.features.nearbyCompetitors.classify_competitor_types` and
 `app.site_analysis.modelling.ai`, so importing this module no longer pulls that tree (and its
 import-time HTTP/LLM calls) into the process. `site_context.py` imports the feature fetchers it
 needs itself, lazily, inside `get_site_context`.
@@ -29,8 +29,8 @@ from app.site_analysis.server.schemas import (
     SiteFeaturesRequest,
 )
 from app.site_analysis.server.site_features import nearest_site_features
-from app.site_analysis.features.active.trafficLights.nearby_traffic_lights import get_traffic_lights_summary
-from app.site_analysis.features.active.nearbyStores.nearby_stores import get_nearby_stores_data
+from app.site_analysis.features.trafficLights.nearby_traffic_lights import get_traffic_lights_summary
+from app.site_analysis.features.nearbyStores.nearby_stores import get_nearby_stores_data
 
 logger = logging.getLogger(__name__)
 
