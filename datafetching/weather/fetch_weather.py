@@ -22,7 +22,7 @@ if str(_project_root) not in sys.path:
 from dotenv import load_dotenv
 load_dotenv(_project_root / ".env")
 
-from app.utils import common as calib
+from app.core import common as calib
 from app.site_analysis.features.active.weather.open_meteo import fetch_climate_for_site
 
 # Input/output: datafetching/input_data/Proforma-v2-weather.xlsx
