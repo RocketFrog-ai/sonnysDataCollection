@@ -1,7 +1,11 @@
 {
- "_python": "3.11.15",
- "_tag": "ui",
- "ast": {
+ "_counts": {
+  "ast_files": 20,
+  "import_failed": 0,
+  "import_ok": 9,
+  "import_skipped": 11
+ },
+ "_detail_ast": {
   "council/__init__.py": "ok",
   "council/config.py": "ok",
   "council/council.py": "ok",
@@ -23,7 +27,7 @@
   "earnest-proforma-2.0/streamlits/site_visual_page.py": "ok",
   "earnest-proforma-2.0/streamlits/tunnel_capex.py": "ok"
  },
- "import": {
+ "_detail_import": {
   "council/__init__.py": "ok",
   "council/config.py": "ok",
   "council/council.py": "ok",
@@ -44,5 +48,9 @@
   "earnest-proforma-2.0/streamlits/site_analysis_page.py": "skipped: streamlit entrypoint (executes on import)",
   "earnest-proforma-2.0/streamlits/site_visual_page.py": "skipped: streamlit entrypoint (executes on import)",
   "earnest-proforma-2.0/streamlits/tunnel_capex.py": "skipped: 'earnest-proforma-2.0.streamlits.tunnel_capex' is not an importable dotted path"
- }
+ },
+ "_python": "3.11.15",
+ "_tag": "ui",
+ "import_failures": {},
+ "syntax_errors": {}
 }

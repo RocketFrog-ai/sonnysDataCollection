@@ -63,7 +63,8 @@ def mod_name(p: Path) -> str:
 
 def main(out_dir: str, tag: str) -> None:
     sys.path.insert(0, str(REPO))
-    result = {"_tag": tag, "_python": sys.version.split()[0], "ast": {}, "import": {}}
+    detail_ast: dict[str, str] = {}
+    detail_imp: dict[str, str] = {}
 
     for root_s in TREES[tag]:
         root = REPO / root_s
@@ -72,37 +73,59 @@ def main(out_dir: str, tag: str) -> None:
             # 1) syntax check, always
             try:
                 ast.parse(p.read_text(encoding="utf-8"), filename=rel)
-                result["ast"][rel] = "ok"
+                detail_ast[rel] = "ok"
             except SyntaxError as e:
-                result["ast"][rel] = f"SyntaxError: {e.msg} (line {e.lineno})"
+                detail_ast[rel] = f"SyntaxError: {e.msg} (line {e.lineno})"
                 continue
 
             # 2) import, where safe
             if rel.startswith(AST_ONLY_PREFIXES):
-                result["import"][rel] = "skipped: script tree, side effects at import (see AST_ONLY_PREFIXES)"
+                detail_imp[rel] = "skipped: script tree, side effects at import (see AST_ONLY_PREFIXES)"
                 continue
             if p.name in UI_ENTRYPOINTS:
-                result["import"][rel] = "skipped: streamlit entrypoint (executes on import)"
+                detail_imp[rel] = "skipped: streamlit entrypoint (executes on import)"
                 continue
             name = mod_name(p)
             if not all(part.isidentifier() for part in name.split(".")):
-                result["import"][rel] = f"skipped: '{name}' is not an importable dotted path"
+                detail_imp[rel] = f"skipped: '{name}' is not an importable dotted path"
                 continue
             try:
                 importlib.import_module(name)
-                result["import"][rel] = "ok"
+                detail_imp[rel] = "ok"
             except BaseException as e:  # noqa: BLE001 - some modules raise SystemExit
-                result["import"][rel] = f"{type(e).__name__}: {str(e).splitlines()[0][:160]}" if str(e) else type(e).__name__
+                detail_imp[rel] = f"{type(e).__name__}: {str(e).splitlines()[0][:160]}" if str(e) else type(e).__name__
+
+    ok = sum(1 for v in detail_imp.values() if v == "ok")
+    skip = sum(1 for v in detail_imp.values() if v.startswith("skipped"))
+    fail = len(detail_imp) - ok - skip
+    bad_ast = sum(1 for v in detail_ast.values() if v != "ok")
+
+    # The strict-diff surface is ONLY the failure maps. They are keyed by path, but they
+    # are empty, so a rename cannot perturb them. Counts and the full per-file maps go
+    # under `_` keys, which diff.py reports as informational drift rather than failure.
+    #
+    # Why: this whole file is keyed by file path, and the refactor's entire job is to move
+    # files. A path-keyed strict diff would light up on every legitimate rename, which
+    # trains you to re-baseline -- and re-baselining is exactly how a real regression walks
+    # in unnoticed. So the contract here is "nothing is broken", not "nothing moved".
+    # The contract "the numbers did not change" is enforced by model.json / api.json, whose
+    # keys are logical case names and never move.
+    result = {
+        "syntax_errors": {k: v for k, v in detail_ast.items() if v != "ok"},
+        "import_failures": {k: v for k, v in detail_imp.items()
+                            if v != "ok" and not v.startswith("skipped")},
+        "_tag": tag,
+        "_python": sys.version.split()[0],
+        "_counts": {"ast_files": len(detail_ast), "import_ok": ok, "import_skipped": skip, "import_failed": fail},
+        "_detail_ast": detail_ast,
+        "_detail_import": detail_imp,
+    }
 
     dest = Path(out_dir) / f"imports_{tag}.json"
     dest.parent.mkdir(parents=True, exist_ok=True)
     with open(dest, "w") as f:
         json.dump(result, f, indent=1, sort_keys=True)
-    ok = sum(1 for v in result["import"].values() if v == "ok")
-    skip = sum(1 for v in result["import"].values() if v.startswith("skipped"))
-    fail = len(result["import"]) - ok - skip
-    bad_ast = sum(1 for v in result["ast"].values() if v != "ok")
-    print(f"[import_smoke:{tag}] ast {len(result['ast'])} files ({bad_ast} bad) | "
+    print(f"[import_smoke:{tag}] ast {len(detail_ast)} files ({bad_ast} bad) | "
           f"import ok={ok} skipped={skip} failed={fail} -> {dest}")
 
 

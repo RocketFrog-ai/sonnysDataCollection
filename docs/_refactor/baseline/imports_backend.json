@@ -1,7 +1,11 @@
 {
- "_python": "3.9.23",
- "_tag": "backend",
- "ast": {
+ "_counts": {
+  "ast_files": 118,
+  "import_failed": 0,
+  "import_ok": 39,
+  "import_skipped": 79
+ },
+ "_detail_ast": {
   "app/celery/__init__.py": "ok",
   "app/celery/celery_app.py": "ok",
   "app/celery/tasks.py": "ok",
@@ -121,7 +125,7 @@
   "app/utils/llm/__init__.py": "ok",
   "app/utils/llm/local_llm.py": "ok"
  },
- "import": {
+ "_detail_import": {
   "app/celery/__init__.py": "ok",
   "app/celery/celery_app.py": "ok",
   "app/celery/tasks.py": "ok",
@@ -240,5 +244,9 @@
   "app/utils/common.py": "ok",
   "app/utils/llm/__init__.py": "ok",
   "app/utils/llm/local_llm.py": "ok"
- }
+ },
+ "_python": "3.9.23",
+ "_tag": "backend",
+ "import_failures": {},
+ "syntax_errors": {}
 }

@@ -80,8 +80,14 @@ fi
 
 echo "== 6/6 diff vs baseline (tol 1e-9) =="
 rc=0
+# model.json / api.json are the behavior contract: keyed by logical case name, frozen forever.
+# imports_*.json are keyed by file path, so their strict surface is only the (empty) failure
+# maps; check_counts.py guards the informational counts against silent regression.
 for f in model.json api.json imports_backend.json imports_ui.json; do
   "$PY_BACKEND" scripts/_golden/diff.py "$BASELINE/$f" "$OUT/$f" 1e-9 || rc=1
+done
+for t in backend ui; do
+  "$PY_BACKEND" scripts/_golden/check_counts.py "$BASELINE/imports_$t.json" "$OUT/imports_$t.json" || rc=1
 done
 rm -rf "$OUT"
 [[ $rc == 0 ]] && echo && echo "SMOKE PASS -- behavior preserved to 1e-9" || { echo; echo "SMOKE FAIL"; }
