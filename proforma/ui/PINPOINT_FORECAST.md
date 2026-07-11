@@ -225,10 +225,10 @@ WITH new site    = WITHOUT  −  cannibalization(retail, phased in over 12 mo)  
 
 ## 14. P&L — revenue, operating expense & promotions
 
-The 💰 section turns the wash forecast into dollars: a **monthly revenue vs operating-expense** chart over the 5 years, with a **net** line. Everything is learned from the two data files (`main-ds.csv` for ASP, `pnl_operational.xlsx` for opex).
+The 💰 section turns the wash forecast into dollars: a **monthly revenue vs operating-expense** chart over the 5 years, with a **net** line. Everything is learned from the two data files (`main-data-v2-stitched.csv` for ASP, `opex-data.csv` for opex).
 
 ### Revenue
-`revenue(month) = predicted washes(month) × ASP`. One **ASP slider** (blended $/wash) defaults to the **cluster average** — computed from the **dense operational data** (the ≤20 km neighbours' last 12 months in `main-ds`), not the sparse P&L. The membership/retail price split is kept from the data and scaled together by the one slider.
+`revenue(month) = mem × asp_mem + ret × asp_ret` — each leg priced with its own ASP. The **per-year ASP grid** (membership in $/purchase, retail in $/wash) defaults to the **cluster average** — computed from the **dense operational data** (the ≤20 km neighbours' last 12 months in `main-data-v2-stitched`), not the sparse P&L. The single "blended $/wash" figure is only the recommended default shown alongside; the two legs are always priced separately.
 
 ### Operating expense — a *learned new-site ramp* (not flat, not volume-tracking)
 We measured how opex actually moves for sites that **opened during the data window** (aligned to each site's age, ÷ its own mature opex). New sites run opex **hot early** — opening/setup/marketing/ramp staffing — then settle:
@@ -248,5 +248,5 @@ Because opex is high early while revenue is still ramping, **Net is negative for
 A promo window (start, duration, ASP discount %, extra opex %) — **grounded in the data**: across 65 real ASP-dip events, a ~13% dip drove **+8.6% volume / +10% membership** over the next quarter (~¾ of the time), so volume lifts at **elasticity ≈ 0.64** and **persists ~3 months** (decaying half-life) after the window. Revenue dips slightly *during* the discount, then rises *after*. The opex bump during a promo is a **user input** (the data showed no automatic one).
 
 ### What's learned vs your input (P&L)
-- **Learned:** cluster ASP (main-ds), the opex ramp shape & mature $/wash (P&L), the promo volume-lift elasticity & persistence (P&L).
+- **Learned:** cluster ASP (main-data-v2-stitched), the opex ramp shape & mature $/wash (P&L), the promo volume-lift elasticity & persistence (P&L).
 - **Your input / scenario:** the ASP slider, opex cost-growth (default flat), and any promotion.

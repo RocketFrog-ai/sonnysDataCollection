@@ -31,52 +31,46 @@ both, so plateau × ramp × cannibalization is computed once.
 revenue-nulling in the panel loader; `ASP_MIN_WASH = 200`, `ASP_FLOOR_MEM = 4.0`,
 `ASP_FLOOR_RET = 5.0`; and the row predicate inside `_drop_corrupt_asp_rows`.
 
-### 1a. Revenue is priced per-leg in the UI and by one blended ASP in the API
+### 1a. Default revenue is priced per-leg on both sides; only the ASP *override* diverges
 
-An earlier version of this entry claimed the two sides compute membership ASP as *different
-quantities*. That was wrong, and the correction is worth keeping because the wrong version is the
-plausible one.
+This entry has been wrong twice, in opposite directions, so it is worth stating carefully with the
+code pinned.
 
-**Not a divergence.** The UI's `global_healthy_asp` returns `(cl_mem_pp, ppw, cl_ret)` — dollars per
-membership *purchase*, times purchases-per-wash — while the API's returns `(cl_mem, cl_ret)` in
-dollars per *wash*. But over the same row subset,
-
-```
-cl_mem_pp * ppw = Σmem_revenue/Σmem_purchase_count * Σmem_purchase_count/Σmem_wash_count
-                = Σmem_revenue/Σmem_wash_count = cl_mem
-```
-
-Measured on the real panel: `59.18531174297621 × 0.3220765744212813 = 19.062202462233410` vs the
-API's `19.062202462233408` — a difference of `3.6e-15`. The UI merely keeps the factorization,
-because its slider shows the user `$/membership purchase`, which is a number an operator recognises.
-
-**The real divergence is one level up: how the legs are combined.**
+**The default revenue is identical, and it is per-leg.** Both sides price the membership and retail
+legs each with the cluster's own ASP, every month:
 
 | | |
 |---|---|
-| UI (`_pinpoint_forecast.py:1129,1134`) | `mem_purch = mem × ppw`; `revenue = mem_purch × cl_mem_pp + ret × cl_ret` — i.e. `mem × cl_mem + ret × cl_ret`, each leg priced with its own ASP, **every month** |
-| API (`pnl.py:309,316`) | `asp_blend = mem_share × cl_mem + (1−mem_share) × cl_ret`, then `revenue = (mem+ret) × asp_blend` — one blended `$/wash`, and `mem_share` is the **mature** share, a scalar |
+| UI (`_pinpoint_forecast.py:1244`) | `asp_mem_pp = per_year(mem_asp_in, cl_mem_pp)`, `asp_ret = per_year(ret_asp_in, cl_ret)`; `revenue = mem_purch × asp_mem_pp + ret × asp_ret` = `mem × cl_mem + ret × cl_ret` at default |
+| API (`pnl.py:316–318,350`) | `asp = asp_override if given else asp_blend`; `k_asp = asp / asp_blend`; `asp_mem, asp_ret = cl_mem × k_asp, cl_ret × k_asp`; `rev_base = mem × asp_mem + ret × asp_ret` |
 
-These agree only where the month's membership share equals the mature share. It does not during the
-ramp: membership share climbs from ~0.36 at open to ~0.73 by month 60, while `mem_share` is fixed
-at 0.6656. Measured at the dense Houston pin (`cl_mem = $17.70`, `cl_ret = $19.36`):
+At the default (`asp_override=None`) the API's `asp = asp_blend`, so `k_asp = asp_blend/asp_blend = 1`
+and `rev_base = mem × cl_mem + ret × cl_ret` — the same per-leg formula as the UI. **`asp_blend`
+never prices the default revenue; it cancels.** It is only the *recommended* single number shown as
+the slider default (schema calls `asp_override` "Blended $/wash") and is reported back as `asp.blend`.
+So `mem_share` / `asp_blend` being a mature scalar has no effect on the forecast unless the user
+overrides the ASP. (An earlier version of this entry claimed the API computed
+`revenue = (mem+ret) × asp_blend` and tabulated a month-by-month gap; that was against an older
+`pnl.py` and is false today.)
 
-```
-month  0:  UI $59,639   API $58,044   -2.67%
-month  6:  UI $131,423  API $130,541  -0.67%
-month 24:  UI $155,871  API $155,944  +0.05%
-month 60:  UI $150,445  API $151,303  +0.57%
-5-yr total: UI $8,890,118  API $8,897,825  +0.09%
-```
+The cluster ASPs themselves match: the UI's `global_healthy_asp` returns `(cl_mem_pp, ppw, cl_ret)`
+in dollars per membership *purchase*, the API's returns `(cl_mem, cl_ret)` in dollars per *wash*, and
+`cl_mem_pp × ppw = Σmem_revenue/Σmem_purchase × Σmem_purchase/Σmem_wash = Σmem_revenue/Σmem_wash =
+cl_mem` (measured `3.6e-15` apart). Both derive the cluster ASP from `Σrevenue/Σwash` over the
+≤20 km neighbours' last 12 months — **not** from the panel's direct `ASP_mem`/`ASP_ret` columns
+(those are used only for the per-site median reference table, `data.py:173` / `asp_refs`).
 
-The API under-prices the early ramp and over-prices maturity. The error scales with
-`|cl_mem − cl_ret|`, which is only $1.65 here — in a market where membership and retail ASPs sit
-further apart it will be materially larger.
+**The genuine divergence is the ASP *override*.**
 
-Consequently `asp_override` means different things on each side: the API documents it as
-"Blended $/wash" and applies it to total washes; the UI's slider is `$/membership purchase` applied
-to the membership leg only. A client sending the number a user read off the Streamlit slider will
-get the wrong revenue.
+| | |
+|---|---|
+| UI | two independent per-year sliders: membership in **$/membership purchase**, retail in **$/wash**. Each reprices its own leg; the mem/retail ratio can be changed. |
+| API | one **blended $/wash** (`asp_override` scalar, or `asp` per-year map). It scales *both* legs by `k_asp = override/asp_blend`, holding the mem/retail ratio fixed. |
+
+So the API cannot express an independent membership-vs-retail reprice, and the number a user reads
+off the UI's membership slider (`$/purchase`) is not the same unit as the API's `asp_override`
+(`$/wash`). A client forwarding the Streamlit slider value into `asp_override` will get the wrong
+revenue. That is the only ASP behaviour that actually differs between the two implementations.
 
 **Would change:** forecast revenue, hence the P&L, breakeven, and the campaign ROI. Not fixed here:
 picking a winner moves numbers people have signed off on, and the Streamlit side has no golden
@@ -138,12 +132,13 @@ GET  /v1/{weather,competition,retail,gas}/summary-by-task/{task_id}
 GET  /v1/map/data-by-task/{task_id}
 ```
 
-Route count on `app.main` went 40 → 28; `/v1/pnl_analysis/*` was untouched (22 routes, identical),
+Removing Celery and (later) the whole `site_analysis` subsystem left the forecast API untouched:
+`app.main` now serves 18 OpenAPI paths, 17 under `/v1/pnl_analysis/*` (see `docs/ARCHITECTURE.md`),
 and `model.json` / `api.json` were unchanged, so no forecast number moved.
 
-**Residue, on purpose:** `GET /v1/cache/site-analysis/all` still serves the Postgres cache, but its
-only writer was the Celery task, so the table is now read-only and will go stale. The `REDIS_*` /
-`CELERY_*` keys may still sit in your `.env`; nothing reads them.
+**Residue:** the `GET /v1/cache/site-analysis/all` cache route that the async pipeline served was
+removed with the subsystem — no route reads Postgres today. The `REDIS_*` / `CELERY_*` keys may
+still sit in your `.env`; nothing reads them.
 
 ---
 
@@ -219,7 +214,7 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
 
 `load_pnl`, `regional_opex`, `opex_per_wash`, `opex_ramp`, `opex_trend_hist`, and `asp_refs` are
 defined in `proforma/ui/panels/_pinpoint_forecast.py` and called **nowhere** in `proforma/`.
-Their namesakes in `app/pnl_analysis/modelling/pnl.py` *are* called (`pnl.py:282`, `pnl.py:311`, …).
+Their namesakes in `app/pnl_analysis/modelling/pnl.py` *are* called (`pnl.py:282`, `pnl.py:312`, …).
 
 So the API port kept them live while the Streamlit side stopped using them. They were relocated
 verbatim during the split rather than deleted, because deleting code is not code motion and because

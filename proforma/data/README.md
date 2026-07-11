@@ -16,7 +16,7 @@ file is the map.
 | `panel/main-ds.csv` | **legacy schema, superseded** by the stitched panel | `libs/carwash_type/classify_site_types.py` (as a site list) |
 | `opex/opex-data.csv` | operating P&L. True opex = `cogs + expenses`; operator key `client_id` | `../ui/app.py`, `app/pnl_analysis/modelling/{data,campaign}.py` |
 | `ref/site_carwash_types.csv` | **resolved** wash-type per site | `../ui/app.py` |
-| `ref/merged_all_sites.csv` | site coordinate/name lookup | `app/site_analysis/server/site_features.py`, `../ui/site_visual_page.py`, `../backtests/backtest_features.py` |
+| `ref/merged_all_sites.csv` | site coordinate/name lookup | `../ui/site_visual_page.py`, `../backtests/backtest_features.py` |
 | `ref/old-excel-proforma-data-enriched.csv` | 187 real builds (tunnel length → CAPEX) | `../models/tunnel_capex.py` |
 | `ref/unknownsites_resolved.csv` | provenance for the resolved type table | *no current code reader* |
 | `ref/site_carwash_types.csv.bak-pre-resolved` | pre-resolution snapshot | *no current code reader* |

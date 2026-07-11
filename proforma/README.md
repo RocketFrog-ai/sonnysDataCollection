@@ -42,7 +42,7 @@ is a layer on top of it, and the two are entangled in both directions: the counc
 `experiments.council.streamlit_view` back. Delete `experiments/council/` and
 `scripts/_golden/check_imports_resolve.py` fails on that import (verified). So a "1.5 without the
 council" branch is not a checkout, it is an edit — and one that would conflict with every future
-change to `panels/_explore_markets.py`. The branches exist so each line has a home to evolve into;
+change to `ui/panels/_explore_markets.py`. The branches exist so each line has a home to evolve into;
 the tags preserve what the folder layout used to be.
 
 **To ship a new model version:** branch, change `models/`, refit `artifacts/` in the env that will

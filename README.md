@@ -9,7 +9,7 @@ sites (`client_id + site_id`, monthly, 2020→2027).
 | I want to… | Go to |
 |---|---|
 | understand the system | `docs/ARCHITECTURE.md` |
-| run something | `docs/ENVIRONMENTS.md` — **three** conda/venv envs, not interchangeable |
+| run something | `docs/ENVIRONMENTS.md` — one conda env (`sonnys`, py3.11) |
 | change the forecast | `proforma/MODELLING.md`, then `proforma/models/coldstart.py` |
 | find a dataset | `docs/DATA.md` — everything lives once, under `proforma/data/` |
 | know what's already broken | `docs/DIVERGENCES.md` — read before "fixing" anything |

@@ -56,7 +56,9 @@ uvicorn app.main:app --port 8010
 ```
 
 Everything is mounted under `/v1`, and `app/server` carries the prefix `/pnl_analysis`, so the paths
-are `/v1/pnl_analysis/...`. 22 routes: the market/forecast/campaign endpoints plus five `insights/*`.
+are `/v1/pnl_analysis/...`. 17 paths under `/v1/pnl_analysis` (plus `GET /`) — the market / forecast /
+campaign endpoints plus five `insights/*` (`/insights`, `/insights/location`, `/insights/competition`,
+`/insights/pollinated`, `/insights/independent-research`).
 
 ### What used to be here, and why it isn't
 

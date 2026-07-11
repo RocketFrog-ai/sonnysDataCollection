@@ -11,7 +11,7 @@ There are **four forecasting plots** in the tab, all built off one cold-start mo
 3. **Monthly P&L** — revenue vs operating expense vs net, 5-yr, with an optional campaign overlay.
 4. **Eating the market** — the new site vs each incumbent, each forecast forward 5 yr, drifting on campaign.
 
-Data sources: `proforma/data/panel/main-ds.csv` (monthly washes/revenue per site, the *operational* panel) and
+Data sources: `proforma/data/panel/main-data-v2-stitched.csv` (monthly washes/revenue per site, the *operational* panel) and
 `proforma/data/opex/opex-data.csv` (monthly P&L: income, cogs, expenses). site_key = `client_id::site_id` (joins both).
 Panel spans ~2,000 sites, Jan 2020 – mid 2026; 1,272 of them are old enough to train the plateau model.
 
@@ -241,10 +241,12 @@ actual lands within ±27.5% → ~**4,560–8,000/mo**.
 
 ## 7. Plot 3 — P&L (revenue vs operating expense)
 
-**Revenue = washes × ASP.** ASP defaults to the local **cluster blended $/wash**: from the ≤20 km neighbours'
-last 12 months we compute membership $/wash and retail $/wash (`main-ds.csv`), blended by the site's membership
-share. The ASP slider scales price while keeping the mem/retail split.
-`revenue = mem × asp_mem + ret × asp_ret`.
+**Revenue is priced per-leg: `revenue = mem × asp_mem + ret × asp_ret`.** Each leg's ASP defaults to the
+local **cluster average**: from the ≤20 km neighbours' last 12 months we compute membership $/wash and
+retail $/wash (`Σrevenue/Σwash` over the panel — the direct `ASP_mem`/`ASP_ret` columns exist but are
+used only for the per-site reference table). The "blended $/wash" is a single *recommended* figure
+(`mem_share × cl_mem + (1−mem_share) × cl_ret`); the ASP slider scales price while keeping the mem/retail
+split, but the default forecast prices each leg separately — the blend does not enter it.
 
 **Opex is LEARNED from `opex-data.csv`** (`load_pnl_monthly`, opex = `total_expenses`):
 - **Mature level** = `opex_per_wash() × predicted plateau washes`. `opex_per_wash` = median **$/wash** of mature

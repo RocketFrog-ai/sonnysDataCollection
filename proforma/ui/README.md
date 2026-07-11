@@ -8,7 +8,7 @@ streamlit run proforma/ui/app.py     # http://localhost:8501
 ```
 
 Runs in conda `sonnys` (python 3.11) — the one environment; see `docs/ENVIRONMENTS.md`.
-Reads `../data/panel/main-ds.csv` directly (cleans + density-aware clustering on first load, cached) — no notebook run required.
+Reads `../data/panel/main-data-v2-stitched.csv` directly (cleans + density-aware clustering on first load, cached) — no notebook run required.
 
 ## 🗺️ Mode 1 — Explore markets
 Pick a site (a **pin**), see its neighbours within a radius (the **local market**), and watch what happens when a

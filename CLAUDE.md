@@ -42,7 +42,7 @@ The **model** is shared. The **P&L / market math around it is implemented twice*
 of the three places a change belongs in *before* editing. Do not unify them as a drive-by; see
 `docs/DIVERGENCES.md` §1.
 
-## Environment (one of them)
+## Environment (one, finally)
 
 | Env | Python | Defined in | Runs |
 |-----|--------|-----------|------|
@@ -91,8 +91,9 @@ tell you exactly which ones moved — read that diff, don't silence it by re-bas
 Its coverage gaps are stated in its own header comment and in `docs/DIVERGENCES.md` §6: the UI is
 only first-render, and `/insights/*` are LLM and excluded.
 
-There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc manual scripts;
-`test_endpoint.py` is itself broken (`docs/DIVERGENCES.md` §8).
+There is **no test suite and no linter**. The one `test_*.py` at the root (`test_db_ssl.py`) is an
+ad-hoc manual script, not a unit test. (`test_endpoint.py` was broken for years and was deleted —
+`docs/DIVERGENCES.md` §8.)
 
 ## Rules of the road
 
@@ -103,7 +104,7 @@ There is **no test suite and no linter**. `test_*.py` at the root are ad-hoc man
   Never import them to test.
 - **`insights/` annotates; it must never alter a modelled number.**
 - **No packaging.** No `pyproject.toml`, no `pip install -e .`. Imports resolve off the repo root.
-  The two conda envs and the version-sensitive joblib make packaging a separate, riskier project.
+  The version-sensitive joblib makes packaging a separate, riskier project.
 - Large CSVs are ordinary git blobs. **git-LFS is not in use** (`.gitattributes` explains why).
 - `carwash_reviews*.py/csv` are gitignored and contain a live API key — never `git add` them. They
   do not currently exist on disk.

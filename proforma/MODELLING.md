@@ -4,7 +4,7 @@ How the cold-start car-wash proforma turns a dropped pin into a 5-year P&L. Wash
 **strictly from the model**; ASP/OPEX/CAPEX are dashboard knobs applied on top.
 
 Code: [`models/coldstart.py`](models/coldstart.py) (the forecaster),
-[`ui/app.py`](ui/app.py) (UI + P&L), `proforma/data/panel/main-ds.csv` (panel).
+[`ui/app.py`](ui/app.py) (UI + P&L), `proforma/data/panel/main-data-v2-stitched.csv` (panel).
 
 ---
 
