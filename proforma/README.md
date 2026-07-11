@@ -9,6 +9,7 @@ monthly wash-count forecast, a P&L, and what it does to the existing neighbours.
 proforma/
 ├── MODELLING.md      the authoritative method reference — read before changing math
 ├── models/           coldstart.py (the model), tunnel_capex.py
+├── pnl/              shared P&L/market helper math (data, trend, opex, campaign) — imported by UI + API
 ├── artifacts/        coldstart_artifacts.joblib — fitted; do not refit casually
 ├── data/             every dataset, exactly once. Shared, immutable.
 ├── ui/               Streamlit only. app.py is a thin entry; panels/ holds the modes

@@ -28,7 +28,7 @@ import pandas as pd
 
 from proforma.models import coldstart as cm
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]   # proforma/pnl/data.py -> repo root
 DATA = ROOT / "proforma" / "data"
 MAIN_CSV = DATA / "panel" / "main-data-v2-stitched.csv"
 OPEX_CSV = DATA / "opex" / "opex-data.csv"

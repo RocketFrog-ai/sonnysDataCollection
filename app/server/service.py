@@ -12,7 +12,7 @@ import numpy as np
 from fastapi import HTTPException
 
 from app.core import common as calib
-from app.pnl_analysis.modelling import data as D
+from proforma.pnl import data as D
 from app.pnl_analysis.modelling import market
 
 logger = logging.getLogger(__name__)

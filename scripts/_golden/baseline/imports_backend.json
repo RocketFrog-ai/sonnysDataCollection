@@ -1,8 +1,8 @@
 {
  "_counts": {
-  "ast_files": 27,
+  "ast_files": 29,
   "import_failed": 0,
-  "import_ok": 27,
+  "import_ok": 29,
   "import_skipped": 0
  },
  "_detail_ast": {
@@ -25,14 +25,16 @@
   "app/pnl_analysis/insights/websearch.py": "ok",
   "app/pnl_analysis/modelling/__init__.py": "ok",
   "app/pnl_analysis/modelling/campaign.py": "ok",
-  "app/pnl_analysis/modelling/data.py": "ok",
   "app/pnl_analysis/modelling/market.py": "ok",
   "app/pnl_analysis/modelling/pnl.py": "ok",
-  "app/pnl_analysis/modelling/trend.py": "ok",
   "app/server/__init__.py": "ok",
   "app/server/router.py": "ok",
   "app/server/schemas.py": "ok",
-  "app/server/service.py": "ok"
+  "app/server/service.py": "ok",
+  "proforma/pnl/campaign.py": "ok",
+  "proforma/pnl/data.py": "ok",
+  "proforma/pnl/opex.py": "ok",
+  "proforma/pnl/trend.py": "ok"
  },
  "_detail_import": {
   "app/core/__init__.py": "ok",
@@ -54,16 +56,18 @@
   "app/pnl_analysis/insights/websearch.py": "ok",
   "app/pnl_analysis/modelling/__init__.py": "ok",
   "app/pnl_analysis/modelling/campaign.py": "ok",
-  "app/pnl_analysis/modelling/data.py": "ok",
   "app/pnl_analysis/modelling/market.py": "ok",
   "app/pnl_analysis/modelling/pnl.py": "ok",
-  "app/pnl_analysis/modelling/trend.py": "ok",
   "app/server/__init__.py": "ok",
   "app/server/router.py": "ok",
   "app/server/schemas.py": "ok",
-  "app/server/service.py": "ok"
+  "app/server/service.py": "ok",
+  "proforma/pnl/campaign.py": "ok",
+  "proforma/pnl/data.py": "ok",
+  "proforma/pnl/opex.py": "ok",
+  "proforma/pnl/trend.py": "ok"
  },
- "_python": "3.9.23",
+ "_python": "3.11.15",
  "_tag": "backend",
  "import_failures": {},
  "syntax_errors": {}

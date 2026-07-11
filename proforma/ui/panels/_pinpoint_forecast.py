@@ -15,6 +15,9 @@ import folium
 from streamlit_folium import st_folium
 
 from proforma.models import coldstart as cm
+from proforma.pnl.opex import _drop_corrupt_asp_rows, global_healthy_asp, opex_pct_curve_fit
+from proforma.pnl.campaign import campaign_conv_pct, campaign_effect, campaign_months_by_site, _campaigns_df
+from proforma.pnl.trend import forecast_series, market_trend, robust_growth
 try:                                                          # tunnel-length → CAPEX model (learned from proforma data)
     from proforma.models import tunnel_capex as tcx
     _CAPEX_OK = True
@@ -27,32 +30,6 @@ from proforma.ui.panels._shared import (
     load_data, haversine_km, add_all_site_dots, anon_names, gran_picker, rs_dates,
     gran_date_tickformat,
 )
-
-def _drop_corrupt_asp_rows(rec):
-    """Drop site-months whose revenue feed collapsed to ~0 while wash_count stayed normal (a data-feed drop,
-    not a real price). Row is bad if it has ≥ASP_MIN_WASH washes AND an implied $/wash below the floor.
-    Self-contained per-row predicate (no per-site baseline). Returns (filtered_rec, n_dropped)."""
-    if rec.empty:
-        return rec, 0
-    mw, rw = rec.mem_wash_count.replace(0, np.nan), rec.ret_wash_count.replace(0, np.nan)
-    bad = (((rec.mem_wash_count >= ASP_MIN_WASH) & (rec.mem_revenue / mw < ASP_FLOOR_MEM))
-           | ((rec.ret_wash_count >= ASP_MIN_WASH) & (rec.ret_revenue / rw < ASP_FLOOR_RET))).fillna(False)
-    return rec[~bad], int(bad.sum())
-
-
-@st.cache_data(show_spinner=False)
-def global_healthy_asp(express_only=False):
-    """Wash-weighted cluster-ASP fallback from ALL healthy site-months (after the corrupt-row floor),
-    used when every in-radius neighbour is corrupt — far better than the flat $30/$15 defaults.
-    Returns (cl_mem_pp, purch_per_wash, cl_ret)."""
-    df, _ = load_data(express_only)
-    rec, _ = _drop_corrupt_asp_rows(df)
-    mm = rec.dropna(subset=["mem_revenue"]); rr = rec.dropna(subset=["ret_revenue"])
-    mp, mw = mm.mem_purchase_count.sum(), mm.mem_wash_count.sum()
-    cl_mem_pp = float(mm.mem_revenue.sum() / mp) if mp > 0 else 30.0
-    ppw = float(mp / mw) if mw > 0 else 0.33
-    cl_ret = float(rr.ret_revenue.sum() / rr.ret_wash_count.sum()) if rr.ret_wash_count.sum() > 0 else 15.0
-    return cl_mem_pp, ppw, cl_ret
 
 
 PNL = _PROFORMA / "data" / "opex" / "opex-data.csv"
@@ -75,21 +52,6 @@ def load_pnl():
     return g[(g.months >= 11) & (g.year.between(2022, 2025))].copy()
 
 
-def regional_opex(pnl, art, state, region, min_sites=5):
-    """Average annual operating expense per site, by YEAR, for the pin's STATE (if ≥min_sites of P&L data there)
-    else its REGION else all sites. Returns (year-table, scope-label)."""
-    s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
-           .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
-    p = pnl.copy(); p["region"] = p.state.map(s2r)
-    sub, scope = p[p.state == state], f"state {state}"
-    if sub.location_name.nunique() < min_sites:
-        rsub = p[p.region == region]
-        sub, scope = (rsub, f"region {region}") if len(rsub) else (p, "all sites (no local P&L)")
-    yo = (sub.groupby("year").agg(opex=("opex", "mean"), income=("income", "mean"), n=("location_name", "nunique"),
-                                  asp_mem=("asp_mem", "median"), asp_ret=("asp_ret", "median")).reset_index())
-    return yo, scope
-
-
 @st.cache_data(show_spinner="Loading monthly P&L…")
 def load_pnl_monthly():
     """MONTHLY P&L per location: opex = SUM of the sub-monthly report rows; washes/revenue = the monthly snapshot."""
@@ -105,151 +67,6 @@ def load_pnl_monthly():
     m["age"] = (m.date.dt.year - first.dt.year) * 12 + (m.date.dt.month - first.dt.month)
     m["wash"] = m.mem_wash.fillna(0) + m.ret_wash.fillna(0)
     return m
-
-
-def opex_per_wash(pm, art, lat, lon, state, region, min_sites=5):
-    """MATURE (age 18–30) monthly operating-expense **per wash** ($) — the settled cost level. Scoped to the pin's
-    state (≥min_sites of P&L data), else its region (≥min_sites), else all sites. Returns ($/wash, scope label)."""
-    s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
-           .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
-    d = pm[(pm.wash > 0) & (pm.opex > 0) & (pm.age.between(18, 30))].copy(); d["region"] = d.state.map(s2r)
-    sub, sc = d[d.state == state], f"state {state}"
-    if sub.location_name.nunique() < min_sites:
-        r = d[d.region == region]
-        sub, sc = (r, f"region {region}") if r.location_name.nunique() >= min_sites else (d, "all sites")
-    return float((sub.opex / sub.wash).median()), sc
-
-
-def opex_ramp(pm, art, state=None, region=None, min_sites=8):
-    """LEARNED new-site opex lifecycle from the P&L, REGION-SPECIFIC where supported.
-    age 0 = the site's FIRST P&L row (year,month) — NOT created_date. For each site, opex(age) ÷ its OWN mature
-    (mo 18–30) opex, then the median across sites by age — scoped to the pin's STATE (≥min_sites), else REGION,
-    else ALL sites. New sites run HOT early (setup/marketing/ramp) then settle to ~1× by ~year 1.
-    NOTE: the P&L only spans ~33 months, so the learned curve ends at `hage` (the last age with support). The caller
-    EXTENDS months hage+1..60 with the forecast wash volume (opex ≈ $/wash × forecast washes), not a flat line.
-    Returns (ramp[0..60] normalized so mature=1, scope-label, hage = last age with real P&L support)."""
-    s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
-           .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
-    d = pm.copy(); d["region"] = d.state.map(s2r)
-    last = d.groupby("location_name").date.transform("max")            # drop each site's LAST month — partial-period
-    d = d[d.date < last]                                               # export artifact (near-zero opex at the tail)
-    d = d[(d.age >= 0) & (d.age <= 42) & (d.opex > 0)]
-    mat = d[d.age.between(18, 30)].groupby("location_name").opex.mean(); mat = mat[mat > 0]
-    d = d[d.location_name.isin(mat.index)].copy(); d["rel"] = d.opex / d.location_name.map(mat)
-
-    def _curve(sub):
-        sup = sub.groupby("age").location_name.nunique()
-        med = sub.groupby("age").rel.median()[sup >= max(4, min_sites // 2)]   # keep only ages with support
-        med = med[med.index <= 30]                                            # trust only ≤ mo30 (end of mature window);
-        if med.empty:                                                         # mo31+ is thin/partial-export → forecast it
-            return None
-        arr = np.full(61, np.nan)
-        for a in med.index:
-            if 0 <= a <= 60 and np.isfinite(med[a]) and med[a] > 0:
-                arr[a] = med[a]
-        s = pd.Series(arr).interpolate(limit_area="inside").rolling(3, center=True, min_periods=1).mean()
-        asym = float(np.nanmean(s.values[18:31])) or 1.0
-        hage = int(med.index.max())                                    # last age with real P&L support
-        s.iloc[hage + 1:] = asym                                       # placeholder beyond data (caller extends w/ forecast)
-        s = s.fillna(asym)
-        return np.clip((s / asym).to_numpy(), 0.5, 3.0), hage
-
-    sub, scope = d[d.state == state], f"state {state}"
-    if sub.location_name.nunique() < min_sites:
-        r = d[d.region == region]
-        sub, scope = (r, f"region {region}") if r.location_name.nunique() >= min_sites else (d, "all sites")
-    res = _curve(sub)
-    if res is None:
-        res, scope = _curve(d), "all sites"
-    ramp, hage = res
-    return ramp, scope, hage
-
-
-def opex_pct_curve(months, hot_end=9, mat_start=30, hot_hi=0.62, hot_lo=0.55, mat=0.45):
-    """Opex as a % of revenue for the forecast P&L orange line.
-    HOT launch: ~50–62% of revenue over the first ~hot_end months (declines gently 0.62→0.55,
-    staying inside the 50–62% band), then a smooth ease down to a mature ~40–50% (settles at
-    `mat`) by month `mat_start`, held flat thereafter."""
-    m = np.asarray(months, float)
-    pct = np.full(m.shape, float(mat))
-    hot = m <= hot_end
-    pct[hot] = hot_hi + (hot_lo - hot_hi) * (m[hot] / max(hot_end, 1))     # 50–62% band, first ~8–10 months
-    mid = (m > hot_end) & (m < mat_start)
-    f = (m[mid] - hot_end) / (mat_start - hot_end)
-    f = 0.5 - 0.5 * np.cos(np.pi * f)                                      # smoothstep ease
-    pct[mid] = hot_lo + (mat - hot_lo) * f                                 # glide down into the 40–50% band
-    return pct
-
-
-def opex_pct_fit(pm, art, state=None, region=None, min_sites=8, max_age=42):
-    """EMPIRICAL operating-expense ratio (opex ÷ income, %) by months since inception — the data behind the
-    modelled orange opex line, mirroring the reference 'total_expense_pct — normalized by month of inception'.
-    For each scoped site we take its monthly opex%, then the MEDIAN and the 25–75 percentile band across sites
-    by age (age 0 = the site's FIRST P&L row). Scoped to the pin's STATE (≥min_sites), else REGION, else ALL.
-    Returns (ages, median, q25, q75, support_n, scope) or None if there's not enough history."""
-    s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
-           .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
-    d = pm.copy(); d["region"] = d.state.map(s2r)
-    last = d.groupby("location_name").date.transform("max")            # drop each site's LAST month — partial-period export artifact
-    d = d[d.date < last]
-    d = d[(d.age >= 0) & (d.age <= max_age) & (d.opex > 0) & (d.income > 0)].copy()
-    d["pct"] = 100.0 * d.opex / d.income
-    d = d[d.pct.between(0, 500)]                                        # drop export garbage (near-zero income → absurd %)
-
-    def _fit(sub):
-        if sub.location_name.nunique() < min_sites:
-            return None
-        sup = sub.groupby("age").location_name.nunique()
-        keep = sup[sup >= max(4, min_sites // 2)].index                # keep only ages with enough sites
-        g = sub[sub.age.isin(keep)].groupby("age").pct
-        med = g.median()
-        if med.empty:
-            return None
-        return med, g.quantile(0.25), g.quantile(0.75), sup.reindex(med.index)
-
-    res = _fit(d[d.state == state]); scope = f"state {state}"
-    if res is None:
-        res = _fit(d[d.region == region]); scope = f"region {region}"
-    if res is None:
-        res = _fit(d); scope = "all sites"
-    if res is None:
-        return None
-    med, q25, q75, sup = res
-    return med.index.to_numpy(), med.to_numpy(), q25.to_numpy(), q75.to_numpy(), sup.to_numpy(), scope
-
-
-def opex_pct_curve_fit(pm, art, state=None, region=None, months=None, min_sites=8):
-    """Opex-as-%-of-revenue curve FIT to the empirical P&L pattern (median opex ÷ income by month since
-    inception): a HOT launch decaying to a mature level. Fits  mature + (hot − mature)·exp(−age/τ)  to the
-    scoped per-age median (support-weighted, so thin/noisy ages don't drag it), then evaluates over `months`
-    — naturally PROPAGATING forward to month 60, asymptoting to the mature level past the data.
-    Falls back to the hand-set opex_pct_curve if there isn't enough P&L history. Returns a fraction array."""
-    if months is None:
-        months = np.arange(0, 61)
-    months = np.asarray(months, float)
-    fit = opex_pct_fit(pm, art, state, region, min_sites=min_sites, max_age=30)
-    if fit is None:
-        return opex_pct_curve(months)
-    age, med, _q25, _q75, sup, _scope = fit
-    age = age.astype(float)
-    y = med.astype(float) / 100.0                                      # opex% as a fraction of revenue
-    w = np.sqrt(np.clip(sup.astype(float), 1, None))                   # weight ages by how many sites support them
-
-    mat0 = float(np.average(y[age >= 18], weights=w[age >= 18])) if (age >= 18).any() else float(np.median(y))
-    hot0 = float(y[age <= 2].mean()) if (age <= 2).any() else float(y[0])
-    lo, hi = (0.45, 0.25, 1.0), (1.6, 0.70, 36.0)
-    p0 = [min(max(hot0, lo[0]), hi[0]), min(max(mat0, lo[1]), hi[1]), 6.0]   # clip guess into the bounds
-
-    def _decay(a, hot, mat, tau):
-        return mat + (hot - mat) * np.exp(-a / np.maximum(tau, 1e-6))
-
-    try:
-        from scipy.optimize import curve_fit
-        popt, _ = curve_fit(_decay, age, y, p0=p0, sigma=1.0 / w, absolute_sigma=False,
-                            maxfev=10000, bounds=(lo, hi))
-    except Exception:
-        popt = p0
-    return np.clip(_decay(months, *popt), 0.30, 1.5)
 
 
 # ── expense plan: fit user OPEX% (% of sales/yr) onto the learned pattern + spread CAPEX$ (mirrors app/pnl_analysis) ──
@@ -359,221 +176,6 @@ def gran_xaxes_months(fig, gran, xb, noun="open"):
                      tickvals=list(xb), ticktext=[f"{u}{int(i) // step + 1}" for i in xb])
 
 
-def opex_trend_hist(pnl, art, state, region, min_sites=5):
-    """Median per-site YoY opex growth for the pin's scope — the historical opex 'pattern' (context for the
-    cost-growth slider). NOTE: on this data it's strongly negative & noisy (likely a reporting artifact), so it's
-    shown, not used as the default. Returns a fraction/yr."""
-    s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
-           .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
-    a = pnl.copy(); a["region"] = a.state.map(s2r)
-    a = a.sort_values(["location_name", "year"]); a["prev"] = a.groupby("location_name").opex.shift(1)
-    a["yoy"] = a.opex / a["prev"] - 1
-    sub = a[a.state == state]
-    if sub.location_name.nunique() < min_sites:
-        r = a[a.region == region]; sub = r if len(r) else a
-    yoy = sub.yoy.replace([np.inf, -np.inf], np.nan).dropna()
-    return float(yoy.median()) if len(yoy) else 0.0
-
-
-def asp_refs(pnl, art, lat, lon, state, region):
-    """Two reference ASPs to mark on the sliders: OVERALL (all P&L sites) and CLUSTER/LOCAL (P&L sites ≤25 km of
-    the pin, falling back to state → region → overall when too few). Returns mem/ret for each + a scope label."""
-    ov_mem, ov_ret = float(pnl.asp_mem.median()), float(pnl.asp_ret.median())
-    loc = (pnl.groupby("location_name")
-           .agg(lat=("lat", "first"), lon=("lon", "first"), state=("state", "first"),
-                asp_mem=("asp_mem", "median"), asp_ret=("asp_ret", "median")).reset_index().dropna(subset=["lat", "lon"]))
-    loc["d"] = haversine_km(lat, lon, loc.lat.values, loc.lon.values)
-    near = loc[loc.d <= 25]
-    if len(near) >= 2:
-        sub, sc = near, f"cluster ≤25 km · {len(near)} sites"
-    elif (loc.state == state).sum() >= 3:
-        sub, sc = loc[loc.state == state], f"state {state}"
-    else:
-        s2r = (art["sites_rl"].dropna(subset=["state"]).groupby("state").region
-               .agg(lambda x: x.mode().iloc[0] if len(x.mode()) else None).to_dict())
-        loc["region"] = loc.state.map(s2r); rg = loc[loc.region == region]
-        sub, sc = (rg, f"region {region}") if len(rg) else (loc, "all sites")
-    return dict(ov_mem=ov_mem, ov_ret=ov_ret, cl_mem=float(sub.asp_mem.median()),
-                cl_ret=float(sub.asp_ret.median()), scope=sc)
-
-
-TAU_Y = 2.0   # post-maturity growth SATURATES over ~2 yr (sites plateau ~24 mo empirically); see _sat_years
-
-
-def _sat_years(years):
-    """Saturating 'effective years' of drift: ≈ linear near 0, asymptotes to TAU_Y. So a trend applies at full
-    strength early then DECELERATES — a booming market ramps then plateaus instead of compounding forever. This is
-    the principled replacement for the old ±% rate clamp (growth can't be extrapolated unbounded — booms saturate)."""
-    return TAU_Y * (1.0 - np.exp(-np.asarray(years, dtype=float) / TAU_Y))
-
-
-def _robust_slope(arr):
-    """Per-month log-growth slope (Theil-Sen on 6-mo-smoothed log level, last ~30 mo) + its SE. SE inflated by √6
-    for the smoothing autocorrelation (effective N ≈ K/6). Returns (slope, se) or None if the series is too short."""
-    arr = np.asarray(arr, dtype=float); arr = arr[np.isfinite(arr)]
-    if len(arr) < 18:
-        return None
-    sm = pd.Series(arr).rolling(6, min_periods=3).mean().dropna().to_numpy()
-    K = min(30, len(sm))
-    if K < 8:
-        return None
-    yv = np.log(np.clip(sm[-K:], 1.0, None)); xv = np.arange(K, dtype=float)
-    try:
-        from scipy.stats import theilslopes
-        sl, _, lo, hi = theilslopes(yv, xv)                # robust median slope + 95% CI
-    except Exception:
-        sl = float(np.polyfit(xv, yv, 1)[0]); lo = hi = sl
-    se = max((hi - lo) / (2 * 1.96), 1e-9) * np.sqrt(6.0)
-    return float(sl), float(se)
-
-
-def _shrink_annualize(sl, se):
-    """Shrink a per-month slope toward 0 by its signal-to-noise t²/(1+t²), annualize → (g, g_lo, g_hi). When the
-    trend isn't distinguishable from flat (wide CI) the central collapses to ~0; the band is the honest slope CI.
-    Loose ±40%/yr SANITY rail only stops a degenerate series exploding — it is NOT the old [-5%,+8%] clamp."""
-    SANE = lambda r: float(np.clip(r, -0.40, 0.40))
-    t = abs(sl) / se
-    sl_c = sl * (t * t / (1.0 + t * t))
-    return SANE(np.exp(sl_c * 12) - 1), SANE(np.exp((sl - 1.96 * se) * 12) - 1), SANE(np.exp((sl + 1.96 * se) * 12) - 1)
-
-
-def robust_growth(arr):
-    """Annual growth (central + data-based CI band) for ONE series — no hand-set ±clamp."""
-    g = _robust_slope(arr)
-    return _shrink_annualize(*g) if g else (0.0, 0.0, 0.0)
-
-
-def market_trend(piv):
-    """COMPOSITION-ROBUST market trend from a date×site pivot. Each site's OWN robust slope (immune to sites
-    entering/leaving an average — that lurch faked +trends in 1–2-site markets), pooled by MEDIAN; pooled SE from
-    the between-site spread and within-site error. Returns (g, g_lo, g_hi). Data-driven, no growth clamp."""
-    slopes, ses = [], []
-    for col in getattr(piv, "columns", []):
-        r = _robust_slope(piv[col].dropna().to_numpy())
-        if r:
-            slopes.append(r[0]); ses.append(r[1])
-    if not slopes:
-        return 0.0, 0.0, 0.0
-    slopes = np.asarray(slopes); ses = np.asarray(ses); n = len(slopes)
-    sl = float(np.median(slopes))
-    between = float(np.std(slopes, ddof=1)) if n >= 2 else 0.0
-    se = max(np.hypot(between, float(np.median(ses))) / np.sqrt(n), 1e-9)
-    return _shrink_annualize(sl, se)
-
-
-def _seasonal_factors(s, min_years=2):
-    """Multiplicative calendar-month seasonal profile (12 factors, Jan..Dec, mean 1.0) from a monthly-DATETIME-
-    indexed history via a 12-mo centered-moving-average decomposition (ratio = actual / local 12-mo average,
-    pooled per calendar month by MEDIAN, normalized to mean 1, damped ±40%). None → caller stays flat (index
-    not monthly-datetime, or < ~2 yr covering all 12 months)."""
-    if not isinstance(getattr(s, "index", None), pd.DatetimeIndex) or len(s) < 12 * min_years:
-        return None
-    v = pd.Series(s).astype(float)
-    trend = v.rolling(12, center=True, min_periods=12).mean()
-    ratio = (v / trend).replace([np.inf, -np.inf], np.nan).dropna()
-    if ratio.empty:
-        return None
-    by_month = ratio.groupby(ratio.index.month).median().reindex(range(1, 13))
-    if by_month.isna().any():
-        return None
-    fac = np.clip(by_month.to_numpy() / float(np.mean(by_month.to_numpy())), 0.6, 1.4)
-    return fac / np.mean(fac)
-
-
-def forecast_series(s, H, g=None, seasonal=False):
-    """SMOOTH 5-yr expected-trend forecast. Starts exactly at the last actual value and blends over ~a quarter
-    into a trend line at the recent deseasonalized LEVEL, growing at a ROBUST annual rate (`robust_growth` —
-    Theil-Sen, follows the true long-run direction, not a spike-fooled ratio).
-
-    `seasonal=True` overlays the history's repeating calendar-month profile (`_seasonal_factors`) on the trend so
-    a MONTHLY series keeps a realistic yearly wiggle instead of going flat; needs a datetime-indexed `s` with ~2 yr
-    of history, else it silently stays flat."""
-    s = pd.Series(s).astype(float).dropna()
-    n = len(s)
-    if n == 0:
-        return np.zeros(H)
-    arr = s.to_numpy()
-    last = float(arr[-1])
-    level = float(arr[-min(12, n):].mean())                    # deseasonalized recent level
-    if g is None:
-        g = robust_growth(arr)[0]
-    t = np.arange(1, H + 1)
-    trend = level * (1 + g) ** _sat_years(t / 12.0)            # smooth trend at the robust rate, SATURATING (boom decelerates)
-    if seasonal:                                               # repeat the calendar-month profile forward
-        fac = _seasonal_factors(s)
-        if fac is not None:
-            fut_month = (int(s.index[-1].month) - 1 + t) % 12  # 0-based calendar month of each future step
-            trend = trend * fac[fut_month]
-    w = np.exp(-(t - 1) / 3.0)                                 # blend: start at last actual, converge to trend (~quarter)
-    return np.clip(last * w + trend * (1 - w), 0, None)
-
-
-# ── campaign signal — what the operators' P&L actually shows (event study on opex-data.csv) ──
-# A "campaign" = a promotional OPEX spike. HONEST read: the apparent 12-month "lift" in the raw event
-# study is mostly the site's own organic ramp (≈half of campaign sites are <1yr old & ramping). Once each
-# site's trend is removed (detrend + difference-in-differences), the clean incremental effect is a SHORT
-# (~1–6 month) retail→MEMBERSHIP CONVERSION — biggest where there's retail headroom (low membership share),
-# best ROI in dense markets. The promo OPEX is front-loaded (hot launch month, short tail).
-CAMP_OPEX_TAIL = [1.33, 1.17, 1.10, 1.05, 1.03, 1.02]    # opex multiplier during the campaign window (the spend)
-
-
-def campaign_conv_pct(mem_share):
-    """Membership-wash lift a campaign delivers, scaled by the site's membership share (= retail headroom).
-    From the timing analysis: low-share sites convert the most retail customers into members."""
-    if mem_share < 0.65:
-        return 0.30          # lots of retail to convert (data: +36% lift; tempered for the new-site case)
-    if mem_share < 0.78:
-        return 0.14
-    return 0.07              # already mostly members → little headroom
-
-
-def campaign_effect(launch, mem_share, intensity=1.0, window=6, horizon=61):
-    """Per-month multipliers (membership washes, retail washes, opex) for a SHORT campaign. The effect is a
-    retail→membership conversion that ramps in over ~2 months, holds through `window` months, then fades
-    (members partly stick, ~12-mo half-life). Membership washes lift by the share-scaled amount; retail
-    gives up ~half as many washes (converts wash more often). OPEX carries the promo spend over the window."""
-    lift = campaign_conv_pct(mem_share) * intensity
-    mem, ret, opx = np.ones(horizon), np.ones(horizon), np.ones(horizon)
-    for t in range(horizon):
-        k = t - launch
-        if k < 0:
-            continue
-        if k < window:
-            ramp = min(1.0, (k + 1) / 2.0)                          # conversion ramps in over ~2 months
-            mem[t] = 1 + lift * ramp
-            ret[t] = 1 - 0.5 * lift * ramp                         # members wash more → retail falls ~half as much
-            opx[t] = 1 + (CAMP_OPEX_TAIL[k] - 1) * intensity if k < len(CAMP_OPEX_TAIL) else 1.0
-        else:
-            f = 0.5 ** ((k - window) / 12.0)                       # membership base partly sticks, slowly fades
-            mem[t] = 1 + lift * f
-            ret[t] = 1 - 0.5 * lift * f
-    return mem, ret, opx
-
-
-@st.cache_data(show_spinner="Detecting campaigns…")
-def campaign_months_by_site():
-    """site_key -> list of campaign month timestamps (real promo OPEX spikes) from opex-data.csv.
-    Spike = true_opex (cogs+expenses) > median+3·MAD AND > 1.3× trailing-6mo median; interior months only."""
-    p = pd.read_csv(PNL, low_memory=False)
-    p["site_key"] = p.client_id.astype(str) + "::" + p.site_id.astype(str)
-    p["date"] = pd.to_datetime(p["report_date"]).dt.to_period("M").dt.to_timestamp()   # month start (matches main-ds)
-    p["true_opex"] = p.cogs.fillna(0) + p.expenses.fillna(0)
-    # one row per (site, month): keep the real financial row, dropping all-zero artifact duplicates
-    p = p.sort_values("total_income").drop_duplicates(["site_key", "date"], keep="last")
-    out = {}
-    for sk, g in p.sort_values("date").groupby("site_key"):
-        s = g.set_index("date")["true_opex"]
-        if len(s) < 12:
-            continue
-        med = s.median(); mad = 1.4826 * (s - med).abs().median()
-        troll = s.shift(1).rolling(6, min_periods=4).median()
-        spike = (s > med + 3 * mad) & (s > 1.3 * troll)
-        cutoff = s.index[-3]                                        # need a post-window → drop last 3 months
-        dates = [d for d in s.index[spike.fillna(False)] if d <= cutoff]
-        if dates:
-            out[sk] = dates
-    return out
-
 
 @st.cache_data(show_spinner=False)
 def _campaign_data():
@@ -581,34 +183,6 @@ def _campaign_data():
     d = pd.read_csv(PNL, low_memory=False)
     d["site_key"] = d.client_id.astype(str) + "::" + d.site_id.astype(str)
     return d
-
-
-@st.cache_data(show_spinner=False)
-def _campaigns_df():
-    """`campaigns_df` for the book_v4 plots — detect OPEX spikes (true_opex > 1.2× trailing-6mo mean) and
-    cluster consecutive spike months (gap ≤ 1) into campaigns (site_key / campaign_start / duration_months)."""
-    data = _campaign_data()
-    sub = data.sort_values(["site_key", "report_date"]).copy()
-    sub["report_date"] = pd.to_datetime(sub["report_date"])
-    sub["true_opex"] = sub["cogs"] + sub["expenses"]
-    sub["opex_baseline"] = (sub.groupby("site_key")["true_opex"]
-                            .transform(lambda s: s.shift(1).rolling(6, min_periods=4).mean()))
-    sub["opex_vs_baseline"] = sub["true_opex"] / sub["opex_baseline"]
-    spikes = sub[sub["opex_vs_baseline"] > 1.2].copy()
-    records = []
-    for site_key, grp in spikes.sort_values("report_date").groupby("site_key"):
-        rows = grp.reset_index(drop=True); i = 0
-        while i < len(rows):
-            start_date = rows.loc[i, "report_date"]; months = [rows.loc[i, "report_date"]]; j = i + 1
-            while j < len(rows):
-                gap = ((rows.loc[j, "report_date"].year - rows.loc[j-1, "report_date"].year) * 12 +
-                       (rows.loc[j, "report_date"].month - rows.loc[j-1, "report_date"].month))
-                if gap <= 1:
-                    months.append(rows.loc[j, "report_date"]); j += 1
-                else:
-                    break
-            records.append({"site_key": site_key, "campaign_start": start_date, "duration_months": len(months)}); i = j
-    return pd.DataFrame(records)
 
 
 def render_campaign_snapshot():
@@ -1113,7 +687,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     _mp, _mw = _mm.mem_purchase_count.sum(), _mm.mem_wash_count.sum()
     # Fallback chain: clean cluster pool → if a side is empty (all neighbours corrupt / no market) use the
     # GLOBAL healthy-median ASP (never the flat $30/$15, which can be worse than a degraded-but-real figure).
-    _g_mem_pp, _g_ppw, _g_ret = global_healthy_asp(express_only)
+    _g_mem_pp, _g_ppw, _g_ret = global_healthy_asp(load_data(express_only)[0])
     cl_mem_pp = float(_mm.mem_revenue.sum() / _mp) if _mp > 0 else _g_mem_pp     # cluster $/membership PURCHASE (the new ASP)
     purch_per_wash = float(_mp / _mw) if _mw > 0 else _g_ppw                     # cluster membership purchases per membership wash
     cl_ret = float(_rr.ret_revenue.sum() / _rr.ret_wash_count.sum()) if _rr.ret_wash_count.sum() > 0 else _g_ret
@@ -1129,7 +703,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     mem_purch = mem * purch_per_wash                                            # → projected membership PURCHASES (revenue basis)
 
     # ── cost assumptions: one editable Year × {ASP, OPEX %, CAPEX} grid ──
-    opex_shape = opex_pct_curve_fit(load_pnl_monthly(), art, info.get("state"), info.get("region"), months)
+    opex_shape = opex_pct_curve_fit(load_pnl_monthly(), art, info.get("state"), info.get("region"), months)[0]
     _yslices = year_slices(len(months))
     _rev0 = mem_purch * cl_mem_pp + ret * cl_ret                                # cluster-blend revenue (for the OPEX default weighting)
     def _learned_pct(sl):                                                       # learned opex% per year → the OPEX defaults (Y4–5 extrapolated)

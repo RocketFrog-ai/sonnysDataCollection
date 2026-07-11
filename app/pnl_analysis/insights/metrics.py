@@ -28,7 +28,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from app.pnl_analysis.modelling.trend import market_trend, robust_growth
+from proforma.pnl.trend import market_trend, robust_growth
 
 _MIN_SIDE_MONTHS = 3     # need >=3 non-NaN months each side of an entry to call a before/after change
 _RAMP_MIN_MONTHS = 18    # below this the focal history is too short for a robust ramp slope

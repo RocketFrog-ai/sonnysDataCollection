@@ -6,6 +6,7 @@
 proforma/          ALL modelling. One tree; versions are git tags, not folders.
   data/            every dataset, once.
   models/          coldstart.py — THE model. plateau x ramp x cannibalization.
+  pnl/             shared P&L/market helper math (data/trend/opex/campaign), imported by UI + API.
   ui/              Streamlit. app.py is a thin entry; panels/ holds the modes.
   artifacts/       the fitted joblib.
 app/               FastAPI backend. main.py + server/ (routes) + core/ + pnl_analysis/.

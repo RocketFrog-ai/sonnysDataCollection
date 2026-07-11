@@ -10,26 +10,39 @@ Nothing here is a regression introduced by the restructure.
 
 ---
 
-## 1. The P&L math exists twice, and the copies have drifted
+## 1. The P&L helper math is now shared; only the orchestration is still twice
 
-The forecasting/P&L math is implemented **twice**:
+**Largely RESOLVED (2026-07).** The forecasting/P&L math used to be implemented **twice** — once
+in-process in the Streamlit UI, once as a port under `app/pnl_analysis/modelling/`. A drift map (every
+one of the 21 twin helper functions run through both sides on the golden pins) found them numerically
+identical on every reachable path — the differences were docstrings, a `state_to_region` refactor,
+caching, and two unreachable fallbacks. So the twins were extracted into one Streamlit-free package:
 
-| | |
-|---|---|
-| `proforma/ui/app.py` | the original, in-process with the Streamlit UI |
-| `app/pnl_analysis/modelling/{market,pnl,campaign,trend}.py` | a port of the same math, exposed as API endpoints |
+```
+proforma/pnl/    data.py  trend.py  opex.py  campaign.py   — ONE copy of the shared math
+   ▲                                    ▲
+   │ import                             │ import
+app/pnl_analysis/modelling/        proforma/ui/panels/
+   (JSON endpoints)                    (Streamlit render)
+```
 
-`app/pnl_analysis/modelling/data.py` says its loaders "mirror the loaders in
-`proforma/ui/app.py`". *Mirror* is doing real work in that sentence — it is a second
-implementation, not a shared one.
+Both sides now import the same `data` loaders, `trend` (market growth / seasonal forecast),
+`opex`/`asp` helpers, and `campaign` helpers. The extraction was behaviour-preserving to 1e-9
+(`model.json` / `api.json` / `ui_render.json` all unchanged).
 
-Only the shared parts are genuinely shared: `proforma/models/coldstart.py`
-(`predict_site`, `predict_neighbours`, `assign_clusters`, the cannibalization fit) is imported by
-both, so plateau × ramp × cannibalization is computed once.
+**What is still separate, on purpose:** the *orchestration* — the API's `pnl_forecast` / `expense_plan`
+/ `explore_market` (which return JSON) versus the UI's `render()` (which draws widgets). These have the
+same math underneath (now the shared helpers) but different I/O, so they cannot be one function. §1a
+below is the one place their glue still differs (the ASP *override*).
+
+Also genuinely shared, as before: `proforma/models/coldstart.py` (`predict_site`,
+`predict_neighbours`, `assign_clusters`, the cannibalization fit) — plateau × ramp × cannibalization
+is computed once.
 
 **These are agreed** (checked, identical): `PNL_EXCLUDE = {"alpinecarwash_000087"}`; the ASP>200
 revenue-nulling in the panel loader; `ASP_MIN_WASH = 200`, `ASP_FLOOR_MEM = 4.0`,
-`ASP_FLOOR_RET = 5.0`; and the row predicate inside `_drop_corrupt_asp_rows`.
+`ASP_FLOOR_RET = 5.0`; and the row predicate inside `_drop_corrupt_asp_rows` — these now live once in
+`proforma/pnl/opex.py`.
 
 ### 1a. Default revenue is priced per-leg on both sides; only the ASP *override* diverges
 
@@ -210,16 +223,14 @@ forecasts, set `n_jobs=1` on the estimator before `predict`, at a real throughpu
 
 ---
 
-## 7. Six P&L functions are dead in the UI and live in the API
+## 7. ~~Six P&L functions are dead in the UI and live in the API~~ — RESOLVED (2026-07)
 
-`load_pnl`, `regional_opex`, `opex_per_wash`, `opex_ramp`, `opex_trend_hist`, and `asp_refs` are
-defined in `proforma/ui/panels/_pinpoint_forecast.py` and called **nowhere** in `proforma/`.
-Their namesakes in `app/pnl_analysis/modelling/pnl.py` *are* called (`pnl.py:282`, `pnl.py:312`, …).
-
-So the API port kept them live while the Streamlit side stopped using them. They were relocated
-verbatim during the split rather than deleted, because deleting code is not code motion and because
-they are the closest thing to a specification of what the API's copies are supposed to do. Delete
-them only together with a decision about §1.
+`regional_opex`, `opex_per_wash`, `opex_ramp`, `opex_pct_fit`, `opex_trend_hist`, and `asp_refs`
+were defined in the UI's `_pinpoint_forecast.py` and called **nowhere** in `proforma/`, while their
+API namesakes were live. When §1's helpers were extracted into `proforma/pnl/`, these were resolved
+together: the UI now imports only the three it actually calls (`_drop_corrupt_asp_rows`,
+`global_healthy_asp`, `opex_pct_curve_fit`) from the shared package, and the dead defs were deleted
+(the UI panel dropped ~430 lines). The single canonical copy of each lives in `proforma/pnl/opex.py`.
 
 Related: `proforma/ui/site_analysis_page.py` was **not reachable** from `app.py`'s `MODES`
 dispatch. It was deleted in 2026-07, and the whole `app/site_analysis` subsystem with it.

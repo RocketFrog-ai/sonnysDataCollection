@@ -21,9 +21,9 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from app.pnl_analysis.modelling import data as D
-from app.pnl_analysis.modelling.data import cm, haversine_km
-from app.pnl_analysis.modelling.trend import forecast_series, market_trend
+from proforma.pnl import data as D
+from proforma.pnl.data import cm, haversine_km
+from proforma.pnl.trend import forecast_series, market_trend
 
 # role -> marker colour (mirrors the Explore-markets map in app.py)
 ROLE_COLOR = {"focal": "#e6194B", "entrant": "#f58231", "incumbent": "#5b8db8"}

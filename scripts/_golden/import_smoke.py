@@ -43,7 +43,9 @@ AST_ONLY_PREFIXES = (
 TREES = {
     # tag -> roots to walk. Pre-refactor roots are kept so this script still works when checked
     # out at the pre-refactor tag; py_files() silently skips roots that do not exist.
-    "backend": ["app"],
+    # proforma/pnl is the shared, Streamlit-free P&L/market/trend math imported by BOTH the backend
+    # (app/pnl_analysis/modelling) and the UI (proforma/ui/panels). Swept here so a break shows up.
+    "backend": ["app", "proforma/pnl"],
     "ui": [
         "proforma/models", "proforma/ui", "proforma/backtests",
         # the council still runs (python -m experiments.council.harness), so keep it swept even

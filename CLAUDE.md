@@ -18,6 +18,8 @@ anything that looks wrong** — several things are knowingly broken.
 proforma/          ALL modelling. ONE tree. Versions are git tags, not folders.
   data/            every dataset, exactly once.
   models/          coldstart.py — the model. tunnel_capex.py.
+  pnl/             the shared P&L/market helper math (data, trend, opex, campaign). ONE copy,
+                   Streamlit-free; imported by BOTH the UI and the API. See docs/DIVERGENCES.md §1.
   artifacts/       the fitted joblib (~46 MB).
   ui/              Streamlit only. app.py is a thin entry; panels/ holds the modes.
   backtests/       scripts (side effects at import). Run them; never import them.
@@ -35,12 +37,14 @@ cannibalization; see `proforma/MODELLING.md`). It has **two consumers**:
 
 1. the Streamlit app, in-process;
 2. the FastAPI backend, via `from proforma.models import coldstart as cm` in
-   `app/pnl_analysis/modelling/data.py`.
+   `proforma/pnl/data.py`.
 
-The **model** is shared. The **P&L / market math around it is implemented twice** — once in
-`proforma/ui/`, once in `app/pnl_analysis/modelling/*` — and the two have drifted. Decide which
-of the three places a change belongs in *before* editing. Do not unify them as a drive-by; see
-`docs/DIVERGENCES.md` §1.
+The **model** is shared, and as of 2026-07 so is the **P&L / market helper math**: it lives once in
+`proforma/pnl/` (`data`, `trend`, `opex`, `campaign`) and is imported by both the Streamlit UI
+(`proforma/ui/panels/`) and the API (`app/pnl_analysis/modelling/`). What is *not* shared is the
+orchestration — the API's JSON endpoints (`pnl_forecast`, `explore_market`, …) vs the UI's `render()`
+— because they have the same math but different I/O. A math change belongs in `proforma/pnl/` (both
+sides get it); an endpoint/render change belongs on its own side. See `docs/DIVERGENCES.md` §1.
 
 ## Environment (one, finally)
 
