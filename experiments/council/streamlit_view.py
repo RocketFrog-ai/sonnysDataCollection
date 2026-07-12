@@ -13,8 +13,16 @@ down the host dashboard. `backend` is accepted-and-ignored (the council is Azure
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import Optional
+
+# `streamlit run experiments/council/streamlit_view.py` (standalone) puts THIS file's dir on sys.path,
+# not the repo root, so `import experiments.council.*` fails. Put the repo root on the path first.
+# (Harmless when the proforma app imports us — the root is already there and this insert is idempotent.)
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
 
 import pandas as pd
 import streamlit as st
