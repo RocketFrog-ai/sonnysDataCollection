@@ -133,7 +133,7 @@ def _tally(ws) -> tuple:
 _NUM_EIDS = {
     "revenue_5yr": "fin.revenue_5yr", "net_5yr": "fin.net_5yr", "breakeven_month": "fin.breakeven",
     "membership_share": "fin.membership", "capex": "fin.capex", "tunnel_ft": "cap.tunnel_ft",
-    "mature_washes": "hist.cluster_wash", "peak_month_washes": "cap.peak_month_washes",
+    "mature_washes": "hist.projected_mature", "peak_month_washes": "cap.peak_month_washes",
 }
 
 
