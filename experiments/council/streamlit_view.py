@@ -113,14 +113,29 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     lbl = C.VERDICT_LABELS.get(verdict, verdict)
     col = {"Build": "green", "Pass": "red", "Conditional": "orange"}.get(verdict, "gray")
     prob = data.get("prob")
-    prob_txt = f"  ·  P(good build) {prob:.0%}" if isinstance(prob, (int, float)) else ""
+    prob_txt = f"  ·  signal P(good build) {prob:.0%}" if isinstance(prob, (int, float)) else ""
     conf = data.get("confidence") or 0.0
-    st.markdown(f"### :{col}[{lbl}]  ·  {conf:.0%} confidence{prob_txt}")
+    st.markdown(f"### :{col}[{lbl}]  ·  {conf:.0%} committee confidence{prob_txt}")
     st.caption(f"Basis: {data.get('basis', '')}")
+    st.caption("**Committee confidence** = how firmly the seats landed on this verdict (from the data-weighted "
+               "vote — near 50% means a genuinely split committee). **Signal · P(good build)** = the leakage-clean "
+               "model's *independent* probability this is a good build. They measure different things; when they "
+               "disagree, that gap is the ⚠️ note below — and it's the point.")
     if data.get("condition"):
         st.warning(f"**Condition:** {data['condition']}")
     if data.get("note"):
         st.warning(data["note"])
+
+    # ── how the vote is weighted (one seat does NOT equal one vote) ──
+    with st.expander("⚖️ How the vote is weighted — do all experts have equal power?"):
+        st.caption("No — data-grounded seats out-weigh world-knowledge ones (the guardrail against a room of "
+                   "bullish LLMs drifting to 'always build'), and the leakage-clean signal casts its own heavy "
+                   "vote. Only seats that took a lean vote; Capacity sizes the tunnel and abstains on go/no-go.")
+        for e in data.get("chamber", {}).get("experts", []):
+            role = "🌐 world-knowledge (down-weighted)" if e.get("is_world") else "🔒 data-grounded"
+            lean = e.get("lean") or "abstains"
+            st.caption(f"{e.get('emoji','')} **{e.get('name')}** — vote weight **{e.get('weight')}** · {role} · leans *{lean}*")
+        st.caption(f"🎯 **Data signal** — vote weight **{C.SIGNAL_WEIGHT}** (the only component with a *measured* out-of-fold edge)")
 
     # ── final report ──
     with st.expander("📄 In-depth committee report", expanded=True):

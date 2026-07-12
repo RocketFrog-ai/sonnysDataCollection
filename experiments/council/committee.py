@@ -30,7 +30,7 @@ def run_committee(snap, *, mode: Optional[str] = None, backend: Optional[str] = 
     """Convene the committee on a leakage-controlled `snap`. `backend` is ignored (Azure-only)."""
     radius_km = radius_km if radius_km is not None else C.RADIUS_KM
     ws = Workspace(lat=float(snap.lat), lon=float(snap.lon), radius_km=float(radius_km),
-                   snap=snap, focal_key=getattr(snap, "focal_key", "__live__::0"))
+                   snap=snap, focal_key=getattr(snap, "focal_key", "__live__::0"), light=light)
     log = DiscussionLog()
     experts = build_experts()
     fac = Facilitator(ws, log, experts, light=light, max_rounds=max_rounds)
@@ -108,6 +108,8 @@ class CommitteeResult:
                 "confidence": round(float(b.confidence), 2) if b else 0.0,
                 "key_number": (b.key_number if b else None),
                 "key_number_label": (b.key_number_label if b else ""),
+                "weight": (C.WORLD_EXPERT_WEIGHT if key in C.WORLD_EXPERTS else C.DATA_EXPERT_WEIGHT),
+                "is_world": key in C.WORLD_EXPERTS,
             })
 
         messages = []

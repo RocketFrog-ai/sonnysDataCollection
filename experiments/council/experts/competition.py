@@ -73,6 +73,8 @@ class CompetitionExpert(Expert):
     def _classify(self, ws, r3: float, rivals: list) -> Dict[str, Any]:
         """ONE wrapped Azure call: filter the Google list to true express-tunnel competitors + grade
         saturation on that count. Falls back to {} (→ 'unknown') on any failure (no key / timeout / bad JSON)."""
+        if getattr(ws, "light", False):
+            return {}                                    # light mode → skip the LLM classification
         try:
             payload = {"lat": ws.lat, "lon": ws.lon, "radius_miles": r3,
                        "rivals_3mi": [{"name": c.get("name"), "dist_mi": c.get("distance_miles"),

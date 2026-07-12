@@ -449,14 +449,14 @@ _TEMPLATE = r"""<!doctype html>
 
       var stats=el("div","vstats");
       function stat(k,v){ var s=el("div","vstat"); s.appendChild(el("div","k",k)); s.appendChild(el("div","v",v)); return s; }
-      if(D.confidence!=null) stats.appendChild(stat("Confidence", pct(D.confidence)+"%"));
-      if(D.prob!=null)       stats.appendChild(stat("P(good build)", pct(D.prob)+"%"));
+      if(D.confidence!=null) stats.appendChild(stat("Committee confidence", pct(D.confidence)+"%"));
+      if(D.prob!=null)       stats.appendChild(stat("Signal · P(good build)", pct(D.prob)+"%"));
       b.appendChild(stats);
 
       var meta=el("div","vmeta");
       if(D.rounds!=null) meta.appendChild(el("span","pill", D.rounds+" round"+(D.rounds==1?"":"s")));
       if(D.consensus_pct!=null) meta.appendChild(el("span","pill", pct(D.consensus_pct)+"% consensus"));
-      if(D.open_challenges!=null) meta.appendChild(el("span","pill", D.open_challenges+" open challenge"+(D.open_challenges==1?"":"s")));
+      if(D.open_challenges!=null) meta.appendChild(el("span","pill", D.open_challenges+" standing disagreement"+(D.open_challenges==1?"":"s")));
       if(D.site && D.site.lat!=null) meta.appendChild(el("span","pill","📍 "+Number(D.site.lat).toFixed(3)+", "+Number(D.site.lon).toFixed(3)));
       if(meta.childNodes.length){ b.appendChild(el("div","vspacer")); b.appendChild(meta); }
 

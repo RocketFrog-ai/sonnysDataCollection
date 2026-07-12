@@ -20,9 +20,10 @@ from experiments.council.protocol import BeliefState, Evidence
 
 _LM_SYS = (
     "You are a Local-Market Analyst evaluating a site for a NEW EXPRESS-TUNNEL car wash. Using the "
-    "coordinates and the demographic snapshot, write a RICH, specific market read that another analyst on "
-    "the committee could argue with — quote the numbers you are given and reason about what they imply for "
-    "express-wash demand, pricing, membership potential and throughput.\n"
+    "coordinates, the demographic snapshot, and the LIVE WEB SOURCES provided, write a RICH, specific market "
+    "read that another analyst on the committee could argue with — quote the numbers you are given, ground "
+    "current facts in the web_sources where relevant, and reason about what they imply for express-wash "
+    "demand, pricing, membership potential and throughput.\n"
     'Return STRICT JSON only, no prose, no code fences: {"demand_drivers": "...", "traffic_access": "...", '
     '"seasonality": "...", "demographic_read": "...", "competitive_context": "..."}. '
     "Each value = 1-3 substantive sentences with specifics."
@@ -58,28 +59,47 @@ class LocalMarketExpert(Expert):
                     {"mass_merchants": prof.get("mass_merchant_count"), "grocery": prof.get("grocery_count")},
                     kind="table", source="datasets.sitewise_for_pin", confidence=0.6),
         ]
-        out.extend(self._llm_analysis(ws, prof))
+        sources, place = self._web_sources(ws)
+        if sources:
+            top = " · ".join(f"{(s.get('title') or s.get('url'))[:64]}" for s in sources[:5])
+            out.append(self.ev("mkt.web_sources", f"live web sources for {place} ({len(sources)})", top,
+                               kind="text", source="websearch (live)", confidence=0.5, leakage_safe=False))
+        out.extend(self._llm_analysis(ws, prof, sources))
         return out
 
-    def _llm_analysis(self, ws, prof: dict) -> List[Evidence]:
-        """ONE wrapped Azure call → the rich, structured market read posted as several substantive evidence
-        items. Falls back to a single 'unavailable' item on any failure (no key / timeout / bad JSON)."""
+    def _web_sources(self, ws):
+        """Best-effort live web search for the pin (Azure Responses / Tavily / DDG). ([], place) if off."""
+        if getattr(ws, "light", False):
+            return [], ""                                # light mode → skip the (~30s) web search
         try:
-            user = {"lat": ws.lat, "lon": ws.lon,
-                    "population": prof.get("population_2025"),
-                    "median_income": prof.get("median_household_income"),
-                    "avg_household_income": prof.get("avg_household_income"),
-                    "avg_age": prof.get("avg_age"),
-                    "avg_vehicles": prof.get("avg_vehicles"),
-                    "pct_hh_income_50k_plus": prof.get("pct_hh_income_50k_plus"),
-                    "mass_merchants": prof.get("mass_merchant_count")}
-            text = llm.complete(
-                [{"role": "system", "content": _LM_SYS},
-                 {"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
-                json_mode=True, temperature=C.LLM_TEMPERATURE, max_tokens=1100)
-            j = llm.parse_json_lax(text)
+            from experiments.council import websearch
+            return websearch.gather_location_sources(ws.lat, ws.lon, radius_km=C.RADIUS_KM)
         except Exception:
-            j = {}
+            return [], ""
+
+    def _llm_analysis(self, ws, prof: dict, sources: list) -> List[Evidence]:
+        """ONE wrapped Azure call → the rich, structured market read (grounded in the live web sources)
+        posted as several substantive evidence items. Falls back to 'unavailable' on any failure."""
+        j = {}
+        if not getattr(ws, "light", False):
+            try:
+                user = {"lat": ws.lat, "lon": ws.lon,
+                        "population": prof.get("population_2025"),
+                        "median_income": prof.get("median_household_income"),
+                        "avg_household_income": prof.get("avg_household_income"),
+                        "avg_age": prof.get("avg_age"),
+                        "avg_vehicles": prof.get("avg_vehicles"),
+                        "pct_hh_income_50k_plus": prof.get("pct_hh_income_50k_plus"),
+                        "mass_merchants": prof.get("mass_merchant_count"),
+                        "web_sources": [{"title": s.get("title"), "url": s.get("url"),
+                                         "snippet": (s.get("content") or "")[:300]} for s in (sources or [])[:8]]}
+                text = llm.complete(
+                    [{"role": "system", "content": _LM_SYS},
+                     {"role": "user", "content": json.dumps(user, ensure_ascii=False)[:9000]}],
+                    json_mode=True, temperature=C.LLM_TEMPERATURE, max_tokens=1100)
+                j = llm.parse_json_lax(text)
+            except Exception:
+                j = {}
         fields = [("mkt.demand_drivers", "demand drivers"), ("mkt.traffic", "traffic / access / visibility"),
                   ("mkt.seasonality", "weather seasonality"), ("mkt.competitive_context", "competitive landscape (world-knowledge)")]
         keys = {"mkt.demand_drivers": "demand_drivers", "mkt.traffic": "traffic_access",

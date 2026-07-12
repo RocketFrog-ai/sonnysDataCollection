@@ -69,6 +69,7 @@ class Workspace:
     plan: List[Dict[str, str]] = field(default_factory=list)   # facilitator seed questions per expert
     round: int = 0
     llm_calls: int = 0
+    light: bool = False                               # light mode → experts skip their investigate-phase LLM/web calls
 
     # ── evidence ──
     def post(self, ev: Optional[Evidence]) -> None:
