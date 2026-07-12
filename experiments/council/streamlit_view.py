@@ -32,7 +32,7 @@ from experiments.council import chamber
 from experiments.council import config as C
 
 _BASE = Path(__file__).resolve().parent
-_CHAMBER_H = 660
+_CHAMBER_H = 820          # tall enough for the boardroom + speech bubbles + caption (use ⛶ for true fullscreen)
 
 
 def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: Optional[str] = None) -> None:
@@ -77,7 +77,9 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     # ── the animated chamber (the centerpiece) ──
     if cd is not None:
         try:
-            components.html(chamber.build_chamber_html(cd, height=_CHAMBER_H), height=_CHAMBER_H + 12, scrolling=False)
+            components.html(chamber.build_chamber_html(cd, height=_CHAMBER_H), height=_CHAMBER_H + 12, scrolling=True)
+            st.caption("Tip: click **⛶** (bottom-right of the chamber) for true fullscreen — the speech "
+                       "bubbles have the most room there. Each message also appears in the caption bar under the table.")
         except Exception as exc:
             st.warning(f"Chamber animation unavailable ({exc}); see the details below.")
 

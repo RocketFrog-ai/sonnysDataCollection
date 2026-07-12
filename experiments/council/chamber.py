@@ -329,6 +329,19 @@ _TEMPLATE = r"""<!doctype html>
   .spd select{font:inherit;font-size:12px;color:var(--ink);background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:4px 6px}
   .icobtn{width:34px;height:34px;padding:0;justify-content:center;font-size:15px}
 
+  /* ── caption: an always-visible subtitle so a clipped speech bubble is still readable ── */
+  .caption{flex:0 0 auto;margin-top:8px;padding:9px 12px;border-radius:10px;background:var(--surface);
+    border:1px solid var(--border);color:var(--ink);font-size:13px;line-height:1.42;display:flex;gap:9px;
+    align-items:flex-start;box-shadow:0 1px 2px var(--shadow);min-height:20px}
+  .caption.empty{color:var(--ink-2);font-style:italic;justify-content:center;align-items:center}
+  .caption .ctag{flex:0 0 auto;font-weight:800;font-size:10px;letter-spacing:.03em;padding:3px 7px;
+    border-radius:6px;color:#fff;background:var(--cc,#64748b);white-space:nowrap}
+  .caption .cwho{font-weight:700}
+  /* ── fullscreen (native): fill the screen + give the stage room so bubbles never clip ── */
+  .wrap:fullscreen, .wrap:-webkit-full-screen{height:100vh;min-height:100vh;width:100vw;padding:18px 20px;
+    background:var(--plane);overflow-y:auto}
+  .wrap:fullscreen .stage-wrap{min-height:56vh}
+
   @media (max-width:560px){
     .seat{width:112px}.fig{width:64px;height:72px}.head{width:46px;height:46px}.head .face{font-size:22px}
     .halo{width:56px;height:56px;top:23px}.bust{width:64px;height:38px}.meter{width:86px}
@@ -353,6 +366,7 @@ _TEMPLATE = r"""<!doctype html>
         <div class="seats" id="seats"></div>
       </div>
     </div>
+    <div class="caption empty" id="caption" aria-live="polite">Press ▶ Play to watch the committee deliberate — each seat's message shows here too.</div>
     <div class="controls">
       <button class="btn primary" id="play">▶&nbsp;Play</button>
       <button class="btn icobtn" id="restart" title="Restart">⟲</button>
@@ -368,6 +382,7 @@ _TEMPLATE = r"""<!doctype html>
         </select>
       </span>
       <button class="btn icobtn" id="theme" title="Toggle light / dark">◐</button>
+      <button class="btn icobtn" id="fs" title="Fullscreen">⛶</button>
     </div>
   </div>
 
@@ -709,6 +724,18 @@ _TEMPLATE = r"""<!doctype html>
         if(m.to && seats[m.to] && seats[sk]) drawWire(sk, m.to, m.type_color || MSGC[m.type] || "#64748b");
       }
 
+      // always-visible caption (subtitle) — readable even if the popup bubble is off-screen / clipped
+      var cap=$("caption");
+      if(curIdx>=0){
+        var cm=messages[curIdx], cc=cm.type_color || MSGC[cm.type] || "#64748b";
+        var cwho=(cm.sender_name||cm.sender||"")+(cm.to?(" → "+(cm.to_name||cm.to)):"");
+        cap.className="caption"; cap.style.setProperty("--cc", cc); cap.textContent="";
+        cap.appendChild(el("span","ctag", cm.type||"MSG"));
+        var cs=el("span"); cs.appendChild(el("span","cwho", cwho+": ")); cs.appendChild(document.createTextNode(cm.text||"")); cap.appendChild(cs);
+      } else {
+        cap.className="caption empty"; cap.textContent="Press ▶ Play to watch the committee deliberate — each message shows here too.";
+      }
+
       roundEl.textContent=""; roundEl.appendChild(el("span","rdot")); roundEl.appendChild(document.createTextNode(roundText(curIdx)));
       progEl.textContent = step + " / " + messages.length;
       $("stage").classList.toggle("done", step>=messages.length && messages.length>0);
@@ -740,6 +767,18 @@ _TEMPLATE = r"""<!doctype html>
       r.setAttribute("data-theme", dark ? "light" : "dark");
       if(lastWire) drawWire(lastWire.from, lastWire.to, lastWire.color);
     };
+    $("fs").onclick=function(){
+      var w=document.querySelector(".wrap");
+      try{
+        if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+        else{ (w.requestFullscreen||w.webkitRequestFullscreen).call(w); }
+      }catch(e){}
+    };
+    document.addEventListener("fullscreenchange", function(){
+      var on=!!(document.fullscreenElement||document.webkitFullscreenElement);
+      var fb=$("fs"); if(fb) fb.textContent = on ? "⤢" : "⛶";
+      if(lastWire) setTimeout(function(){ drawWire(lastWire.from, lastWire.to, lastWire.color); }, 140);
+    });
 
     // keep the active arrow correct across resizes
     var rz; window.addEventListener("resize", function(){

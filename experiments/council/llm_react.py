@@ -68,8 +68,8 @@ def _fmt_val(v) -> str:
     if isinstance(v, float):
         return f"{v:,.1f}"
     if isinstance(v, dict):
-        return json.dumps(v, ensure_ascii=False)[:200]
-    return str(v)[:200]
+        return json.dumps(v, ensure_ascii=False)[:400]
+    return str(v)[:400]                                  # richer text (competition classify, local-market read)
 
 
 def _evidence_line(e: Evidence) -> str:
@@ -104,7 +104,7 @@ def react(expert: str, role: str, persona: str, *, my_evidence: List[Evidence], 
         phase = _PHASE_OPEN if rnd == 0 else _phase_deliberate(rnd)
         sys = REACT_SYS.format(role=role, persona=persona, max_msgs=max_msgs, phase=phase)
         text = llm.complete([{"role": "system", "content": sys},
-                             {"role": "user", "content": json.dumps(ctx, ensure_ascii=False)[:8000]}],
+                             {"role": "user", "content": json.dumps(ctx, ensure_ascii=False)[:12000]}],
                             json_mode=True, temperature=C.LLM_TEMPERATURE, max_tokens=C.REACT_MAX_TOKENS)
         j = llm.parse_json_lax(text)
     except Exception:

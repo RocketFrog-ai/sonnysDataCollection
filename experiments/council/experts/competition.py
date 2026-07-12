@@ -1,16 +1,16 @@
 """
-Competition Analyst — live nearby-rival counts (Google Places, present-day) plus one LLM saturation read.
+Competition Analyst — TRUE express-tunnel competition within 3 driving miles.
 
-`investigate` pulls real car washes within 3 and 5 driving miles — a present-day snapshot, so **not**
-leakage-safe even when read for a backtest pin — and posts the counts and the closest rivals. It then
-makes ONE optional Azure call to grade competitive saturation from those counts (or, when Google/Azure is
-unavailable, from the pin's location alone via world knowledge); the call is wrapped so a down backend
-degrades to `comp.saturation = "unknown"` rather than dropping the seat's evidence.
+Google Places returns every "car wash" nearby — but most are detailers, hand washes, mobile detailers and
+self-serve bays that do NOT compete with an express tunnel. So `investigate` pulls the 3-mile rivals, then
+one Azure call CLASSIFIES them: it keeps only conveyor/express/tunnel/exterior-automatic washes, counts the
+true express competitors, and grades saturation on THAT count (not the raw total). With no Google key it
+falls back to world-knowledge of express density near the lat/lon. Present-day snapshot → not leakage-safe.
 """
 from __future__ import annotations
 
 import json
-from typing import List, Tuple
+from typing import Any, Dict, List
 
 from experiments.council import config as C
 from experiments.council import llm
@@ -18,72 +18,87 @@ from experiments.council import places
 from experiments.council.experts.base import Expert
 from experiments.council.protocol import BeliefState, Evidence
 
-_SATURATION_SYS = (
-    "You are a Competition Analyst on a car-wash site-selection committee. Grade the local competitive "
-    "saturation for a candidate car-wash site from nearby-rival counts (or, if none are given, your own "
-    "knowledge of car-wash density near that latitude/longitude).\n"
-    'Return STRICT JSON only, no prose, no code fences: {"saturation": "low|medium|high", '
-    '"headroom": "<=200 chars, one clause on remaining headroom or risk"}.'
+_COMP_SYS = (
+    "You are a Competition Analyst for a NEW EXPRESS-TUNNEL car wash. You are given nearby car-wash "
+    "businesses from Google within 3 driving miles. CLASSIFY each as a TRUE express-tunnel competitor or "
+    "NOT: detailing shops, hand washes, mobile detailers, self-serve bays and full-detail-only shops are "
+    "NOT direct competitors for an express tunnel — only conveyor / express / tunnel / exterior-automatic "
+    "washes are. Count the TRUE express competitors and grade saturation on THAT count, not the raw total. "
+    "If the rival list is EMPTY, estimate express-tunnel competition near the given lat/lon from your own "
+    "world knowledge and say so.\n"
+    'Return STRICT JSON only, no prose, no code fences: {"express_competitors": ["name", ...], '
+    '"express_count": <int>, "excluded_non_competitors": ["name", ...], "saturation": "low|medium|high", '
+    '"headroom": "<=240 chars on the express-tunnel headroom or risk"}.'
 )
 
 
 class CompetitionExpert(Expert):
     name = "competition"
     role = "Competition Analyst"
-    persona = ("You size up the live competitive field around a candidate site — how many rivals sit "
-               "within 3 and 5 driving miles, who they are, and whether the market still has headroom.")
+    persona = ("You size up the TRUE express-tunnel competition within 3 driving miles — filtering out "
+               "detailers, hand washes and mobile detailers, which don't compete with a tunnel — and judge "
+               "whether the market has real headroom for another express wash.")
     is_world = False
 
     def investigate(self, ws) -> List[Evidence]:
-        r3, r5 = C.GOOGLE_PLACES_RADII_MI
+        r3 = C.GOOGLE_PLACES_RADII_MI[0]                      # 3 miles — the express trade area
         near3 = places.nearby_competitors(ws.lat, ws.lon, r3)
-        near5 = places.nearby_competitors(ws.lat, ws.lon, r5)
-        rivals = near5["competitors"] or near3["competitors"]
+        rivals = near3["competitors"]
+        cls = self._classify(ws, r3, rivals)
 
-        out = [
-            self.ev("comp.count_3mi", f"car washes within {r3:g} driving mi (present-day)", near3["count"],
-                    unit="count", source="places.nearby_competitors", confidence=0.8, leakage_safe=False),
-            self.ev("comp.count_5mi", f"car washes within {r5:g} driving mi (present-day)", near5["count"],
-                    unit="count", source="places.nearby_competitors", confidence=0.8, leakage_safe=False),
-            self.ev("comp.rivals", "closest rivals",
-                    [{"name": c["name"], "distance_miles": c["distance_miles"]} for c in rivals[:8]],
-                    kind="table", source="places.nearby_competitors", confidence=0.7, leakage_safe=False),
+        express = cls.get("express_competitors") or []
+        express_count = cls.get("express_count")
+        if express_count is None:
+            express_count = len(express)
+        saturation = cls.get("saturation") or "unknown"
+        graded = saturation != "unknown"
+
+        return [
+            self.ev("comp.washes_3mi_all", f"all car-wash listings within {r3:g} driving mi (Google, all types)",
+                    near3["count"], unit="count", source="places.nearby_competitors",
+                    confidence=0.8, leakage_safe=False),
+            self.ev("comp.express_3mi", f"TRUE express-tunnel competitors within {r3:g} mi (detailers/hand/mobile excluded)",
+                    express_count, unit="count", source="places+llm classify",
+                    confidence=0.7 if graded else 0.3, leakage_safe=False),
+            self.ev("comp.rivals", "the express-tunnel rivals that actually count", express[:8],
+                    kind="table", source="places+llm classify", confidence=0.65, leakage_safe=False),
+            self.ev("comp.saturation", "express-tunnel saturation (graded on the true count)", saturation,
+                    kind="text", source="llm" if graded else "no-op",
+                    confidence=0.6 if graded else 0.2, leakage_safe=False),
+            self.ev("comp.headroom", "headroom note", str(cls.get("headroom") or "")[:240] or "unavailable",
+                    kind="text", source="llm" if graded else "no-op",
+                    confidence=0.55 if graded else 0.2, leakage_safe=False),
         ]
-        saturation, headroom = self._llm_saturation(ws, near3["count"], near5["count"], rivals)
-        out.append(self.ev("comp.saturation", "competitive saturation", saturation, kind="text",
-                           source="llm" if saturation != "unknown" else "no-op",
-                           confidence=0.55 if saturation != "unknown" else 0.2, leakage_safe=False))
-        out.append(self.ev("comp.headroom", "headroom note", headroom, kind="text",
-                           source="llm" if headroom else "no-op",
-                           confidence=0.5 if headroom else 0.2, leakage_safe=False))
-        return out
 
-    def _llm_saturation(self, ws, n3: int, n5: int, rivals: list) -> Tuple[str, str]:
-        """ONE wrapped Azure call. Falls back to ("unknown", "") on any failure (no key, timeout, bad JSON) —
-        e.g. no Google key means n3=n5=0/rivals=[], and the prompt tells the model to fall back to its own
-        world knowledge of the lat/lon rather than treat an empty count as a literally-zero-rival market."""
+    def _classify(self, ws, r3: float, rivals: list) -> Dict[str, Any]:
+        """ONE wrapped Azure call: filter the Google list to true express-tunnel competitors + grade
+        saturation on that count. Falls back to {} (→ 'unknown') on any failure (no key / timeout / bad JSON)."""
         try:
-            user = {"lat": ws.lat, "lon": ws.lon, "count_3mi": n3, "count_5mi": n5,
-                   "top_rivals": [f"{c.get('name')} ({c.get('distance_miles')} mi)" for c in rivals[:5]]}
+            payload = {"lat": ws.lat, "lon": ws.lon, "radius_miles": r3,
+                       "rivals_3mi": [{"name": c.get("name"), "dist_mi": c.get("distance_miles"),
+                                       "type": c.get("primary_type")} for c in rivals]}
             text = llm.complete(
-                [{"role": "system", "content": _SATURATION_SYS},
-                 {"role": "user", "content": json.dumps(user, ensure_ascii=False)}],
+                [{"role": "system", "content": _COMP_SYS},
+                 {"role": "user", "content": json.dumps(payload, ensure_ascii=False)}],
                 json_mode=True, temperature=C.LLM_TEMPERATURE, max_tokens=C.RESEARCH_MAX_TOKENS)
             j = llm.parse_json_lax(text)
+            if not isinstance(j, dict):
+                return {}
             sat = str(j.get("saturation") or "").strip().lower()
             if sat not in ("low", "medium", "high"):
-                sat = "unknown"
-            return sat, str(j.get("headroom") or "")[:200]
+                j["saturation"] = "unknown"
+            return j
         except Exception:
-            return "unknown", ""
+            return {}
 
     def initial_belief(self, ws) -> BeliefState:
         sat_ev = ws.evidence.get("comp.saturation")
-        n3_ev = ws.evidence.get("comp.count_3mi")
-        saturation = sat_ev.value if sat_ev is not None else "unknown"
-        lean = {"low": "Build", "high": "Pass"}.get(saturation, "Conditional")
-        confidence = 0.65 if saturation in ("low", "high") else 0.4
+        exp = ws.evidence.get("comp.express_3mi")
+        sat = sat_ev.value if sat_ev is not None else "unknown"
+        # low express-saturation → room to Build; high → Pass; else Conditional
+        lean = {"low": "Build", "high": "Pass"}.get(sat, "Conditional")
+        confidence = 0.65 if sat in ("low", "high") else 0.4
         return BeliefState(expert=self.name, lean=lean, confidence=confidence,
-                           key_number=(n3_ev.value if n3_ev is not None else None),
-                           key_number_label="rivals within 3mi",
+                           key_number=(exp.value if exp is not None else None),
+                           key_number_label="express rivals within 3mi",
                            supporting=[e.eid for e in ws.evidence_of(self.name)])
