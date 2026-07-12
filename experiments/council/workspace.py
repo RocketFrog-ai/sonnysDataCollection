@@ -86,7 +86,20 @@ class Workspace:
         return list(self.evidence.values())
 
     def valid_cites(self, cites: List[str]) -> List[str]:
-        return [c for c in (cites or []) if c in self.evidence]
+        """Resolve cited ids to real evidence eids, tolerant of the 🔒/🌐 badge or quotes the LLM may prepend
+        (it reads board lines like '🔒 hist.cluster_wash …', so it sometimes cites the bare id and sometimes
+        the badged form). A known eid contained anywhere in the cited token resolves to that eid."""
+        out: List[str] = []
+        for c in (cites or []):
+            c = str(c).strip()
+            if c in self.evidence:
+                if c not in out:
+                    out.append(c)
+                continue
+            hit = next((eid for eid in self.evidence if eid in c), None)
+            if hit and hit not in out:
+                out.append(hit)
+        return out
 
     # ── beliefs ──
     def set_belief(self, b: BeliefState) -> None:

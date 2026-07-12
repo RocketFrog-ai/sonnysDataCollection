@@ -47,11 +47,13 @@ class Expert:
     # ── the one LLM react (shared) ──
     def react(self, ws, delta, log) -> List[Message]:
         belief = ws.beliefs.get(self.name) or self.initial_belief(ws)
+        peers = {k: v for k, v in ws.beliefs.items() if k != self.name}   # so a seat can debate PEERS' positions
         msgs, belief = llm_react.react(
             self.name, self.role, self.persona,
             my_evidence=ws.evidence_of(self.name),
             board=ws.all_evidence(),
             recent=log.recent(12),
+            peers=peers,
             belief=belief, rnd=ws.round, max_msgs=C.MAX_MSGS_PER_EXPERT)
         ws.set_belief(belief)
         return msgs

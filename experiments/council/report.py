@@ -1,0 +1,429 @@
+"""
+The committee's final in-depth report — one deterministic markdown synthesis of the whole
+deliberation (`ws` + `log` + the settled `decision`), with an OPTIONAL one-shot Azure executive
+summary bolted on top.
+
+`synthesize_report(ws, log, decision) -> str` is the only public entry point. Everything below the
+executive-summary line is plain Python string-building off the documented dataclass shapes in
+`protocol.py` / `workspace.py` / `anchor.py` — no LLM, so the report never goes blank if Azure is
+down. The one optional LLM call (an Azure `llm.complete`, temperature 0.3, ~350 tokens) writes a
+2-3 sentence lead paragraph from the *already-computed* facts; on any failure (Azure not configured,
+network error, bad JSON, anything) it is swapped for a deterministic one-liner built from the same
+facts, so the report is fully deterministic whenever Azure is down.
+
+Self-contained: imports only `experiments.council.{config,llm,protocol}` + stdlib (and `anchor` /
+`workspace` only under `TYPE_CHECKING`, for hints — never at runtime). Never imports `app.*` /
+`proforma.*` / `streamlit`. `ws`, `log`, and `decision` are read only through the attributes
+documented for this module (see the task's INPUTS contract) so this file stays decoupled from
+exactly how those dataclasses evolve.
+
+Sections, in order: header + verdict → executive summary → the numbers → where the committee
+stands → key strengths / key risks → discussion summary → data signal vs. committee → method &
+caveats.
+"""
+from __future__ import annotations
+
+import json
+import math
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
+
+from experiments.council import config as C
+from experiments.council import llm
+from experiments.council.protocol import MsgType
+
+if TYPE_CHECKING:
+    from experiments.council.anchor import Decision
+    from experiments.council.workspace import DiscussionLog, Workspace
+
+
+# ─────────────────────────── tiny formatters (deterministic, None-safe) ───────────────────────────
+def _safe_float(x: Any) -> Optional[float]:
+    if x is None:
+        return None
+    try:
+        v = float(x)
+    except (TypeError, ValueError):
+        return None
+    return v if math.isfinite(v) else None
+
+
+def _clean(s: Any) -> str:
+    """Collapse whitespace/newlines so free text (LLM memory, concerns, message text) stays one line."""
+    return " ".join(str(s if s is not None else "").split())
+
+
+def _esc_cell(s: Any) -> str:
+    """`_clean` + escape `|` so free text can never break a markdown table row."""
+    return _clean(s).replace("|", "\\|")
+
+
+def _pct0(x: Any) -> str:
+    """A 0..1 fraction (confidence / prob / yes_frac — all contractually 0..1) → 'NN%'."""
+    v = _safe_float(x)
+    return "—" if v is None else f"{v * 100:.0f}%"
+
+
+def _pct(x: Any) -> str:
+    """A share whose scale isn't pinned by contract (membership_share) → 'NN%', tolerant of 0-100 input."""
+    v = _safe_float(x)
+    if v is None:
+        return "—"
+    p = v * 100 if abs(v) <= 1.5 else v
+    return f"{p:.0f}%"
+
+
+def _money(x: Any) -> str:
+    """Thousands get comma-separated raw dollars; ≥$1M switches to an 'M' suffix."""
+    v = _safe_float(x)
+    if v is None:
+        return "—"
+    sign, av = ("-" if v < 0 else ""), abs(v)
+    if av >= 1_000_000:
+        return f"{sign}${av / 1_000_000:,.2f}M"
+    return f"{sign}${av:,.0f}"
+
+
+def _compact_num(x: Any) -> str:
+    """A unitless compact number for narrative deltas, e.g. '12.6k' (mirrors the wash-count style)."""
+    v = _safe_float(x)
+    if v is None:
+        return "—"
+    sign, av = ("-" if v < 0 else ""), abs(v)
+    if av >= 1_000_000:
+        return f"{sign}{av / 1_000_000:.1f}M"
+    if av >= 1_000:
+        return f"{sign}{av / 1_000:.1f}k"
+    return f"{sign}{av:,.0f}" if float(av).is_integer() else f"{sign}{av:,.1f}"
+
+
+def _month(x: Any) -> str:
+    v = _safe_float(x)
+    return "—" if v is None else f"Month {int(round(v))}"
+
+
+def _washes(x: Any) -> str:
+    v = _safe_float(x)
+    return "—" if v is None else f"{v:,.0f} washes/mo"
+
+
+def _feet(x: Any) -> str:
+    v = _safe_float(x)
+    return "—" if v is None else f"{v:,.0f} ft"
+
+
+def _num(x: Any) -> str:
+    v = _safe_float(x)
+    if v is None:
+        return "—"
+    return f"{v:,.0f}" if float(v).is_integer() else f"{v:,.2f}"
+
+
+def _fmt_key_number(value: Any, label: Optional[str]) -> str:
+    """An expert's headline `key_number` + its `key_number_label`, e.g. '12,588 mature washes/mo' or
+    '$3.10M 5-yr net' (a label ending in '$' renders the value as money and drops the trailing '$')."""
+    v = _safe_float(value)
+    if v is None:
+        return "—"
+    lbl = _clean(label or "")
+    is_money = lbl.endswith("$")
+    lbl = lbl.rstrip("$").strip()
+    val_s = _money(v) if is_money else _num(v)
+    return f"{val_s} {lbl}".strip() if lbl else val_s
+
+
+def _signal_informative(a: Any) -> bool:
+    """Whether the signal exhibit has an opinion worth surfacing. Prefers the real Anchor's `.abstains`
+    (lean is None, or too few matured neighbours to trust it); falls back to a lean-is-not-None check
+    for any minimal stand-in that only carries the documented `.lean/.prob/.confidence/.reasons` shape."""
+    if a is None:
+        return False
+    ab = getattr(a, "abstains", None)
+    if isinstance(ab, bool):
+        return not ab
+    return getattr(a, "lean", None) is not None
+
+
+# the 7 headline rows for "## The numbers", also reused as the LLM fact sheet
+_NUMBER_ROWS: List[Tuple[str, str, Callable[[Any], str]]] = [
+    ("revenue_5yr", "Expected 5-yr revenue", _money),
+    ("net_5yr", "Expected 5-yr net", _money),
+    ("breakeven_month", "Breakeven", _month),
+    ("membership_share", "Membership share", _pct),
+    ("mature_washes", "Mature wash count", _washes),
+    ("tunnel_ft", "Recommended tunnel", _feet),
+    ("capex", "Est. CAPEX", _money),
+]
+
+
+# ─────────────────────────── section 1: header + verdict ───────────────────────────
+def _section_header(decision: "Decision") -> str:
+    label = C.VERDICT_LABELS.get(decision.verdict, decision.verdict or "Unknown")
+    meta = [f"confidence **{_pct0(decision.confidence)}**"]
+    if decision.prob is not None:
+        meta.append(f"P(good build) **{_pct0(decision.prob)}**")
+    meta.append(f"basis: _{_clean(decision.basis)}_")
+    lines = [f"# 🧭 Committee recommendation — {label}", "", " · ".join(meta)]
+    if decision.condition:
+        lines += ["", f"**Condition:** {_clean(decision.condition)}"]
+    if decision.note:
+        lines += ["", f"> {decision.note}"]
+    return "\n".join(lines)
+
+
+# ─────────────────────────── section 2: the numbers ───────────────────────────
+def _numbers_table(numbers: Dict[str, Any]) -> str:
+    rows = ["| Metric | Value |", "|---|---|"]
+    for key, label, fmt in _NUMBER_ROWS:
+        rows.append(f"| {label} | {fmt(numbers.get(key))} |")
+    return "\n".join(rows)
+
+
+# ─────────────────────────── section 3: where the committee stands ───────────────────────────
+def _committee_table(ws: "Workspace") -> str:
+    rows = ["| Seat | Lean | Confidence | Key number | Concern |", "|---|---|---|---|---|"]
+    for name in C.EXPERT_ORDER:
+        meta = C.EXPERT_META.get(name, {})
+        seat = f"{meta.get('emoji', '')} {meta.get('name', name.title())}".strip()
+        if name in C.WORLD_EXPERTS:
+            seat += " 🌐"
+        b = ws.beliefs.get(name)
+        if b is None:
+            rows.append(f"| {seat} | — | — | — | _no belief recorded_ |")
+            continue
+        lean = C.VERDICT_LABELS.get(b.lean, b.lean) if b.lean else "—"
+        concern = _esc_cell(b.open_concerns[0]) if b.open_concerns else "—"
+        kn = _esc_cell(_fmt_key_number(b.key_number, b.key_number_label))
+        rows.append(f"| {seat} | {lean} | {_pct0(b.confidence)} | {kn} | {concern} |")
+    table = "\n".join(rows)
+    if C.WORLD_EXPERTS:
+        table += ("\n\n_🌐 = world-knowledge seat (down-weighted in the committee vote); "
+                 "unmarked seats are data-grounded._")
+    return table
+
+
+# ─────────────────────────── section 4: key strengths / key risks ───────────────────────────
+def _key_strengths(ws: "Workspace") -> List[str]:
+    out: List[str] = []
+    for name in C.EXPERT_ORDER:
+        b = ws.beliefs.get(name)
+        if b and b.lean == "Build":
+            seat = C.EXPERT_META.get(name, {}).get("name", name.title())
+            kn = _fmt_key_number(b.key_number, b.key_number_label)
+            tail = f" — {kn}." if kn != "—" else "."
+            out.append(f"**{seat}** leans Build ({_pct0(b.confidence)} confidence){tail}")
+    a = getattr(ws, "anchor", None)
+    if _signal_informative(a) and a.lean in ("Build", "Conditional"):
+        out.extend(f"Data signal: {_clean(r)}." for r in a.reasons)
+    if not out:
+        out.append("_No seat leans Build, and the data signal does not support one either — the case "
+                   "to build is thin._")
+    return out
+
+
+def _key_risks(ws: "Workspace", log: "DiscussionLog", decision: "Decision") -> List[str]:
+    out: List[str] = []
+    for name in C.EXPERT_ORDER:
+        b = ws.beliefs.get(name)
+        if not b:
+            continue
+        seat = C.EXPERT_META.get(name, {}).get("name", name.title())
+        if b.lean == "Pass":
+            kn = _fmt_key_number(b.key_number, b.key_number_label)
+            tail = f" — {kn}." if kn != "—" else "."
+            out.append(f"**{seat}** leans Pass ({_pct0(b.confidence)} confidence){tail}")
+        for concern in (b.open_concerns or [])[:2]:
+            out.append(f"**{seat}** flags: {_clean(concern)}.")
+    a = getattr(ws, "anchor", None)
+    if _signal_informative(a) and a.lean == "Pass":
+        out.extend(f"Data signal: {_clean(r)}." for r in a.reasons)
+    for m in log.unanswered(MsgType.CHALLENGE):
+        frm = C.EXPERT_META.get(m.sender, {}).get("name", m.sender.title())
+        to = C.EXPERT_META.get(m.to, {}).get("name", m.to.title()) if m.to else "the committee"
+        out.append(f"Unresolved challenge — **{frm}** → **{to}**: {_clean(m.text)}")
+    if decision.diverges_from_signal:
+        out.append("The committee's verdict diverges from the independent data signal (see "
+                   "_Data signal vs. committee_ below) — worth the extra scrutiny.")
+    if not out:
+        out.append("_No material open risks were raised._")
+    return out
+
+
+# ─────────────────────────── section 5: discussion summary ───────────────────────────
+def _last_challenge_to(log: "DiscussionLog", target: Optional[str], at_or_before_round: int):
+    cands = [m for m in log.messages if m.mtype == MsgType.CHALLENGE and m.to == target
+             and m.round <= at_or_before_round]
+    return cands[-1] if cands else None
+
+
+def _revise_lines(ws: "Workspace", log: "DiscussionLog") -> List[str]:
+    """Notable CHALLENGE→REVISE moments: every REVISE message, paired with the belief's own `.history`
+    snapshot delta (before→after key_number) and, if one exists, the CHALLENGE that provoked it."""
+    out: List[str] = []
+    for m in log.messages:
+        if m.mtype != MsgType.REVISE:
+            continue
+        b = ws.beliefs.get(m.sender)
+        seat = C.EXPERT_META.get(m.sender, {}).get("name", m.sender.title())
+        piece = f"**{seat}** revised its position in round {m.round}"
+        if b is not None and b.history:
+            hist = sorted(b.history, key=lambda h: h.get("round", 0))
+            before = [h for h in hist if h.get("round", 0) < m.round]
+            after = [h for h in hist if h.get("round", 0) >= m.round]
+            bv = before[-1].get("key_number") if before else None
+            av = after[0].get("key_number") if after else None
+            if bv is not None and av is not None and _safe_float(bv) != _safe_float(av):
+                lbl = _clean(b.key_number_label) or "key number"
+                piece += f" ({lbl} {_compact_num(bv)}→{_compact_num(av)})"
+        chal = _last_challenge_to(log, m.sender, m.round)
+        if chal is not None:
+            cname = C.EXPERT_META.get(chal.sender, {}).get("name", chal.sender.title())
+            piece += f" after **{cname}**'s challenge"
+        if m.text:
+            piece += f": {_clean(m.text)}"
+        out.append(piece.rstrip(".") + ".")
+    return out
+
+
+def _discussion_summary(ws: "Workspace", log: "DiscussionLog", decision: "Decision") -> str:
+    rounds = sorted(log.by_round().keys())
+    n_rounds = (rounds[-1] + 1) if rounds else 0
+    if log.messages:
+        paras = [f"The committee ran **{n_rounds}** round(s) of deliberation, exchanging "
+                f"**{len(log.messages)}** message(s) across **{len(ws.beliefs)}** seat(s)."]
+    else:
+        paras = ["The committee produced no discussion messages — only the initial positions stand."]
+    revises = _revise_lines(ws, log)
+    if revises:
+        paras.append("Notable revisions:\n" + "\n".join(f"- {r}" for r in revises))
+    else:
+        paras.append("No expert revised its position after the initial publish round — the committee "
+                     "converged without a real fight.")
+    if decision.yes_frac is not None:
+        paras.append(f"The final weighted vote landed at **{_pct0(decision.yes_frac)}** in favor across "
+                     f"**{decision.n_votes}** voting seat(s) — {_clean(decision.basis)}, yielding "
+                     f"**{C.VERDICT_LABELS.get(decision.verdict, decision.verdict)}**.")
+    else:
+        paras.append(f"No expert produced a lean, so no vote could be tallied ({_clean(decision.basis)}).")
+    return "\n\n".join(paras)
+
+
+# ─────────────────────────── section 6: data signal vs. committee ───────────────────────────
+def _signal_vs_committee(ws: "Workspace", decision: "Decision") -> str:
+    a = getattr(ws, "anchor", None)
+    rows = ["| | Verdict | Confidence |", "|---|---|---|"]
+    if _signal_informative(a):
+        sig_lbl = C.VERDICT_LABELS.get(a.lean, a.lean)
+        prob_s = f" (P good build {_pct0(a.prob)})" if a.prob is not None else ""
+        rows.append(f"| 🎯 Data signal (leakage-clean) | {sig_lbl}{prob_s} | {_pct0(a.confidence)} |")
+    else:
+        rows.append("| 🎯 Data signal (leakage-clean) | _no informative signal available for this site_ | — |")
+    rows.append(f"| 🧭 Committee | {C.VERDICT_LABELS.get(decision.verdict, decision.verdict)} | "
+               f"{_pct0(decision.confidence)} |")
+    out = ["\n".join(rows)]
+    if _signal_informative(a):
+        diverges = decision.diverges_from_signal
+        out.append(("⚠️ **Diverge** — the committee and the independent data signal do not point the "
+                    "same way." if diverges else
+                    "✅ **Agree** — the committee and the independent data signal point the same way."))
+    if a is not None and getattr(a, "reasons", None):
+        out.append("Why the signal says what it says: " + "; ".join(_clean(r) for r in a.reasons) + ".")
+    if decision.note:
+        out.append(f"> {decision.note}")
+    return "\n\n".join(out)
+
+
+# ─────────────────────────── section 7: method & caveats ───────────────────────────
+def _method_footer(decision: "Decision") -> str:
+    return (
+        "---\n\n"
+        f"**_Method & caveats_** — the committee **decides** (mode: **{decision.mode}**): this is a "
+        f"deliberative consensus vote, not a single model score. Data-grounded (🔒) seats are weighted "
+        f"**{C.DATA_EXPERT_WEIGHT:g}×**, world-knowledge (🌐) seats **{C.WORLD_EXPERT_WEIGHT:g}×**, and "
+        f"the leakage-clean data signal **{C.SIGNAL_WEIGHT:g}×** in the tally — demographics and "
+        "narrative carry low predictive weight next to capacity and market-structure numbers. "
+        "Live/present-day evidence (current competitor counts, present-day narration) is flagged 🌐 "
+        "and down-weighted accordingly. Every 🔒 number traces back to one source: the council's own "
+        "historical panel, not the live production dataset."
+    )
+
+
+# ─────────────────────────── optional Azure exec-summary lead-in ───────────────────────────
+_EXEC_SUMMARY_SYS = (
+    "You write a 2-3 sentence executive-summary lead-in for a car-wash site-selection committee "
+    "report, for a real-estate/ops decision-maker who will skim only this paragraph. Use ONLY the "
+    "JSON facts given below — never invent or restate a number that isn't in the JSON. Plain English, "
+    "no jargon, no markdown headers or bullet points, no repeating the JSON back verbatim. Cover: the "
+    "verdict, the one or two headline numbers that matter most, and the single biggest risk or "
+    "signal-divergence if one is present. Return plain prose only."
+)
+
+
+def _fallback_summary(decision: "Decision") -> str:
+    label = C.VERDICT_LABELS.get(decision.verdict, decision.verdict)
+    text = f"The committee's recommendation is **{label}** (confidence {_pct0(decision.confidence)}"
+    if decision.prob is not None:
+        text += f", P(good build) {_pct0(decision.prob)}"
+    text += f"), based on {_clean(decision.basis)}."
+    if decision.diverges_from_signal:
+        text += (" This diverges from the independent data signal — see **Data signal vs. committee** "
+                 "below.")
+    return text
+
+
+def _exec_summary_facts(ws: "Workspace", decision: "Decision", strengths: List[str],
+                        risks: List[str]) -> Dict[str, Any]:
+    numbers = decision.numbers or {}
+    a = getattr(ws, "anchor", None)
+    return {
+        "verdict": C.VERDICT_LABELS.get(decision.verdict, decision.verdict),
+        "confidence_pct": _pct0(decision.confidence),
+        "prob_good_build_pct": _pct0(decision.prob) if decision.prob is not None else None,
+        "basis": decision.basis,
+        "condition": decision.condition,
+        "signal_divergence_note": decision.note,
+        "numbers": {label: fmt(numbers.get(key)) for key, label, fmt in _NUMBER_ROWS},
+        "top_strengths": strengths[:3],
+        "top_risks": risks[:3],
+        "signal_lean": (a.lean if a is not None else None),
+        "committee_yes_frac_pct": _pct0(decision.yes_frac) if decision.yes_frac is not None else None,
+    }
+
+
+def _executive_summary(ws: "Workspace", decision: "Decision", strengths: List[str], risks: List[str]) -> str:
+    """ONE Azure call for a 2-3 sentence lead-in; any failure (Azure down, bad JSON, network) falls back
+    to a deterministic one-liner built from the same facts — the report is never empty, never blocked."""
+    facts = _exec_summary_facts(ws, decision, strengths, risks)
+    text: Optional[str] = None
+    try:
+        raw = llm.complete(
+            [{"role": "system", "content": _EXEC_SUMMARY_SYS},
+             {"role": "user", "content": json.dumps(facts, ensure_ascii=False, default=str)[:6000]}],
+            temperature=0.3, max_tokens=350)
+        raw = _clean(raw)
+        if raw:
+            text = raw
+    except Exception:
+        text = None
+    return f"_{text or _fallback_summary(decision)}_"
+
+
+# ─────────────────────────── public entry point ───────────────────────────
+def synthesize_report(ws, log, decision) -> str:
+    """Return a markdown in-depth committee report + recommendation. Deterministic tables + risks +
+    discussion summary; optionally ONE Azure LLM exec-summary pass (wrapped, with a deterministic
+    fallback)."""
+    strengths = _key_strengths(ws)
+    risks = _key_risks(ws, log, decision)
+
+    sections = [
+        _section_header(decision),
+        _executive_summary(ws, decision, strengths, risks),
+        "## The numbers\n\n" + _numbers_table(decision.numbers or {}),
+        "## Where the committee stands\n\n" + _committee_table(ws),
+        "## Key strengths\n\n" + "\n".join(f"- {s}" for s in strengths),
+        "## Key risks\n\n" + "\n".join(f"- {r}" for r in risks),
+        "## How the committee got there (discussion summary)\n\n" + _discussion_summary(ws, log, decision),
+        "## Data signal vs. committee\n\n" + _signal_vs_committee(ws, decision),
+        _method_footer(decision),
+    ]
+    return "\n\n".join(sections)
