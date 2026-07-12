@@ -1,30 +1,34 @@
 """
 Streamlit view — the ONLY council module that imports streamlit.
 
-`render_council(lat, lon, radius_km=..., backend=None)` convenes the committee at a pin (cached in
-session_state, run only on a button click) and renders: the animated **Council Chamber** (an iframe from
-`chamber.build_chamber_html`), then the detail panels — verdict + signal-divergence, the in-depth report,
-the workspace evidence board, the full discussion transcript, and the per-seat belief evolution.
-`render_reports()` shows the honest signal backtest + a saved committee transcript.
+`render_council(lat, lon, radius_km=..., backend=None)` convenes the committee at a pin and renders: the
+animated **Council Chamber** (an iframe from `chamber.build_chamber_html`), then the detail panels — verdict
++ signal-divergence, the in-depth report, the workspace evidence board, the discussion transcript, and the
+per-seat belief evolution. `render_reports()` shows the honest signal backtest + a saved transcript.
+
+IMPORTANT: the committee runs in a **subprocess** (`python -m experiments.council.committee …`), not in
+Streamlit's ScriptRunner thread — the committee's pandas/numpy work segfaults in that thread on bleeding-edge
+numpy/pyarrow stacks, but is rock-solid in a fresh process. The view only handles the JSON result + widgets.
 
 Both entry points keep the exact signatures the dangling hook in `proforma/ui/panels/_explore_markets.py`
-already calls, so wiring is automatic (zero production edits). Everything is wrapped so it can never take
-down the host dashboard. `backend` is accepted-and-ignored (the council is Azure-only).
+already calls (zero production edits). Everything is wrapped so it can never take down the host dashboard.
+`backend` is accepted-and-ignored (Azure-only).
 """
 from __future__ import annotations
 
+import json
+import os
+import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 # `streamlit run experiments/council/streamlit_view.py` (standalone) puts THIS file's dir on sys.path,
 # not the repo root, so `import experiments.council.*` fails. Put the repo root on the path first.
-# (Harmless when the proforma app imports us — the root is already there and this insert is idempotent.)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -33,6 +37,34 @@ from experiments.council import config as C
 
 _BASE = Path(__file__).resolve().parent
 _CHAMBER_H = 820          # tall enough for the boardroom + speech bubbles + caption (use ⛶ for true fullscreen)
+
+
+def _run_committee_subprocess(lat: float, lon: float, radius_km: float, light: bool) -> Dict[str, Any]:
+    """Run the committee in a FRESH process (main thread) and parse its JSON — avoids the pandas/numpy
+    segfault that hits Streamlit's ScriptRunner thread on some stacks."""
+    proc = subprocess.run(
+        [sys.executable, "-m", "experiments.council.committee", str(lat), str(lon), str(radius_km),
+         "1" if light else "0"],
+        cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=420, env=dict(os.environ))
+    out = proc.stdout or ""
+    marker = "__COUNCIL_JSON__"
+    i = out.rfind(marker)
+    if i < 0:
+        err = (proc.stderr or "")[-1200:] or out[-800:] or "(no output)"
+        raise RuntimeError(f"committee subprocess exited {proc.returncode}: {err}")
+    return json.loads(out[i + len(marker):])
+
+
+def _fmt_value(v: Any) -> str:
+    if isinstance(v, bool):
+        return str(v)
+    if isinstance(v, (int, float)):
+        return f"{v:,.0f}" if abs(v) >= 100 else f"{v:,.2f}".rstrip("0").rstrip(".")
+    if isinstance(v, dict):
+        return ", ".join(f"{k}={_fmt_value(x)}" for k, x in v.items() if x is not None)
+    if isinstance(v, list):
+        return f"{len(v)} item(s)"
+    return str(v)
 
 
 def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: Optional[str] = None) -> None:
@@ -51,10 +83,9 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
                             help="Skip the LLM debate — the data-weighted verdict only. Fast + free.")
 
     if run:
-        with st.spinner("The committee is meeting — 5 experts investigating, then debating…"):
+        with st.spinner("The committee is meeting — 5 experts investigating, then debating… (~30–90s)"):
             try:
-                from experiments.council.committee import run_committee_pin
-                store[key] = {"res": run_committee_pin(lat, lon, radius_km=radius_km, light=light)}
+                store[key] = {"data": _run_committee_subprocess(lat, lon, radius_km, light)}
             except Exception as exc:                       # never take down the host dashboard
                 store[key] = {"error": str(exc)}
 
@@ -66,81 +97,80 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
         st.error(f"Committee unavailable: {rec['error']}")
         return
 
-    res = rec["res"]
-    dec = res.decision
-    try:
-        cd = res.chamber_data()
-    except Exception as exc:
-        st.error(f"Chamber render failed: {exc}")
-        cd = None
+    data = rec["data"]
 
     # ── the animated chamber (the centerpiece) ──
-    if cd is not None:
-        try:
-            components.html(chamber.build_chamber_html(cd, height=_CHAMBER_H), height=_CHAMBER_H + 12, scrolling=True)
-            st.caption("Tip: click **⛶** (bottom-right of the chamber) for true fullscreen — the speech "
-                       "bubbles have the most room there. Each message also appears in the caption bar under the table.")
-        except Exception as exc:
-            st.warning(f"Chamber animation unavailable ({exc}); see the details below.")
+    try:
+        components.html(chamber.build_chamber_html(data.get("chamber", {}), height=_CHAMBER_H),
+                        height=_CHAMBER_H + 12, scrolling=True)
+        st.caption("Tip: click **⛶** (bottom-right of the chamber) for true fullscreen — the speech "
+                   "bubbles have the most room there. Each message also shows in the caption bar under the table.")
+    except Exception as exc:
+        st.warning(f"Chamber animation unavailable ({exc}); see the details below.")
 
-    # ── verdict + signal divergence banner ──
-    lbl = C.VERDICT_LABELS.get(dec.verdict, dec.verdict)
-    col = {"Build": "green", "Pass": "red", "Conditional": "orange"}.get(dec.verdict, "gray")
-    prob = f"  ·  P(good build) {dec.prob:.0%}" if dec.prob is not None else ""
-    st.markdown(f"### :{col}[{lbl}]  ·  {dec.confidence:.0%} confidence{prob}")
-    st.caption(f"Basis: {dec.basis}")
-    if dec.condition:
-        st.warning(f"**Condition:** {dec.condition}")
-    if dec.note:
-        st.warning(dec.note)
+    # ── verdict + signal-divergence banner ──
+    verdict = data.get("verdict", "—")
+    lbl = C.VERDICT_LABELS.get(verdict, verdict)
+    col = {"Build": "green", "Pass": "red", "Conditional": "orange"}.get(verdict, "gray")
+    prob = data.get("prob")
+    prob_txt = f"  ·  P(good build) {prob:.0%}" if isinstance(prob, (int, float)) else ""
+    conf = data.get("confidence") or 0.0
+    st.markdown(f"### :{col}[{lbl}]  ·  {conf:.0%} confidence{prob_txt}")
+    st.caption(f"Basis: {data.get('basis', '')}")
+    if data.get("condition"):
+        st.warning(f"**Condition:** {data['condition']}")
+    if data.get("note"):
+        st.warning(data["note"])
 
     # ── final report ──
     with st.expander("📄 In-depth committee report", expanded=True):
-        st.markdown(res.report or "_(no report — light mode)_")
+        st.markdown(data.get("report") or "_(no report — light mode)_")
 
     # ── workspace evidence board ──
     with st.expander("🗂️ Workspace board — what each seat put on the table"):
+        by_expert: Dict[str, List[dict]] = {}
+        for e in data.get("evidence", []):
+            by_expert.setdefault(e.get("expert"), []).append(e)
         cols = st.columns(len(C.EXPERT_ORDER))
         for col_w, ekey in zip(cols, C.EXPERT_ORDER):
             meta = C.EXPERT_META.get(ekey, {})
             with col_w:
                 st.markdown(f"**{meta.get('emoji','')} {meta.get('name', ekey)}**")
-                evs = res.workspace.evidence_of(ekey)
+                evs = by_expert.get(ekey, [])
                 if not evs:
                     st.caption("—")
                 for e in evs:
-                    v = e.value
-                    if isinstance(v, float):
-                        v = f"{v:,.0f}"
-                    st.caption(f"{e.badge()} {e.label}: **{v}**{(' ' + e.unit) if e.unit else ''}")
+                    unit = f" {e['unit']}" if e.get("unit") else ""
+                    st.caption(f"{e.get('badge','')} {e.get('label','')}: **{_fmt_value(e.get('value'))}**{unit}")
 
-    # ── discussion transcript ──
+    # ── discussion transcript (from the chamber messages) ──
     with st.expander("💬 Full discussion transcript"):
-        if not res.log.messages:
+        msgs = data.get("chamber", {}).get("messages", [])
+        if not msgs:
             st.caption("_(light mode — no discussion)_")
         last = -1
-        for m in res.log.messages:
-            if m.round != last:
-                st.markdown(f"**── Round {m.round} ──**")
-                last = m.round
-            color = C.MSG_COLORS.get(m.mtype.value, "#64748b")
-            snd = C.EXPERT_META.get(m.sender, {}).get("name", m.sender)
-            tgt = f" → {C.EXPERT_META.get(m.to, {}).get('name', m.to)}" if m.to else ""
-            st.markdown(f"<span style='color:{color};font-weight:600'>[{m.mtype.value}]</span> "
-                        f"**{snd}**{tgt}: {m.text}", unsafe_allow_html=True)
+        for m in msgs:
+            if m.get("round") != last:
+                last = m.get("round")
+                st.markdown(f"**── Round {last} ──**")
+            color = m.get("type_color") or C.MSG_COLORS.get(m.get("type"), "#64748b")
+            tgt = f" → {m.get('to_name')}" if m.get("to_name") else ""
+            st.markdown(f"<span style='color:{color};font-weight:600'>[{m.get('type')}]</span> "
+                        f"**{m.get('sender_name')}**{tgt}: {m.get('text','')}", unsafe_allow_html=True)
 
-    # ── belief evolution ──
-    with st.expander("📈 Belief evolution (confidence per round)"):
-        rows = []
-        for ekey, b in res.workspace.beliefs.items():
-            for h in b.history:
-                rows.append({"round": h["round"], "seat": C.EXPERT_META.get(ekey, {}).get("name", ekey),
-                             "confidence": h["confidence"]})
-        if rows:
-            df = pd.DataFrame(rows).pivot_table(index="round", columns="seat", values="confidence")
-            st.line_chart(df)
-        else:
+    # ── belief evolution (text; no in-thread pandas) ──
+    with st.expander("📈 Belief evolution (lean · confidence per round)"):
+        hist = data.get("chamber", {}).get("belief_history", {})
+        if not hist:
             st.caption("_(no belief history)_")
+        for ekey in C.EXPERT_ORDER:
+            seq = hist.get(ekey) or []
+            if not seq:
+                continue
+            name = C.EXPERT_META.get(ekey, {}).get("name", ekey)
+            trail = " → ".join(f"{h.get('lean') or '—'}/{int((h.get('confidence') or 0)*100)}%" for h in seq)
+            moved = len({h.get("lean") for h in seq}) > 1
+            st.markdown(f"- **{name}**: {trail}" + ("  🔁 *moved*" if moved else ""))
 
 
 def render_reports() -> None:

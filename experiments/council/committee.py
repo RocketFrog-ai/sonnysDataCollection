@@ -58,6 +58,20 @@ def run_committee_pin(lat: float, lon: float, *, radius_km: Optional[float] = No
     return run_committee(snap, radius_km=r, **kw)
 
 
+def run_committee_json(lat: float, lon: float, *, radius_km: Optional[float] = None, mode: Optional[str] = None,
+                       light: bool = False, max_rounds: Optional[int] = None) -> Dict[str, Any]:
+    """Run the committee and return a fully JSON-serialisable payload for the UI. The Streamlit view runs
+    THIS in a subprocess: the committee's pandas/numpy work segfaults inside Streamlit's ScriptRunner
+    thread on some (bleeding-edge numpy/pyarrow) stacks, but is rock-solid in a fresh process."""
+    res = run_committee_pin(lat, lon, radius_km=radius_km, mode=mode, light=light, max_rounds=max_rounds)
+    ws, dec = res.workspace, res.decision
+    evidence = [{"expert": e.expert, "eid": e.eid, "label": e.label, "value": e.value,
+                 "unit": e.unit, "badge": e.badge()} for e in ws.all_evidence()]
+    return {"chamber": res.chamber_data(), "report": res.report, "evidence": evidence, "plan": res.plan,
+            "verdict": dec.verdict, "confidence": dec.confidence, "basis": dec.basis, "prob": dec.prob,
+            "condition": dec.condition, "note": dec.note, "lat": res.lat, "lon": res.lon}
+
+
 @dataclass
 class CommitteeResult:
     decision: Decision
@@ -124,3 +138,21 @@ class CommitteeResult:
             "signal": ({"lean": a.lean, "prob": a.prob, "confidence": round(float(a.confidence), 2)} if a else None),
             "numbers": dec.numbers, "messages": messages, "belief_history": belief_history,
         }
+
+
+# ─────────────────────────── subprocess entrypoint (the Streamlit view calls this) ───────────────────────────
+def _coerce(o):
+    try:
+        return float(o)
+    except (TypeError, ValueError):
+        return str(o)
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    _lat, _lon, _radius = float(sys.argv[1]), float(sys.argv[2]), float(sys.argv[3])
+    _light = len(sys.argv) > 4 and sys.argv[4] == "1"
+    _payload = run_committee_json(_lat, _lon, radius_km=_radius, light=_light)
+    sys.stdout.write("__COUNCIL_JSON__" + json.dumps(_payload, default=_coerce, ensure_ascii=False))
+    sys.stdout.flush()

@@ -57,7 +57,18 @@ def load_panel_1_6() -> Tuple[pd.DataFrame, pd.DataFrame]:
     if "df" in _CACHE:
         return _CACHE["df"], _CACHE["site"]
 
-    raw = pd.read_csv(MAIN_CSV, low_memory=False)
+    # pandas' C CSV parser SEGFAULTS inside Streamlit's ScriptRunner thread with this numpy/pyarrow stack
+    # (fine on the main thread, hence plain-python runs never crash). A pre-pickled cache read via
+    # read_pickle sidesteps the C parser entirely. Built once from the CSV; regenerated if missing/stale.
+    _pkl = MAIN_CSV.with_suffix(".pkl")
+    if _pkl.exists():
+        raw = pd.read_pickle(_pkl)
+    else:
+        raw = pd.read_csv(MAIN_CSV, low_memory=False)
+        try:
+            raw.to_pickle(_pkl)
+        except Exception:
+            pass
     raw["date"] = pd.to_datetime(dict(year=raw.year, month=raw.month, day=1))
     raw["op_start"] = pd.to_datetime(raw["operational_start"], format="%m-%Y", errors="coerce")
     raw["site_key"] = raw.client_id.astype(str) + "::" + raw.site_id.astype(str)
