@@ -41,9 +41,11 @@ Return STRICT JSON only, no prose, no code fences:
 {{"belief": {{"lean": "Build|Pass|Conditional|null", "confidence": 0.0-1.0, "key_number": <number|null>,
              "open_concerns": ["..."], "memory": "1-2 sentences: what you argued, conceded, and still hold"}},
  "messages": [{{"type": "PUBLISH|QUESTION|CHALLENGE|REQUEST|REVISE|ENDORSE|VOTE",
-               "to": "<seat name|null>", "text": "one pointed clause",
+               "to": "<seat name|null>", "text": "a specific 1-2 sentence point that QUOTES the number/evidence you mean and your reasoning",
                "cites": ["<evidence id>", ...],
                "payload": {{"ask": "...", "condition": "...", "key_number": <number|null>}}}}]}}
+Speak substantively like a real analyst: quote the actual number you support or dispute and WHY — e.g. NOT
+"high competition" but "19 rivals within 3 mi will cap the ramp well below Historical's 12.6k mature-anchor".
 Your remit: {persona}"""
 
 _PHASE_OPEN = ("THIS IS ROUND 0 — OPENING STATEMENTS. Emit a PUBLISH stating your headline finding (cite your "

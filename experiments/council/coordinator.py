@@ -165,6 +165,10 @@ class Facilitator:
         if m.mtype in (MsgType.QUESTION, MsgType.CHALLENGE, MsgType.REQUEST):
             if m.to not in self.names:
                 m.to = None                          # broadcast if the addressee is invalid
+        if m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION) and m.to and any(
+                om.answered_by is None and om.sender == m.sender and om.to == m.to and om.mtype == m.mtype
+                for om in self.log.messages):
+            return                                   # drop a repeat of an already-open challenge/question (no going in circles)
         self.log.add(m)
         if m.mtype == MsgType.REQUEST:
             self.ws.open_requests.append(m)
