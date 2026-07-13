@@ -111,8 +111,9 @@ def _weight(expert: str) -> float:
 
 
 def _tally(ws) -> tuple:
-    """Weighted consensus over experts' current leans. Data-grounded experts outweigh world-knowledge ones;
-    the signal exhibit casts its own weighted vote (unless it abstains). Returns (yes_frac 0..1 | None, n_votes)."""
+    """Weighted mean of experts' current leans (a 0..1 optimism scalar, used for confidence + the signal
+    cross-check — NOT the verdict). Data-grounded experts outweigh world-knowledge ones. The demoted data
+    signal does not vote. Returns (yes_frac 0..1 | None, n_votes)."""
     num = den = 0.0
     n_votes = 0
     for b in ws.beliefs.values():
@@ -122,12 +123,19 @@ def _tally(ws) -> tuple:
         num += w * _SCORE.get(b.lean, 0.5)
         den += w
         n_votes += 1
-    a = getattr(ws, "anchor", None)
-    if a is not None and not a.abstains:
-        w = C.SIGNAL_WEIGHT * max(float(a.confidence), 0.1)
-        num += w * _SCORE.get(a.lean, 0.5)
-        den += w
     return ((num / den) if den else None), n_votes
+
+
+def _lean_masses(ws) -> Dict[str, float]:
+    """Weighted vote-mass behind each lean. The verdict is the committee's weighted-MAJORITY lean — so one
+    seat (e.g. Finance's mechanical economics lean) cannot override a room that deliberated the other way, the
+    way a weighted *mean* + threshold silently could. Data-grounded seats outweigh world-knowledge ones."""
+    mass: Dict[str, float] = {"Build": 0.0, "Conditional": 0.0, "Pass": 0.0}
+    for b in ws.beliefs.values():
+        if b.lean is None or b.lean not in mass:
+            continue
+        mass[b.lean] += _weight(b.expert) * max(float(b.confidence), 0.1)
+    return mass
 
 
 _NUM_EIDS = {
@@ -186,15 +194,23 @@ def decide_final(ws, *, mode: Optional[str] = None) -> Decision:
         if verdict == "Build" and _open_challenge_exists(ws) and a.confidence < C.SIGNAL_HIGH_CONF:
             verdict, condition = "Conditional", "revisit if the open challenge on the board is resolved against the build"
     else:
-        # deliberative: the committee's consensus decides
-        if yes is None:
+        # deliberative: the committee's weighted-MAJORITY lean decides (so one seat can't override the room)
+        masses = _lean_masses(ws)
+        total = sum(masses.values())
+        if total <= 0:
             verdict, confidence, basis = "Insufficient", 0.2, "no expert produced a lean"
         else:
-            verdict = "Build" if yes >= 0.6 else ("Pass" if yes <= 0.4 else "Conditional")
-            confidence = round(float(0.45 + 0.4 * abs(yes - 0.5) * 2), 2)
-            basis = "committee consensus (data-weighted vote)"
-            if verdict == "Conditional" and _open_challenge_exists(ws):
+            verdict = max(masses, key=masses.get)          # the lean the committee actually landed on
+            share = masses[verdict] / total                # how dominant that majority is → confidence
+            basis = "committee consensus (weighted-majority lean)"
+            # a "Build" must be EARNED: a mere plurality, or challenges the room never resolved, → Conditional
+            if verdict == "Build" and _open_challenge_exists(ws):
+                verdict, condition = "Conditional", "resolve the open challenge(s) the committee left standing"
+            elif verdict == "Build" and share < 0.5:
+                verdict, condition = "Conditional", "the committee is split — no clear majority for an unconditional build"
+            elif verdict == "Conditional" and _open_challenge_exists(ws):
                 condition = "resolve the open challenge(s) on the board"
+            confidence = round(float(0.45 + 0.4 * max(0.0, share - 0.5) * 2), 2)
 
     diverges = bool(signal_lean and verdict not in (None, "Insufficient")
                     and (signal_lean in _YES) != (verdict in _YES))
