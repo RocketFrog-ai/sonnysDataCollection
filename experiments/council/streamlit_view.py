@@ -88,9 +88,17 @@ def _render_digest(data: Dict[str, Any]) -> None:
             st.caption(f"💡 {r['insight']}")
         for mv in moves.get(int(rnd), []):
             st.markdown(f"&nbsp;&nbsp;&nbsp;↳ {mv}", unsafe_allow_html=True)
-    takeaway = (data.get("round_digest") or {}).get("takeaway")
-    if takeaway:
-        st.info(f"**Bottom line —** {takeaway}")
+    # claim-level synthesis (Council-Mode pattern): consensus · unresolved · unique finding
+    syn = (data.get("round_digest") or {}).get("synthesis") or {}
+    parts = []
+    if syn.get("consensus"):
+        parts.append(f"✅ **Consensus —** {syn['consensus']}")
+    if syn.get("disagreement"):
+        parts.append(f"⚖️ **Unresolved —** {syn['disagreement']}")
+    if syn.get("unique"):
+        parts.append(f"💡 **Only one seat flagged —** {syn['unique']}")
+    if parts:
+        st.info("\n\n".join(parts))
     verdict = data.get("verdict", "—")
     msgs = data.get("chamber", {}).get("messages", [])
     st.markdown(f"**→ Verdict: {C.VERDICT_LABELS.get(verdict, verdict)}** · "

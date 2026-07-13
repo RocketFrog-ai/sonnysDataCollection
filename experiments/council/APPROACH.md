@@ -28,8 +28,10 @@ a deeper dig) · `REVISE` (change *my own* mind) · `ENDORSE` (agree) · `VOTE`.
 5. **Resolution** — any seat with a challenge still aimed at it gets ONE focused reply (defend or concede),
    then challenges between seats that ended up agreeing are retired as moot — nothing dangles.
 6. **Decide** — deterministic: the verdict is the committee's **weighted-majority lean**.
-7. **Recap** — the Facilitator (the moderator/summarizer role both papers recommend) writes a plain-English
-   per-round summary + insight + bottom line for the UI, in one Azure pass (deterministic fallback if it fails).
+7. **Recap** — the Facilitator (the moderator/summarizer role the papers recommend) writes a plain-English
+   per-round summary + insight in one Azure pass, plus a **claim-level synthesis** (Council-Mode pattern):
+   what the seats *agreed* on, what stayed *unresolved*, and any *unique* point only one seat raised —
+   surfacing the lone-voice insight a majority vote would bury. Deterministic fallback if the call fails.
 
 **The rules that make it trustworthy** — the LLM only *proposes* text; **deterministic Python routes
 messages, tallies the votes, and writes the verdict**:

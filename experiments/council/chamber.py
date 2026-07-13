@@ -302,6 +302,9 @@ _TEMPLATE = r"""<!doctype html>
   .btag .who{opacity:.85;font-weight:700;letter-spacing:.02em;text-transform:none}
   .btext{margin-top:6px;font-size:12px;line-height:1.32;color:var(--ink);display:flex;gap:6px}
   .btext .bemoji{font-size:15px;line-height:1.2;flex:0 0 auto}
+  /* keep the bubble compact so a long challenge never overflows the clipped stage —
+     the full text is always readable in the caption + banner below */
+  .btext .btxt{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;min-width:0}
   .bto{margin-top:5px;font-size:10px;color:var(--muted);display:flex;align-items:center;gap:4px}
   .bcites{margin-top:6px;display:flex;flex-wrap:wrap;gap:4px}
   .cite{font-size:9.5px;font-weight:600;color:var(--ink-2);background:var(--chip);border:1px solid var(--border);
@@ -641,7 +644,7 @@ _TEMPLATE = r"""<!doctype html>
       var tx=el("div","btext");
       var em=el("span","bemoji", msg.sender_emoji || (expertByKey[msg.sender]&&expertByKey[msg.sender].emoji) || "");
       tx.appendChild(em);
-      tx.appendChild(el("span",null, msg.text || ""));
+      tx.appendChild(el("span","btxt", msg.text || ""));
       b.appendChild(tx);
       if(msg.to && (msg.to_name || seats[msg.to])){
         var tn=msg.to_name || (expertByKey[msg.to]&&expertByKey[msg.to].name) || msg.to;
