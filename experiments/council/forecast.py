@@ -91,13 +91,13 @@ def project_site(lat: float, lon: float, *, radius_km: float = C.HISTORICAL_CLUS
     # mature anchor: qualified donors → else any matured neighbour → else the global healthy floor
     if len(donors) and donors.mature_level.notna().any():
         anchor = float(donors.mature_level.median())
-        anchor_src = f"{len(donors)} donors (≥{C.MIN_HISTORY_MONTHS}mo, ex-2020)"
+        anchor_src = f"{len(donors)} considered site(s) (≥{C.MIN_HISTORY_MONTHS}mo, matured, ex-2020)"
     elif neigh.mature_level.notna().any():
         anchor = float(neigh.mature_level.median())
-        anchor_src = f"{int(neigh.mature_level.notna().sum())} matured neighbours (relaxed)"
+        anchor_src = f"{int(neigh.mature_level.notna().sum())} matured neighbours (relaxed bar)"
     else:
         anchor = D.mature_floor(site)
-        anchor_src = "global healthy floor (no local comparables)"
+        anchor_src = "global healthy floor (no site meets the consideration bar)"
 
     donor_keys = donors.site_key.tolist()
     mature_map = donors.set_index("site_key").mature_level if len(donors) else pd.Series(dtype=float)

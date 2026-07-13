@@ -57,7 +57,7 @@ un-grounded version was deleted for. ~15 small, self-contained Python modules; n
 ## The five experts (each fetches real data)
 | Seat | Investigates with |
 |---|---|
-| 📊 **Historical** | 12-mile cluster track record + each qualified comparable + a forecast |
+| 📊 **Historical** | 12-mile cluster track record + **the consideration set** — the only sites that qualify to be considered (≥30mo history, matured, non-COVID), each with its own numbers — + a forecast anchored on exactly that set |
 | 🛰️ **Competition** | live Google rivals @3 mi → filtered to *true express tunnels* → scored on the industry feasibility benchmark |
 | 🏙️ **Local-Market** | census demographics/income + a **live web-search** read (down-weighted) |
 | 🏗️ **Capacity** | tunnel length sized from the projected peak demand |

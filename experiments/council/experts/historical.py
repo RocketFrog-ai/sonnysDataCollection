@@ -3,10 +3,10 @@ Historical Analyst — the WHOLE 12-mile neighbour cluster's observed track reco
 
 `investigate` reads every Sonny's site within 12 miles from the council panel and posts the cluster's
 OBSERVED performance — how many sites, and their median monthly washcount, revenue, membership purchases and
-ASP (mem/retail) — so it is transparent that the read spans the full cluster, not one site. Each qualified
-comparable carries its own opened date, lat/lon and distance from the pin. It then runs the council-local
-forecast (`forecast.project_site`, whose mature-level anchor + ramp come from the reliable comparables:
-≥30 months of history, matured, non-COVID) to project what a NEW build here would mature into.
+ASP (mem/retail) — so it is transparent that the read spans the full cluster, not one site. The projection
+rests on THE CONSIDERATION SET: the only sites that qualify to be considered (≥30 months of history, matured,
+non-COVID opening), each posted individually with its own opened date, lat/lon, distance and numbers. The
+council-local forecast (`forecast.project_site`) builds its mature-level anchor + ramp from exactly that set.
 `initial_belief` forms its lean from that cluster forecast vs the healthy-site floor.
 """
 from __future__ import annotations
@@ -45,10 +45,11 @@ def _cluster_observed(lat: float, lon: float) -> Dict[str, Any]:
     return stats
 
 
-def _qualified_comparables(lat: float, lon: float, max_show: int = 6) -> List[Dict[str, Any]]:
-    """The reliable comparables (≥30mo, matured, non-COVID) INDIVIDUALLY — each site's OWN mature washcount,
-    recent revenue, membership purchases and ASP — so all data points (not just their median) inform the
-    analysis and are citable in the debate. Exactly the donor set the forecast anchor is built from."""
+def _considered_sites(lat: float, lon: float, max_show: int = 6) -> List[Dict[str, Any]]:
+    """THE CONSIDERATION SET — the only cluster sites that qualify to be considered (≥30mo history, matured,
+    non-COVID opening), INDIVIDUALLY: each site's OWN mature washcount, recent revenue, membership purchases
+    and ASP, so every considered data point (not just a median) informs the analysis and is citable in the
+    debate. Exactly the set the forecast anchor is built from."""
     df, site = D.load_panel_1_6()
     nb = D.neighbours_within(site, lat, lon, C.HISTORICAL_CLUSTER_KM)
     donors = forecast._qualified_donors(nb)
@@ -75,9 +76,9 @@ def _qualified_comparables(lat: float, lon: float, max_show: int = 6) -> List[Di
     return rows[:max_show]
 
 
-def _comparables_text(comps: List[Dict[str, Any]]) -> str:
+def _considered_sites_text(comps: List[Dict[str, Any]]) -> str:
     if not comps:
-        return "no sites in the 12-mile cluster meet the ≥30mo / matured / non-COVID bar"
+        return "no site in the 12-mile cluster meets the consideration bar (≥30mo history, matured, non-COVID)"
     parts = []
     for c in comps:
         seg = f"{c['name']} ({c['dist_mi']}mi away"
@@ -107,14 +108,16 @@ class HistoricalExpert(Expert):
     def investigate(self, ws) -> List[Evidence]:
         obs = _cluster_observed(ws.lat, ws.lon)
         proj = forecast.project_site(ws.lat, ws.lon)
-        comps = _qualified_comparables(ws.lat, ws.lon)
+        comps = _considered_sites(ws.lat, ws.lon)
         out = [
             self.ev("hist.cluster_size", "sites in the 12-mile cluster",
                     f"{obs['n_sites']} Sonny's sites within 12 mi · {obs['n_matured']} matured · "
-                    f"{proj['n_donors']} qualify as reliable comparables (≥30mo, matured)",
+                    f"{proj['n_donors']} meet the consideration bar (≥30mo history, matured, non-COVID) — "
+                    "ONLY these are considered for the projection",
                     kind="text", source="Council--historical-data.csv (12mi cluster)", confidence=0.8),
-            self.ev("hist.comparables", f"each of the {len(comps)} qualified comparable(s) — its OWN numbers",
-                    _comparables_text(comps), kind="text", source="12mi cluster (qualified comparables)",
+            self.ev("hist.considered_sites",
+                    f"THE {len(comps)} CONSIDERED SITE(S) — the only ones meeting the bar; each with its OWN numbers",
+                    _considered_sites_text(comps), kind="text", source="12mi cluster (consideration set)",
                     confidence=0.75),
             self.ev("hist.cluster_wash", "cluster median monthly washcount (observed, all sites)",
                     obs.get("wash"), unit="washes/mo", source="12mi cluster observed", confidence=0.75),
@@ -127,14 +130,14 @@ class HistoricalExpert(Expert):
                     {"asp_mem": obs.get("asp_mem"), "asp_ret": obs.get("asp_ret")},
                     kind="table", unit="$/wash", source="12mi cluster observed", confidence=0.7),
             self.ev("hist.projected_mature",
-                    ("⚠️ GLOBAL-FLOOR FALLBACK — NO local comparables exist; this is the panel-wide healthy "
-                     "floor, NOT a local forecast" if proj["n_donors"] == 0 else
-                     "projected mature washes/mo for a NEW build here (from the comparables)"),
+                    ("⚠️ GLOBAL-FLOOR FALLBACK — NO site meets the consideration bar; this is the panel-wide "
+                     "healthy floor, NOT a local forecast" if proj["n_donors"] == 0 else
+                     "projected mature washes/mo for a NEW build here (from the considered sites)"),
                     proj["mature_anchor"], unit="washes/mo", source="forecast.project_site",
                     confidence=(0.2 if proj["n_donors"] == 0 else 0.65)),
             self.ev("hist.ramp_pattern", "how new sites in this cluster ramped",
                     f"ramps to ~90% of mature in {proj['ramp_to_90pct_months']} mo, learned from "
-                    f"{proj['n_donors']} qualified comparables ({proj['ramp_source']})",
+                    f"the {proj['n_donors']} considered site(s) ({proj['ramp_source']})",
                     kind="text", source="forecast.project_site", confidence=0.6),
         ]
         return out
@@ -142,13 +145,13 @@ class HistoricalExpert(Expert):
     def initial_belief(self, ws) -> BeliefState:
         proj_ev = ws.evidence.get("hist.projected_mature")
         projected = proj_ev.value if proj_ev is not None else None
-        # No qualified comparables → the "projection" is the global floor, not local evidence: this seat
-        # has no basis for a lean and says so, instead of blessing a fallback number.
+        # Nothing meets the consideration bar → the "projection" is the global floor, not local evidence:
+        # this seat has no basis for a lean and says so, instead of blessing a fallback number.
         if proj_ev is not None and proj_ev.confidence <= 0.25:
             return BeliefState(expert=self.name, lean=None, confidence=0.25, key_number=None,
-                               key_number_label="no local comparables — no basis to project",
-                               open_concerns=["ZERO qualified comparables within 12 mi — any projection here "
-                                              "is a global fallback, not local evidence"],
+                               key_number_label="no site meets the consideration bar — no basis to project",
+                               open_concerns=["ZERO sites within 12 mi meet the consideration bar — any "
+                                              "projection here is a global fallback, not local evidence"],
                                supporting=[e.eid for e in ws.evidence_of(self.name)])
         lean = self.lean_from_level(projected, D.mature_floor())
         return BeliefState(expert=self.name, lean=lean, confidence=0.6, key_number=projected,

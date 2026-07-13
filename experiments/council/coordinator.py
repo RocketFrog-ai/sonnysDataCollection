@@ -50,7 +50,8 @@ class Facilitator:
     # ── phase: plan (deterministic seed questions) ──
     def plan(self) -> List[Dict[str, str]]:
         seeds = {
-            "historical": "What do comparable sites in the 12-mile cluster mature to, and how did new sites ramp?",
+            "historical": "What do the considered sites (≥30mo history, matured, non-COVID) in the 12-mile "
+                          "cluster mature to, and how did new sites ramp?",
             "competition": "How many real car-wash rivals sit within 3–5 miles, and is the market saturated?",
             "local_market": "What do local demographics, income and seasonality say about demand?",
             "capacity": "What tunnel length does the projected peak-month volume call for?",

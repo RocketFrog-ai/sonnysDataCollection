@@ -160,7 +160,7 @@ def decide_final(ws, *, mode: Optional[str] = None) -> Decision:
     elif n_votes < 2:
         # one lone (usually hedged) lean is not a committee decision — say "not enough signal" honestly
         verdict, confidence = "Insufficient", 0.3
-        basis = "fewer than two seats could form a data-based lean (no local comparables / no local market data)"
+        basis = "fewer than two seats could form a data-based lean (no sites meet the consideration bar / no local market data)"
     else:
         verdict = max(masses, key=masses.get)          # the lean the committee actually landed on
         share = masses[verdict] / total                # how dominant that majority is → confidence
