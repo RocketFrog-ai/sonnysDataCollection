@@ -19,17 +19,23 @@ a deeper dig) · `REVISE` (change *my own* mind) · `ENDORSE` (agree) · `VOTE`.
 **The loop** (a LangGraph `StateGraph`, with a hand-rolled fallback):
 1. **Investigate** — each seat runs its data tools (no LLM) and posts `Evidence` to the board.
 2. **Publish round** — each seat states its opening finding + lean.
-3. **Discuss ×3** — each seat sees the *whole board* + the recent messages + **what's aimed at it**, and
-   reacts (challenge a conflicting number, answer a challenge, revise its own belief, endorse, vote). A
-   challenge is tracked until the target answers it.
+3. **Discuss ×3** — each seat sees the *whole board* + every peer's current position + **what's aimed at
+   it**, and reacts: challenge a conflicting number, answer a challenge, revise its own belief, endorse,
+   vote. A challenge stays "open" until the target answers it.
 4. **Converge** — stop when there are no open challenges and beliefs stop moving (or a 3-round cap).
-5. **Decide** — a deterministic **weighted vote**.
+5. **Decide** — deterministic: the verdict is the committee's **weighted-majority lean**.
 
-**The one rule that makes it trustworthy:** the LLM only *proposes* text; **deterministic Python routes
-messages, weights the votes, and writes the verdict.** Uncited claims are dropped; **data-grounded seats
-out-weigh world-knowledge ones** (1.0 vs 0.4). That's what stops a room of confident LLMs from drifting to
-"always build" — the exact failure the previous, un-grounded version was deleted for. ~15 small,
-self-contained Python modules; nothing under `app/` or `proforma/` is touched.
+**The rules that make it trustworthy** — the LLM only *proposes* text; **deterministic Python routes
+messages, tallies the votes, and writes the verdict**:
+- every claim must **cite a real evidence id** on the board — uncited claims are silently dropped;
+- **data-grounded seats out-weigh the world-knowledge one** (1.0 vs 0.4);
+- the verdict is the **majority lean, not a mean** — one seat can't tip a weighted average over a
+  threshold and override a room that deliberated the other way;
+- a **Build must be earned**: a mere plurality, or challenges left unresolved, degrade it to Conditional.
+
+That's what stops a room of confident LLMs drifting to "always build" — the exact failure the previous,
+un-grounded version was deleted for. ~15 small, self-contained Python modules; nothing under `app/` or
+`proforma/` is touched.
 
 ## The five experts (each fetches real data)
 | Seat | Investigates with |
@@ -40,31 +46,42 @@ self-contained Python modules; nothing under `app/` or `proforma/` is touched.
 | 🏗️ **Capacity** | tunnel length sized from the projected peak demand |
 | 💰 **Finance** | revenue (washes × ASP), **demand-sized CAPEX**, opex → 5-yr net + breakeven (+ web cost benchmarks) |
 
-## Example dry run — Atlanta (33.75, −84.39)
+## A real run — Atlanta (33.75, −84.39), verbatim
 ```
 INVESTIGATE  → each seat posts real numbers on the board:
-  Historical : 12-mi cluster = 11 sites; 3 comparables (Top Wash Clairmont 12.6k/mo $236k rev, …);
-               projected mature 12,588 washes/mo  (vs the 7,473 healthy floor)
-  Competition: 19 Google listings → only 1 true express tunnel → score 90 → LOW saturation
-  Local-Market: pop 119k, median income $118k, + 8 live web sources
-  Capacity   : projected peak 15.4k/mo → tunnel 82 ft
-  Finance    : revenue $22.8M, CAPEX $1.9M (sized to the 82 ft tunnel), 5-yr net +$10.3M, breakeven mo 28
+  Historical : 12-mi cluster = 11 sites; comparables Clairmont 12.6k/mo, Peachtree 13.3k/mo
+               → projects 12,588 mature washes/mo (healthy floor is 7,473)
+  Competition: 19 Google listings → only 1 true express tunnel → score 90/100 → LOW saturation
+  Local-Market: pop 119k · income $118k · growth +0.4% · 2.33 mass-merchants per capita
+  Capacity   : projected peak 15.4k/mo → tunnel 81.5 ft
+  Finance    : 5-yr net +$10.3M, CAPEX sized to the tunnel, breakeven month 28
 
-ROUND 0  Historical PUBLISH   "cluster matures ~12.6k/mo, above the 7.5k floor"     [cites hist.projected_mature]
-         Capacity   PUBLISH   "peak 15.4k justifies an 82 ft tunnel"
-ROUND 1  Historical CHALLENGE→Capacity  "your Build ignores competition + the mature anchor"
-         Capacity   REVISE    Build → Conditional          ← changed its mind under cross-examination
-ROUND 2  beliefs stable, no open challenges → CONVERGE
+ROUND 0  Historical   PUBLISH               "projected 12,588/mo, backed by Clairmont & Peachtree; only
+                                             1 express rival in 3 mi — strong headroom"
+         Local-Market CHALLENGE→Historical  "Clairmont/Peachtree had stronger growth than this site's
+                                             +0.4%. How does slow growth not temper your 12,588?"
+         Local-Market CHALLENGE→Competition "your 90/100 ignores 2.33 mass merchants per capita
+                                             competing for the same discretionary spend"
+ROUND 1  Historical   REVISE  Build→Conditional  "You raised valid concerns about the slow population
+                                                  growth… I now lean Conditional."
+         Competition  REVISE  Build→Conditional  "I concede slow growth and retail density temper
+                                                  demand… I revise my lean to Conditional."
+ROUND 2+ ENDORSE / VOTE — the room settles on Conditional.
 
-VERDICT: BUILD   (committee consensus, data-weighted vote)
-🔍 cross-check: the data signal reads only P(good build) = 24% — worth a second look.
+VERDICT: CONDITIONAL  (committee consensus, weighted-majority lean)
+         condition: resolve the challenge(s) the committee left standing
+🔍 quiet cross-check: the data signal reads P(good build) = 24% — worth a second look.
 ```
-That `REVISE` — Capacity moving Build→Conditional *because Historical argued it down* — is the whole
-point: the agents genuinely move each other, not five monologues.
+Those two `REVISE`s — Historical and Competition abandoning **Build** *because Local-Market's growth and
+retail-density numbers argued them down* — are the whole point: the seats genuinely move each other.
+And the headline is **faithful to the room**: the seats landed on Conditional, so the verdict is
+Conditional (an earlier version let a weighted mean say "Build" over a room that had talked itself to
+Conditional; the majority rule fixed that).
 
 ## Why you can trust the answer
 - **Data beats vibes** — every claim cites a real number on the board; uncited ones are dropped; the
-  data-grounded seats out-weigh the world-knowledge one.
+  data-grounded seats out-weigh the world-knowledge one; the verdict is the room's majority, not a
+  tippable average.
 - **An honest yardstick** — a leakage-clean **data signal** (validated with *no peeking at the future*;
-  AUC 0.572, the only component with a *measured* edge) rides along as a quiet **P(good-build) cross-check**
-  and flags when the committee is more optimistic than the data. It doesn't vote; it keeps everyone honest.
+  AUC 0.572, the only component with a *measured* edge) rides along as a quiet **P(good-build)
+  cross-check**. It does **not** vote — but when it disagrees with the room, the report says so.
