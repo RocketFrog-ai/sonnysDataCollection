@@ -506,7 +506,7 @@ _TEMPLATE = r"""<!doctype html>
       row.appendChild(el("span","lean", signal.lean || "—"));
       if(signal.prob!=null) row.appendChild(el("span","prob","P "+pct(signal.prob)+"%"));
       ex.appendChild(row);
-      if(signal.confidence!=null) ex.appendChild(el("div","sub","leakage-clean · "+pct(signal.confidence)+"% conf"));
+      if(signal.confidence!=null) ex.appendChild(el("div","sub","cross-check · "+pct(signal.confidence)+"% conf"));
     })();
 
     // ── seat geometry & figurines ──────────────────────────────────

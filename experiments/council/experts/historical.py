@@ -8,7 +8,8 @@ ASP (mem/retail) — so it is transparent that the read spans the full cluster, 
 council-local forecast (`forecast.project_site`, whose mature-level anchor + ramp come from the reliable
 comparables: ≥30 months of history, matured, non-COVID) to project what a NEW build here would mature into,
 and computes the leakage-clean signal decider's independent Build/Pass call (`anchor.compute_anchor`, the one
-component with measured out-of-fold edge) as `signal.decider`. `initial_belief` defers to that signal.
+component with measured out-of-fold edge) as `signal.decider`. `initial_belief` forms its OWN lean from
+the cluster forecast vs the healthy-site floor; the signal is a quiet cross-check on the board, not a driver.
 """
 from __future__ import annotations
 

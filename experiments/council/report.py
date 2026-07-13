@@ -314,17 +314,17 @@ def _signal_vs_committee(ws: "Workspace", decision: "Decision") -> str:
     if _signal_informative(a):
         sig_lbl = C.VERDICT_LABELS.get(a.lean, a.lean)
         prob_s = f" (P good build {_pct0(a.prob)})" if a.prob is not None else ""
-        rows.append(f"| 🎯 Data signal (leakage-clean) | {sig_lbl}{prob_s} | {_pct0(a.confidence)} |")
+        rows.append(f"| 🎯 Data signal (cross-check) | {sig_lbl}{prob_s} | {_pct0(a.confidence)} |")
     else:
-        rows.append("| 🎯 Data signal (leakage-clean) | _no informative signal available for this site_ | — |")
+        rows.append("| 🎯 Data signal (cross-check) | _no informative signal available for this site_ | — |")
     rows.append(f"| 🧭 Committee | {C.VERDICT_LABELS.get(decision.verdict, decision.verdict)} | "
                f"{_pct0(decision.confidence)} |")
     out = ["\n".join(rows)]
     if _signal_informative(a):
         diverges = decision.diverges_from_signal
-        out.append(("⚠️ **Diverge** — the committee and the independent data signal do not point the "
-                    "same way." if diverges else
-                    "✅ **Agree** — the committee and the independent data signal point the same way."))
+        out.append(("🔍 **Cross-check diverges** — the committee and the independent data signal do not point "
+                    "the same way; worth a second look (the signal does not vote — it's shown for reference)." if diverges else
+                    "✅ **Cross-check agrees** — the committee and the independent data signal point the same way."))
     if a is not None and getattr(a, "reasons", None):
         out.append("Why the signal says what it says: " + "; ".join(_clean(r) for r in a.reasons) + ".")
     if decision.note:
@@ -338,8 +338,9 @@ def _method_footer(decision: "Decision") -> str:
         "---\n\n"
         f"**_Method & caveats_** — the committee **decides** (mode: **{decision.mode}**): this is a "
         f"deliberative consensus vote, not a single model score. Data-grounded (🔒) seats are weighted "
-        f"**{C.DATA_EXPERT_WEIGHT:g}×**, world-knowledge (🌐) seats **{C.WORLD_EXPERT_WEIGHT:g}×**, and "
-        f"the leakage-clean data signal **{C.SIGNAL_WEIGHT:g}×** in the tally — demographics and "
+        f"**{C.DATA_EXPERT_WEIGHT:g}×** and world-knowledge (🌐) seats **{C.WORLD_EXPERT_WEIGHT:g}×** in "
+        "the tally; the leakage-clean data signal **does not vote** — it rides along as a quiet P(good-build) "
+        "cross-check (the one component with a *measured* out-of-fold edge). Demographics and "
         "narrative carry low predictive weight next to capacity and market-structure numbers. "
         "Live/present-day evidence (current competitor counts, present-day narration) is flagged 🌐 "
         "and down-weighted accordingly. Every 🔒 number traces back to one source: the council's own "

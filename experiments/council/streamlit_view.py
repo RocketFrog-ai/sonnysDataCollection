@@ -70,8 +70,8 @@ def _fmt_value(v: Any) -> str:
 def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: Optional[str] = None) -> None:
     st.subheader("🧭 AI Site-Selection Committee")
     st.caption("Five domain experts fetch real data, publish it to a shared board, then **challenge / "
-               "question / revise / vote** across rounds until they converge on a build/no-build call. The "
-               "leakage-clean data signal sits on the table as evidence; the committee decides. Azure-only.")
+               "question / revise / vote** across rounds until they converge on a build/no-build call. A "
+               "data signal sits on the table as a quiet cross-check; the committee decides. Azure-only.")
 
     key = f"{round(lat, 4)}::{round(lon, 4)}::{int(radius_km)}"
     store = st.session_state.setdefault("committee_store", {})
@@ -144,8 +144,8 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     # ── how the vote is weighted (one seat does NOT equal one vote) ──
     with st.expander("⚖️ How the vote is weighted — do all experts have equal power?"):
         st.caption("No — data-grounded seats out-weigh world-knowledge ones (the guardrail against a room of "
-                   "bullish LLMs drifting to 'always build'), and the leakage-clean signal casts its own heavy "
-                   "vote. Only seats that took a lean vote; Capacity sizes the tunnel and abstains on go/no-go.")
+                   "bullish LLMs drifting to 'always build'). The data signal does **not** vote; it's a quiet "
+                   "cross-check. Only seats that took a lean vote; Capacity sizes the tunnel and abstains on go/no-go.")
         for e in data.get("chamber", {}).get("experts", []):
             role = "🌐 world-knowledge (down-weighted)" if e.get("is_world") else "🔒 data-grounded"
             lean = e.get("lean") or "abstains"
