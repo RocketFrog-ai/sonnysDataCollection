@@ -39,6 +39,11 @@ def run_committee(snap, *, mode: Optional[str] = None, backend: Optional[str] = 
     plan = ws.plan
 
     decision = decide_final(ws, mode=mode)
+    if not light and not log.messages:
+        # a full run that produced ZERO discussion means the LLM was unreachable (e.g. VPN down) and every
+        # react no-op'd — say so loudly instead of presenting confident data-only leans as a deliberation
+        decision.basis += " — ⚠️ NO DEBATE RAN (LLM unreachable); data-only initial leans, treat as light mode"
+        decision.confidence = min(decision.confidence, 0.5)
     report = ""
     if not light:
         try:
