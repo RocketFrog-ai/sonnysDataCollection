@@ -126,8 +126,12 @@ class HistoricalExpert(Expert):
             self.ev("hist.cluster_asp", "cluster observed ASP (membership / retail)",
                     {"asp_mem": obs.get("asp_mem"), "asp_ret": obs.get("asp_ret")},
                     kind="table", unit="$/wash", source="12mi cluster observed", confidence=0.7),
-            self.ev("hist.projected_mature", "projected mature washes/mo for a NEW build here (from the comparables)",
-                    proj["mature_anchor"], unit="washes/mo", source="forecast.project_site", confidence=0.65),
+            self.ev("hist.projected_mature",
+                    ("⚠️ GLOBAL-FLOOR FALLBACK — NO local comparables exist; this is the panel-wide healthy "
+                     "floor, NOT a local forecast" if proj["n_donors"] == 0 else
+                     "projected mature washes/mo for a NEW build here (from the comparables)"),
+                    proj["mature_anchor"], unit="washes/mo", source="forecast.project_site",
+                    confidence=(0.2 if proj["n_donors"] == 0 else 0.65)),
             self.ev("hist.ramp_pattern", "how new sites in this cluster ramped",
                     f"ramps to ~90% of mature in {proj['ramp_to_90pct_months']} mo, learned from "
                     f"{proj['n_donors']} qualified comparables ({proj['ramp_source']})",
@@ -138,8 +142,14 @@ class HistoricalExpert(Expert):
     def initial_belief(self, ws) -> BeliefState:
         proj_ev = ws.evidence.get("hist.projected_mature")
         projected = proj_ev.value if proj_ev is not None else None
-        # Historical forms its OWN lean from the cluster forecast vs the healthy-site floor. The data signal
-        # is a quiet cross-check on the board (P good-build), not a driver of this seat's vote.
+        # No qualified comparables → the "projection" is the global floor, not local evidence: this seat
+        # has no basis for a lean and says so, instead of blessing a fallback number.
+        if proj_ev is not None and proj_ev.confidence <= 0.25:
+            return BeliefState(expert=self.name, lean=None, confidence=0.25, key_number=None,
+                               key_number_label="no local comparables — no basis to project",
+                               open_concerns=["ZERO qualified comparables within 12 mi — any projection here "
+                                              "is a global fallback, not local evidence"],
+                               supporting=[e.eid for e in ws.evidence_of(self.name)])
         lean = self.lean_from_level(projected, D.mature_floor())
         return BeliefState(expert=self.name, lean=lean, confidence=0.6, key_number=projected,
                            key_number_label="projected mature washes/mo",

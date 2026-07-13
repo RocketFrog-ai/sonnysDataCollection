@@ -130,6 +130,16 @@ class FinanceExpert(Expert):
         net_5yr = net_ev.value if net_ev is not None else None
         breakeven = be_ev.value if be_ev is not None else None
 
+        # A P&L is only as real as its demand anchor: if the projection is a global fallback (no local
+        # comparables), every downstream dollar is fabricated — abstain rather than bless it.
+        proj_ev = ws.evidence.get("hist.projected_mature")
+        if proj_ev is not None and proj_ev.confidence <= 0.25:
+            return BeliefState(expert=self.name, lean=None, confidence=0.25, key_number=None,
+                               key_number_label="P&L rests on a global fallback — not underwritable",
+                               open_concerns=["revenue/net/breakeven all derive from a fallback demand anchor, "
+                                              "not local evidence"],
+                               supporting=[e.eid for e in ws.evidence_of(self.name)])
+
         if net_5yr is None:
             lean, confidence = None, 0.3
         elif net_5yr > 0 and breakeven is not None:

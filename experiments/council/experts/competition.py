@@ -84,6 +84,11 @@ class CompetitionExpert(Expert):
         score = _competition_score(express_count)
         saturation = _score_to_saturation(score)             # DETERMINISTIC from the benchmark, not the LLM
         graded = bool(cls) and express_count is not None
+        # the zero-competition fallacy guard: an EMPTY field (no washes of any kind) is usually absent
+        # demand, not headroom — a perfect score only means opportunity where a market exists.
+        if not near3["count"] and not (express_count or 0):
+            saturation = ("none — but an EMPTY field (zero car washes of ANY kind) usually signals NO DEMAND, "
+                          "not headroom; weigh against the cluster/demographic evidence")
 
         return [
             self.ev("comp.washes_3mi_all", f"all car-wash listings within {r3:g} driving mi (Google, all types)",
@@ -126,9 +131,18 @@ class CompetitionExpert(Expert):
     def initial_belief(self, ws) -> BeliefState:
         sat_ev = ws.evidence.get("comp.saturation")
         score_ev = ws.evidence.get("comp.express_3mi")
+        all_ev = ws.evidence.get("comp.washes_3mi_all")
         sat = sat_ev.value if sat_ev is not None else "unknown"
+        # zero-competition fallacy: an EMPTY field (no washes of any kind) is not a Build signal —
+        # it usually means no market. Lean Conditional and say why.
+        if not (all_ev.value if all_ev is not None else 0) and not (score_ev.value if score_ev is not None else 0):
+            return BeliefState(expert=self.name, lean="Conditional", confidence=0.35, key_number=0,
+                               key_number_label="car washes of ANY kind within 3mi",
+                               open_concerns=["an empty competitive field usually signals absent demand, "
+                                              "not headroom — demand evidence must carry this case"],
+                               supporting=[e.eid for e in ws.evidence_of(self.name)])
         # low saturation → room to Build; high → Pass; medium → Conditional
-        lean = {"low": "Build", "high": "Pass"}.get(sat, "Conditional")
+        lean = {"low": "Build", "high": "Pass"}.get(str(sat), "Conditional")
         confidence = 0.68 if sat in ("low", "high") else 0.45
         return BeliefState(expert=self.name, lean=lean, confidence=confidence,
                            key_number=(score_ev.value if score_ev is not None else None),

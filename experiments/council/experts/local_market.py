@@ -20,7 +20,8 @@ from experiments.council.protocol import BeliefState, Evidence
 
 _LM_SYS = (
     "You are a Local-Market Analyst evaluating a site for a NEW EXPRESS-TUNNEL car wash. Using the "
-    "coordinates, the demographic snapshot, and the LIVE WEB SOURCES provided, write a RICH, specific market "
+    "coordinates, the demographic snapshot (ALL demographic figures are a 3-MILE trade area around the "
+    "site, not city/metro totals), and the LIVE WEB SOURCES provided, write a RICH, specific market "
     "read that another analyst on the committee could argue with — quote the numbers you are given, ground "
     "current facts in the web_sources where relevant, and reason about what they imply for express-wash "
     "demand, pricing, membership potential and throughput.\n"
@@ -51,28 +52,36 @@ class LocalMarketExpert(Expert):
         pop = prof.get("population_2025")
         # BOTH growth windows, as readable percentages: the trailing 2020→2025 number is a COVID-era
         # window and reads misleadingly flat on its own — the forward projection is the demand signal.
+        # ALL sitewise figures below are a 3-MILE trade area around the site, not city/metro totals —
+        # 119k people in 3 miles is a dense urban trade area; unlabeled it reads like a small city.
+        # If the nearest reference site is far away, the "trade area" is BORROWED, not local — say so loudly.
+        far_km = self._finite(meta.get("nearest_km"))
+        borrowed = far_km is not None and far_km > 15
+        stale = f"⚠️ NOT LOCAL — borrowed from a site {far_km:,.0f}km away; treat as unavailable · " if borrowed else ""
+        conf = 0.2 if borrowed else 0.7
         out = [
-            self.ev("mkt.demographics", "population / growth (trailing AND projected) / age",
-                    {"population_2025": (round(pop) if pop is not None else None),
+            self.ev("mkt.demographics", stale + "population / growth (trailing AND projected) / age — 3-MILE trade area",
+                    {"population_2025_3mi": (round(pop) if pop is not None else None),
                      "growth_2020_2025_trailing": (self._pct(prof.get("growth_2020_2025")) or "n/a")
                         + " over 5yr (COVID-era window — read with caution)",
                      "growth_2025_2030_projected": (self._pct(prof.get("growth_2025_2030")) or "n/a")
                         + " over next 5yr (the forward demand signal)",
                      "avg_age": (round(float(prof["avg_age"]), 1) if prof.get("avg_age") is not None else None),
                      "snapped_from": f"{meta.get('n', 0)} nearby known sites, nearest {meta.get('nearest_km')}km"},
-                    kind="table", source="datasets.sitewise_for_pin", confidence=0.7),
-            self.ev("mkt.income", "household income",
+                    kind="table", source="datasets.sitewise_for_pin (3mi trade area)", confidence=conf),
+            self.ev("mkt.income", stale + "household income — 3-mile trade area",
                     {"median_household_income": prof.get("median_household_income"),
                      "avg_household_income": prof.get("avg_household_income"),
                      "pct_hh_income_50k_plus": prof.get("pct_hh_income_50k_plus")},
-                    kind="table", unit="$", source="datasets.sitewise_for_pin", confidence=0.7),
-            self.ev("mkt.vehicles", "vehicles in the market (demand base)",
+                    kind="table", unit="$", source="datasets.sitewise_for_pin (3mi trade area)", confidence=conf),
+            self.ev("mkt.vehicles", stale + "vehicles in the 3-mile trade area (the demand base)",
                     {"avg_vehicles_per_hh": prof.get("avg_vehicles"),
-                     "total_vehicles": prof.get("total_vehicles")},
-                    kind="table", source="datasets.sitewise_for_pin", confidence=0.7),
-            self.ev("mkt.retail_anchors", "nearby retail anchors (traffic generators)",
+                     "total_vehicles_3mi": prof.get("total_vehicles")},
+                    kind="table", source="datasets.sitewise_for_pin (3mi trade area)", confidence=conf),
+            self.ev("mkt.retail_anchors", stale + "retail anchors in the 3-mile trade area (traffic generators)",
                     {"mass_merchants": prof.get("mass_merchant_count"), "grocery": prof.get("grocery_count")},
-                    kind="table", source="datasets.sitewise_for_pin", confidence=0.6),
+                    kind="table", source="datasets.sitewise_for_pin (3mi trade area)",
+                    confidence=(0.2 if borrowed else 0.6)),
         ]
         sources, place = self._web_sources(ws)
         if sources:
@@ -137,8 +146,15 @@ class LocalMarketExpert(Expert):
 
     def initial_belief(self, ws) -> BeliefState:
         dem_ev = ws.evidence.get("mkt.demographics")
-        population = (dem_ev.value or {}).get("population_2025") if dem_ev is not None else None
+        population = (dem_ev.value or {}).get("population_2025_3mi") if dem_ev is not None else None
+        # Borrowed (far-snap) demographics → this seat knows nothing local: abstain rather than narrate.
+        if dem_ev is not None and dem_ev.confidence <= 0.25:
+            return BeliefState(expert=self.name, lean=None, confidence=0.2, key_number=None,
+                               key_number_label="no local demographic data",
+                               open_concerns=["demographics are borrowed from a distant reference site — "
+                                              "no local read is possible"],
+                               supporting=[e.eid for e in ws.evidence_of(self.name)])
         # context seat, not a vote: a weak Conditional carries through the tally at WORLD_EXPERT_WEIGHT
         return BeliefState(expert=self.name, lean="Conditional", confidence=0.3, key_number=population,
-                           key_number_label="population (2025 est.)",
+                           key_number_label="population in 3mi (2025 est.)",
                            supporting=[e.eid for e in ws.evidence_of(self.name)])
