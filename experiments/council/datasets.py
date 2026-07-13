@@ -94,28 +94,43 @@ def sitewise_for_pin(lat: float, lon: float, *, k: int = 3, radius_km: float = 2
     return out
 
 
-def capex_for_pin(lat: float, lon: float, *, k: int = 5) -> Dict[str, Any]:
-    """CAPEX estimate = median `project_cost_total_investment` of the nearest ≤k historical builds with a
-    positive cost, plus the nearest build's tunnel lengths and meta. Builds are sparse (~619 nationwide),
-    so this is nearest-k by distance (no hard radius). Returns {capex, capex_low, capex_high, tunnel_actual,
-    tunnel_predicted, _meta}."""
+_FT_PER_M = 3.28084
+
+
+def capex_for_pin(lat: float, lon: float, *, k: int = 8, tunnel_ft: Optional[float] = None) -> Dict[str, Any]:
+    """CAPEX estimate = median `project_cost_total_investment` of comparable historical builds (positive cost).
+
+    **Demand-driven when `tunnel_ft` is given** (from the Capacity seat, whose tunnel length scales with the
+    projected peak volume): match the builds by TUNNEL LENGTH — a bigger tunnel = a bigger build = more CAPEX —
+    since tunnel size is the dominant CAPEX driver and the old-proforma tunnel lengths are in metres. Without a
+    tunnel length it falls back to the nearest builds by location. Returns {capex, capex_low, capex_high, basis, _meta}."""
     df = _load_proforma()
     if df.empty or _CAPEX_COL not in df.columns:
         return {"capex": None, "_meta": {"n": 0}}
-    d = haversine_km(lat, lon, df.lat.values, df.lon.values)
-    df = df.assign(_dist_km=d).sort_values("_dist_km")
-    valid = df[df[_CAPEX_COL] > 0].head(k)
+    valid = df[df[_CAPEX_COL] > 0].copy()
     if valid.empty:
         return {"capex": None, "_meta": {"n": 0}}
+
+    if tunnel_ft is not None and "tunnel_length_actual" in valid.columns:
+        tunnel_m = float(tunnel_ft) / _FT_PER_M                      # old-proforma tunnel lengths are metres
+        vt = valid[valid.tunnel_length_actual.notna() & (valid.tunnel_length_actual > 0)].copy()
+        if len(vt):
+            vt["_tdiff"] = (vt.tunnel_length_actual.astype(float) - tunnel_m).abs()
+            near = vt.sort_values("_tdiff").head(k)
+            costs = near[_CAPEX_COL].astype(float)
+            return {"capex": float(costs.median()), "capex_low": float(costs.min()), "capex_high": float(costs.max()),
+                    "basis": f"scaled to a ~{tunnel_ft:.0f} ft (~{tunnel_m:.0f} m) tunnel — {len(near)} similar-size builds",
+                    "_meta": {"n": int(len(near)), "mode": "tunnel", "tunnel_m": round(tunnel_m, 1)}}
+
+    d = haversine_km(lat, lon, valid.lat.values, valid.lon.values)
+    valid = valid.assign(_dist_km=d).sort_values("_dist_km").head(k)
     costs = valid[_CAPEX_COL].astype(float)
     nearest = valid.iloc[0]
     return {
-        "capex": float(costs.median()),
-        "capex_low": float(costs.min()),
-        "capex_high": float(costs.max()),
-        "tunnel_actual": _f(nearest.get("tunnel_length_actual")),
-        "tunnel_predicted": _f(nearest.get("tunnel_length_predicted")),
-        "_meta": {"n": int(len(valid)),
+        "capex": float(costs.median()), "capex_low": float(costs.min()), "capex_high": float(costs.max()),
+        "tunnel_actual": _f(nearest.get("tunnel_length_actual")), "tunnel_predicted": _f(nearest.get("tunnel_length_predicted")),
+        "basis": f"nearest {len(valid)} builds by location",
+        "_meta": {"n": int(len(valid)), "mode": "geo",
                   "nearest_name": str(nearest.get("company_name") or nearest.get("address1") or ""),
                   "nearest_km": round(float(nearest._dist_km), 2)},
     }
