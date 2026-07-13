@@ -118,13 +118,13 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     st.markdown(f"### :{col}[{lbl}]  ·  {conf:.0%} committee confidence{prob_txt}")
     st.caption(f"Basis: {data.get('basis', '')}")
     st.caption("**Committee confidence** = how firmly the seats landed on this verdict (from the data-weighted "
-               "vote — near 50% means a genuinely split committee). **Signal · P(good build)** = the leakage-clean "
-               "model's *independent* probability this is a good build. They measure different things; when they "
-               "disagree, that gap is the ⚠️ note below — and it's the point.")
+               "vote — near 50% means a genuinely split committee). **Signal · P(good build)** = the data-signal "
+               "model's *independent* probability this is a good build, shown as a quiet cross-check (it does not "
+               "vote). When it disagrees with the committee, that's the 🔍 note below.")
 
     with st.expander("ℹ️ What do “P(good build)” and “leakage-clean” actually mean?"):
         st.markdown(
-            "**P(good build)** — the *leakage-clean signal's* probability that this site matures into a "
+            "**P(good build)** — the *data signal's* probability that this site matures into a "
             "**good build**: a wash that reaches an **above-median mature volume with a healthy ramp**. "
             "_Example:_ **P = 24%** ≈ a 1-in-4 chance it becomes a strong performer — so the hard data leans "
             "*against* building, even if the LLM seats sound optimistic.\n\n"
@@ -139,7 +139,7 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     if data.get("condition"):
         st.warning(f"**Condition:** {data['condition']}")
     if data.get("note"):
-        st.warning(data["note"])
+        st.caption(data["note"])          # quiet cross-check, not a loud warning
 
     # ── how the vote is weighted (one seat does NOT equal one vote) ──
     with st.expander("⚖️ How the vote is weighted — do all experts have equal power?"):
@@ -150,7 +150,8 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
             role = "🌐 world-knowledge (down-weighted)" if e.get("is_world") else "🔒 data-grounded"
             lean = e.get("lean") or "abstains"
             st.caption(f"{e.get('emoji','')} **{e.get('name')}** — vote weight **{e.get('weight')}** · {role} · leans *{lean}*")
-        st.caption(f"🎯 **Data signal** — vote weight **{C.SIGNAL_WEIGHT}** (the only component with a *measured* out-of-fold edge)")
+        st.caption("🎯 **Data signal** — a P(good-build) **cross-check; does NOT vote** (validated out-of-fold, "
+                   "the one component with a *measured* edge — shown for reference, not to drive the verdict).")
 
     # ── final report ──
     with st.expander("📄 In-depth committee report", expanded=True):

@@ -38,7 +38,7 @@ PER_SITE_LLM_BUDGET = 30     # hard cap on LLM calls per site (budget exhaustion
 # ── vote weighting (the anti-bullish-drift guardrail) ──
 DATA_EXPERT_WEIGHT = 1.0     # a data-grounded lean counts this much
 WORLD_EXPERT_WEIGHT = 0.4    # a world-knowledge (🌐) lean counts less
-SIGNAL_WEIGHT = 1.6          # the leakage-clean signal exhibit's weight in the tally
+SIGNAL_WEIGHT = 0.0          # DEMOTED to a quiet cross-check: the data signal is shown (P good-build) but does NOT vote
 SIGNAL_HIGH_CONF = 0.75      # a signal at/above this confidence is "high-confidence" (anchored mode won't downgrade it)
 CONF_NUDGE_MAX = 0.15        # anchored mode: committee may nudge confidence by at most ±this
 

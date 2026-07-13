@@ -48,7 +48,7 @@ class Anchor:
     def as_evidence(self) -> Evidence:
         return Evidence(
             eid="signal.decider", expert="historical",
-            label="leakage-clean data signal (market structure + operator scale)",
+            label="data signal — P(good build) from market structure + operator scale (a quiet cross-check, validated out-of-fold)",
             value={"lean": self.lean, "prob": self.prob, "n_matured": self.n_matured},
             kind="flag", source="decider.score_features", confidence=self.confidence, leakage_safe=True)
 
@@ -160,10 +160,10 @@ def _signal_context_note(a: Optional[Anchor], verdict: str, yes: Optional[float]
         return None
     lbl = C.VERDICT_LABELS.get(a.lean, a.lean)
     if not com_yes and sig_yes:
-        return (f"⚠️ The committee leans **{C.VERDICT_LABELS.get(verdict, verdict)}**, but the leakage-clean data "
-                f"signal (the only component with measured edge) says **{lbl}**. Surfaced, not averaged.")
-    return (f"⚠️ The committee leans **{C.VERDICT_LABELS.get(verdict, verdict)}**, but the leakage-clean data "
-            f"signal says **{lbl}** (weak headroom / tight market). The data disagrees — weigh it.")
+        return (f"🔍 Cross-check: the committee leans **{C.VERDICT_LABELS.get(verdict, verdict)}**, while the data "
+                f"signal (validated out-of-fold) reads **{lbl}** — worth a second look.")
+    return (f"🔍 Cross-check: the committee leans **{C.VERDICT_LABELS.get(verdict, verdict)}**, while the data "
+            f"signal reads **{lbl}** (weak headroom / tight market) — worth a second look.")
 
 
 def decide_final(ws, *, mode: Optional[str] = None) -> Decision:

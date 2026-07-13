@@ -136,18 +136,9 @@ class HistoricalExpert(Expert):
     def initial_belief(self, ws) -> BeliefState:
         proj_ev = ws.evidence.get("hist.projected_mature")
         projected = proj_ev.value if proj_ev is not None else None
-
-        # defer to the signal decider when it has an opinion (mirrors Anchor.abstains); else level-vs-floor
-        sig_ev = ws.evidence.get("signal.decider")
-        lean, confidence = None, 0.6
-        if sig_ev is not None and isinstance(sig_ev.value, dict):
-            sig_lean = sig_ev.value.get("lean")
-            n_matured = int(sig_ev.value.get("n_matured") or 0)
-            if sig_lean is not None and n_matured >= 2:
-                lean, confidence = sig_lean, float(sig_ev.confidence)
-        if lean is None:
-            lean = self.lean_from_level(projected, D.mature_floor())
-
-        return BeliefState(expert=self.name, lean=lean, confidence=confidence, key_number=projected,
+        # Historical forms its OWN lean from the cluster forecast vs the healthy-site floor. The data signal
+        # is a quiet cross-check on the board (P good-build), not a driver of this seat's vote.
+        lean = self.lean_from_level(projected, D.mature_floor())
+        return BeliefState(expert=self.name, lean=lean, confidence=0.6, key_number=projected,
                            key_number_label="projected mature washes/mo",
                            supporting=[e.eid for e in ws.evidence_of(self.name)])
