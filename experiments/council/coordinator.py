@@ -145,6 +145,7 @@ class Facilitator:
 
     # ── phase: Finance consolidates last ──
     def finance_consolidate(self) -> None:
+        self.close_moot_challenges()                 # discussion is over: retire challenges between seats that now agree
         fin = self._by_name("finance")
         if fin is None:
             return
@@ -165,10 +166,8 @@ class Facilitator:
         if m.mtype in (MsgType.QUESTION, MsgType.CHALLENGE, MsgType.REQUEST):
             if m.to not in self.names:
                 m.to = None                          # broadcast if the addressee is invalid
-        if m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION) and m.to and any(
-                om.answered_by is None and om.sender == m.sender and om.to == m.to and om.mtype == m.mtype
-                for om in self.log.messages):
-            return                                   # drop a repeat of an already-open challenge/question (no going in circles)
+        if m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION) and m.to and self._is_relitigation(m):
+            return                                   # drop a repeat (open OR already answered) — a won argument retires
         self.log.add(m)
         if m.mtype == MsgType.REQUEST:
             self.ws.open_requests.append(m)
@@ -182,6 +181,22 @@ class Facilitator:
         # REVISE / VOTE: the sender's belief was already updated inside llm_react.
         self._resolve_open(m)
 
+    def _is_relitigation(self, m: Message) -> bool:
+        """Same sender → same target, same type, arguing from (mostly) the same evidence = the same point
+        again — whether or not the earlier one was answered. Once a point is made (and possibly conceded),
+        it doesn't get raised a third time."""
+        new = set(m.cites or [])
+        for om in self.log.messages:
+            if om.sender != m.sender or om.to != m.to or om.mtype != m.mtype:
+                continue
+            old = set(om.cites or [])
+            if not new and not old:
+                return True                          # two uncited questions to the same target — one is enough
+            inter, union = len(new & old), len(new | old)
+            if union and inter / union >= 0.5:
+                return True
+        return False
+
     def _resolve_open(self, m: Message) -> None:
         """A PUBLISH/REVISE by X answers any open CHALLENGE/QUESTION addressed to X."""
         if m.mtype not in (MsgType.PUBLISH, MsgType.REVISE):
@@ -189,6 +204,16 @@ class Facilitator:
         for om in self.log.messages:
             if om.answered_by is None and om.to == m.sender and om.mtype in (MsgType.CHALLENGE, MsgType.QUESTION):
                 om.answered_by = m.mid
+
+    def close_moot_challenges(self) -> None:
+        """Closing sweep (deterministic, before the verdict): a still-open challenge whose sender and target
+        now hold the SAME lean is moot — the two seats converged, so there is no standing disagreement left.
+        Challenges between seats that still disagree stay open and are reported honestly."""
+        for om in self.log.unanswered(MsgType.CHALLENGE):
+            s = self.ws.beliefs.get(om.sender)
+            t = self.ws.beliefs.get(om.to) if om.to else None
+            if s is not None and t is not None and s.lean is not None and s.lean == t.lean:
+                om.answered_by = f"moot:{om.mid}"    # resolved by agreement, not by a reply
 
     # ── the exact convergence predicate (the conditional-edge router uses this) ──
     def converged(self, r: int) -> bool:

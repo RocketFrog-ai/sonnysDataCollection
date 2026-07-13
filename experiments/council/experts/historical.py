@@ -16,6 +16,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 import numpy as np
+import pandas as pd
 
 from experiments.council import anchor as A
 from experiments.council import config as C
@@ -68,7 +69,9 @@ def _qualified_comparables(lat: float, lon: float, max_show: int = 6) -> List[Di
             v = base[col].dropna()
             return float(v.median()) if len(v) else None
 
+        opened = d.op_start.strftime("%Y-%m") if pd.notna(d.op_start) else None
         rows.append({"name": str(d.client_name)[:22], "dist_mi": round(float(d.dist_km) * 0.621, 1),
+                     "opened": opened, "lat": round(float(d.lat), 4), "lon": round(float(d.lon), 4),
                      "mature_wash": round(float(d.mature_level)), "revenue_mo": _mean("tot_revenue"),
                      "mem_purch_mo": _mean("mem_purchase_count"), "asp_mem": _med("ASP_mem"),
                      "asp_ret": _med("ASP_ret"), "months": int(d.n_obs)})
@@ -80,7 +83,12 @@ def _comparables_text(comps: List[Dict[str, Any]]) -> str:
         return "no sites in the 12-mile cluster meet the ≥30mo / matured / non-COVID bar"
     parts = []
     for c in comps:
-        seg = f"{c['name']} ({c['dist_mi']}mi): {c['mature_wash']:,}/mo"
+        seg = f"{c['name']} ({c['dist_mi']}mi away"
+        if c.get("opened"):
+            seg += f", opened {c['opened']}"
+        if c.get("lat") is not None:
+            seg += f", at {c['lat']:.3f},{c['lon']:.3f}"
+        seg += f"): {c['mature_wash']:,}/mo"
         if c.get("revenue_mo"):
             seg += f", ${round(c['revenue_mo']):,} rev"
         if c.get("mem_purch_mo"):

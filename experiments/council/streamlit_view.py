@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -53,6 +54,53 @@ def _run_committee_subprocess(lat: float, lon: float, radius_km: float, light: b
         err = (proc.stderr or "")[-1200:] or out[-800:] or "(no output)"
         raise RuntimeError(f"committee subprocess exited {proc.returncode}: {err}")
     return json.loads(out[i + len(marker):])
+
+
+# the digest: strip "(hist.projected_mature)"-style cite parentheses, keep the first ~short clause
+_CITE_PAREN = re.compile(r"\s*\([^()]*\b[a-z_]+\.[a-z_0-9]+[^()]*\)")
+_VERB = {"PUBLISH": "🗣️ states", "QUESTION": "❓ asks", "CHALLENGE": "⚔️ challenges", "REQUEST": "🔎 asks for a dig",
+         "REVISE": "🔁 concedes to", "ENDORSE": "✅ endorses", "VOTE": "🗳️ votes"}
+
+
+def _gist(text: str, n: int = 130) -> str:
+    t = re.sub(r"\s+", " ", _CITE_PAREN.sub("", text or "")).strip()
+    return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + "…"
+
+
+def _render_digest(data: Dict[str, Any]) -> None:
+    """One short line per message + the position changes per round — the whole meeting in a 30-second read."""
+    msgs = data.get("chamber", {}).get("messages", [])
+    if not msgs:
+        st.caption("_(light mode — no discussion)_")
+        return
+    # lean changes keyed by the round they happened in (from the belief history)
+    moves: Dict[int, List[str]] = {}
+    for ekey, seq in (data.get("chamber", {}).get("belief_history", {}) or {}).items():
+        meta = C.EXPERT_META.get(ekey, {})
+        for prev, cur in zip(seq, seq[1:]):
+            if cur.get("lean") != prev.get("lean"):
+                moves.setdefault(int(cur.get("round", 0)), []).append(
+                    f"{meta.get('emoji','')} **{meta.get('name', ekey)}** moved "
+                    f"*{prev.get('lean') or '—'}* → **{cur.get('lean') or '—'}**")
+    last = None
+    for m in msgs:
+        r = m.get("round")
+        if r != last:
+            if last is not None:
+                for mv in moves.get(last, []):
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;{mv}", unsafe_allow_html=True)
+            st.markdown(f"**Round {r}**" + (" — opening positions" if r == 0 else ""))
+            last = r
+        tgt = f" **{m.get('to_name')}**" if m.get("to_name") else ""
+        st.caption(f"{m.get('sender_emoji','')} **{m.get('sender_name')}** "
+                   f"{_VERB.get(m.get('type'), m.get('type'))}{tgt} — {_gist(m.get('text',''))}")
+    if last is not None:
+        for mv in moves.get(last, []):
+            st.markdown(f"&nbsp;&nbsp;&nbsp;{mv}", unsafe_allow_html=True)
+    verdict = data.get("verdict", "—")
+    st.markdown(f"**→ Verdict: {C.VERDICT_LABELS.get(verdict, verdict)}** · "
+                f"{len([m for m in msgs if m.get('type')=='REVISE'])} mind-change(s) · "
+                f"{data.get('chamber', {}).get('open_challenges', 0)} disagreement(s) left standing")
 
 
 def _fmt_value(v: Any) -> str:
@@ -108,73 +156,26 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     except Exception as exc:
         st.warning(f"Chamber animation unavailable ({exc}); see the details below.")
 
-    # ── verdict + signal-divergence banner ──
+    # ── verdict — ONE line (the chamber banner above already shows the numbers) ──
     verdict = data.get("verdict", "—")
     lbl = C.VERDICT_LABELS.get(verdict, verdict)
     col = {"Build": "green", "Pass": "red", "Conditional": "orange"}.get(verdict, "gray")
     prob = data.get("prob")
-    prob_txt = f"  ·  signal P(good build) {prob:.0%}" if isinstance(prob, (int, float)) else ""
-    conf = data.get("confidence") or 0.0
-    st.markdown(f"### :{col}[{lbl}]  ·  {conf:.0%} committee confidence{prob_txt}")
-    st.caption(f"Basis: {data.get('basis', '')}")
-    st.caption("**Committee confidence** = how firmly the seats landed on this verdict (from the data-weighted "
-               "vote — near 50% means a genuinely split committee). **Signal · P(good build)** = the data-signal "
-               "model's *independent* probability this is a good build, shown as a quiet cross-check (it does not "
-               "vote). When it disagrees with the committee, that's the 🔍 note below.")
-
-    with st.expander("ℹ️ What do “P(good build)” and “leakage-clean” actually mean?"):
-        st.markdown(
-            "**P(good build)** — the *data signal's* probability that this site matures into a "
-            "**good build**: a wash that reaches an **above-median mature volume with a healthy ramp**. "
-            "_Example:_ **P = 24%** ≈ a 1-in-4 chance it becomes a strong performer — so the hard data leans "
-            "*against* building, even if the LLM seats sound optimistic.\n\n"
-            "**Leakage-clean** — the signal is validated with **no peeking at the future**. To grade it "
-            "honestly we *froze the clock* at each past site's opening month, showed the model **only what "
-            "existed before then** (the neighbouring washes' prior history, the operator's scale at the time), "
-            "and scored its call against what the site *actually* did afterward. _Example:_ the old trained "
-            "forecast looked brilliant at **0.74 in-sample** but **collapsed to ~0** under this honest test — "
-            "it had *memorized* existing sites, not forecast new ones. This signal held at **AUC 0.572** "
-            "(> the 0.53 noise ceiling), so its **+10-pt edge is real, not a mirage** — which is exactly why "
-            "its disagreement with the committee is worth flagging.")
+    prob_txt = f"  ·  cross-check P(good build) {prob:.0%}" if isinstance(prob, (int, float)) else ""
+    st.markdown(f"### :{col}[{lbl}]  ·  {(data.get('confidence') or 0.0):.0%} committee confidence{prob_txt}")
     if data.get("condition"):
         st.warning(f"**Condition:** {data['condition']}")
     if data.get("note"):
         st.caption(data["note"])          # quiet cross-check, not a loud warning
 
-    # ── how the vote is weighted (one seat does NOT equal one vote) ──
-    with st.expander("⚖️ How the vote is weighted — do all experts have equal power?"):
-        st.caption("No — data-grounded seats out-weigh world-knowledge ones (the guardrail against a room of "
-                   "bullish LLMs drifting to 'always build'). The data signal does **not** vote; it's a quiet "
-                   "cross-check. Only seats that took a lean vote; Capacity sizes the tunnel and abstains on go/no-go.")
-        for e in data.get("chamber", {}).get("experts", []):
-            role = "🌐 world-knowledge (down-weighted)" if e.get("is_world") else "🔒 data-grounded"
-            lean = e.get("lean") or "abstains"
-            st.caption(f"{e.get('emoji','')} **{e.get('name')}** — vote weight **{e.get('weight')}** · {role} · leans *{lean}*")
-        st.caption("🎯 **Data signal** — a P(good-build) **cross-check; does NOT vote** (validated out-of-fold, "
-                   "the one component with a *measured* edge — shown for reference, not to drive the verdict).")
+    # ── the debate, in brief — the quick read of what actually happened ──
+    with st.expander("📝 The debate, in brief", expanded=True):
+        _render_digest(data)
 
-    # ── final report ──
-    with st.expander("📄 In-depth committee report", expanded=True):
+    # ── the full detail, folded away ──
+    with st.expander("📄 In-depth committee report"):
         st.markdown(data.get("report") or "_(no report — light mode)_")
 
-    # ── workspace evidence board ──
-    with st.expander("🗂️ Workspace board — what each seat put on the table"):
-        by_expert: Dict[str, List[dict]] = {}
-        for e in data.get("evidence", []):
-            by_expert.setdefault(e.get("expert"), []).append(e)
-        cols = st.columns(len(C.EXPERT_ORDER))
-        for col_w, ekey in zip(cols, C.EXPERT_ORDER):
-            meta = C.EXPERT_META.get(ekey, {})
-            with col_w:
-                st.markdown(f"**{meta.get('emoji','')} {meta.get('name', ekey)}**")
-                evs = by_expert.get(ekey, [])
-                if not evs:
-                    st.caption("—")
-                for e in evs:
-                    unit = f" {e['unit']}" if e.get("unit") else ""
-                    st.caption(f"{e.get('badge','')} {e.get('label','')}: **{_fmt_value(e.get('value'))}**{unit}")
-
-    # ── discussion transcript (from the chamber messages) ──
     with st.expander("💬 Full discussion transcript"):
         msgs = data.get("chamber", {}).get("messages", [])
         if not msgs:
@@ -189,19 +190,30 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
             st.markdown(f"<span style='color:{color};font-weight:600'>[{m.get('type')}]</span> "
                         f"**{m.get('sender_name')}**{tgt}: {m.get('text','')}", unsafe_allow_html=True)
 
-    # ── belief evolution (text; no in-thread pandas) ──
-    with st.expander("📈 Belief evolution (lean · confidence per round)"):
-        hist = data.get("chamber", {}).get("belief_history", {})
-        if not hist:
-            st.caption("_(no belief history)_")
-        for ekey in C.EXPERT_ORDER:
-            seq = hist.get(ekey) or []
-            if not seq:
-                continue
-            name = C.EXPERT_META.get(ekey, {}).get("name", ekey)
-            trail = " → ".join(f"{h.get('lean') or '—'}/{int((h.get('confidence') or 0)*100)}%" for h in seq)
-            moved = len({h.get("lean") for h in seq}) > 1
-            st.markdown(f"- **{name}**: {trail}" + ("  🔁 *moved*" if moved else ""))
+    with st.expander("🗂️ Evidence board · vote weighting · how to read the numbers"):
+        st.caption("**Vote weighting** — data-grounded seats count 1.0, the world-knowledge seat 0.4 (the "
+                   "guardrail against bullish drift); Capacity abstains on go/no-go. The 🎯 data signal does "
+                   "**not** vote — it's an out-of-fold-validated P(good build) shown as a cross-check. "
+                   "**Committee confidence** = how dominant the majority lean was.")
+        for e in data.get("chamber", {}).get("experts", []):
+            role = "🌐 world-knowledge (down-weighted)" if e.get("is_world") else "🔒 data-grounded"
+            st.caption(f"{e.get('emoji','')} **{e.get('name')}** — weight **{e.get('weight')}** · {role} · "
+                       f"leans *{e.get('lean') or 'abstains'}*")
+        st.divider()
+        by_expert: Dict[str, List[dict]] = {}
+        for e in data.get("evidence", []):
+            by_expert.setdefault(e.get("expert"), []).append(e)
+        cols = st.columns(len(C.EXPERT_ORDER))
+        for col_w, ekey in zip(cols, C.EXPERT_ORDER):
+            meta = C.EXPERT_META.get(ekey, {})
+            with col_w:
+                st.markdown(f"**{meta.get('emoji','')} {meta.get('name', ekey)}**")
+                evs = by_expert.get(ekey, [])
+                if not evs:
+                    st.caption("—")
+                for e in evs:
+                    unit = f" {e['unit']}" if e.get("unit") else ""
+                    st.caption(f"{e.get('badge','')} {e.get('label','')}: **{_fmt_value(e.get('value'))}**{unit}")
 
 
 def render_reports() -> None:
