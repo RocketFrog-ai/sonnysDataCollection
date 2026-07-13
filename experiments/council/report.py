@@ -17,9 +17,9 @@ Self-contained: imports only `experiments.council.{config,llm,protocol}` + stdli
 documented for this module (see the task's INPUTS contract) so this file stays decoupled from
 exactly how those dataclasses evolve.
 
-Sections, in order: header + verdict → executive summary → the numbers → where the committee
-stands → key strengths / key risks → recommendations (operating spec) → what-if sensitivity →
-discussion summary → method & caveats.
+Sections, in order (kept deliberately SHORT — the debate story lives in the UI digest + transcript):
+header + verdict → executive summary → the numbers → where the committee stands → strengths & risks
+(top 3 each) → recommendations (operating spec) → what-if sensitivity.
 """
 from __future__ import annotations
 
@@ -82,19 +82,6 @@ def _money(x: Any) -> str:
     if av >= 1_000_000:
         return f"{sign}${av / 1_000_000:,.2f}M"
     return f"{sign}${av:,.0f}"
-
-
-def _compact_num(x: Any) -> str:
-    """A unitless compact number for narrative deltas, e.g. '12.6k' (mirrors the wash-count style)."""
-    v = _safe_float(x)
-    if v is None:
-        return "—"
-    sign, av = ("-" if v < 0 else ""), abs(v)
-    if av >= 1_000_000:
-        return f"{sign}{av / 1_000_000:.1f}M"
-    if av >= 1_000:
-        return f"{sign}{av / 1_000:.1f}k"
-    return f"{sign}{av:,.0f}" if float(av).is_integer() else f"{sign}{av:,.1f}"
 
 
 def _month(x: Any) -> str:
@@ -222,66 +209,7 @@ def _key_risks(ws: "Workspace", log: "DiscussionLog", decision: "Decision") -> L
     return out
 
 
-# ─────────────────────────── section 5: discussion summary ───────────────────────────
-def _last_challenge_to(log: "DiscussionLog", target: Optional[str], at_or_before_round: int):
-    cands = [m for m in log.messages if m.mtype == MsgType.CHALLENGE and m.to == target
-             and m.round <= at_or_before_round]
-    return cands[-1] if cands else None
-
-
-def _revise_lines(ws: "Workspace", log: "DiscussionLog") -> List[str]:
-    """Notable CHALLENGE→REVISE moments: every REVISE message, paired with the belief's own `.history`
-    snapshot delta (before→after key_number) and, if one exists, the CHALLENGE that provoked it."""
-    out: List[str] = []
-    for m in log.messages:
-        if m.mtype != MsgType.REVISE:
-            continue
-        b = ws.beliefs.get(m.sender)
-        seat = C.EXPERT_META.get(m.sender, {}).get("name", m.sender.title())
-        piece = f"**{seat}** revised its position in round {m.round}"
-        if b is not None and b.history:
-            hist = sorted(b.history, key=lambda h: h.get("round", 0))
-            before = [h for h in hist if h.get("round", 0) < m.round]
-            after = [h for h in hist if h.get("round", 0) >= m.round]
-            bv = before[-1].get("key_number") if before else None
-            av = after[0].get("key_number") if after else None
-            if bv is not None and av is not None and _safe_float(bv) != _safe_float(av):
-                lbl = _clean(b.key_number_label) or "key number"
-                piece += f" ({lbl} {_compact_num(bv)}→{_compact_num(av)})"
-        chal = _last_challenge_to(log, m.sender, m.round)
-        if chal is not None:
-            cname = C.EXPERT_META.get(chal.sender, {}).get("name", chal.sender.title())
-            piece += f" after **{cname}**'s challenge"
-        if m.text:
-            piece += f": {_clean(m.text)}"
-        out.append(piece.rstrip(".") + ".")
-    return out
-
-
-def _discussion_summary(ws: "Workspace", log: "DiscussionLog", decision: "Decision") -> str:
-    rounds = sorted(log.by_round().keys())
-    n_rounds = (rounds[-1] + 1) if rounds else 0
-    if log.messages:
-        paras = [f"The committee ran **{n_rounds}** round(s) of deliberation, exchanging "
-                f"**{len(log.messages)}** message(s) across **{len(ws.beliefs)}** seat(s)."]
-    else:
-        paras = ["The committee produced no discussion messages — only the initial positions stand."]
-    revises = _revise_lines(ws, log)
-    if revises:
-        paras.append("Notable revisions:\n" + "\n".join(f"- {r}" for r in revises))
-    else:
-        paras.append("No expert revised its position after the initial publish round — the committee "
-                     "converged without a real fight.")
-    if decision.yes_frac is not None:
-        paras.append(f"The final weighted vote landed at **{_pct0(decision.yes_frac)}** in favor across "
-                     f"**{decision.n_votes}** voting seat(s) — {_clean(decision.basis)}, yielding "
-                     f"**{C.VERDICT_LABELS.get(decision.verdict, decision.verdict)}**.")
-    else:
-        paras.append(f"No expert produced a lean, so no vote could be tallied ({_clean(decision.basis)}).")
-    return "\n\n".join(paras)
-
-
-# ─────────────────────────── section 6: recommendations (operating spec) ───────────────────────────
+# ─────────────────────────── section 5: recommendations (operating spec) ───────────────────────────
 def _ramp_months(ws: "Workspace") -> Optional[int]:
     """The learned ramp-to-90% months, parsed from Historical's own ramp evidence text."""
     ev = ws.evidence.get("hist.ramp_pattern")
@@ -297,32 +225,26 @@ def _recommendations(ws: "Workspace", decision: "Decision") -> List[str]:
     tunnel, peak = _f(n.get("tunnel_ft")), _f(n.get("peak_month_washes"))
     if tunnel is not None:
         spec = int(math.ceil(tunnel / 5.0) * 5)          # build to the next 5-ft increment
-        seg = f"**Tunnel: build ~{spec} ft** (computed {tunnel:,.0f} ft"
-        if peak is not None:
-            seg += f" from the projected peak month of {peak:,.0f} washes at 25 days × 10 hrs + 20 ft buffer"
-        out.append(seg + ").")
+        peak_s = f" for the {peak:,.0f}-wash peak month" if peak is not None else ""
+        out.append(f"**Tunnel:** build **~{spec} ft**{peak_s} (computed {tunnel:,.0f} ft, incl. 20 ft buffer).")
     asp_ev = ws.evidence.get("hist.cluster_asp")
     asp = asp_ev.value if (asp_ev is not None and isinstance(asp_ev.value, dict)) else {}
     am, ar = _f(asp.get("asp_mem")), _f(asp.get("asp_ret"))
     if am is not None or ar is not None:
-        seg = "**Pricing:** anchor to the cluster's observed ASPs — "
-        seg += " · ".join(filter(None, [f"membership ≈ **${am:,.0f}**/wash" if am is not None else None,
-                                        f"retail ≈ **${ar:,.0f}**/wash" if ar is not None else None]))
-        out.append(seg + " (price materially above this and the comparables say volume walks).")
+        prices = " · ".join(filter(None, [f"membership **${am:,.0f}**" if am is not None else None,
+                                          f"retail **${ar:,.0f}**" if ar is not None else None]))
+        out.append(f"**Pricing:** {prices} per wash — the cluster's observed ASPs.")
     ms = _f(n.get("membership_share"))
     if ms is not None:
-        out.append(f"**Membership mix:** drive toward **{ms:.0%}** of washes on plans — the cluster's observed "
-                   "share; it is the revenue-stability lever.")
+        out.append(f"**Membership mix:** target **{ms:.0%}** of washes on plans (cluster-observed).")
     mature, ramp_mo = _f(n.get("mature_washes")), _ramp_months(ws)
     if mature is not None:
-        seg = f"**Maturation:** underwrite to ≈ **{mature:,.0f} washes/mo at maturity**, reached over the "
-        seg += f"panel's typical **24–30 months**; the local ramp hits ~90% by **month {ramp_mo}**" if ramp_mo \
-            else "panel's typical **24–30 months**"
-        out.append(seg + " — do not judge the site on year-1 volume.")
+        ramp_s = f"; ~90% by month {ramp_mo}" if ramp_mo else ""
+        out.append(f"**Maturation:** ≈ **{mature:,.0f} washes/mo** at maturity, over **24–30 months**{ramp_s} "
+                   "— don't judge year 1.")
     capex, be = _f(n.get("capex")), _f(n.get("breakeven_month"))
     if capex is not None and be is not None:
-        out.append(f"**Capital:** ≈ **{_money(capex)}** to build; the projected P&L pays it back around "
-                   f"**month {be:,.0f}**.")
+        out.append(f"**Capital:** ≈ **{_money(capex)}**, paid back around **month {be:,.0f}**.")
     return out or ["_Not enough settled numbers on the board to write an operating spec._"]
 
 
@@ -353,24 +275,7 @@ def _what_if(decision: "Decision") -> str:
     if washes:
         _row("ASP −$1/wash", rev - washes * 60.0)        # every wash a dollar cheaper across 5 yrs (approx.)
     return "\n".join(rows) + (
-        "\n\n_Linear on the realized operating margin "
-        f"({margin:.0%} of revenue over 5 yrs, before build cost); opex ratio and ramp shape held fixed. "
-        "A demand miss moves breakeven faster than net — capacity is fixed, volume is not._")
-
-
-# ─────────────────────────── section 8: method & caveats ───────────────────────────
-def _method_footer(decision: "Decision") -> str:
-    return (
-        "---\n\n"
-        "**_Method & caveats_** — the committee **decides**: the verdict is the seats' weighted-MAJORITY "
-        f"lean after open deliberation, not a single model score. Data-grounded (🔒) seats are weighted "
-        f"**{C.DATA_EXPERT_WEIGHT:g}×** and world-knowledge (🌐) seats **{C.WORLD_EXPERT_WEIGHT:g}×** in "
-        "the tally — demographics and narrative carry low predictive weight next to capacity and "
-        "market-structure numbers. A Build must be earned: a split room or an unresolved challenge "
-        "degrades it to Conditional. Live/present-day evidence (current competitor counts, present-day "
-        "narration) is flagged 🌐 and down-weighted accordingly. Every 🔒 number traces back to one "
-        "source: the council's own historical panel, not the live production dataset."
-    )
+        f"\n\n_Linear on the realized {margin:.0%} operating margin; opex ratio and ramp held fixed._")
 
 
 # ─────────────────────────── optional Azure exec-summary lead-in ───────────────────────────
@@ -425,22 +330,20 @@ def _executive_summary(ws: "Workspace", decision: "Decision", strengths: List[st
 
 # ─────────────────────────── public entry point ───────────────────────────
 def synthesize_report(ws, log, decision) -> str:
-    """Return a markdown in-depth committee report + recommendation. Deterministic tables + risks +
-    discussion summary; optionally ONE Azure LLM exec-summary pass (wrapped, with a deterministic
-    fallback)."""
-    strengths = _key_strengths(ws)
-    risks = _key_risks(ws, log, decision)
+    """Return the committee report — short and to the point: verdict, a 2-3 sentence summary, the numbers,
+    the seats, top-3 strengths/risks, the operating spec, and the what-if table. The debate story lives in
+    the UI digest + transcript, not here. One optional Azure exec-summary pass (deterministic fallback)."""
+    strengths = _key_strengths(ws)[:3]
+    risks = _key_risks(ws, log, decision)[:3]
 
     sections = [
         _section_header(decision),
         _executive_summary(ws, decision, strengths, risks),
         "## The numbers\n\n" + _numbers_table(decision.numbers or {}),
         "## Where the committee stands\n\n" + _committee_table(ws),
-        "## Key strengths\n\n" + "\n".join(f"- {s}" for s in strengths),
-        "## Key risks\n\n" + "\n".join(f"- {r}" for r in risks),
+        "## Strengths & risks\n\n" + "\n".join(f"- ✅ {s}" for s in strengths)
+            + "\n" + "\n".join(f"- ⚠️ {r}" for r in risks),
         "## Recommendations — the operating spec\n\n" + "\n".join(f"- {r}" for r in _recommendations(ws, decision)),
         "## What-if (sensitivity)\n\n" + _what_if(decision),
-        "## How the committee got there (discussion summary)\n\n" + _discussion_summary(ws, log, decision),
-        _method_footer(decision),
     ]
     return "\n\n".join(sections)
