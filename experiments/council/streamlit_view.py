@@ -121,6 +121,21 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
                "vote — near 50% means a genuinely split committee). **Signal · P(good build)** = the leakage-clean "
                "model's *independent* probability this is a good build. They measure different things; when they "
                "disagree, that gap is the ⚠️ note below — and it's the point.")
+
+    with st.expander("ℹ️ What do “P(good build)” and “leakage-clean” actually mean?"):
+        st.markdown(
+            "**P(good build)** — the *leakage-clean signal's* probability that this site matures into a "
+            "**good build**: a wash that reaches an **above-median mature volume with a healthy ramp**. "
+            "_Example:_ **P = 24%** ≈ a 1-in-4 chance it becomes a strong performer — so the hard data leans "
+            "*against* building, even if the LLM seats sound optimistic.\n\n"
+            "**Leakage-clean** — the signal is validated with **no peeking at the future**. To grade it "
+            "honestly we *froze the clock* at each past site's opening month, showed the model **only what "
+            "existed before then** (the neighbouring washes' prior history, the operator's scale at the time), "
+            "and scored its call against what the site *actually* did afterward. _Example:_ the old trained "
+            "forecast looked brilliant at **0.74 in-sample** but **collapsed to ~0** under this honest test — "
+            "it had *memorized* existing sites, not forecast new ones. This signal held at **AUC 0.572** "
+            "(> the 0.53 noise ceiling), so its **+10-pt edge is real, not a mirage** — which is exactly why "
+            "its disagreement with the committee is worth flagging.")
     if data.get("condition"):
         st.warning(f"**Condition:** {data['condition']}")
     if data.get("note"):
