@@ -6,10 +6,10 @@ view embeds it verbatim with `st.components.v1.html(...)`. This module therefore
 streamlit / app.* / proforma.* — only `experiments.council.config` (for colour fallbacks) and stdlib.
 
 What it draws, from the `data` dict (shape documented in the task / README):
-  • a verdict banner (label · confidence · P(good build) · basis · optional divergence warning);
+  • a verdict banner (label · confidence · basis · rounds/consensus pills);
   • a numbers strip of stat tiles (revenue, net, breakeven, membership, washes, tunnel, CAPEX);
   • a round conference table with the 5 expert figurines seated around it, the facilitator at the head,
-    and the leakage-clean data-signal "exhibit" laid on the table;
+    seated around the table;
   • an animated playback of `messages`: a speech bubble pops over the speaker (coloured by message type),
     an arrow flies from challenger → target, confidence meters pulse/update from `belief_history`, and
     ballots appear on the VOTE round — driven by a ▶/⏸/⟲ transport with a scrub slider and speed control.
@@ -361,7 +361,6 @@ _TEMPLATE = r"""<!doctype html>
       <div class="stage" id="stage">
         <div class="roomtag" id="roomtag"></div>
         <div class="table"><div class="table-inner"></div></div>
-        <div class="exhibit" id="exhibit"></div>
         <svg class="wires" id="wires" preserveAspectRatio="none"></svg>
         <div class="seats" id="seats"></div>
       </div>
@@ -399,7 +398,6 @@ _TEMPLATE = r"""<!doctype html>
     var messages  = Array.isArray(D.messages) ? D.messages : [];
     var belief    = D.belief_history || {};
     var facil     = D.facilitator || {name:"Facilitator", emoji:"🧭", color:"#0f172a"};
-    var signal    = D.signal || {};
     var numbers   = D.numbers || {};
 
     // ── tiny helpers ───────────────────────────────────────────────
@@ -450,7 +448,6 @@ _TEMPLATE = r"""<!doctype html>
       var stats=el("div","vstats");
       function stat(k,v){ var s=el("div","vstat"); s.appendChild(el("div","k",k)); s.appendChild(el("div","v",v)); return s; }
       if(D.confidence!=null) stats.appendChild(stat("Committee confidence", pct(D.confidence)+"%"));
-      if(D.prob!=null)       stats.appendChild(stat("Signal · P(good build)", pct(D.prob)+"%"));
       b.appendChild(stats);
 
       var meta=el("div","vmeta");
@@ -460,12 +457,6 @@ _TEMPLATE = r"""<!doctype html>
       if(D.site && D.site.lat!=null) meta.appendChild(el("span","pill","📍 "+Number(D.site.lat).toFixed(3)+", "+Number(D.site.lon).toFixed(3)));
       if(meta.childNodes.length){ b.appendChild(el("div","vspacer")); b.appendChild(meta); }
 
-      if(D.note){
-        var n=el("div","note");
-        n.appendChild(el("b",null,"Heads up"));
-        n.appendChild(el("span",null, D.note));
-        b.appendChild(n);
-      }
     })();
 
     // ── numbers strip ──────────────────────────────────────────────
@@ -496,17 +487,6 @@ _TEMPLATE = r"""<!doctype html>
       var r=$("roomtag"); r.style.setProperty("--vc", vcol);
       r.appendChild(el("span","dot"));
       r.appendChild(el("span",null,"Council Chamber · live deliberation"));
-    })();
-
-    // ── signal exhibit ─────────────────────────────────────────────
-    (function exhibit(){
-      var ex=$("exhibit"); var sc=leanColor(signal.lean,"#0891b2"); ex.style.setProperty("--sc", sc);
-      var h=el("div","eh"); h.appendChild(el("span",null,"🎯")); h.appendChild(el("span",null,"Data signal")); ex.appendChild(h);
-      var row=el("div","er");
-      row.appendChild(el("span","lean", signal.lean || "—"));
-      if(signal.prob!=null) row.appendChild(el("span","prob","P "+pct(signal.prob)+"%"));
-      ex.appendChild(row);
-      if(signal.confidence!=null) ex.appendChild(el("div","sub","cross-check · "+pct(signal.confidence)+"% conf"));
     })();
 
     // ── seat geometry & figurines ──────────────────────────────────
@@ -803,9 +783,7 @@ DEMO_DATA = {
     "verdict_label": "Build",
     "verdict_color": "#16a34a",
     "confidence": 0.78,
-    "prob": 0.62,
-    "basis": "committee consensus (data-weighted vote), signal concurring",
-    "note": "⚠️ Competition flags 6 rivals within 3 mi — the mature anchor is trimmed ~6% but the lean holds.",
+    "basis": "committee consensus (weighted-majority lean)",
     "site": {"lat": 33.749, "lon": -84.388},
     "rounds": 3,
     "consensus_pct": 0.8,
@@ -828,7 +806,6 @@ DEMO_DATA = {
          "key_number": 3100000.0, "key_number_label": "5-yr net $"},
     ],
     "facilitator": {"name": "Facilitator", "emoji": "\U0001F9ED", "color": "#0f172a"},
-    "signal": {"lean": "Build", "prob": 0.62, "confidence": 0.66},
     "numbers": {"revenue_5yr": 22800000, "net_5yr": 3100000, "breakeven_month": 31,
                 "membership_share": 0.55, "mature_washes": 12588, "tunnel_ft": 120, "capex": 1500000},
     "messages": [

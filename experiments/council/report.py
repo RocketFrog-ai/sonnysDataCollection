@@ -131,18 +131,6 @@ def _fmt_key_number(value: Any, label: Optional[str]) -> str:
     return f"{val_s} {lbl}".strip() if lbl else val_s
 
 
-def _signal_informative(a: Any) -> bool:
-    """Whether the signal exhibit has an opinion worth surfacing. Prefers the real Anchor's `.abstains`
-    (lean is None, or too few matured neighbours to trust it); falls back to a lean-is-not-None check
-    for any minimal stand-in that only carries the documented `.lean/.prob/.confidence/.reasons` shape."""
-    if a is None:
-        return False
-    ab = getattr(a, "abstains", None)
-    if isinstance(ab, bool):
-        return not ab
-    return getattr(a, "lean", None) is not None
-
-
 # the 7 headline rows for "## The numbers", also reused as the LLM fact sheet
 _NUMBER_ROWS: List[Tuple[str, str, Callable[[Any], str]]] = [
     ("revenue_5yr", "Expected 5-yr revenue", _money),
@@ -158,15 +146,10 @@ _NUMBER_ROWS: List[Tuple[str, str, Callable[[Any], str]]] = [
 # ─────────────────────────── section 1: header + verdict ───────────────────────────
 def _section_header(decision: "Decision") -> str:
     label = C.VERDICT_LABELS.get(decision.verdict, decision.verdict or "Unknown")
-    meta = [f"confidence **{_pct0(decision.confidence)}**"]
-    if decision.prob is not None:
-        meta.append(f"P(good build) **{_pct0(decision.prob)}**")
-    meta.append(f"basis: _{_clean(decision.basis)}_")
+    meta = [f"confidence **{_pct0(decision.confidence)}**", f"basis: _{_clean(decision.basis)}_"]
     lines = [f"# 🧭 Committee recommendation — {label}", "", " · ".join(meta)]
     if decision.condition:
         lines += ["", f"**Condition:** {_clean(decision.condition)}"]
-    if decision.note:
-        lines += ["", f"> {decision.note}"]
     return "\n".join(lines)
 
 
@@ -211,12 +194,8 @@ def _key_strengths(ws: "Workspace") -> List[str]:
             kn = _fmt_key_number(b.key_number, b.key_number_label)
             tail = f" — {kn}." if kn != "—" else "."
             out.append(f"**{seat}** leans Build ({_pct0(b.confidence)} confidence){tail}")
-    a = getattr(ws, "anchor", None)
-    if _signal_informative(a) and a.lean in ("Build", "Conditional"):
-        out.extend(f"Data signal: {_clean(r)}." for r in a.reasons)
     if not out:
-        out.append("_No seat leans Build, and the data signal does not support one either — the case "
-                   "to build is thin._")
+        out.append("_No seat leans Build — the case to build is thin._")
     return out
 
 
@@ -233,16 +212,10 @@ def _key_risks(ws: "Workspace", log: "DiscussionLog", decision: "Decision") -> L
             out.append(f"**{seat}** leans Pass ({_pct0(b.confidence)} confidence){tail}")
         for concern in (b.open_concerns or [])[:2]:
             out.append(f"**{seat}** flags: {_clean(concern)}.")
-    a = getattr(ws, "anchor", None)
-    if _signal_informative(a) and a.lean == "Pass":
-        out.extend(f"Data signal: {_clean(r)}." for r in a.reasons)
     for m in log.unanswered(MsgType.CHALLENGE):
         frm = C.EXPERT_META.get(m.sender, {}).get("name", m.sender.title())
         to = C.EXPERT_META.get(m.to, {}).get("name", m.to.title()) if m.to else "the committee"
         out.append(f"Unresolved challenge — **{frm}** → **{to}**: {_clean(m.text)}")
-    if decision.diverges_from_signal:
-        out.append("The committee's verdict diverges from the independent data signal (see "
-                   "_Data signal vs. committee_ below) — worth the extra scrutiny.")
     if not out:
         out.append("_No material open risks were raised._")
     return out
@@ -307,44 +280,18 @@ def _discussion_summary(ws: "Workspace", log: "DiscussionLog", decision: "Decisi
     return "\n\n".join(paras)
 
 
-# ─────────────────────────── section 6: data signal vs. committee ───────────────────────────
-def _signal_vs_committee(ws: "Workspace", decision: "Decision") -> str:
-    a = getattr(ws, "anchor", None)
-    rows = ["| | Verdict | Confidence |", "|---|---|---|"]
-    if _signal_informative(a):
-        sig_lbl = C.VERDICT_LABELS.get(a.lean, a.lean)
-        prob_s = f" (P good build {_pct0(a.prob)})" if a.prob is not None else ""
-        rows.append(f"| 🎯 Data signal (cross-check) | {sig_lbl}{prob_s} | {_pct0(a.confidence)} |")
-    else:
-        rows.append("| 🎯 Data signal (cross-check) | _no informative signal available for this site_ | — |")
-    rows.append(f"| 🧭 Committee | {C.VERDICT_LABELS.get(decision.verdict, decision.verdict)} | "
-               f"{_pct0(decision.confidence)} |")
-    out = ["\n".join(rows)]
-    if _signal_informative(a):
-        diverges = decision.diverges_from_signal
-        out.append(("🔍 **Cross-check diverges** — the committee and the independent data signal do not point "
-                    "the same way; worth a second look (the signal does not vote — it's shown for reference)." if diverges else
-                    "✅ **Cross-check agrees** — the committee and the independent data signal point the same way."))
-    if a is not None and getattr(a, "reasons", None):
-        out.append("Why the signal says what it says: " + "; ".join(_clean(r) for r in a.reasons) + ".")
-    if decision.note:
-        out.append(f"> {decision.note}")
-    return "\n\n".join(out)
-
-
-# ─────────────────────────── section 7: method & caveats ───────────────────────────
+# ─────────────────────────── section 6: method & caveats ───────────────────────────
 def _method_footer(decision: "Decision") -> str:
     return (
         "---\n\n"
-        f"**_Method & caveats_** — the committee **decides** (mode: **{decision.mode}**): this is a "
-        f"deliberative consensus vote, not a single model score. Data-grounded (🔒) seats are weighted "
+        "**_Method & caveats_** — the committee **decides**: the verdict is the seats' weighted-MAJORITY "
+        f"lean after open deliberation, not a single model score. Data-grounded (🔒) seats are weighted "
         f"**{C.DATA_EXPERT_WEIGHT:g}×** and world-knowledge (🌐) seats **{C.WORLD_EXPERT_WEIGHT:g}×** in "
-        "the tally; the leakage-clean data signal **does not vote** — it rides along as a quiet P(good-build) "
-        "cross-check (the one component with a *measured* out-of-fold edge). Demographics and "
-        "narrative carry low predictive weight next to capacity and market-structure numbers. "
-        "Live/present-day evidence (current competitor counts, present-day narration) is flagged 🌐 "
-        "and down-weighted accordingly. Every 🔒 number traces back to one source: the council's own "
-        "historical panel, not the live production dataset."
+        "the tally — demographics and narrative carry low predictive weight next to capacity and "
+        "market-structure numbers. A Build must be earned: a split room or an unresolved challenge "
+        "degrades it to Conditional. Live/present-day evidence (current competitor counts, present-day "
+        "narration) is flagged 🌐 and down-weighted accordingly. Every 🔒 number traces back to one "
+        "source: the council's own historical panel, not the live production dataset."
     )
 
 
@@ -354,38 +301,28 @@ _EXEC_SUMMARY_SYS = (
     "report, for a real-estate/ops decision-maker who will skim only this paragraph. Use ONLY the "
     "JSON facts given below — never invent or restate a number that isn't in the JSON. Plain English, "
     "no jargon, no markdown headers or bullet points, no repeating the JSON back verbatim. Cover: the "
-    "verdict, the one or two headline numbers that matter most, and the single biggest risk or "
-    "signal-divergence if one is present. Return plain prose only."
+    "verdict, the one or two headline numbers that matter most, and the single biggest risk if one "
+    "is present. Return plain prose only."
 )
 
 
 def _fallback_summary(decision: "Decision") -> str:
     label = C.VERDICT_LABELS.get(decision.verdict, decision.verdict)
-    text = f"The committee's recommendation is **{label}** (confidence {_pct0(decision.confidence)}"
-    if decision.prob is not None:
-        text += f", P(good build) {_pct0(decision.prob)}"
-    text += f"), based on {_clean(decision.basis)}."
-    if decision.diverges_from_signal:
-        text += (" This diverges from the independent data signal — see **Data signal vs. committee** "
-                 "below.")
-    return text
+    return (f"The committee's recommendation is **{label}** (confidence {_pct0(decision.confidence)}), "
+            f"based on {_clean(decision.basis)}.")
 
 
 def _exec_summary_facts(ws: "Workspace", decision: "Decision", strengths: List[str],
                         risks: List[str]) -> Dict[str, Any]:
     numbers = decision.numbers or {}
-    a = getattr(ws, "anchor", None)
     return {
         "verdict": C.VERDICT_LABELS.get(decision.verdict, decision.verdict),
         "confidence_pct": _pct0(decision.confidence),
-        "prob_good_build_pct": _pct0(decision.prob) if decision.prob is not None else None,
         "basis": decision.basis,
         "condition": decision.condition,
-        "signal_divergence_note": decision.note,
         "numbers": {label: fmt(numbers.get(key)) for key, label, fmt in _NUMBER_ROWS},
         "top_strengths": strengths[:3],
         "top_risks": risks[:3],
-        "signal_lean": (a.lean if a is not None else None),
         "committee_yes_frac_pct": _pct0(decision.yes_frac) if decision.yes_frac is not None else None,
     }
 
@@ -424,7 +361,6 @@ def synthesize_report(ws, log, decision) -> str:
         "## Key strengths\n\n" + "\n".join(f"- {s}" for s in strengths),
         "## Key risks\n\n" + "\n".join(f"- {r}" for r in risks),
         "## How the committee got there (discussion summary)\n\n" + _discussion_summary(ws, log, decision),
-        "## Data signal vs. committee\n\n" + _signal_vs_committee(ws, decision),
         _method_footer(decision),
     ]
     return "\n\n".join(sections)

@@ -17,7 +17,6 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List, Optional
 
 from experiments.council import config as C
-from experiments.council.anchor import compute_anchor
 from experiments.council.protocol import Message, MsgType
 from experiments.council.workspace import DiscussionLog, Workspace
 
@@ -79,10 +78,6 @@ class Facilitator:
             for ev in evs:
                 self.ws.post(ev)
 
-    def set_anchor(self, snap) -> None:
-        self.ws.anchor = compute_anchor(snap)        # the leakage-clean signal exhibit
-        self.ws.post(self.ws.anchor.as_evidence())
-
     def set_initial_beliefs(self) -> None:
         for e in self.experts:
             if e.name == "finance":
@@ -143,9 +138,27 @@ class Facilitator:
             self.log.resolve(req.mid, req.mid)       # mark serviced either way
         self.ws.open_requests.clear()
 
+    # ── phase: resolution — every still-open challenge gets its target ONE focused reply ──
+    def resolution_round(self) -> None:
+        """The round cap can cut the debate off with challenges still hanging. Before the verdict, each seat
+        that has unanswered challenges aimed at it gets one focused react to answer them (REVISE or defend) —
+        so nothing is left dangling just because time ran out. Bounded: ≤1 extra call per targeted seat."""
+        if self.light:
+            return
+        targets = {m.to for m in self.log.unanswered(MsgType.CHALLENGE) if m.to}
+        if not targets:
+            return
+        self.ws.round += 1
+        delta = self.ws.delta_since(self.ws.round - 2, self.log)
+        for e in self.experts:
+            if e.name in targets and e.name != "finance" and self.ws.llm_calls < C.PER_SITE_LLM_BUDGET:
+                self._react_and_route(e, delta)
+        self.ws.snapshot_beliefs()
+
     # ── phase: Finance consolidates last ──
     def finance_consolidate(self) -> None:
-        self.close_moot_challenges()                 # discussion is over: retire challenges between seats that now agree
+        self.resolution_round()                      # targets answer what's still aimed at them
+        self.close_moot_challenges()                 # then retire challenges between seats that now agree
         fin = self._by_name("finance")
         if fin is None:
             return
@@ -168,10 +181,12 @@ class Facilitator:
                 m.to = None                          # broadcast if the addressee is invalid
         if m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION) and m.to and self._is_relitigation(m):
             return                                   # drop a repeat (open OR already answered) — a won argument retires
+        if m.mtype == MsgType.CHALLENGE and m.to is None:
+            m.answered_by = f"noted:{m.mid}"         # a concern to the whole room, not a head-to-head dispute
         self.log.add(m)
         if m.mtype == MsgType.REQUEST:
             self.ws.open_requests.append(m)
-        elif m.mtype == MsgType.CHALLENGE:
+        elif m.mtype == MsgType.CHALLENGE and m.to is not None:
             self.ws.open_challenges.append(m)
         elif m.mtype == MsgType.ENDORSE:
             for eid in m.cites:                      # a cited endorsement firms the evidence a touch
@@ -250,7 +265,7 @@ def build_committee_graph(fac: "Facilitator", snap):
         return None
 
     def _investigate(state):
-        fac.plan(); fac.investigate(); fac.set_anchor(snap); fac.set_initial_beliefs()
+        fac.plan(); fac.investigate(); fac.set_initial_beliefs()
         return {"round": 0}
 
     def _publish(state):
@@ -292,7 +307,7 @@ def deliberate(fac: "Facilitator", snap) -> str:
         except Exception:
             pass                                     # graph failed → fall through to the same phases
     # hand-rolled fallback (same order, same predicate)
-    fac.plan(); fac.investigate(); fac.set_anchor(snap); fac.set_initial_beliefs()
+    fac.plan(); fac.investigate(); fac.set_initial_beliefs()
     fac.publish_round()
     for r in range(1, fac.max_rounds + 1):
         fac.discussion_round(r)

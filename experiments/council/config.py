@@ -27,7 +27,6 @@ DROP_OPEN_YEARS = (2020,)    # exclude the COVID-2020 cohort from the ramp / com
 FIRST_OPEN_YEAR = 2021       # focal-sample openings start here (post-COVID)
 
 # ── committee mechanics ──
-MODE = "deliberative"        # committee decides; "anchored" → the signal governs the binary
 MAX_ROUNDS = 3               # discussion rounds after the publish round
 MAX_MSGS_PER_EXPERT = 3      # messages an expert may emit per react
 MAX_FOLLOWUPS_PER_EXPERT = 2 # dynamic REQUEST investigations an expert will service
@@ -38,9 +37,6 @@ PER_SITE_LLM_BUDGET = 30     # hard cap on LLM calls per site (budget exhaustion
 # ── vote weighting (the anti-bullish-drift guardrail) ──
 DATA_EXPERT_WEIGHT = 1.0     # a data-grounded lean counts this much
 WORLD_EXPERT_WEIGHT = 0.4    # a world-knowledge (🌐) lean counts less
-SIGNAL_WEIGHT = 0.0          # DEMOTED to a quiet cross-check: the data signal is shown (P good-build) but does NOT vote
-SIGNAL_HIGH_CONF = 0.75      # a signal at/above this confidence is "high-confidence" (anchored mode won't downgrade it)
-CONF_NUDGE_MAX = 0.15        # anchored mode: committee may nudge confidence by at most ±this
 
 # ── capacity (tunnel length) — confirmed formula: peak_hour + 20 ft ──
 OPERATING_DAYS = 25          # repo tunnel-proxy convention
@@ -76,7 +72,6 @@ EXPERT_META = {
     "capacity":     {"name": "Capacity",     "emoji": "🏗️", "color": "#9333ea"},
     "finance":      {"name": "Finance",      "emoji": "💰", "color": "#ea580c"},
     "facilitator":  {"name": "Facilitator",  "emoji": "🧭", "color": "#0f172a"},
-    "signal":       {"name": "Data Signal",  "emoji": "🎯", "color": "#0891b2"},
 }
 
 # message-type colours (chamber speech bubbles + transcript chips)

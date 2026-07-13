@@ -1,7 +1,7 @@
 """
 `run_committee(snap) -> CommitteeResult` — the one entry point the Streamlit view and the harness share.
 
-It seats the experts, runs the Facilitator phases (plan → investigate → signal exhibit → publish → discussion
+It seats the experts, runs the Facilitator phases (plan → investigate → publish → discussion → resolution
 → Finance consolidate), makes the deterministic `decide_final` call, and synthesizes the report. In
 `light=True` mode it skips every LLM (no publish/discussion reacts, no report LLM) — the regression guard that
 proves the discussion can't silently move the verdict off the data.
@@ -68,8 +68,8 @@ def run_committee_json(lat: float, lon: float, *, radius_km: Optional[float] = N
     evidence = [{"expert": e.expert, "eid": e.eid, "label": e.label, "value": e.value,
                  "unit": e.unit, "badge": e.badge()} for e in ws.all_evidence()]
     return {"chamber": res.chamber_data(), "report": res.report, "evidence": evidence, "plan": res.plan,
-            "verdict": dec.verdict, "confidence": dec.confidence, "basis": dec.basis, "prob": dec.prob,
-            "condition": dec.condition, "note": dec.note, "lat": res.lat, "lon": res.lon}
+            "verdict": dec.verdict, "confidence": dec.confidence, "basis": dec.basis,
+            "condition": dec.condition, "lat": res.lat, "lon": res.lon}
 
 
 @dataclass
@@ -127,17 +127,15 @@ class CommitteeResult:
         rounds = max([m.round for m in log.messages], default=0)
         consensus_pct = round(leans_yes / n_leaned, 2) if (n_leaned and dec.verdict in _YES) else (
             round((n_leaned - leans_yes) / n_leaned, 2) if n_leaned else 0.0)
-        a = ws.anchor
 
         return {
             "verdict": dec.verdict, "verdict_label": C.VERDICT_LABELS.get(dec.verdict, dec.verdict),
             "verdict_color": C.VERDICT_COLORS.get(dec.verdict, "#64748b"),
-            "confidence": round(float(dec.confidence), 2), "prob": dec.prob, "basis": dec.basis,
-            "note": dec.note, "condition": dec.condition, "site": {"lat": self.lat, "lon": self.lon},
+            "confidence": round(float(dec.confidence), 2), "basis": dec.basis,
+            "condition": dec.condition, "site": {"lat": self.lat, "lon": self.lon},
             "rounds": rounds, "consensus_pct": consensus_pct,
             "open_challenges": len(log.unanswered(MsgType.CHALLENGE)),
             "experts": experts, "facilitator": _seat_meta("facilitator"),
-            "signal": ({"lean": a.lean, "prob": a.prob, "confidence": round(float(a.confidence), 2)} if a else None),
             "numbers": dec.numbers, "messages": messages, "belief_history": belief_history,
         }
 

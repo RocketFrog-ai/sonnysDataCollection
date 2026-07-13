@@ -19,11 +19,14 @@ a deeper dig) · `REVISE` (change *my own* mind) · `ENDORSE` (agree) · `VOTE`.
 **The loop** (a LangGraph `StateGraph`, with a hand-rolled fallback):
 1. **Investigate** — each seat runs its data tools (no LLM) and posts `Evidence` to the board.
 2. **Publish round** — each seat states its opening finding + lean.
-3. **Discuss ×3** — each seat sees the *whole board* + every peer's current position + **what's aimed at
-   it**, and reacts: challenge a conflicting number, answer a challenge, revise its own belief, endorse,
-   vote. A challenge stays "open" until the target answers it.
+3. **Discuss ×3** — each seat sees the *whole board* + every peer's current position + **everything still
+   aimed at it** (from the full log, so nothing escapes by scrolling out of view), and reacts: challenge a
+   conflicting number, answer a challenge, revise its own belief, endorse, vote. A challenge stays "open"
+   until the target answers it; re-raising an already-made point is dropped.
 4. **Converge** — stop when there are no open challenges and beliefs stop moving (or a 3-round cap).
-5. **Decide** — deterministic: the verdict is the committee's **weighted-majority lean**.
+5. **Resolution** — any seat with a challenge still aimed at it gets ONE focused reply (defend or concede),
+   and challenges between seats that ended up agreeing are retired as moot — nothing dangles.
+6. **Decide** — deterministic: the verdict is the committee's **weighted-majority lean**.
 
 **The rules that make it trustworthy** — the LLM only *proposes* text; **deterministic Python routes
 messages, tallies the votes, and writes the verdict**:
@@ -70,7 +73,6 @@ ROUND 2+ ENDORSE / VOTE — the room settles on Conditional.
 
 VERDICT: CONDITIONAL  (committee consensus, weighted-majority lean)
          condition: resolve the challenge(s) the committee left standing
-🔍 quiet cross-check: the data signal reads P(good build) = 24% — worth a second look.
 ```
 Those two `REVISE`s — Historical and Competition abandoning **Build** *because Local-Market's growth and
 retail-density numbers argued them down* — are the whole point: the seats genuinely move each other.
@@ -81,7 +83,7 @@ Conditional; the majority rule fixed that).
 ## Why you can trust the answer
 - **Data beats vibes** — every claim cites a real number on the board; uncited ones are dropped; the
   data-grounded seats out-weigh the world-knowledge one; the verdict is the room's majority, not a
-  tippable average.
-- **An honest yardstick** — a leakage-clean **data signal** (validated with *no peeking at the future*;
-  AUC 0.572, the only component with a *measured* edge) rides along as a quiet **P(good-build)
-  cross-check**. It does **not** vote — but when it disagrees with the room, the report says so.
+  tippable average, and a Build must be earned (real majority, no unresolved challenge).
+- **The committee IS the product** — no side-model shares the stage. The leakage-clean signal that used
+  to ride along lives on only as the **offline backtest** (`harness.py`, N=420, out-of-fold) that grades
+  the method honestly; it never appears in a live meeting.

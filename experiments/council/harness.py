@@ -131,8 +131,7 @@ def run_committee_backtest(*, limit: int = 6, light: bool = False, out_dir: Path
             n_chal = sum(1 for m in res.log.messages if m.mtype == MsgType.CHALLENGE)
             n_rev = sum(1 for m in res.log.messages if m.mtype == MsgType.REVISE)
             rows.append({"site_key": r.site_key, "client_name": r.client_name, "t_open": str(pd.Timestamp(r["t_open"]).date()),
-                         "verdict": d.verdict, "confidence": d.confidence, "signal_lean": d.signal_lean,
-                         "diverges": d.diverges_from_signal, "realized_good_build": good,
+                         "verdict": d.verdict, "confidence": d.confidence, "realized_good_build": good,
                          "gonogo_correct": gonogo_correct(d.verdict, good), "n_messages": len(res.log.messages),
                          "n_challenges": n_chal, "n_revises": n_rev, "llm_calls": res.workspace.llm_calls})
             # dump the transcript
@@ -161,7 +160,7 @@ def main() -> None:
         r = run_committee_backtest(limit=args.limit, light=args.light)
         print(f"\nCommittee sample: {r['n']} sites → transcripts in {r['samples_dir']}\n")
         if len(r["results"]):
-            print(r["results"][["client_name", "verdict", "signal_lean", "realized_good_build",
+            print(r["results"][["client_name", "verdict", "realized_good_build",
                                 "n_challenges", "n_revises"]].to_string(index=False))
     else:
         r = run_signal_backtest(rebuild=args.rebuild)

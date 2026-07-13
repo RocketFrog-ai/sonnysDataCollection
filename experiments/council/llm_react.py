@@ -79,13 +79,16 @@ def _evidence_line(e: Evidence) -> str:
 
 def react(expert: str, role: str, persona: str, *, my_evidence: List[Evidence], board: List[Evidence],
           recent: List[Message], peers: Optional[dict] = None, belief: BeliefState, rnd: int,
-          max_msgs: Optional[int] = None) -> Tuple[List[Message], BeliefState]:
-    """One Azure react. Returns (typed messages proposed by this expert, updated belief). Safe no-op on failure."""
+          max_msgs: Optional[int] = None, directed: Optional[List[Message]] = None) -> Tuple[List[Message], BeliefState]:
+    """One Azure react. Returns (typed messages proposed by this expert, updated belief). Safe no-op on failure.
+    `directed` = ALL unanswered messages aimed at this expert (from the FULL log — an old challenge must not
+    escape by scrolling out of the recent window); falls back to scanning `recent` if not given."""
     max_msgs = max_msgs or C.MAX_MSGS_PER_EXPERT
     try:
         # challenges/questions/requests aimed at ME and not yet answered — I must respond to these this turn
-        directed = [m for m in recent if m.to == expert and m.answered_by is None
-                    and m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION, MsgType.REQUEST)]
+        if directed is None:
+            directed = [m for m in recent if m.to == expert and m.answered_by is None
+                        and m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION, MsgType.REQUEST)]
         ctx = {
             "my_current_belief": {"lean": belief.lean, "confidence": round(belief.confidence, 2),
                                   "key_number": belief.key_number, "memory": belief.memory,

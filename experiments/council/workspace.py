@@ -2,7 +2,7 @@
 The shared committee blackboard (`Workspace`) + the running `DiscussionLog`.
 
 `Workspace` holds every posted `Evidence`, each expert's `BeliefState`, the open REQUEST / CHALLENGE
-queues, the leakage-clean signal `anchor`, the round counter, and an `llm_calls` budget meter. The
+queues, the round counter, and an `llm_calls` budget meter. The
 coordinator posts evidence, reads the per-round delta, and snapshots beliefs each round. `DiscussionLog`
 is the ordered list of typed `Message`s with helpers for the transcript, convergence test, and CSV export.
 
@@ -65,7 +65,6 @@ class Workspace:
     beliefs: Dict[str, BeliefState] = field(default_factory=dict)
     open_requests: List[Message] = field(default_factory=list)
     open_challenges: List[Message] = field(default_factory=list)
-    anchor: Any = None                                # experiments.council.anchor.Anchor (Any → no import cycle)
     plan: List[Dict[str, str]] = field(default_factory=list)   # facilitator seed questions per expert
     round: int = 0
     llm_calls: int = 0

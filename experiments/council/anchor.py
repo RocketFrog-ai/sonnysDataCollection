@@ -1,18 +1,13 @@
 """
-The signal exhibit + the deterministic decision rule (the "Skill" — computed, not free-associated).
+The deterministic decision rule — the committee decides; computed, not free-associated.
 
-`compute_anchor(snap) -> Anchor` — the leakage-clean signal decider's independent Build/Pass call (the only
-component with measured out-of-fold edge). It goes on the board as evidence; it is NOT a veto.
+`decide_final(ws) -> Decision` — the **committee's weighted-MAJORITY lean** is the verdict (data-grounded
+seats outweigh the world-knowledge one; a Build must be earned: a real majority AND no challenge left
+standing, else it degrades to Conditional). No model, no signal — the deliberation IS the decision.
 
-`decide_final(ws, mode) -> Decision`:
-  • MODE="deliberative" (default) → the **committee's consensus vote** decides, tallied with data-grounded
-    experts weighted above world-knowledge ones (`_weight`); the signal contributes its own weighted vote;
-    the signal's independent call is recorded and its **divergence** from the committee is surfaced.
-  • MODE="anchored" → the signal governs the binary whenever informative; the committee only refines the
-    numbers, nudges confidence (≤±CONF_NUDGE_MAX), and may push Build→Conditional on a real open challenge.
-
-Salvages `signal_verdict`/`internal_anchor`/`_signal_context_note` + `adjudicate`'s weighted math from the
-old council.py. Self-contained: imports only council modules.
+`compute_anchor(snap) -> Anchor` remains for the OFFLINE backtest tooling only (`harness.py` grades the
+leakage-clean decider out-of-fold there); the live committee no longer computes or displays it — per Dhruv,
+the product is the council alone. Self-contained: imports only council modules.
 """
 from __future__ import annotations
 
@@ -27,7 +22,6 @@ from experiments.council import decider as DEC
 from experiments.council import features as F
 from experiments.council.protocol import Evidence, MsgType
 
-_YES = {"Build", "Conditional"}
 _SCORE = {"Build": 1.0, "Conditional": 0.5, "Pass": 0.0}
 
 
@@ -89,21 +83,15 @@ class Decision:
     verdict: str                        # Build | Pass | Conditional | Insufficient
     confidence: float
     basis: str                          # how the verdict was reached
-    prob: Optional[float] = None        # P(good build) from the signal
     numbers: Dict[str, Any] = field(default_factory=dict)   # revenue / memberships / washcount / tunnel / capex / net / breakeven
     condition: Optional[str] = None     # the condition that would flip a Conditional
-    note: Optional[str] = None          # signal-vs-committee divergence, surfaced not averaged
-    signal_lean: Optional[str] = None
-    diverges_from_signal: bool = False
     yes_frac: Optional[float] = None    # committee weighted yes-score (0..1)
     n_votes: int = 0
-    mode: str = "deliberative"
 
     def to_dict(self) -> Dict[str, Any]:
         return {"verdict": self.verdict, "confidence": round(float(self.confidence), 3), "basis": self.basis,
-                "prob": self.prob, "numbers": self.numbers, "condition": self.condition, "note": self.note,
-                "signal_lean": self.signal_lean, "diverges_from_signal": self.diverges_from_signal,
-                "yes_frac": self.yes_frac, "n_votes": self.n_votes, "mode": self.mode}
+                "numbers": self.numbers, "condition": self.condition,
+                "yes_frac": self.yes_frac, "n_votes": self.n_votes}
 
 
 def _weight(expert: str) -> float:
@@ -158,64 +146,29 @@ def _open_challenge_exists(ws) -> bool:
     return bool([m for m in getattr(ws, "open_challenges", []) if m.answered_by is None])
 
 
-def _signal_context_note(a: Optional[Anchor], verdict: str, yes: Optional[float]) -> Optional[str]:
-    """When the committee and the leakage-clean signal disagree, say so plainly — the data is the one thing
-    with measured edge, so a divergence is worth a human's eye."""
-    if a is None or a.lean is None or verdict in (None, "Insufficient"):
-        return None
-    sig_yes, com_yes = a.lean in _YES, verdict in _YES
-    if sig_yes == com_yes:
-        return None
-    lbl = C.VERDICT_LABELS.get(a.lean, a.lean)
-    if not com_yes and sig_yes:
-        return (f"🔍 Cross-check: the committee leans **{C.VERDICT_LABELS.get(verdict, verdict)}**, while the data "
-                f"signal (validated out-of-fold) reads **{lbl}** — worth a second look.")
-    return (f"🔍 Cross-check: the committee leans **{C.VERDICT_LABELS.get(verdict, verdict)}**, while the data "
-            f"signal reads **{lbl}** (weak headroom / tight market) — worth a second look.")
-
-
 def decide_final(ws, *, mode: Optional[str] = None) -> Decision:
-    """Turn the settled board into a verdict. Deliberative = committee decides (data-weighted); anchored =
-    the signal governs the binary and the committee only refines. Deterministic, no LLM."""
-    mode = (mode or C.MODE).strip().lower()
-    a = getattr(ws, "anchor", None)
+    """Turn the settled board into the committee's verdict: the weighted-MAJORITY lean decides (so one seat
+    can't override the room). Deterministic, no LLM, no signal. `mode` is accepted-and-ignored (compat)."""
     numbers = _collect_numbers(ws)
     yes, n_votes = _tally(ws)
-    signal_lean = a.lean if a else None
     condition: Optional[str] = None
 
-    if mode == "anchored" and a is not None and not a.abstains:
-        verdict, confidence, basis = a.lean, float(a.confidence), "signal decider (leakage-clean)"
-        # committee may nudge confidence toward its consensus, bounded
-        if yes is not None:
-            nudge = max(-C.CONF_NUDGE_MAX, min(C.CONF_NUDGE_MAX, (yes - 0.5) * 0.3))
-            confidence = float(np.clip(confidence + nudge, 0.20, 0.95))
-        # Build → Conditional only on a real unanswered challenge AND a not-high-confidence signal
-        if verdict == "Build" and _open_challenge_exists(ws) and a.confidence < C.SIGNAL_HIGH_CONF:
-            verdict, condition = "Conditional", "revisit if the open challenge on the board is resolved against the build"
+    masses = _lean_masses(ws)
+    total = sum(masses.values())
+    if total <= 0:
+        verdict, confidence, basis = "Insufficient", 0.2, "no expert produced a lean"
     else:
-        # deliberative: the committee's weighted-MAJORITY lean decides (so one seat can't override the room)
-        masses = _lean_masses(ws)
-        total = sum(masses.values())
-        if total <= 0:
-            verdict, confidence, basis = "Insufficient", 0.2, "no expert produced a lean"
-        else:
-            verdict = max(masses, key=masses.get)          # the lean the committee actually landed on
-            share = masses[verdict] / total                # how dominant that majority is → confidence
-            basis = "committee consensus (weighted-majority lean)"
-            # a "Build" must be EARNED: a mere plurality, or challenges the room never resolved, → Conditional
-            if verdict == "Build" and _open_challenge_exists(ws):
-                verdict, condition = "Conditional", "resolve the open challenge(s) the committee left standing"
-            elif verdict == "Build" and share < 0.5:
-                verdict, condition = "Conditional", "the committee is split — no clear majority for an unconditional build"
-            elif verdict == "Conditional" and _open_challenge_exists(ws):
-                condition = "resolve the open challenge(s) on the board"
-            confidence = round(float(0.45 + 0.4 * max(0.0, share - 0.5) * 2), 2)
+        verdict = max(masses, key=masses.get)          # the lean the committee actually landed on
+        share = masses[verdict] / total                # how dominant that majority is → confidence
+        basis = "committee consensus (weighted-majority lean)"
+        # a "Build" must be EARNED: a mere plurality, or challenges the room never resolved, → Conditional
+        if verdict == "Build" and _open_challenge_exists(ws):
+            verdict, condition = "Conditional", "resolve the open challenge(s) the committee left standing"
+        elif verdict == "Build" and share < 0.5:
+            verdict, condition = "Conditional", "the committee is split — no clear majority for an unconditional build"
+        elif verdict == "Conditional" and _open_challenge_exists(ws):
+            condition = "resolve the open challenge(s) on the board"
+        confidence = round(float(0.45 + 0.4 * max(0.0, share - 0.5) * 2), 2)
 
-    diverges = bool(signal_lean and verdict not in (None, "Insufficient")
-                    and (signal_lean in _YES) != (verdict in _YES))
-    note = _signal_context_note(a, verdict, yes)
     return Decision(verdict=verdict, confidence=round(float(confidence), 2), basis=basis,
-                    prob=(a.prob if a else None), numbers=numbers, condition=condition, note=note,
-                    signal_lean=signal_lean, diverges_from_signal=diverges, yes_frac=yes,
-                    n_votes=n_votes, mode=mode)
+                    numbers=numbers, condition=condition, yes_frac=yes, n_votes=n_votes)

@@ -1,15 +1,13 @@
 """
-Historical Analyst — the WHOLE 12-mile neighbour cluster's observed track record + a forward projection +
-the leakage-clean signal exhibit.
+Historical Analyst — the WHOLE 12-mile neighbour cluster's observed track record + a forward projection.
 
 `investigate` reads every Sonny's site within 12 miles from the council panel and posts the cluster's
 OBSERVED performance — how many sites, and their median monthly washcount, revenue, membership purchases and
-ASP (mem/retail) — so it is transparent that the read spans the full cluster, not one site. It then runs the
-council-local forecast (`forecast.project_site`, whose mature-level anchor + ramp come from the reliable
-comparables: ≥30 months of history, matured, non-COVID) to project what a NEW build here would mature into,
-and computes the leakage-clean signal decider's independent Build/Pass call (`anchor.compute_anchor`, the one
-component with measured out-of-fold edge) as `signal.decider`. `initial_belief` forms its OWN lean from
-the cluster forecast vs the healthy-site floor; the signal is a quiet cross-check on the board, not a driver.
+ASP (mem/retail) — so it is transparent that the read spans the full cluster, not one site. Each qualified
+comparable carries its own opened date, lat/lon and distance from the pin. It then runs the council-local
+forecast (`forecast.project_site`, whose mature-level anchor + ramp come from the reliable comparables:
+≥30 months of history, matured, non-COVID) to project what a NEW build here would mature into.
+`initial_belief` forms its lean from that cluster forecast vs the healthy-site floor.
 """
 from __future__ import annotations
 
@@ -18,7 +16,6 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
-from experiments.council import anchor as A
 from experiments.council import config as C
 from experiments.council import data_1_6 as D
 from experiments.council import forecast
@@ -136,10 +133,6 @@ class HistoricalExpert(Expert):
                     f"{proj['n_donors']} qualified comparables ({proj['ramp_source']})",
                     kind="text", source="forecast.project_site", confidence=0.6),
         ]
-        try:
-            out.append(A.compute_anchor(ws.snap).as_evidence())     # eid "signal.decider"
-        except Exception:
-            pass
         return out
 
     def initial_belief(self, ws) -> BeliefState:

@@ -118,8 +118,8 @@ def _fmt_value(v: Any) -> str:
 def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: Optional[str] = None) -> None:
     st.subheader("🧭 AI Site-Selection Committee")
     st.caption("Five domain experts fetch real data, publish it to a shared board, then **challenge / "
-               "question / revise / vote** across rounds until they converge on a build/no-build call. A "
-               "data signal sits on the table as a quiet cross-check; the committee decides. Azure-only.")
+               "question / revise / vote** across rounds until they converge on a build/no-build call. "
+               "The committee decides. Azure-only.")
 
     key = f"{round(lat, 4)}::{round(lon, 4)}::{int(radius_km)}"
     store = st.session_state.setdefault("committee_store", {})
@@ -160,13 +160,9 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
     verdict = data.get("verdict", "—")
     lbl = C.VERDICT_LABELS.get(verdict, verdict)
     col = {"Build": "green", "Pass": "red", "Conditional": "orange"}.get(verdict, "gray")
-    prob = data.get("prob")
-    prob_txt = f"  ·  cross-check P(good build) {prob:.0%}" if isinstance(prob, (int, float)) else ""
-    st.markdown(f"### :{col}[{lbl}]  ·  {(data.get('confidence') or 0.0):.0%} committee confidence{prob_txt}")
+    st.markdown(f"### :{col}[{lbl}]  ·  {(data.get('confidence') or 0.0):.0%} committee confidence")
     if data.get("condition"):
         st.warning(f"**Condition:** {data['condition']}")
-    if data.get("note"):
-        st.caption(data["note"])          # quiet cross-check, not a loud warning
 
     # ── the debate, in brief — the quick read of what actually happened ──
     with st.expander("📝 The debate, in brief", expanded=True):
@@ -192,9 +188,8 @@ def render_council(lat: float, lon: float, *, radius_km: float = 20.0, backend: 
 
     with st.expander("🗂️ Evidence board · vote weighting · how to read the numbers"):
         st.caption("**Vote weighting** — data-grounded seats count 1.0, the world-knowledge seat 0.4 (the "
-                   "guardrail against bullish drift); Capacity abstains on go/no-go. The 🎯 data signal does "
-                   "**not** vote — it's an out-of-fold-validated P(good build) shown as a cross-check. "
-                   "**Committee confidence** = how dominant the majority lean was.")
+                   "guardrail against bullish drift); Capacity abstains on go/no-go. The verdict is the "
+                   "weighted-MAJORITY lean; **committee confidence** = how dominant that majority was.")
         for e in data.get("chamber", {}).get("experts", []):
             role = "🌐 world-knowledge (down-weighted)" if e.get("is_world") else "🔒 data-grounded"
             st.caption(f"{e.get('emoji','')} **{e.get('name')}** — weight **{e.get('weight')}** · {role} · "
