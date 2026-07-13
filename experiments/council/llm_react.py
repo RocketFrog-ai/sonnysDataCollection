@@ -55,13 +55,20 @@ _PHASE_OPEN = ("THIS IS ROUND 0 — OPENING STATEMENTS. Emit a PUBLISH stating y
                "is how the debate starts — do not just state your own view and stop.")
 
 
-def _phase_deliberate(rnd: int) -> str:
-    return (f"THIS IS ROUND {rnd} — DELIBERATION. FIRST resolve EVERY item in 'you_must_respond_to': answer a "
-            "QUESTION with a PUBLISH that states the answer, REVISE if a CHALLENGE convinced you, or DEFEND with "
-            "a cited PUBLISH — never leave an item aimed at you unanswered, and never merely VOTE while one is "
-            "open. THEN look at 'committee_positions' and CHALLENGE any peer whose lean or number still conflicts "
-            "with your 🔒 evidence. Only if you are settled AND nothing is aimed at you AND no peer conflicts with "
-            "you: emit a single VOTE or stay silent.")
+def _phase_deliberate(rnd: int, agenda: Optional[str] = None) -> str:
+    base = (f"THIS IS ROUND {rnd} — DELIBERATION. FIRST resolve EVERY item in 'you_must_respond_to': answering "
+            "means a cited PUBLISH (defend with your numbers) or a REVISE (concede) — an ENDORSE or a VOTE does "
+            "NOT answer a challenge aimed at you. ")
+    if agenda:
+        base += (f"THIS ROUND'S AGENDA: {agenda}. After answering what's aimed at you, debate THE AGENDA: pick a "
+                 "SPECIFIC number another seat posted on this topic and engage it — support it (ENDORSE, and say "
+                 "what it implies) or dispute it (CHALLENGE, with your conflicting number). Do NOT re-argue an "
+                 "earlier round's topic unless something aimed at you requires it. ")
+    else:
+        base += ("THEN look at 'committee_positions' and CHALLENGE any peer whose lean or number still conflicts "
+                 "with your 🔒 evidence. ")
+    return base + ("Only if you are settled AND nothing is aimed at you AND you have nothing substantive on the "
+                   "agenda: emit a single VOTE or stay silent.")
 
 
 def _fmt_val(v) -> str:
@@ -79,7 +86,8 @@ def _evidence_line(e: Evidence) -> str:
 
 def react(expert: str, role: str, persona: str, *, my_evidence: List[Evidence], board: List[Evidence],
           recent: List[Message], peers: Optional[dict] = None, belief: BeliefState, rnd: int,
-          max_msgs: Optional[int] = None, directed: Optional[List[Message]] = None) -> Tuple[List[Message], BeliefState]:
+          max_msgs: Optional[int] = None, directed: Optional[List[Message]] = None,
+          agenda: Optional[str] = None) -> Tuple[List[Message], BeliefState]:
     """One Azure react. Returns (typed messages proposed by this expert, updated belief). Safe no-op on failure.
     `directed` = ALL unanswered messages aimed at this expert (from the FULL log — an old challenge must not
     escape by scrolling out of the recent window); falls back to scanning `recent` if not given."""
@@ -104,7 +112,7 @@ def react(expert: str, role: str, persona: str, *, my_evidence: List[Evidence], 
             "recent_discussion": [f"{m.mtype.value} {m.sender}" + (f"→{m.to}" if m.to else "")
                                   + f": {m.text}" for m in recent],
         }
-        phase = _PHASE_OPEN if rnd == 0 else _phase_deliberate(rnd)
+        phase = _PHASE_OPEN if rnd == 0 else _phase_deliberate(rnd, agenda)
         sys = REACT_SYS.format(role=role, persona=persona, max_msgs=max_msgs, phase=phase)
         text = llm.complete([{"role": "system", "content": sys},
                              {"role": "user", "content": json.dumps(ctx, ensure_ascii=False)[:12000]}],

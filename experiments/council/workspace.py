@@ -66,6 +66,7 @@ class Workspace:
     open_requests: List[Message] = field(default_factory=list)
     open_challenges: List[Message] = field(default_factory=list)
     plan: List[Dict[str, str]] = field(default_factory=list)   # facilitator seed questions per expert
+    agenda: Optional[str] = None                      # this round's agenda topic (set by the coordinator)
     round: int = 0
     llm_calls: int = 0
     light: bool = False                               # light mode → experts skip their investigate-phase LLM/web calls

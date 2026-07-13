@@ -18,13 +18,14 @@ documented for this module (see the task's INPUTS contract) so this file stays d
 exactly how those dataclasses evolve.
 
 Sections, in order: header + verdict → executive summary → the numbers → where the committee
-stands → key strengths / key risks → discussion summary → data signal vs. committee → method &
-caveats.
+stands → key strengths / key risks → recommendations (operating spec) → what-if sensitivity →
+discussion summary → method & caveats.
 """
 from __future__ import annotations
 
 import json
 import math
+import re
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple
 
 from experiments.council import config as C
@@ -280,7 +281,84 @@ def _discussion_summary(ws: "Workspace", log: "DiscussionLog", decision: "Decisi
     return "\n\n".join(paras)
 
 
-# ─────────────────────────── section 6: method & caveats ───────────────────────────
+# ─────────────────────────── section 6: recommendations (operating spec) ───────────────────────────
+def _ramp_months(ws: "Workspace") -> Optional[int]:
+    """The learned ramp-to-90% months, parsed from Historical's own ramp evidence text."""
+    ev = ws.evidence.get("hist.ramp_pattern")
+    m = re.search(r"~?90% of mature in (\d+)\s*mo", str(ev.value)) if ev is not None else None
+    return int(m.group(1)) if m else None
+
+
+def _recommendations(ws: "Workspace", decision: "Decision") -> List[str]:
+    """The committee's operating spec — not just go/no-go but HOW to build it: tunnel, pricing,
+    membership mix, and the maturation timeline. Deterministic, from the settled board."""
+    n = decision.numbers or {}
+    out: List[str] = []
+    tunnel, peak = _f(n.get("tunnel_ft")), _f(n.get("peak_month_washes"))
+    if tunnel is not None:
+        spec = int(math.ceil(tunnel / 5.0) * 5)          # build to the next 5-ft increment
+        seg = f"**Tunnel: build ~{spec} ft** (computed {tunnel:,.0f} ft"
+        if peak is not None:
+            seg += f" from the projected peak month of {peak:,.0f} washes at 25 days × 10 hrs + 20 ft buffer"
+        out.append(seg + ").")
+    asp_ev = ws.evidence.get("hist.cluster_asp")
+    asp = asp_ev.value if (asp_ev is not None and isinstance(asp_ev.value, dict)) else {}
+    am, ar = _f(asp.get("asp_mem")), _f(asp.get("asp_ret"))
+    if am is not None or ar is not None:
+        seg = "**Pricing:** anchor to the cluster's observed ASPs — "
+        seg += " · ".join(filter(None, [f"membership ≈ **${am:,.0f}**/wash" if am is not None else None,
+                                        f"retail ≈ **${ar:,.0f}**/wash" if ar is not None else None]))
+        out.append(seg + " (price materially above this and the comparables say volume walks).")
+    ms = _f(n.get("membership_share"))
+    if ms is not None:
+        out.append(f"**Membership mix:** drive toward **{ms:.0%}** of washes on plans — the cluster's observed "
+                   "share; it is the revenue-stability lever.")
+    mature, ramp_mo = _f(n.get("mature_washes")), _ramp_months(ws)
+    if mature is not None:
+        seg = f"**Maturation:** underwrite to ≈ **{mature:,.0f} washes/mo at maturity**, reached over the "
+        seg += f"panel's typical **24–30 months**; the local ramp hits ~90% by **month {ramp_mo}**" if ramp_mo \
+            else "panel's typical **24–30 months**"
+        out.append(seg + " — do not judge the site on year-1 volume.")
+    capex, be = _f(n.get("capex")), _f(n.get("breakeven_month"))
+    if capex is not None and be is not None:
+        out.append(f"**Capital:** ≈ **{_money(capex)}** to build; the projected P&L pays it back around "
+                   f"**month {be:,.0f}**.")
+    return out or ["_Not enough settled numbers on the board to write an operating spec._"]
+
+
+# ─────────────────────────── section 7: what-if (deterministic sensitivity) ───────────────────────────
+_f = _safe_float                                         # the shared None/NaN-safe float coercion
+
+
+def _what_if(decision: "Decision") -> str:
+    """Pure-math sensitivity on the committee's own numbers: how the 5-yr net and breakeven move if demand
+    or ASP disappoints. Linear on the realized operating margin; opex ratio and ramp shape held fixed."""
+    n = decision.numbers or {}
+    rev, net, capex = _f(n.get("revenue_5yr")), _f(n.get("net_5yr")), _f(n.get("capex"))
+    washes = _f(n.get("mature_washes"))
+    if not rev or net is None or capex is None or rev <= 0:
+        return "_Insufficient settled numbers for a sensitivity read._"
+    margin = (net + capex) / rev                         # operating margin over 5yr, gross of build cost
+    rows = ["| Scenario | 5-yr revenue | 5-yr net | ~Breakeven |", "|---|---|---|---|"]
+
+    def _row(label: str, rev2: float) -> None:
+        net2 = rev2 * margin - capex
+        be2 = (capex / (rev2 * margin / 60.0)) if rev2 * margin > 0 else None
+        be_s = f"mo {be2:,.0f}" if (be2 is not None and be2 <= 60) else ("> 60 mo" if be2 else "—")
+        rows.append(f"| {label} | {_money(rev2)} | {_money(net2)} | {be_s} |")
+
+    _row("Base (committee)", rev)
+    for d in (-0.20, -0.10, +0.10):
+        _row(f"Demand {d:+.0%}", rev * (1 + d))
+    if washes:
+        _row("ASP −$1/wash", rev - washes * 60.0)        # every wash a dollar cheaper across 5 yrs (approx.)
+    return "\n".join(rows) + (
+        "\n\n_Linear on the realized operating margin "
+        f"({margin:.0%} of revenue over 5 yrs, before build cost); opex ratio and ramp shape held fixed. "
+        "A demand miss moves breakeven faster than net — capacity is fixed, volume is not._")
+
+
+# ─────────────────────────── section 8: method & caveats ───────────────────────────
 def _method_footer(decision: "Decision") -> str:
     return (
         "---\n\n"
@@ -360,6 +438,8 @@ def synthesize_report(ws, log, decision) -> str:
         "## Where the committee stands\n\n" + _committee_table(ws),
         "## Key strengths\n\n" + "\n".join(f"- {s}" for s in strengths),
         "## Key risks\n\n" + "\n".join(f"- {r}" for r in risks),
+        "## Recommendations — the operating spec\n\n" + "\n".join(f"- {r}" for r in _recommendations(ws, decision)),
+        "## What-if (sensitivity)\n\n" + _what_if(decision),
         "## How the committee got there (discussion summary)\n\n" + _discussion_summary(ws, log, decision),
         _method_footer(decision),
     ]

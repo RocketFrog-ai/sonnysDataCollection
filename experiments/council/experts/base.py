@@ -57,7 +57,8 @@ class Expert:
             board=ws.all_evidence(),
             recent=log.recent(12),
             peers=peers, directed=directed,
-            belief=belief, rnd=ws.round, max_msgs=C.MAX_MSGS_PER_EXPERT)
+            belief=belief, rnd=ws.round, max_msgs=C.MAX_MSGS_PER_EXPERT,
+            agenda=getattr(ws, "agenda", None))
         ws.set_belief(belief)
         return msgs
 

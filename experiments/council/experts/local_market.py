@@ -38,13 +38,28 @@ class LocalMarketExpert(Expert):
                "through the year. You provide rich context; the data seats carry the go/no-go weight.")
     is_world = True
 
+    @staticmethod
+    def _pct(x, nd=1):
+        try:
+            return f"{float(x) * 100:+.{nd}f}%"
+        except (TypeError, ValueError):
+            return None
+
     def investigate(self, ws) -> List[Evidence]:
         prof = datasets.sitewise_for_pin(ws.lat, ws.lon)
+        meta = prof.get("_meta") or {}
+        pop = prof.get("population_2025")
+        # BOTH growth windows, as readable percentages: the trailing 2020→2025 number is a COVID-era
+        # window and reads misleadingly flat on its own — the forward projection is the demand signal.
         out = [
-            self.ev("mkt.demographics", "population / growth / age",
-                    {"population_2025": prof.get("population_2025"),
-                     "growth_2020_2025": prof.get("growth_2020_2025"),
-                     "avg_age": prof.get("avg_age")},
+            self.ev("mkt.demographics", "population / growth (trailing AND projected) / age",
+                    {"population_2025": (round(pop) if pop is not None else None),
+                     "growth_2020_2025_trailing": (self._pct(prof.get("growth_2020_2025")) or "n/a")
+                        + " over 5yr (COVID-era window — read with caution)",
+                     "growth_2025_2030_projected": (self._pct(prof.get("growth_2025_2030")) or "n/a")
+                        + " over next 5yr (the forward demand signal)",
+                     "avg_age": (round(float(prof["avg_age"]), 1) if prof.get("avg_age") is not None else None),
+                     "snapped_from": f"{meta.get('n', 0)} nearby known sites, nearest {meta.get('nearest_km')}km"},
                     kind="table", source="datasets.sitewise_for_pin", confidence=0.7),
             self.ev("mkt.income", "household income",
                     {"median_household_income": prof.get("median_household_income"),

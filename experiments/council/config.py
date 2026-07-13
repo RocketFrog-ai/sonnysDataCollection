@@ -28,6 +28,26 @@ FIRST_OPEN_YEAR = 2021       # focal-sample openings start here (post-COVID)
 
 # ── committee mechanics ──
 MAX_ROUNDS = 3               # discussion rounds after the publish round
+
+# The meeting AGENDA — one topic per deliberation round, so the debate covers the whole case instead of
+# fixating on the single most quotable disagreement. Each entry: (topic, what to debate, owner seats —
+# always woken that round even if settled, because their evidence carries the topic).
+ROUND_AGENDA = {
+    1: ("the demand case",
+        "the projected mature washes vs the cluster's OBSERVED washes/revenue; EACH comparable's own numbers "
+        "(washes, revenue, mem-buys, ASP, distance, opened date); the ramp pattern; and whether demographics "
+        "(projected forward growth, income, vehicles) support that demand",
+        ("historical", "local_market")),
+    2: ("competition & pricing",
+        "TRUE express-tunnel competition (the benchmark score, effective rivals at 3mi); mass merchants and "
+        "grocery anchors — traffic generators vs share-of-wallet competition; and what the cluster's observed "
+        "membership/retail ASPs say about pricing power here",
+        ("competition", "local_market", "historical")),
+    3: ("economics & capacity",
+        "Finance's 5-yr revenue and net, the CAPEX, the breakeven month, membership share; whether the tunnel "
+        "length actually handles the projected peak month; and what breaks the payback case",
+        ("finance", "capacity", "historical")),
+}
 MAX_MSGS_PER_EXPERT = 3      # messages an expert may emit per react
 MAX_FOLLOWUPS_PER_EXPERT = 2 # dynamic REQUEST investigations an expert will service
 EPS_CONF = 0.05              # convergence: |Δconfidence| this small across two rounds ⇒ stable

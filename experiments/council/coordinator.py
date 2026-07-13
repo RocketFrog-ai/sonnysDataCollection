@@ -78,10 +78,21 @@ class Facilitator:
             for ev in evs:
                 self.ws.post(ev)
 
+    def finance_numbers(self) -> None:
+        """Put Finance's consolidated economics ON THE BOARD before the debate starts — revenue, opex,
+        CAPEX, net, breakeven are debate SUBJECTS, not an epilogue. (Capacity's tunnel_ft is already
+        posted by investigate, so the demand-sized CAPEX is computable here.)"""
+        fin = self._by_name("finance")
+        if fin is None:
+            return
+        try:
+            for ev in (fin.consolidate(self.ws) or []):
+                self.ws.post(ev)
+        except Exception:
+            pass
+
     def set_initial_beliefs(self) -> None:
-        for e in self.experts:
-            if e.name == "finance":
-                continue
+        for e in self.experts:                       # finance included — its numbers are on the board now
             try:
                 self.ws.set_belief(e.initial_belief(self.ws))
             except Exception:
@@ -94,8 +105,6 @@ class Facilitator:
         self.ws.round = 0
         delta = self.ws.delta_since(-1, self.log)
         for e in self.experts:
-            if e.name == "finance":
-                continue
             if self.ws.llm_calls >= C.PER_SITE_LLM_BUDGET:
                 break
             self._react_and_route(e, delta)
@@ -103,16 +112,18 @@ class Facilitator:
 
     # ── phase: ONE discussion round (the graph self-loops on this) ──
     def _active_experts(self, r: int) -> List:
-        """Control-unit-style dynamic selection (from the blackboard-architecture paper, LbMAS): in a
-        deliberation round only wake the seats with a LIVE reason to speak — a challenge/question aimed at
-        them, an unsettled or still-moving lean, or a peer that engaged their numbers last round. A seat that
-        has made its point and faces nothing new stays silent, which kills round-over-round repetition and
-        cost. Deterministic (the LLM proposes messages; Python decides WHO acts), so it stays auditable."""
+        """Control-unit-style dynamic selection (from the blackboard-architecture paper, LbMAS): wake the
+        seats with a LIVE reason to speak — a challenge/question aimed at them, an unsettled or still-moving
+        lean, a peer that engaged their numbers last round — PLUS the round's agenda owners (their evidence
+        carries the topic, settled or not). Deterministic (the LLM proposes messages; Python decides WHO
+        acts), so it stays auditable."""
         prev = [m for m in self.log.messages if m.round == r - 1]
+        owners = set((C.ROUND_AGENDA.get(r) or (None, None, ()))[2])
         active = []
         for e in self.experts:
-            if e.name == "finance":
-                continue
+            # 0) this round's agenda is MY topic → I speak to it
+            if e.name in owners:
+                active.append(e); continue
             # 1) something unanswered is aimed at me → I must respond
             if any(m.to == e.name and m.answered_by is None
                    and m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION, MsgType.REQUEST)
@@ -136,11 +147,14 @@ class Facilitator:
         if self.light:
             return
         self.ws.round = r
+        agenda = C.ROUND_AGENDA.get(r)
+        self.ws.agenda = f"{agenda[0]} — {agenda[1]}" if agenda else None
         delta = self.ws.delta_since(r - 1, self.log)
         for e in self._active_experts(r):
             if self.ws.llm_calls >= C.PER_SITE_LLM_BUDGET:
                 break
             self._react_and_route(e, delta)
+        self.ws.agenda = None
         self._service_requests()
         self.ws.snapshot_beliefs()
 
@@ -183,7 +197,7 @@ class Facilitator:
                 self._react_and_route(e, delta)
         self.ws.snapshot_beliefs()
 
-    # ── phase: Finance consolidates last ──
+    # ── phase: close out — resolution, moot sweep, and a Finance number refresh ──
     def finance_consolidate(self) -> None:
         self.resolution_round()                      # targets answer what's still aimed at them
         self.close_moot_challenges()                 # then retire challenges between seats that now agree
@@ -192,8 +206,9 @@ class Facilitator:
             return
         try:
             for ev in (fin.consolidate(self.ws) or []):
-                self.ws.post(ev)
-            self.ws.set_belief(fin.initial_belief(self.ws))
+                self.ws.post(ev)                     # refresh the economics if debate moved the inputs
+            if fin.name not in self.ws.beliefs:      # belief normally set pre-debate; never clobber a REVISE
+                self.ws.set_belief(fin.initial_belief(self.ws))
         except Exception:
             pass
         self.ws.snapshot_beliefs()
@@ -293,7 +308,7 @@ def build_committee_graph(fac: "Facilitator", snap):
         return None
 
     def _investigate(state):
-        fac.plan(); fac.investigate(); fac.set_initial_beliefs()
+        fac.plan(); fac.investigate(); fac.finance_numbers(); fac.set_initial_beliefs()
         return {"round": 0}
 
     def _publish(state):
@@ -335,7 +350,7 @@ def deliberate(fac: "Facilitator", snap) -> str:
         except Exception:
             pass                                     # graph failed → fall through to the same phases
     # hand-rolled fallback (same order, same predicate)
-    fac.plan(); fac.investigate(); fac.set_initial_beliefs()
+    fac.plan(); fac.investigate(); fac.finance_numbers(); fac.set_initial_beliefs()
     fac.publish_round()
     for r in range(1, fac.max_rounds + 1):
         fac.discussion_round(r)
