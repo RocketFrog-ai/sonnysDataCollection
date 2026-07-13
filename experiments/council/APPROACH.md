@@ -17,21 +17,30 @@ deterministic coordinator routes everything.
 a deeper dig) · `REVISE` (change *my own* mind) · `ENDORSE` (agree) · `VOTE`.
 
 **The loop** (a LangGraph `StateGraph`, with a hand-rolled fallback):
-1. **Investigate** — each seat runs its data tools (no LLM) and posts `Evidence` to the board.
-2. **Publish round** — each seat states its opening finding + lean.
-3. **Discuss ×3** — a lightweight **control unit** (from the blackboard-architecture literature) wakes only
-   the seats with a live reason to speak — a challenge aimed at them, an unsettled/still-moving lean, or a
-   peer that just engaged their numbers; settled-and-unchallenged seats stay quiet (kills repetition + cost).
-   Each active seat sees the *whole board* + every peer's position + **everything still aimed at it** (from
-   the full log, so nothing scrolls out of view) and reacts: challenge, answer, revise, endorse, vote.
-4. **Converge** — stop when there are no open challenges and beliefs stop moving (or a 3-round cap).
+1. **Investigate** — each seat runs its data tools (no LLM) and posts `Evidence` to the board. **Finance
+   consolidates here too** — revenue, opex, CAPEX, net, breakeven land on the board *before* the debate,
+   so the economics are debate subjects, not an epilogue.
+2. **Publish round** — every seat (Finance included) states its opening finding + lean.
+3. **Discuss ×3, on an AGENDA** — a real meeting covers the whole case, so each round has a topic:
+   **round 1 the demand case** (projection vs the cluster's observed numbers, each comparable, the ramp,
+   demographics) · **round 2 competition & pricing** (true express rivals, mass merchants, what the cluster's
+   ASPs say about pricing power) · **round 3 economics & capacity** (5-yr net, CAPEX, breakeven, does the
+   tunnel survive the peak). A lightweight **control unit** wakes the agenda's owner seats plus anyone with a
+   live reason to speak (a challenge aimed at them, an unsettled/still-moving lean, a peer engaging their
+   numbers); settled, unengaged seats stay quiet. Each active seat sees the *whole board* + every peer's
+   position + **everything still aimed at it** (from the full log, so nothing scrolls out of view). Answering
+   a challenge means a defended PUBLISH or a REVISE — an ENDORSE or VOTE doesn't close one.
+4. **Converge** — stop when there are no open challenges and beliefs stop moving (or the round cap).
 5. **Resolution** — any seat with a challenge still aimed at it gets ONE focused reply (defend or concede),
    then challenges between seats that ended up agreeing are retired as moot — nothing dangles.
 6. **Decide** — deterministic: the verdict is the committee's **weighted-majority lean**.
-7. **Recap** — the Facilitator (the moderator/summarizer role the papers recommend) writes a plain-English
-   per-round summary + insight in one Azure pass, plus a **claim-level synthesis** (Council-Mode pattern):
-   what the seats *agreed* on, what stayed *unresolved*, and any *unique* point only one seat raised —
-   surfacing the lone-voice insight a majority vote would bury. Deterministic fallback if the call fails.
+7. **Recap** — the Facilitator writes a plain-English per-round summary + insight in one Azure pass, plus a
+   **claim-level synthesis** (Council-Mode pattern): what the seats *agreed* on, what stayed *unresolved*,
+   and any *unique* point only one seat raised — surfacing the lone-voice insight a majority vote would bury.
+8. **Report** — beyond go/no-go, an **operating spec**: recommended tunnel length, ASP anchors from the
+   cluster's observed pricing, membership-mix target, the 24–30-month maturation path (with the local
+   ramp-to-90% month), capital + payback — plus a deterministic **what-if table** (demand ±10/20%, ASP −$1)
+   computed from the committee's own settled numbers.
 
 **The rules that make it trustworthy** — the LLM only *proposes* text; **deterministic Python routes
 messages, tallies the votes, and writes the verdict**:
@@ -52,38 +61,43 @@ un-grounded version was deleted for. ~15 small, self-contained Python modules; n
 | 🛰️ **Competition** | live Google rivals @3 mi → filtered to *true express tunnels* → scored on the industry feasibility benchmark |
 | 🏙️ **Local-Market** | census demographics/income + a **live web-search** read (down-weighted) |
 | 🏗️ **Capacity** | tunnel length sized from the projected peak demand |
-| 💰 **Finance** | revenue (washes × ASP), **demand-sized CAPEX**, opex → 5-yr net + breakeven (+ web cost benchmarks) |
+| 💰 **Finance** | revenue (washes × ASP), **demand-sized CAPEX**, opex → 5-yr net + breakeven (+ web cost benchmarks) — consolidated **before** the debate, and the seat argues its P&L in the room like everyone else |
 
 ## A real run — Atlanta (33.75, −84.39), verbatim
 ```
-INVESTIGATE  → each seat posts real numbers on the board:
-  Historical : 12-mi cluster = 11 sites; comparables Clairmont 12.6k/mo, Peachtree 13.3k/mo
-               → projects 12,588 mature washes/mo (healthy floor is 7,473)
-  Competition: 19 Google listings → only 1 true express tunnel → score 90/100 → LOW saturation
-  Local-Market: pop 119k · income $118k · growth +0.4% · 2.33 mass-merchants per capita
+INVESTIGATE  → each seat posts real numbers on the board (Finance's P&L included, up front):
+  Historical : 12-mi cluster; comparables Clairmont 12,588/mo · Peachtree 13,310/mo (each with its own
+               revenue, mem-buys, ASP, distance, opened date) → projects 12,588 mature washes/mo
+  Competition: 19 Google listings → 1 true express tunnel → benchmark score 90/100 → LOW saturation
+  Local-Market: pop 119k · income $118k · growth +0.4% trailing (COVID window) / +5.1% PROJECTED 2025-30
   Capacity   : projected peak 15.4k/mo → tunnel 81.5 ft
-  Finance    : 5-yr net +$10.3M, CAPEX sized to the tunnel, breakeven month 28
+  Finance    : 5-yr revenue $22.8M → net +$10.3M · CAPEX $1.9M (demand-sized) · breakeven month 13
 
-ROUND 0  Historical   PUBLISH               "projected 12,588/mo, backed by Clairmont & Peachtree; only
-                                             1 express rival in 3 mi — strong headroom"
-         Local-Market CHALLENGE→Historical  "Clairmont/Peachtree had stronger growth than this site's
-                                             +0.4%. How does slow growth not temper your 12,588?"
-         Local-Market CHALLENGE→Competition "your 90/100 ignores 2.33 mass merchants per capita
-                                             competing for the same discretionary spend"
-ROUND 1  Historical   REVISE  Build→Conditional  "You raised valid concerns about the slow population
-                                                  growth… I now lean Conditional."
-         Competition  REVISE  Build→Conditional  "I concede slow growth and retail density temper
-                                                  demand… I revise my lean to Conditional."
-ROUND 2+ ENDORSE / VOTE — the room settles on Conditional.
+ROUND 1 (demand)       Historical→Local-Market  CHALLENGE  "cluster median is 7,902/mo, but the qualified
+                                                            comparables run 12.6-13.3k — the projection
+                                                            stands on them, not the median"
+                       Local-Market REVISE   "I concede the comparables justify the 12,588 projection"
+ROUND 2 (competition   Competition→Historical  CHALLENGE  "how does the 90/100 score square with cluster
+         & pricing)                                        median ASPs of $47.18 mem / $19.45 retail —
+                                                           is there pricing power here at all?"
+                       Local-Market→Competition CHALLENGE "1 express rival, yes — but 19 total listings;
+                                                           does headroom survive the broader field?"
+                       Competition REVISE   "conceded — 19 total listings could dilute differentiation"
+ROUND 3 (economics     Historical→Finance    CHALLENGE  "your $10.3M net assumes Clairmont's ASPs; at the
+         & capacity)                                     cluster median the margin thins"
+                       Capacity→Finance      CHALLENGE  "does breakeven month 13 hold if congestion caps
+                                                         throughput below the 15.4k peak?"
+                       Local-Market→Capacity CHALLENGE  "81.5 ft assumes ideal throughput — Atlanta
+                                                         congestion says otherwise"
+                       Capacity REVISE   "conceded — bottleneck risk at peak is real"
 
-VERDICT: CONDITIONAL  (committee consensus, weighted-majority lean)
-         condition: resolve the challenge(s) the committee left standing
+VERDICT: BUILD (0.79) · 6 mind-changes · 0 disagreements left standing
 ```
-Those two `REVISE`s — Historical and Competition abandoning **Build** *because Local-Market's growth and
-retail-density numbers argued them down* — are the whole point: the seats genuinely move each other.
-And the headline is **faithful to the room**: the seats landed on Conditional, so the verdict is
-Conditional (an earlier version let a weighted mean say "Build" over a room that had talked itself to
-Conditional; the majority rule fixed that).
+That's a committee covering the *whole* case — demand, pricing power, true-vs-broad competition, the P&L's
+assumptions, tunnel throughput — with seats conceding on the record when a peer's number beats theirs
+(6 REVISEs), and every challenge answered before the verdict. The agenda is what forces that breadth: an
+earlier version let the room spend five rounds on one demographic figure (which turned out to be a
+COVID-window artifact — the fix was posting BOTH growth windows, trailing and projected, clearly labeled).
 
 ## Why you can trust the answer
 - **Data beats vibes** — every claim cites a real number on the board; uncited ones are dropped; the
