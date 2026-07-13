@@ -19,14 +19,17 @@ a deeper dig) · `REVISE` (change *my own* mind) · `ENDORSE` (agree) · `VOTE`.
 **The loop** (a LangGraph `StateGraph`, with a hand-rolled fallback):
 1. **Investigate** — each seat runs its data tools (no LLM) and posts `Evidence` to the board.
 2. **Publish round** — each seat states its opening finding + lean.
-3. **Discuss ×3** — each seat sees the *whole board* + every peer's current position + **everything still
-   aimed at it** (from the full log, so nothing escapes by scrolling out of view), and reacts: challenge a
-   conflicting number, answer a challenge, revise its own belief, endorse, vote. A challenge stays "open"
-   until the target answers it; re-raising an already-made point is dropped.
+3. **Discuss ×3** — a lightweight **control unit** (from the blackboard-architecture literature) wakes only
+   the seats with a live reason to speak — a challenge aimed at them, an unsettled/still-moving lean, or a
+   peer that just engaged their numbers; settled-and-unchallenged seats stay quiet (kills repetition + cost).
+   Each active seat sees the *whole board* + every peer's position + **everything still aimed at it** (from
+   the full log, so nothing scrolls out of view) and reacts: challenge, answer, revise, endorse, vote.
 4. **Converge** — stop when there are no open challenges and beliefs stop moving (or a 3-round cap).
 5. **Resolution** — any seat with a challenge still aimed at it gets ONE focused reply (defend or concede),
-   and challenges between seats that ended up agreeing are retired as moot — nothing dangles.
+   then challenges between seats that ended up agreeing are retired as moot — nothing dangles.
 6. **Decide** — deterministic: the verdict is the committee's **weighted-majority lean**.
+7. **Recap** — the Facilitator (the moderator/summarizer role both papers recommend) writes a plain-English
+   per-round summary + insight + bottom line for the UI, in one Azure pass (deterministic fallback if it fails).
 
 **The rules that make it trustworthy** — the LLM only *proposes* text; **deterministic Python routes
 messages, tallies the votes, and writes the verdict**:

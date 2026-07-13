@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -56,24 +55,8 @@ def _run_committee_subprocess(lat: float, lon: float, radius_km: float, light: b
     return json.loads(out[i + len(marker):])
 
 
-# the digest: strip "(hist.projected_mature)"-style cite parentheses, keep the first ~short clause
-_CITE_PAREN = re.compile(r"\s*\([^()]*\b[a-z_]+\.[a-z_0-9]+[^()]*\)")
-_VERB = {"PUBLISH": "🗣️ states", "QUESTION": "❓ asks", "CHALLENGE": "⚔️ challenges", "REQUEST": "🔎 asks for a dig",
-         "REVISE": "🔁 concedes to", "ENDORSE": "✅ endorses", "VOTE": "🗳️ votes"}
-
-
-def _gist(text: str, n: int = 130) -> str:
-    t = re.sub(r"\s+", " ", _CITE_PAREN.sub("", text or "")).strip()
-    return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + "…"
-
-
-def _render_digest(data: Dict[str, Any]) -> None:
-    """One short line per message + the position changes per round — the whole meeting in a 30-second read."""
-    msgs = data.get("chamber", {}).get("messages", [])
-    if not msgs:
-        st.caption("_(light mode — no discussion)_")
-        return
-    # lean changes keyed by the round they happened in (from the belief history)
+def _moves_by_round(data: Dict[str, Any]) -> Dict[int, List[str]]:
+    """Factual lean changes per round, from the belief history — 'Historical moved Build → Conditional'."""
     moves: Dict[int, List[str]] = {}
     for ekey, seq in (data.get("chamber", {}).get("belief_history", {}) or {}).items():
         meta = C.EXPERT_META.get(ekey, {})
@@ -82,22 +65,34 @@ def _render_digest(data: Dict[str, Any]) -> None:
                 moves.setdefault(int(cur.get("round", 0)), []).append(
                     f"{meta.get('emoji','')} **{meta.get('name', ekey)}** moved "
                     f"*{prev.get('lean') or '—'}* → **{cur.get('lean') or '—'}**")
-    last = None
-    for m in msgs:
-        r = m.get("round")
-        if r != last:
-            if last is not None:
-                for mv in moves.get(last, []):
-                    st.markdown(f"&nbsp;&nbsp;&nbsp;{mv}", unsafe_allow_html=True)
-            st.markdown(f"**Round {r}**" + (" — opening positions" if r == 0 else ""))
-            last = r
-        tgt = f" **{m.get('to_name')}**" if m.get("to_name") else ""
-        st.caption(f"{m.get('sender_emoji','')} **{m.get('sender_name')}** "
-                   f"{_VERB.get(m.get('type'), m.get('type'))}{tgt} — {_gist(m.get('text',''))}")
-    if last is not None:
-        for mv in moves.get(last, []):
-            st.markdown(f"&nbsp;&nbsp;&nbsp;{mv}", unsafe_allow_html=True)
+    return moves
+
+
+def _render_digest(data: Dict[str, Any]) -> None:
+    """The Facilitator's per-round recap (title · what happened · insight) + the factual position changes —
+    the whole meeting in a 20-second read. Falls back to a note if there was no discussion."""
+    rounds = (data.get("round_digest") or {}).get("rounds") or []
+    if not rounds:
+        if not data.get("chamber", {}).get("messages"):
+            st.caption("_(light mode — no discussion)_")
+        else:
+            st.caption("_(recap unavailable — see the full transcript below)_")
+        return
+    moves = _moves_by_round(data)
+    for r in rounds:
+        rnd = r.get("round", 0)
+        st.markdown(f"**Round {rnd} — {r.get('title', '')}**")
+        if r.get("recap"):
+            st.write(r["recap"])
+        if r.get("insight"):
+            st.caption(f"💡 {r['insight']}")
+        for mv in moves.get(int(rnd), []):
+            st.markdown(f"&nbsp;&nbsp;&nbsp;↳ {mv}", unsafe_allow_html=True)
+    takeaway = (data.get("round_digest") or {}).get("takeaway")
+    if takeaway:
+        st.info(f"**Bottom line —** {takeaway}")
     verdict = data.get("verdict", "—")
+    msgs = data.get("chamber", {}).get("messages", [])
     st.markdown(f"**→ Verdict: {C.VERDICT_LABELS.get(verdict, verdict)}** · "
                 f"{len([m for m in msgs if m.get('type')=='REVISE'])} mind-change(s) · "
                 f"{data.get('chamber', {}).get('open_challenges', 0)} disagreement(s) left standing")

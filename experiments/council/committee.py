@@ -67,9 +67,18 @@ def run_committee_json(lat: float, lon: float, *, radius_km: Optional[float] = N
     ws, dec = res.workspace, res.decision
     evidence = [{"expert": e.expert, "eid": e.eid, "label": e.label, "value": e.value,
                  "unit": e.unit, "badge": e.badge()} for e in ws.all_evidence()]
-    return {"chamber": res.chamber_data(), "report": res.report, "evidence": evidence, "plan": res.plan,
-            "verdict": dec.verdict, "confidence": dec.confidence, "basis": dec.basis,
-            "condition": dec.condition, "lat": res.lat, "lon": res.lon}
+    chamber = res.chamber_data()
+    round_digest: Dict[str, Any] = {"rounds": [], "takeaway": ""}
+    if not light:
+        try:                                             # the Facilitator's per-round recap (never sinks the run)
+            from experiments.council.debate_digest import summarize_debate
+            round_digest = summarize_debate(chamber.get("messages", []), chamber.get("belief_history", {}),
+                                            dec.verdict, dec.condition)
+        except Exception:
+            pass
+    return {"chamber": chamber, "report": res.report, "evidence": evidence, "plan": res.plan,
+            "round_digest": round_digest, "verdict": dec.verdict, "confidence": dec.confidence,
+            "basis": dec.basis, "condition": dec.condition, "lat": res.lat, "lon": res.lon}
 
 
 @dataclass

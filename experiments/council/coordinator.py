@@ -102,14 +102,42 @@ class Facilitator:
         self.ws.snapshot_beliefs()
 
     # ── phase: ONE discussion round (the graph self-loops on this) ──
+    def _active_experts(self, r: int) -> List:
+        """Control-unit-style dynamic selection (from the blackboard-architecture paper, LbMAS): in a
+        deliberation round only wake the seats with a LIVE reason to speak — a challenge/question aimed at
+        them, an unsettled or still-moving lean, or a peer that engaged their numbers last round. A seat that
+        has made its point and faces nothing new stays silent, which kills round-over-round repetition and
+        cost. Deterministic (the LLM proposes messages; Python decides WHO acts), so it stays auditable."""
+        prev = [m for m in self.log.messages if m.round == r - 1]
+        active = []
+        for e in self.experts:
+            if e.name == "finance":
+                continue
+            # 1) something unanswered is aimed at me → I must respond
+            if any(m.to == e.name and m.answered_by is None
+                   and m.mtype in (MsgType.CHALLENGE, MsgType.QUESTION, MsgType.REQUEST)
+                   for m in self.log.messages):
+                active.append(e); continue
+            b = self.ws.beliefs.get(e.name)
+            # 2) I haven't settled on a lean yet
+            if b is None or b.lean is None:
+                active.append(e); continue
+            # 3) my lean was still moving last round (I'm mid-reconsideration)
+            if len(b.history) >= 2 and b.history[-1].get("lean") != b.history[-2].get("lean"):
+                active.append(e); continue
+            # 4) a peer engaged MY numbers last round (cited my evidence) → I should answer
+            my_eids = {ev.eid for ev in self.ws.evidence_of(e.name)}
+            if any(m.sender != e.name and (set(m.cites) & my_eids) for m in prev):
+                active.append(e); continue
+            # else: settled and unengaged → stay silent this round
+        return active
+
     def discussion_round(self, r: int) -> None:
         if self.light:
             return
         self.ws.round = r
         delta = self.ws.delta_since(r - 1, self.log)
-        for e in self.experts:
-            if e.name == "finance":
-                continue
+        for e in self._active_experts(r):
             if self.ws.llm_calls >= C.PER_SITE_LLM_BUDGET:
                 break
             self._react_and_route(e, delta)
