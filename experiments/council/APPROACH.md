@@ -90,3 +90,26 @@ Conditional; the majority rule fixed that).
 - **The committee IS the product** — no side-model shares the stage. The leakage-clean signal that used
   to ride along lives on only as the **offline backtest** (`harness.py`, N=420, out-of-fold) that grades
   the method honestly; it never appears in a live meeting.
+
+## Why this design (grounded in the research)
+This isn't a bespoke guess — it's the pattern the current literature converges on, and it's built to dodge
+the one failure that sinks most "N agents arguing" demos.
+
+- **The trap we avoid.** When agents share a model *and* get identical inputs, debate is a *martingale* —
+  correctness doesn't improve across rounds, and confident-but-wrong majorities form echo chambers
+  ([Can LLM Agents Really Debate?, 2511.07784](https://arxiv.org/pdf/2511.07784)). Our seats each hold
+  **different evidence** (cluster panel vs Google Places vs tunnel math vs P&L), so this is the
+  *information-asymmetry* regime where deliberation genuinely helps — measured **+15–25%** over independent
+  aggregation ([Diverse Evidence, Better Forecasts, 2607.01661](https://arxiv.org/pdf/2607.01661)).
+- **The backbone is validated.** A **blackboard** architecture beats RAG and master-slave setups by
+  **13–57%** at low token cost ([Blackboard MAS, 2507.01701](https://arxiv.org/html/2507.01701v1)); there's
+  even a published *"Council Mode"* for heterogeneous-agent consensus
+  ([2604.02923](https://arxiv.org/pdf/2604.02923)).
+- **What we took from it.** LbMAS's roles map onto ours (its planner/critic/conflict-resolver/cleaner/decider
+  ≈ our seed-plan, cite-or-drop rule, resolution round, dedup + moot-sweep, and `decide_final`). Its one
+  extra idea we adopted is the **control unit** — wake only the relevant seats each round (§loop step 3).
+  Its LLM decider/cleaner we deliberately kept **deterministic**: for a decision product the stop rule and
+  the vote should be auditable Python, not another model's opinion.
+- **Open next step.** The papers show correlated errors when every seat shares one model; running seats on
+  **different model families** would be the biggest remaining robustness gain — currently gated by the
+  Azure-only constraint.
