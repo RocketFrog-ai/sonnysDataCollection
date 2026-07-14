@@ -76,6 +76,10 @@ dependencies:
     - beautifulsoup4>=4.12      # websearch result parsing
     - ddgs>=9                   # web search (was `duckduckgo-search`; both names are handled)
 
+    # --- pin read-through cache (app/db) → Azure MySQL proforma_schema (CAR_WASH_DB_URL) ---
+    - sqlalchemy==2.0.50        # Core engine + `pin_api_cache` table for the pin cache
+    - pymysql>=1.1              # MySQL driver for the mysql+pymysql:// URL (Azure enforces TLS)
+
     # --- everything else that is actually imported ---
     - openpyxl==3.1.5           # proforma/backtests reads .xlsx proformas
     - rapidfuzz>=3              # libs/carwash_type name matching

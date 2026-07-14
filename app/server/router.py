@@ -18,6 +18,7 @@ from app.pnl_analysis.insights.graph import market_insights as _insights_pipelin
 from app.pnl_analysis.insights import location_poc as _loc
 from app.pnl_analysis.insights import llm as _llm
 from app.server import service
+from app.server.cache import cached
 from app.server.schemas import (
     ExploreMarketRequest,
     ExploreKpisRequest,
@@ -53,6 +54,7 @@ def get_operators():
 
 # ─────────────────────────── Explore-markets (tab 1) ───────────────────────────
 @router.post("/explore-market")
+@cached("explore-market")
 def explore_market(req: ExploreMarketRequest):
     """Tab 1 — the local-market MAP + header counts. Returns the in-market site markers (role-tagged
     focal/entrant/incumbent), geographic reference dots, and the highlighted operator's footprint — no
@@ -66,6 +68,7 @@ def explore_market(req: ExploreMarketRequest):
 
 
 @router.post("/explore-market/kpis")
+@cached("explore-market/kpis")
 def explore_market_kpis(req: ExploreKpisRequest):
     """Tab 1 — the 6 grouped per-site KPI series (washes x3 / revenue x3 / ASP x2) for the whole local market
     (every in-radius site with >= `min_months` of history). Backs the 'Local-market KPIs over time' panels."""
@@ -78,6 +81,7 @@ def explore_market_kpis(req: ExploreKpisRequest):
 
 
 @router.post("/insights")
+@cached("insights")
 def insights(req: InsightsRequest):
     """Tab 1 — AI Key Insights (grounded on the local market's KPI panels). Returns JSON `{summary}` — the full
     narrative as react-markdown-compatible markdown (plain `$`, `**bold**`, `- bullets`). 404 if the market is
@@ -94,6 +98,7 @@ def insights(req: InsightsRequest):
 
 
 @router.post("/insights/location")
+@cached("insights/location")
 def insights_location(req: LocationSummaryRequest):
     """Tab 1 — location-only LLM market read (world-knowledge from the pin alone). Returns JSON `{summary}` — the
     full Local Market Analysis markdown (no verdict; the verdict lives only in the pollinated summary). 503 if no
@@ -108,6 +113,7 @@ def insights_location(req: LocationSummaryRequest):
 
 
 @router.post("/insights/competition")
+@cached("insights/competition")
 def insights_competition(req: CompetitionScaleRequest):
     """Tab 1 — competitive landscape (LLM sizes the full competitive set vs the client's own portfolio). Returns
     JSON `{summary}` — react-markdown that embeds the competitors table + saturation/positioning. 503 if no LLM
@@ -123,6 +129,7 @@ def insights_competition(req: CompetitionScaleRequest):
 
 
 @router.post("/insights/pollinated")
+@cached("insights/pollinated")
 def insights_pollinated(req: PollinatedSummaryRequest):
     """Tab 1 — the fused ('pollinated') summary. CONSUMES the three insight responses the frontend already
     fetched — Key Insights (B), Local Market Analysis (A) and Competition Coverage (C) — passed in on the request,
@@ -149,6 +156,7 @@ def insights_pollinated(req: PollinatedSummaryRequest):
 
 
 @router.post("/insights/independent-research")
+@cached("insights/independent-research")
 def insights_independent_research(req: IndependentResearchRequest):
     """Tab 1 — independent EXTERNAL-LLM market research: can the model size a NEW car-wash market for this pin from
     world knowledge ALONE (no internal/operator data; optional web search)? Sizes each radius separately (default
@@ -165,6 +173,7 @@ def insights_independent_research(req: IndependentResearchRequest):
 
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────
 @router.post("/pinpoint-forecast")
+@cached("pinpoint-forecast")
 def pinpoint_forecast(req: PinpointForecastRequest):
     """Tab 2 — the NEW SITE's own predicted 5-year monthly trajectory (total/membership/retail with P10-P90
     bands) + the summary KPI cards. The whole-market growth plot is a separate call: POST /market-forecast."""
@@ -178,6 +187,7 @@ def pinpoint_forecast(req: PinpointForecastRequest):
 
 
 @router.post("/market-forecast")
+@cached("market-forecast")
 def market_forecast(req: PinpointForecastRequest):
     """Tab 2 — the TOTAL LOCAL-MARKET wash count: actual history + 5-year forecast (with vs without the new
     site, a trend-CI band, and the entrant's own journey). Same inputs as /pinpoint-forecast."""
@@ -191,6 +201,7 @@ def market_forecast(req: PinpointForecastRequest):
 
 
 @router.post("/pnl-forecast")
+@cached("pnl-forecast")
 def pnl_forecast(req: PnlForecastRequest):
     """Tab 2 — the 💰 P&L chart: monthly revenue vs operating expense vs net over the 5-year horizon, with an
     optional retail→membership conversion campaign overlay. Revenue = forecast washes × cluster ASP; opex = the
@@ -207,6 +218,7 @@ def pnl_forecast(req: PnlForecastRequest):
 
 
 @router.post("/expense-plan")
+@cached("expense-plan")
 def expense_plan(req: ExpensePlanRequest):
     """Tab 2 — user-driven EXPENSE PLAN: monthly OPEX, CAPEX and combined-expenses lines over the 5-year horizon.
     `opex` is {year: % of revenue} fitted onto the learned new-site opex pattern; `capex` is {year: $} spread over
@@ -222,6 +234,7 @@ def expense_plan(req: ExpensePlanRequest):
 
 
 @router.post("/campaign/verdict")
+@cached("campaign/verdict")
 def campaign_verdict(req: CampaignVerdictRequest):
     """Tab 2 — 🎯 the campaign recommendation + the 3 supporting metrics (neighbours' membership share, established
     incumbents, this site's predicted membership). Only recommends a promo where the membership market is proven."""
@@ -234,6 +247,7 @@ def campaign_verdict(req: CampaignVerdictRequest):
 
 
 @router.post("/campaign/eating-the-market")
+@cached("campaign/eating-the-market")
 def eating_the_market(req: EatingMarketRequest):
     """Tab 2 — 📈 your site vs each incumbent, each forecast forward 5 years; with a campaign, the incumbents drift
     down as your promo steals their retail share (theft scales with market density, recovers as the promo fades)."""
@@ -255,6 +269,7 @@ def campaign_snapshot():
 
 
 @router.post("/campaign/local-evidence")
+@cached("campaign/local-evidence")
 def local_campaign_evidence(req: LocalCampaignsRequest):
     """Tab 2 — real campaigns in this local market: the nearest in-radius sites' monthly series for the chosen
     metric, with each site's detected promo-OPEX-spike months marked — the evidence behind the campaign model."""

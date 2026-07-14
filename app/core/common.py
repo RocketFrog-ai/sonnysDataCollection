@@ -44,6 +44,26 @@ EXTERNAL_SERVICE_URL = os.getenv("EXTERNAL_SERVICE_URL", "")
 EXTERNAL_SERVICE_TIMEOUT = int(os.getenv("EXTERNAL_SERVICE_TIMEOUT", "30"))
 
 
+def _as_bool(v: str, default: bool = True) -> bool:
+    if v is None or v == "":
+        return default
+    return str(v).strip().lower() not in ("0", "false", "no", "off")
+
+
+# ── Pin read-through cache (app/db) → Azure MySQL `proforma_schema` ────────────────────────────────
+# Every /v1/pnl_analysis/* pin endpoint stores its response JSON here keyed by (endpoint + resolved
+# lat/lon + request params); the same search is then served from the DB until it expires. Best-effort:
+# if the URL is unset or the DB is unreachable the API just computes live (see app/db/pin_cache.py).
+CAR_WASH_DB_URL = os.getenv("CAR_WASH_DB_URL", "")
+PIN_CACHE_ENABLED = _as_bool(os.getenv("PIN_CACHE_ENABLED"), default=True)
+PIN_CACHE_TABLE = os.getenv("PIN_CACHE_TABLE", "pin_api_cache")
+PIN_CACHE_TTL_DAYS = int(os.getenv("PIN_CACHE_TTL_DAYS", "30"))  # a cached search is served for this long
+# Azure Database for MySQL enforces TLS. Encrypt by default; point CAR_WASH_DB_SSL_CA at a CA .pem to
+# also verify the server identity (e.g. the Azure DigiCertGlobalRootG2 bundle).
+CAR_WASH_DB_SSL = _as_bool(os.getenv("CAR_WASH_DB_SSL"), default=True)
+CAR_WASH_DB_SSL_CA = os.getenv("CAR_WASH_DB_SSL_CA", "")
+
+
 def get_lat_long(address):
     """Geocode via TomTom Search v2. Address must be one URL path segment: encode `/` etc. (safe='')."""
     if not address or not str(address).strip():
