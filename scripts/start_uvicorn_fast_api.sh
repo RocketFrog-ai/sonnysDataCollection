@@ -1,11 +1,13 @@
 #!/bin/bash
 
-./stop_uvicorn_fast_api.sh
-sleep 5
-
-# Load .env so RFW_HOME and CONDA_ENV_NAME are set
+# Load .env FIRST so RFW_HOME and CONDA_ENV_NAME are set (the stop script needs RFW_HOME too)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [ -f "${SCRIPT_DIR}/../.env" ] && source "${SCRIPT_DIR}/../.env"
+
+# Stop any previous server (script-dir path, not cwd-relative — this used to silently fail
+# with "No such file or directory" unless you happened to run from scripts/)
+"${SCRIPT_DIR}/stop_uvicorn_fast_api.sh"
+sleep 5
 
 if [ -z "$RFW_HOME" ]; then
   echo "RFW_HOME not set, run: source .env"
