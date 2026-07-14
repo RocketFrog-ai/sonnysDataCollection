@@ -130,16 +130,28 @@ class HistoricalExpert(Expert):
                     {"asp_mem": obs.get("asp_mem"), "asp_ret": obs.get("asp_ret")},
                     kind="table", unit="$/wash", source="12mi cluster observed", confidence=0.7),
             self.ev("hist.projected_mature",
-                    ("⚠️ GLOBAL-FLOOR FALLBACK — NO site meets the consideration bar; this is the panel-wide "
-                     "healthy floor, NOT a local forecast" if proj["n_donors"] == 0 else
-                     "projected mature washes/mo for a NEW build here (from the considered sites)"),
-                    proj["mature_anchor"], unit="washes/mo", source="forecast.project_site",
-                    confidence=(0.2 if proj["n_donors"] == 0 else 0.65)),
-            self.ev("hist.ramp_pattern", "how new sites in this cluster ramped",
-                    f"ramps to ~90% of mature in {proj['ramp_to_90pct_months']} mo, learned from "
-                    f"the {proj['n_donors']} considered site(s) ({proj['ramp_source']})",
-                    kind="text", source="forecast.project_site", confidence=0.6),
+                    ("⚠️ NO site meets the consideration bar — even the model has no LOCAL grounding here; "
+                     "treat this level as a weak prior, NOT a local forecast" if proj["n_donors"] == 0 else
+                     ("projected mature washes/mo — PRODUCTION cold-start model p50"
+                     if proj.get("mature_anchor_lo") is not None else
+                     "projected mature washes/mo for a NEW build here (from the considered sites)")),
+                    proj["mature_anchor"], unit="washes/mo",
+                    source=f"{proj['forecast_source']} · {proj['anchor_source']}",
+                    confidence=(0.2 if proj["n_donors"] == 0 else
+                                (0.75 if proj.get("mature_anchor_lo") is not None else 0.65))),
+            self.ev("hist.ramp_pattern", "how new sites in this market ramp",
+                    f"ramps to ~90% of mature in {proj['ramp_to_90pct_months']} mo ({proj['ramp_source']})",
+                    kind="text", source=proj["forecast_source"], confidence=0.6),
         ]
+        if proj.get("mature_anchor_lo") is not None:
+            # the model's uncertainty band — the honest answer to "but the cluster median is lower":
+            # underwrite to the P10, plan to the P50, size capacity toward the P90.
+            out.append(self.ev(
+                "hist.projection_band",
+                "forecast uncertainty band (cold-start model): P10 / P50 / P90 mature washes/mo",
+                {"p10": round(float(proj["mature_anchor_lo"])), "p50": round(float(proj["mature_anchor"])),
+                 "p90": round(float(proj["mature_anchor_hi"]))},
+                kind="table", unit="washes/mo", source="pinpoint-forecast API", confidence=0.75))
         return out
 
     def initial_belief(self, ws) -> BeliefState:

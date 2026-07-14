@@ -34,10 +34,11 @@ MAX_ROUNDS = 3               # discussion rounds after the publish round
 # always woken that round even if settled, because their evidence carries the topic).
 ROUND_AGENDA = {
     1: ("the demand case",
-        "the projected mature washes vs the cluster's OBSERVED washes/revenue; EACH considered site's own "
-        "numbers (washes, revenue, mem-buys, ASP, distance, opened date — only sites meeting the ≥30mo/"
-        "matured/non-COVID bar are considered); the ramp pattern; and whether demographics (projected "
-        "forward growth, income, vehicles) support that demand",
+        "the projected mature washes AND the model's P10/P50/P90 uncertainty band (hist.projection_band — "
+        "underwrite to the P10: does even the pessimistic band clear a healthy level? what breaks if reality "
+        "lands at P10 vs P90?); the cluster's OBSERVED washes/revenue; EACH considered site's own numbers "
+        "(washes, revenue, mem-buys, ASP, distance, opened date — only sites meeting the ≥30mo/matured/"
+        "non-COVID bar are considered); the ramp pattern; and whether demographics support that demand",
         ("historical", "local_market")),
     2: ("competition & pricing",
         "TRUE express-tunnel competition (the benchmark score, effective rivals at 3mi); mass merchants and "
