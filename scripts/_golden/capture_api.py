@@ -33,6 +33,8 @@ CASES = [
      dict(latitude=LAT2, longitude=LON2, radius_km=20.0, max_sites=10, min_months=36, demo=False)),
     ("explore_market_kpis", "POST", f"{P}/explore-market/kpis",
      dict(latitude=LAT, longitude=LON, radius_km=20.0, smoothing=3, min_months=36, demo=False)),
+    ("explore_market_membership_purchases", "POST", f"{P}/explore-market/membership-purchases",
+     dict(latitude=LAT, longitude=LON, radius_km=20.0, smoothing=3, min_months=36, demo=False)),
     ("pinpoint_forecast", "POST", f"{P}/pinpoint-forecast",
      dict(latitude=LAT, longitude=LON, horizon_months=60)),
     ("pinpoint_forecast_override", "POST", f"{P}/pinpoint-forecast",

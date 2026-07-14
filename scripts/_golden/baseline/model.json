@@ -40,7 +40,7 @@
   "H_DEFAULT": 60,
   "MODEL_MIN_MONTHS": 24
  },
- "_origin": "coldstart_model (legacy streamlits/)",
+ "_origin": "proforma.models.coldstart",
  "_paths_exist": {
   "CSV": true,
   "MODEL_PATH": true

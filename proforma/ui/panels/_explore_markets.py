@@ -18,6 +18,8 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 
+from proforma.pnl.data import rank_sites
+
 from proforma.ui.panels._shared import (
     EXPRESS_MIN_MONTHS, ASP_MIN_WASH, ASP_FLOOR_MEM, ASP_FLOOR_RET,
     neighbourhood, add_cluster_regions, add_all_site_dots, pick_default_pin, anon_names,
@@ -207,7 +209,11 @@ def render(df, site, pins, demo, express_only, radius, smooth):
     name_of = demo_label if demo else site.set_index("site_key").client_name.to_dict()
     PALETTE = ["#2E86DE", "#16a085", "#8e44ad", "#e67e22", "#27ae60", "#2980b9", "#c0392b", "#d35400", "#7f8c8d",
                "#2c3e50", "#1abc9c", "#9b59b6", "#34495e", "#f39c12", "#3498db", "#e74c3c", "#95a5a6", "#0a84ff"]
-    order = [k for k in ckeys if k != focal_key] + ([focal_key] if focal_key in ckeys else [])   # draw the focal site LAST so it sits on top
+    # the shared cross-view site order (proforma.pnl.data.rank_sites — the SAME rank the /explore-market/*
+    # endpoints return): focal first, then longest/largest history. Drawn REVERSED so the focal line still
+    # sits on top; `legendrank` below puts the legend itself in rank order, matching the dashboard's "top N".
+    rank_order, rank_of = rank_sites(df, nb_full, focal_key)
+    order = list(reversed(rank_order))
     gframes = {}                                                                   # even monthly grid per site (reused across groups)
     for k in order:
         g = sub[sub.site_key == k].set_index("date").sort_index()
@@ -561,7 +567,7 @@ def render(df, site, pins, demo, express_only, radius, smooth):
         for si, k in enumerate(order):
             g = gframes[k]
             is_focal = (k == focal_key)
-            color = "#e6194B" if is_focal else PALETTE[si % len(PALETTE)]
+            color = "#e6194B" if is_focal else PALETTE[(rank_of[k] - 1) % len(PALETTE)]   # colour keyed to RANK → stable across panels
             nm = (str(name_of.get(k, "?"))[:18]) + (" 🆕" if is_focal else "")
             for i, (c, lbl, unit) in enumerate(panels):
                 ya = rs_dates(g[c], gk, gk_how)
@@ -569,6 +575,7 @@ def render(df, site, pins, demo, express_only, radius, smooth):
                     ya = ya.rolling(smooth, center=True, min_periods=1).mean()   # smoothing slider (monthly view only)
                 vfmt = "$%{y:,.2f}" if unit == "$" else "%{y:,.0f}"
                 gfig.add_trace(go.Scatter(x=ya.index, y=ya.values, mode="lines", name=nm, legendgroup=k, showlegend=(gi == 0 and i == 0),
+                                          legendrank=rank_of[k],                # legend in the shared rank order (focal first)
                                           line=dict(color=color, width=3 if is_focal else 1.4), opacity=1.0 if is_focal else 0.7,
                                           hovertemplate=f"<b>{nm}</b><br>%{{x|%b %Y}} · {vfmt}<extra></extra>"),
                                row=1, col=i + 1)

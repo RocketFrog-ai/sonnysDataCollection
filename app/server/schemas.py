@@ -33,6 +33,16 @@ class ExploreKpisRequest(_PinRequest):
     express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
+class MembershipPurchasesRequest(_PinRequest):
+    """Tab 1 — per-site monthly MEMBERSHIP PURCHASE counts (new memberships sold, `mem_purchase_count`) for
+    the local market. Distinct from membership WASHES: one purchase funds many washes."""
+    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Neighbour radius in km (the local market).")
+    smoothing: int = Field(1, ge=1, le=12, description="Centered rolling-mean window in months (1 = none).")
+    min_months: int = Field(36, ge=1, le=72, description="Keep only sites with >= this many monthly records (rich-history filter).")
+    demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
+    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
+
+
 class InsightsRequest(_PinRequest):
     """Tab 1 — AI Key Insights: the 2-node pipeline (compute_metrics -> generate_insights) over the local
     market's KPI panels. Returns structured investor metrics + an LLM narrative per group (Washes/Revenue/ASPs)."""

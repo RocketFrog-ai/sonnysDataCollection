@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 from proforma.pnl import data as D
-from proforma.pnl.data import cm, haversine_km
+from proforma.pnl.data import cm, haversine_km, rank_sites as _rank_sites
 from proforma.pnl.trend import forecast_series, market_trend
 
 # role -> marker colour (mirrors the Explore-markets map in app.py)
@@ -127,11 +127,15 @@ def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: i
     n_entrants = int(nb_full.is_entrant.sum()) if n_in_market else 0
     focal_key = _focal_key(nb_full)
 
-    # cap markers for legibility: keep every entrant, fill the rest with the nearest incumbents
+    # cap markers for legibility: keep every entrant, fill the rest with the nearest incumbents.
+    # Markers come back in the shared cross-endpoint rank order (see _rank_sites) with an explicit
+    # `rank`, so the dashboard can slice a consistent "top N" against the KPI panels.
     entrants = nb_full[nb_full.is_entrant]
     n_inc = max(0, max_sites - len(entrants))
     inc = nb_full[~nb_full.is_entrant].nsmallest(n_inc, "dist_km")
-    shown = pd.concat([entrants, inc]).drop_duplicates("site_key").sort_values("op_start")
+    _, rank_of = _rank_sites(df, nb_full, focal_key)
+    shown = pd.concat([entrants, inc]).drop_duplicates("site_key")
+    shown = shown.iloc[shown.site_key.map(rank_of).argsort(kind="mergesort")]
 
     markers: List[Dict[str, Any]] = []
     for _, s in shown.iterrows():
@@ -141,6 +145,7 @@ def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: i
             "lat": float(s.lat), "lon": float(s.lon), "dist_km": round(float(s.dist_km), 2),
             "op_start": s.op_start.strftime("%Y-%m") if pd.notna(s.op_start) else None,
             "role": role, "is_entrant": bool(s.is_entrant), "color": ROLE_COLOR[role],
+            "rank": rank_of[s.site_key], "n_months": int(s.n_obs),
         })
 
     # geographic reference: rich-history sites ≤50 km of the pin that are NOT already in-market markers
@@ -197,9 +202,12 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
     anon = {k: f"Site {i + 1}" for i, k in enumerate(order_for_label)}
     name_of = {k: (anon[k] if demo else str(site.loc[site.site_key == k, "client_name"].iloc[0])) for k in ckeys}
 
-    # even monthly grid per site, reused across groups; focal drawn last (legend order)
-    order = [k for k in ckeys if k != focal_key] + ([focal_key] if focal_key in ckeys else [])
+    # even monthly grid per site, reused across groups. Sites and series come back in the shared
+    # cross-endpoint rank order (focal first, then longest/largest history — see _rank_sites) with an
+    # explicit `rank`, so the dashboard can show a consistent "top N + show more" across every panel.
+    order, rank_of = _rank_sites(df, nb_full, focal_key)
     entrant_of = dict(zip(nb_full.site_key, nb_full.is_entrant))
+    n_obs_of = dict(zip(nb_full.site_key, nb_full.n_obs))
     gframes: Dict[str, pd.DataFrame] = {}
     for k in order:
         g = sub[sub.site_key == k].set_index("date").sort_index()
@@ -208,6 +216,7 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
     sites_meta = [
         {"site_key": k, "name": name_of.get(k), "is_focal": k == focal_key,
          "is_entrant": bool(entrant_of.get(k, False)),
+         "rank": rank_of[k], "n_months": int(n_obs_of[k]),
          "dist_km": round(float(nb_full.loc[nb_full.site_key == k, "dist_km"].iloc[0]), 2),
          "op_start": (nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0].strftime("%Y-%m")
                       if pd.notna(nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0]) else None)}
@@ -227,7 +236,7 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
                 if y.dropna().empty:
                     continue
                 pser.append({"site_key": k, "name": name_of.get(k), "is_focal": k == focal_key,
-                             "is_entrant": bool(entrant_of.get(k, False)),
+                             "is_entrant": bool(entrant_of.get(k, False)), "rank": rank_of[k],
                              "x": [d.strftime("%Y-%m-%d") for d in g.index],
                              "y": [None if pd.isna(v) else float(v) for v in y.values]})
             gpanels.append({"col": col, "label": label, "unit": unit, "series": pser})
@@ -237,6 +246,60 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
         "lat": lat, "lon": lon, "radius_km": radius_km, "smoothing": smoothing, "min_months": min_months,
         "n_sites": len(ckeys), "focal_site_key": focal_key,
         "sites": sites_meta, "groups": groups,
+    }
+
+
+# ─────────────────────────── tab 1c: membership purchases ───────────────────────────
+def explore_market_membership_purchases(lat: float, lon: float, radius_km: float, smoothing: int,
+                                        min_months: int = MIN_MONTHS_RICH, demo: bool = False,
+                                        express_only: bool = False) -> Dict[str, Any]:
+    """Per-site monthly MEMBERSHIP PURCHASE counts (new memberships sold, `mem_purchase_count`) for the
+    whole local market — every in-radius site with ≥`min_months` of history. Purchases are distinct from
+    membership WASHES (`mem_wash_count`, served by explore_market_kpis): one purchase funds many washes.
+    Same market selection, labelling and smoothing as the KPI panels, single series per site."""
+    col = "mem_purchase_count"
+    df, site = D.load_panel(express_only)
+    pool = site[site.n_obs >= min_months] if min_months > 1 else site
+    nb_full = _neighbourhood(pool, lat, lon, radius_km)
+    focal_key = _focal_key(nb_full)
+    ckeys = nb_full.site_key.tolist()
+    sub = df[df.site_key.isin(ckeys)]
+
+    # anonymized "Site N" labels by opening order (demo), else client_name — mirrors explore_market_kpis
+    order_for_label = nb_full.sort_values("op_start").site_key.tolist()
+    anon = {k: f"Site {i + 1}" for i, k in enumerate(order_for_label)}
+    name_of = {k: (anon[k] if demo else str(site.loc[site.site_key == k, "client_name"].iloc[0])) for k in ckeys}
+
+    # sites in the shared cross-endpoint rank order (focal first, then longest/largest history —
+    # see _rank_sites), with an explicit `rank` so the dashboard's "top N" matches the other panels.
+    order, rank_of = _rank_sites(df, nb_full, focal_key)
+    entrant_of = dict(zip(nb_full.site_key, nb_full.is_entrant))
+    n_obs_of = dict(zip(nb_full.site_key, nb_full.n_obs))
+
+    series: List[Dict[str, Any]] = []
+    for k in order:
+        g = sub[sub.site_key == k].set_index("date").sort_index()
+        if len(g):
+            g = g.reindex(pd.date_range(g.index.min(), g.index.max(), freq="MS"))
+        if not len(g) or col not in g:
+            continue
+        y = g[col].rolling(smoothing, center=True, min_periods=1).mean() if (smoothing and smoothing > 1) else g[col]
+        if y.dropna().empty:
+            continue
+        series.append({"site_key": k, "name": name_of.get(k), "is_focal": k == focal_key,
+                       "is_entrant": bool(entrant_of.get(k, False)),
+                       "rank": rank_of[k], "n_months": int(n_obs_of[k]),
+                       "dist_km": round(float(nb_full.loc[nb_full.site_key == k, "dist_km"].iloc[0]), 2),
+                       "op_start": (nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0].strftime("%Y-%m")
+                                    if pd.notna(nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0]) else None),
+                       "x": [d.strftime("%Y-%m-%d") for d in g.index],
+                       "y": [None if pd.isna(v) else float(v) for v in y.values]})
+
+    return {
+        "lat": lat, "lon": lon, "radius_km": radius_km, "smoothing": smoothing, "min_months": min_months,
+        "n_sites": len(ckeys), "focal_site_key": focal_key,
+        "col": col, "label": "Membership purchases", "unit": "count",
+        "series": series,
     }
 
 

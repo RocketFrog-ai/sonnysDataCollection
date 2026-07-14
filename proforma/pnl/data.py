@@ -21,7 +21,7 @@ before changing either.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -143,6 +143,28 @@ def load_panel(express_only: bool = False) -> Tuple[pd.DataFrame, pd.DataFrame]:
     _CACHE[ckey] = df
     _CACHE[skey] = site
     return df, site
+
+
+def rank_sites(df: pd.DataFrame, nb: pd.DataFrame,
+               focal_key: Optional[str]) -> Tuple[List[str], Dict[str, int]]:
+    """THE one site order every market view shares (Streamlit Explore panel AND the /explore-market/*
+    endpoints), so a "top N" slice shows the same sites everywhere: the focal site first (it must always
+    be visible), then the richest series first — history length (n_obs desc), recent volume (last-12-mo
+    mean total washes desc), distance asc as the final tie-break. Ranked over the WHOLE in-market set
+    `nb` (needs site_key / n_obs / dist_km; `df` supplies tot_wash_count), so the same pin + filters give
+    a site the same rank in every view. Returns (keys in rank order, {site_key: 1-based rank})."""
+    if nb.empty:
+        return [], {}
+    keys = nb.site_key.tolist()
+    recent = (df[df.site_key.isin(keys)].sort_values("date").groupby("site_key").tail(12)
+              .groupby("site_key")["tot_wash_count"].mean())
+    r = nb[["site_key", "n_obs", "dist_km"]].copy()
+    r["recent"] = r.site_key.map(recent).fillna(0.0)
+    r["is_focal"] = r.site_key == focal_key
+    r = r.sort_values(["is_focal", "n_obs", "recent", "dist_km"],
+                      ascending=[False, False, False, True], kind="mergesort")
+    ordered = [str(k) for k in r.site_key]
+    return ordered, {k: i + 1 for i, k in enumerate(ordered)}
 
 
 def load_model() -> Dict[str, Any]:

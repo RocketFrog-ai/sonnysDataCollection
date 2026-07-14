@@ -1,5 +1,5 @@
 {
- "_script": "proforma/v1_5/ui/app.py",
+ "_script": "proforma/ui/app.py",
  "button_labels": [
   "Drop pin here",
   "Geocode address"
