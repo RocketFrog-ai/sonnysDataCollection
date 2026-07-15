@@ -34,6 +34,12 @@ class ExploreKpisRequest(_PinRequest):
     express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
 
 
+class SiteFactorsRequest(_PinRequest):
+    """Tab 1 — the council site-factors extract for a pin: demographics, income bands, vehicle counts,
+    car-wash competitors, mass-merchant anchors and StreetLight traffic for the NEAREST covered site,
+    matched at 3 -> 6 -> 9 miles. No coverage within 9 miles => found=false ("Don't have data coverage")."""
+
+
 class InsightsRequest(_PinRequest):
     """Tab 1 — AI Key Insights: the 2-node pipeline (compute_metrics -> generate_insights) over the local
     market's KPI panels. Returns structured investor metrics + an LLM narrative per group (Washes/Revenue/ASPs)."""

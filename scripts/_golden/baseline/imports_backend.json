@@ -1,8 +1,8 @@
 {
  "_counts": {
-  "ast_files": 34,
+  "ast_files": 35,
   "import_failed": 0,
-  "import_ok": 34,
+  "import_ok": 35,
   "import_skipped": 0
  },
  "_detail_ast": {
@@ -31,6 +31,7 @@
   "app/pnl_analysis/modelling/campaign.py": "ok",
   "app/pnl_analysis/modelling/market.py": "ok",
   "app/pnl_analysis/modelling/pnl.py": "ok",
+  "app/pnl_analysis/modelling/site_factors.py": "ok",
   "app/server/__init__.py": "ok",
   "app/server/cache.py": "ok",
   "app/server/router.py": "ok",
@@ -67,6 +68,7 @@
   "app/pnl_analysis/modelling/campaign.py": "ok",
   "app/pnl_analysis/modelling/market.py": "ok",
   "app/pnl_analysis/modelling/pnl.py": "ok",
+  "app/pnl_analysis/modelling/site_factors.py": "ok",
   "app/server/__init__.py": "ok",
   "app/server/cache.py": "ok",
   "app/server/router.py": "ok",

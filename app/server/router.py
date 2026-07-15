@@ -12,6 +12,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.pnl_analysis.modelling import market
+from app.pnl_analysis.modelling import site_factors as site_factors_engine
 from app.pnl_analysis.modelling import pnl as pnl_engine
 from app.pnl_analysis.modelling import campaign as campaign_engine
 from app.pnl_analysis.insights.graph import market_insights as _insights_pipeline
@@ -22,6 +23,7 @@ from app.server.cache import cached
 from app.server.schemas import (
     ExploreMarketRequest,
     ExploreKpisRequest,
+    SiteFactorsRequest,
     InsightsRequest,
     LocationSummaryRequest,
     CompetitionScaleRequest,
@@ -79,6 +81,16 @@ def explore_market_kpis(req: ExploreKpisRequest):
         min_months=req.min_months, demo=req.demo,
         express_only=req.express_only,
     )
+
+
+@router.post("/site-factors")
+@cached("site-factors")
+def site_factors(req: SiteFactorsRequest):
+    """Tab 1 — the council site-factors extract for a pin (demographics / income bands / vehicles /
+    competitors / mass-merchant anchors / StreetLight traffic), from the NEAREST covered site: matched
+    within 3 miles, escalating to 6 then 9. Returns found=false + "Don't have data coverage" past 9 mi."""
+    lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
+    return site_factors_engine.site_factors(lat=lat, lon=lon)
 
 
 @router.post("/insights")

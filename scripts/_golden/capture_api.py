@@ -33,6 +33,10 @@ CASES = [
      dict(latitude=LAT2, longitude=LON2, radius_km=20.0, max_sites=10, min_months=36, demo=False)),
     ("explore_market_kpis", "POST", f"{P}/explore-market/kpis",
      dict(latitude=LAT, longitude=LON, radius_km=20.0, smoothing=3, min_months=36, demo=False)),
+    ("site_factors", "POST", f"{P}/site-factors",
+     dict(latitude=LAT, longitude=LON)),
+    ("site_factors_no_coverage", "POST", f"{P}/site-factors",
+     dict(latitude=44.5, longitude=-110.4)),  # Yellowstone: nothing within 9 miles
     ("pinpoint_forecast", "POST", f"{P}/pinpoint-forecast",
      dict(latitude=LAT, longitude=LON, horizon_months=60)),
     ("pinpoint_forecast_override", "POST", f"{P}/pinpoint-forecast",
