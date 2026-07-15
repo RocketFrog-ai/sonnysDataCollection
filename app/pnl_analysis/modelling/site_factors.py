@@ -25,11 +25,6 @@ FACTORS_CSV = REPO_ROOT / "experiments" / "council" / "data" / "Council--site-wi
 RADII_MILES = (3.0, 6.0, 9.0)   # the escalation ladder, in order
 _MILE_KM = 1.609344
 
-# join/merge artifacts in the CSV that carry no information for an API consumer
-_DROP_COLS = ["Latitude", "Longitude", "_Match", "__longitude", "__latitude", "__name", "client_id_1"]
-# identity fields presented in the `match` block rather than under `factors`
-_ID_COLS = ["Name", "client_name", "client_id", "site_id", "lat", "lon"]
-
 _CACHE: Dict[str, pd.DataFrame] = {}
 
 
@@ -55,10 +50,96 @@ def _clean(v: Any) -> Any:
     return v
 
 
+def _bucket_factors(row: pd.Series) -> Dict[str, Any]:
+    """The CSV row's 56 flat columns bucketed into labeled groups for the dashboard. The
+    nearest/2nd/3rd competitor and mass-merchant column triplets become ranked lists; the two
+    exact-duplicate income columns (`… .1`) are dropped."""
+    g = lambda c: _clean(row[c])
+    ordinals = ["Nearest", "2nd Nearest", "3rd Nearest"]
+
+    competitors = []
+    for i, o in enumerate(ordinals, start=1):
+        name = g(f"{o} Car Wash Competitors-Name")
+        if name is None:
+            continue
+        competitors.append({
+            "rank": i, "name": name,
+            "distance_miles": g(f"{o} Car Wash Competitors-Distance"),
+            "competitor_type": g(f"{o} Car Wash Competitors-Competitor Type"),
+            "car_wash_type": g(f"{o} Car Wash Competitors-Car Wash Type"),
+            "website": g(f"{o} Car Wash Competitors-Website"),
+        })
+
+    mass_merchants = []
+    for i, o in enumerate(ordinals, start=1):
+        chain = g(f"{o} ChainXY VT - Mass Merchant-Chain Name")
+        if chain is None:
+            continue
+        mass_merchants.append({
+            "rank": i, "chain": chain,
+            "distance_miles": g(f"{o} ChainXY VT - Mass Merchant-Distance"),
+        })
+
+    return {
+        "Demographics": {
+            "2025 Population Estimate": g("2025 Estimate"),
+            "Growth 2025-2020": g("Growth 2025-2020"),
+            "Growth 2030-2025": g("Growth 2030-2025"),
+            "2025 Average Age": g("2025 Average Age"),
+            "Labor Force": g("Labor Force"),
+        },
+        "Income": {
+            "Average Household Income": g("Average Household Income"),
+            "Median Household Income": g("Median Household Income"),
+            "2025 % HH with Income $50K+": g("2025 % HH with Income $50K+"),
+            "Households by Income Band": {
+                b: g(b) for b in ["$100,000 to $124,999", "$125,000 to $149,999",
+                                  "$150,000 to $174,999", "$175,000 to $199,999",
+                                  "$200,000 to $249,999"]
+            },
+        },
+        "Housing": {
+            "Renter-Occupied": g("Renter-Occupied"),
+            "Owner-Occupied Housing Units by Value":
+                g("Current Year Estimated Owner-Occupied Housing Units by Value"),
+        },
+        "Vehicles": {
+            "Households by Vehicle Count": {
+                b: g(b) for b in ["1 vehicle", "2 vehicles", "3 vehicles",
+                                  "4 vehicles", "5 or more vehicles"]
+            },
+            "Total Vehicles Available in the Market": g("Total Vehicles Available in the Market"),
+            "Average Number of Vehicles Available": g("Average Number of Vehicles Available"),
+        },
+        "Car Wash Competitors": {
+            "Count": g("Count of Car Wash Competitors"),
+            "Nearest": competitors,
+        },
+        "Retail Anchors": {
+            "Mass Merchant Count": g("Count of ChainXY VT - Mass Merchant"),
+            "Nearest Mass Merchants": mass_merchants,
+            "Grocery Count": g("Count of ChainXY VT - Grocery"),
+            "Department Store Count": g("Count of ChainXY VT - Department Store"),
+        },
+        "Traffic (StreetLight)": {
+            "Daypart Trips": {
+                "Overnight": g("Nearest StreetLight US Hourly-ttl_overnight"),
+                "Breakfast": g("Nearest StreetLight US Hourly-ttl_breakfast"),
+                "Lunch": g("Nearest StreetLight US Hourly-ttl_lunch"),
+                "Afternoon": g("Nearest StreetLight US Hourly-ttl_afternoon"),
+                "Dinner": g("Nearest StreetLight US Hourly-ttl_dinner"),
+                "Night": g("Nearest StreetLight US Hourly-ttl_night"),
+            },
+            "Highway Class": g("Nearest StreetLight US Hourly-Highway"),
+        },
+    }
+
+
 def site_factors(lat: float, lon: float) -> Dict[str, Any]:
     """The site-factors row for a pin, matched at 3 → 6 → 9 miles (nearest row inside the first
-    radius that holds any). Returns {found, radius_used_miles, match, factors} on a hit, or
-    {found: False, message: "Don't have data coverage"} when nothing lies within 9 miles."""
+    radius that holds any). Returns {found, radius_used_miles, match, factors} on a hit — `factors`
+    bucketed into labeled groups (see _bucket_factors) — or {found: False, message: "Don't have
+    data coverage"} when nothing lies within 9 miles."""
     df = _load()
     d_km = haversine_km(lat, lon, df.lat.values.astype(float), df.lon.values.astype(float))
     d_miles = d_km / _MILE_KM
@@ -79,7 +160,6 @@ def site_factors(lat: float, lon: float) -> Dict[str, Any]:
         return out
 
     row = df.iloc[hit_idx]
-    factors = {c: _clean(row[c]) for c in df.columns if c not in _DROP_COLS + _ID_COLS}
     out.update({
         "found": True,
         "radius_used_miles": float(radius_used),
@@ -89,6 +169,6 @@ def site_factors(lat: float, lon: float) -> Dict[str, Any]:
             "lat": _clean(row["lat"]), "lon": _clean(row["lon"]),
             "dist_miles": round(float(d_miles[hit_idx]), 3),
         },
-        "factors": factors,
+        "factors": _bucket_factors(row),
     })
     return out

@@ -29,6 +29,11 @@ cd "$REPO"
 CONDA_BASE="$(conda info --base 2>/dev/null || echo /opt/homebrew/Caskroom/miniconda/base)"
 PY="$CONDA_BASE/envs/sonnys/bin/python"   # the only interpreter: py3.11, backend + UI + model
 
+# Hermetic captures: the API endpoints wear a DB read-through cache (app/server/cache.py). If a
+# CAR_WASH_DB_URL is configured on this machine, a capture would silently serve CACHED (possibly
+# stale) responses instead of exercising the live code. Blank it for every step below.
+export CAR_WASH_DB_URL=""
+
 BASELINE="scripts/_golden/baseline"
 CAPTURE=0
 [[ "${1:-}" == "--capture-baseline" ]] && CAPTURE=1
