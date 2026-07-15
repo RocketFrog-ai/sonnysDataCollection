@@ -25,17 +25,8 @@ class ExploreMarketRequest(_PinRequest):
 
 
 class ExploreKpisRequest(_PinRequest):
-    """Tab 1 — the 6 grouped per-site KPI panels (washes x3 / revenue x3 / ASP x2) for the local market."""
-    radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Neighbour radius in km (the local market).")
-    smoothing: int = Field(1, ge=1, le=12, description="Centered rolling-mean window in months (1 = none).")
-    min_months: int = Field(36, ge=1, le=72, description="Keep only sites with >= this many monthly records (rich-history filter).")
-    demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
-    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
-
-
-class MembershipPurchasesRequest(_PinRequest):
-    """Tab 1 — per-site monthly MEMBERSHIP PURCHASE counts (new memberships sold, `mem_purchase_count`) for
-    the local market. Distinct from membership WASHES: one purchase funds many washes."""
+    """Tab 1 — the 9 grouped per-site KPI panels (washes x3 / revenue x3 / ASP x2 / membership purchases x1,
+    always the last group) for the local market."""
     radius_km: float = Field(20.0, ge=2.0, le=40.0, description="Neighbour radius in km (the local market).")
     smoothing: int = Field(1, ge=1, le=12, description="Centered rolling-mean window in months (1 = none).")
     min_months: int = Field(36, ge=1, le=72, description="Keep only sites with >= this many monthly records (rich-history filter).")

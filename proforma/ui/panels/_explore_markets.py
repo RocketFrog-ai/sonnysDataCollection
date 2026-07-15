@@ -204,7 +204,8 @@ def render(df, site, pins, demo, express_only, radius, smooth):
     GROUPS = [
         ("Washes", [("tot_wash_count", "Total washes", "count"), ("ret_wash_count", "Retail washes", "count"), ("mem_wash_count", "Membership washes", "count")]),
         ("Revenue", [("tot_revenue", "Total revenue ($)", "$"), ("ret_revenue", "Retail revenue ($)", "$"), ("mem_revenue", "Membership revenue ($)", "$")]),
-        ("ASPs", [("asp_ret", "ASP per wash — retail ($)", "$"), ("asp_mem", "ASP per membership — membership ($)", "$")]),
+        ("ASPs", [("asp_ret", "ASP per retail wash ($)", "$"), ("asp_mem", "ASP per membership wash ($)", "$")]),
+        ("Membership purchases", [("mem_purchase_count", "Membership purchases", "count")]),   # LAST group, same as the API
     ]
     name_of = demo_label if demo else site.set_index("site_key").client_name.to_dict()
     PALETTE = ["#2E86DE", "#16a085", "#8e44ad", "#e67e22", "#27ae60", "#2980b9", "#c0392b", "#d35400", "#7f8c8d",

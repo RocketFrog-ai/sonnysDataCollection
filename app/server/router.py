@@ -22,7 +22,6 @@ from app.server.cache import cached
 from app.server.schemas import (
     ExploreMarketRequest,
     ExploreKpisRequest,
-    MembershipPurchasesRequest,
     InsightsRequest,
     LocationSummaryRequest,
     CompetitionScaleRequest,
@@ -71,24 +70,11 @@ def explore_market(req: ExploreMarketRequest):
 @router.post("/explore-market/kpis")
 @cached("explore-market/kpis")
 def explore_market_kpis(req: ExploreKpisRequest):
-    """Tab 1 — the 6 grouped per-site KPI series (washes x3 / revenue x3 / ASP x2) for the whole local market
-    (every in-radius site with >= `min_months` of history). Backs the 'Local-market KPIs over time' panels."""
+    """Tab 1 — the 9 grouped per-site KPI series (washes x3 / revenue x3 / ASP x2 / membership purchases x1,
+    always the LAST group) for the whole local market (every in-radius site with >= `min_months` of history).
+    Backs the 'Local-market KPIs over time' panels."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     return market.explore_market_kpis(
-        lat=lat, lon=lon, radius_km=req.radius_km, smoothing=req.smoothing,
-        min_months=req.min_months, demo=req.demo,
-        express_only=req.express_only,
-    )
-
-
-@router.post("/explore-market/membership-purchases")
-@cached("explore-market/membership-purchases")
-def explore_market_membership_purchases(req: MembershipPurchasesRequest):
-    """Tab 1 — per-site monthly MEMBERSHIP PURCHASE counts (new memberships sold, `mem_purchase_count`) for the
-    whole local market (every in-radius site with >= `min_months` of history). Distinct from membership WASHES
-    (served by /explore-market/kpis): one purchase funds many washes."""
-    lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    return market.explore_market_membership_purchases(
         lat=lat, lon=lon, radius_km=req.radius_km, smoothing=req.smoothing,
         min_months=req.min_months, demo=req.demo,
         express_only=req.express_only,

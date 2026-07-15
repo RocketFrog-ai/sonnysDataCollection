@@ -5,8 +5,9 @@ Plot-ready data for the Streamlit app's first two modes (proforma/ui/app.py):
 
   explore_market(...)        — header counts + role-tagged map markers + per-site monthly series for one
                                metric, for every site within `radius_km` of the pin (the line explorer).
-  explore_market_kpis(...)   — the 6 grouped per-site KPI series (washes ×3, revenue ×3, ASP ×2) for the
-                               whole local market — the "Local-market KPIs over time" panels.
+  explore_market_kpis(...)   — the 9 grouped per-site KPI series (washes ×3, revenue ×3, ASP ×2,
+                               membership purchases ×1 — always last) for the whole local market —
+                               the "Local-market KPIs over time" panels.
   compute_trajectory(...)    — the shared cold-start 5-yr trajectory for a pin (used by pinpoint_forecast,
                                pnl and campaign so every Forecast-tab section agrees on the same curve).
   pinpoint_forecast(...)     — the new site's trajectory + the local market's history-plus-forecast total.
@@ -29,7 +30,8 @@ from proforma.pnl.trend import forecast_series, market_trend
 ROLE_COLOR = {"focal": "#e6194B", "entrant": "#f58231", "incumbent": "#5b8db8"}
 MIN_MONTHS_RICH = 36   # Explore "rich-history" filter — ≥3 full years, so no half-drawn KPI lines
 
-# the 6 KPIs grouped into 3 figures (col, label, unit) — matches the GROUPS in app.py
+# the 9 KPIs grouped into 4 figures (col, label, unit) — matches the GROUPS in the Streamlit explore panel.
+# Membership purchases stays the LAST group (frontend renders the array in order).
 def age_periods(months, n_years: int = 5) -> Tuple[List[int], List[int]]:
     """Relative (year, quarter) labels for an AGE-indexed forecast series where month 0 = the site's
     open month. `year` is the 1-based 12-month block (1..`n_years`) and `quarter` is 1..4 WITHIN that
@@ -56,7 +58,8 @@ KPI_GROUPS: List[Tuple[str, List[Tuple[str, str, str]]]] = [
                 ("mem_wash_count", "Membership washes", "count")]),
     ("Revenue", [("tot_revenue", "Total revenue ($)", "$"), ("ret_revenue", "Retail revenue ($)", "$"),
                  ("mem_revenue", "Membership revenue ($)", "$")]),
-    ("ASPs", [("asp_ret", "ASP per wash — retail ($)", "$"), ("asp_mem", "ASP per wash — membership ($)", "$")]),
+    ("ASPs", [("asp_ret", "ASP per retail wash ($)", "$"), ("asp_mem", "ASP per membership wash ($)", "$")]),
+    ("Membership purchases", [("mem_purchase_count", "Membership purchases", "count")]),
 ]
 
 
@@ -110,7 +113,7 @@ def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: i
                    min_months: int = MIN_MONTHS_RICH, operator: Optional[str] = None,
                    demo: bool = False, express_only: bool = False) -> Dict[str, Any]:
     """The Explore-markets MAP + header counts for the pin's local market (NO time series — that's the
-    job of explore_market_kpis, the 8 KPI panels).
+    job of explore_market_kpis, the 9 KPI panels).
 
     Returns the header metrics (sites-in-market, new-entrants) and the map layers:
       • markers          — the in-market sites, role-tagged focal / entrant / incumbent (the "cluster points").
@@ -185,8 +188,10 @@ def explore_market(lat: float, lon: float, radius_km: float = 20.0, max_sites: i
 def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int,
                         min_months: int = MIN_MONTHS_RICH, demo: bool = False,
                         express_only: bool = False) -> Dict[str, Any]:
-    """The 6 grouped per-site KPI series (Washes ×3 / Revenue ×3 / ASP ×2) for the whole local market —
-    every in-radius site with ≥`min_months` of history. Mirrors the "Local-market KPIs over time" panels."""
+    """The 9 grouped per-site KPI series (Washes ×3 / Revenue ×3 / ASP ×2 / Membership purchases ×1,
+    always the LAST group) for the whole local market — every in-radius site with ≥`min_months` of
+    history. Mirrors the "Local-market KPIs over time" panels. Membership ASP divides by PURCHASES
+    (one purchase funds many washes), matching the Streamlit chart."""
     df, site = D.load_panel(express_only)
     pool = site[site.n_obs >= min_months] if min_months > 1 else site
     nb_full = _neighbourhood(pool, lat, lon, radius_km)
@@ -194,8 +199,8 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
     ckeys = nb_full.site_key.tolist()
 
     sub = df[df.site_key.isin(ckeys)].copy()
-    sub["asp_ret"] = sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan)
-    sub["asp_mem"] = sub.mem_revenue / sub.mem_wash_count.replace(0, np.nan)
+    sub["asp_ret"] = sub.ret_revenue / sub.ret_wash_count.replace(0, np.nan)        # retail ASP = revenue ÷ retail washes
+    sub["asp_mem"] = sub.mem_revenue / sub.mem_purchase_count.replace(0, np.nan)    # membership ASP = revenue ÷ PURCHASES (matches the Streamlit chart)
 
     # anonymized "Site N" labels by opening order (demo), else client_name
     order_for_label = nb_full.sort_values("op_start").site_key.tolist()
@@ -246,60 +251,6 @@ def explore_market_kpis(lat: float, lon: float, radius_km: float, smoothing: int
         "lat": lat, "lon": lon, "radius_km": radius_km, "smoothing": smoothing, "min_months": min_months,
         "n_sites": len(ckeys), "focal_site_key": focal_key,
         "sites": sites_meta, "groups": groups,
-    }
-
-
-# ─────────────────────────── tab 1c: membership purchases ───────────────────────────
-def explore_market_membership_purchases(lat: float, lon: float, radius_km: float, smoothing: int,
-                                        min_months: int = MIN_MONTHS_RICH, demo: bool = False,
-                                        express_only: bool = False) -> Dict[str, Any]:
-    """Per-site monthly MEMBERSHIP PURCHASE counts (new memberships sold, `mem_purchase_count`) for the
-    whole local market — every in-radius site with ≥`min_months` of history. Purchases are distinct from
-    membership WASHES (`mem_wash_count`, served by explore_market_kpis): one purchase funds many washes.
-    Same market selection, labelling and smoothing as the KPI panels, single series per site."""
-    col = "mem_purchase_count"
-    df, site = D.load_panel(express_only)
-    pool = site[site.n_obs >= min_months] if min_months > 1 else site
-    nb_full = _neighbourhood(pool, lat, lon, radius_km)
-    focal_key = _focal_key(nb_full)
-    ckeys = nb_full.site_key.tolist()
-    sub = df[df.site_key.isin(ckeys)]
-
-    # anonymized "Site N" labels by opening order (demo), else client_name — mirrors explore_market_kpis
-    order_for_label = nb_full.sort_values("op_start").site_key.tolist()
-    anon = {k: f"Site {i + 1}" for i, k in enumerate(order_for_label)}
-    name_of = {k: (anon[k] if demo else str(site.loc[site.site_key == k, "client_name"].iloc[0])) for k in ckeys}
-
-    # sites in the shared cross-endpoint rank order (focal first, then longest/largest history —
-    # see _rank_sites), with an explicit `rank` so the dashboard's "top N" matches the other panels.
-    order, rank_of = _rank_sites(df, nb_full, focal_key)
-    entrant_of = dict(zip(nb_full.site_key, nb_full.is_entrant))
-    n_obs_of = dict(zip(nb_full.site_key, nb_full.n_obs))
-
-    series: List[Dict[str, Any]] = []
-    for k in order:
-        g = sub[sub.site_key == k].set_index("date").sort_index()
-        if len(g):
-            g = g.reindex(pd.date_range(g.index.min(), g.index.max(), freq="MS"))
-        if not len(g) or col not in g:
-            continue
-        y = g[col].rolling(smoothing, center=True, min_periods=1).mean() if (smoothing and smoothing > 1) else g[col]
-        if y.dropna().empty:
-            continue
-        series.append({"site_key": k, "name": name_of.get(k), "is_focal": k == focal_key,
-                       "is_entrant": bool(entrant_of.get(k, False)),
-                       "rank": rank_of[k], "n_months": int(n_obs_of[k]),
-                       "dist_km": round(float(nb_full.loc[nb_full.site_key == k, "dist_km"].iloc[0]), 2),
-                       "op_start": (nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0].strftime("%Y-%m")
-                                    if pd.notna(nb_full.loc[nb_full.site_key == k, "op_start"].iloc[0]) else None),
-                       "x": [d.strftime("%Y-%m-%d") for d in g.index],
-                       "y": [None if pd.isna(v) else float(v) for v in y.values]})
-
-    return {
-        "lat": lat, "lon": lon, "radius_km": radius_km, "smoothing": smoothing, "min_months": min_months,
-        "n_sites": len(ckeys), "focal_site_key": focal_key,
-        "col": col, "label": "Membership purchases", "unit": "count",
-        "series": series,
     }
 
 
