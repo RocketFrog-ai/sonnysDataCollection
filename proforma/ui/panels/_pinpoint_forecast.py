@@ -436,14 +436,21 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         # Model 1 (no local anchor) was DROPPED — it under-predicts wash count badly (bias 0.72; 29% of sites fall
         # below their cluster-neighbour minimum). All kept models anchor on the local matured level. Labels keep
         # their original numbers so the WAPE references above stay meaningful.
+        # Model 5 = SUPER ensemble: Model 3 underneath, then the calibrated level layer from
+        # proforma/artifacts/'ensemble_super (model 5)' (level_A when the 4 site inputs are given — LOSO mature
+        # MdAPE 29.6% / within±20% 38.6% — else the panel-calibrated pin-only level_B, 31.8%),
+        # plus per-operating-year debias. See its README.md.
         MODEL_STRATEGIES = {
             "Model 2": dict(local_anchor=True, model_kind="lgb", use_operator=False),
             "Model 3": dict(local_anchor=True, model_kind="et", use_operator=False),
             "Model 4": dict(local_anchor=True, model_kind="et", use_operator=True),
+            "Model 5 — SUPER": dict(local_anchor=True, model_kind="et", use_operator=False, super=True),
         }
         strat = MODEL_STRATEGIES[st.radio("Model", list(MODEL_STRATEGIES), index=1,    # default Model 3 (best cold-start)
                                           help="Plateau-level strategy (LOO WAPE): M2 43.6%, M3 40.2% "
-                                               "(cold-start, no operator). M4 ≈ 34% — operator-based; pick the operator below.")]
+                                               "(cold-start, no operator). M4 ≈ 34% — operator-based; pick the operator below. "
+                                               "M5 SUPER = M3 + calibrated level layer; add the 4 site inputs below "
+                                               "(pay stations, vacuums, lot type, traffic) for its most accurate mode.")]
         anchor_on = strat["local_anchor"]
         model_kind = strat["model_kind"]
         # Model 4: operator-based — pick a known operator; the model uses that operator's avg mature level (brand_loo)
@@ -460,6 +467,25 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                 brand = _id_by.get(op_label)
         elif strat["use_operator"] and demo:
             st.caption("Operator selection is hidden in client-demo mode.")
+        # Model 5 (SUPER): the 4 optional site inputs. All four together switch the level to the
+        # input-calibrated ridge (level_A); anything less falls back to the pin-only calibration.
+        sup_pay = sup_vac = sup_lot = sup_traffic = None
+        sup_open_year = int(pd.Timestamp.now().year)
+        if strat.get("super"):
+            st.markdown("**Site inputs** — all 4 unlock the input-calibrated level (±20% hit-rate 34%→39%)")
+            _sp = st.selectbox("Pay stations", ["(unknown)", "1", "2", "3 or more", "live person"])
+            _sv = st.selectbox("Free vacuum slots", ["(unknown)", "less than 12", "12 - 20", "more than 20", "coin or none"])
+            _sl = st.selectbox("Lot type", ["(unknown)", "corner lot with light", "corner lot without light",
+                                            "inside lot near light", "inside lot no light"])
+            _st = st.number_input("Daily traffic count (0 = unknown)", min_value=0, value=0, step=1000)
+            sup_open_year = int(st.number_input("Planned opening year", min_value=2021, max_value=2032,
+                                                value=sup_open_year,
+                                                help="Feeds the open-cohort term of the pin-only calibration; "
+                                                     "operating months always start at opening."))
+            if "(unknown)" not in (_sp, _sv, _sl) and _st > 0:
+                sup_pay, sup_vac, sup_lot, sup_traffic = _sp, _sv, _sl, float(_st)
+            elif any(x != "(unknown)" for x in (_sp, _sv, _sl)) or _st > 0:
+                st.caption("Need all 4 inputs for the input-calibrated level — using pin-only calibration for now.")
         gm = st.slider("Yr 3–5 membership — extra on top of per-site trend (%/yr)", -15, 25, 0)
         gr = st.slider("Yr 3–5 retail — extra on top of per-site trend (%/yr)", -20, 15, 0)
     lat, lon = st.session_state.pin
@@ -507,6 +533,13 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                                  mem_growth_band=(mem_lo + gm / 100, mem_hi + gm / 100),
                                  ret_change_band=(ret_lo + gr / 100, ret_hi + gr / 100), art=art,
                                  local_anchor=anchor_on, anchor_keys=anchor_keys, model_kind=model_kind)
+    # Model 5 (SUPER): rescale the trajectory to the calibrated level + per-year debias.
+    # A manual plateau override wins outright (skip the layer), same as it does inside predict_site.
+    if strat.get("super") and not ov:
+        from proforma.models import super_ensemble as se
+        traj, info = se.apply_super(traj, info, open_year=sup_open_year,
+                                    pay_stations=sup_pay, vacuum_slots=sup_vac,
+                                    lot_type=sup_lot, traffic_count=sup_traffic)
     g = traj.set_index("month")
     # ── big, full-width interactive map: pan/zoom is smooth (no rerun) → click to drop the pin ──
     # EVERY site within the radius is a neighbour the model actually uses (local trend + level anchor) — including
@@ -633,6 +666,12 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     _ml = "Model 3 (ExtraTrees)" if model_kind == "et" else "Model 2"   # both use the local anchor; level model differs
     if ov:
         st.caption(f"🔧 Plateau **manually overridden** to {int(ov):,}/mo (model ignored).")
+    elif strat.get("super"):
+        _src = ("input-calibrated (pay stations + vacuums + lot type + traffic)"
+                if info.get("level_source") == "user_inputs" else "pin-only calibration (add the 4 site inputs to sharpen)")
+        st.caption(f"🏆 **Model 5 SUPER:** Model 3 plateau recalibrated to **{info['plateau_med']:,.0f}/mo** — "
+                   f"{_src} — plus per-operating-year debias. "
+                   f"(Backtest: mature MdAPE 29.6% with inputs / 31.8% pin-only, vs 40.2% raw cold-start WAPE.)")
     elif info.get("brand_known"):
         st.caption(f"🏢 **Model 4 (operator):** using **{op_label}** — that operator's avg mature level "
                    f"({art['brand_mean'][brand]:,.0f}/mo) → plateau **{info['plateau_med']:,.0f}/mo**. "
