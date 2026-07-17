@@ -6,6 +6,23 @@ Match logic: normalise the panel street (house# + standardised suffix/direction
 words) and test it as a substring of the normalised proforma full-address, then
 require the state (preferred: ZIP) to agree.  Ambiguous / no-match rows are kept
 with blank actuals and a match_status flag.
+
+Same-address operator handoffs: the panel keeps a rebranded site as TWO
+client_ids whose windows overlap at the seam month (each operator reports its
+part of that month), so the panel's own stitcher skips them as "concurrent".
+Here every match is checked for same-street+ZIP twin records; the actuals are
+aggregated over the UNION of all segments (seam months resolved by keeping the
+row with the larger wash_count — every kept row stays a real panel row) and
+match_operational_start becomes the earliest segment's start.  The twins are
+recorded in match_secondary_segments ("client_id:site_id;...") so
+build_monthly.py can expand the same union.
+
+actuals_suspect flags matched records whose actuals are reporting artifacts
+(avg < 200 washes/month across the record's history — real sites do thousands;
+the panel's dead records do ~1-100).
+
+Safe to re-run on its own output: pre-existing match_*/actual_* columns are
+dropped before matching.
 """
 import os
 import re
@@ -53,14 +70,59 @@ def extract_state(s):
     return ""
 
 
+SUSPECT_WASHES_PER_MONTH = 200   # below this the record is a reporting artifact
+
+
+def union_months(frames):
+    """Union the monthly rows of same-address segments (priority order).
+
+    A month reported by two segments is the handoff seam — each operator
+    reports its part of the month — so keep the row with the larger
+    wash_count (the operator who ran most of the month); ties go to the
+    earlier frame in `frames`.  Every kept row is a real panel row, so the
+    ratio columns (ASP, pct) stay internally consistent.
+    """
+    both = pd.concat(frames, keys=range(len(frames)), names=["seg_rank"]).reset_index(level=0)
+    both = both.sort_values(["year", "month", "wash_count", "seg_rank"],
+                            ascending=[True, True, False, True])
+    return both.drop_duplicates(["year", "month"]).sort_values(["year", "month"])
+
+
+def agg_from_months(d):
+    """The per-site actual_* aggregates, mirroring the groupby in main()."""
+    return {
+        "actual_n_months": len(d),
+        "actual_first_period": f"{int(d['year'].min())}",
+        "actual_wash_count_total": d["wash_count"].sum(),
+        "actual_revenue_total": d["revenue"].sum(),
+        "actual_mem_wash_count_monthly_avg": d["mem_wash_count"].mean(),
+        "actual_ret_wash_count_monthly_avg": d["ret_wash_count"].mean(),
+        "actual_wash_count_monthly_avg": d["wash_count"].mean(),
+        "actual_mem_revenue_monthly_avg": d["mem_revenue"].mean(),
+        "actual_ret_revenue_monthly_avg": d["ret_revenue"].mean(),
+        "actual_revenue_monthly_avg": d["revenue"].mean(),
+        "actual_ASP_mem_avg": d["ASP_mem"].mean(),
+        "actual_ASP_ret_avg": d["ASP_ret"].mean(),
+        "actual_mem_revenue_pct_avg": d["mem_revenue_pct"].mean(),
+        "actual_mem_count_pct_avg": d["mem_count_pct"].mean(),
+    }
+
+
 def main():
     pf = pd.read_csv(PF_CSV)
+    # idempotent re-runs: this script rewrites PF_CSV in place, so drop any
+    # match/actual columns a previous run appended before matching afresh.
+    stale = [c for c in pf.columns
+             if c.startswith(("match_", "actual_")) or c == "actuals_suspect"]
+    pf = pf.drop(columns=stale)
     panel = pd.read_csv(PANEL)
 
     # ---- build per-site actuals summary from the monthly panel ----
     sites = panel.drop_duplicates(["client_id", "site_id"]).copy()
     sites["nstreet"] = sites["address1"].map(norm_addr)
-    sites["zip5"] = sites["postal_code"].astype(str).str.extract(r"(\d{5})")[0]
+    # zfill: MA/NJ/... zips lose their leading zero in the panel ("1835" for
+    # 01835), which silently downgraded correct zip matches to state matches.
+    sites["zip5"] = sites["postal_code"].astype(str).str.extract(r"(\d{3,5})")[0].str.zfill(5)
 
     # aggregate monthly -> per-site actuals (totals, means, latest-12mo)
     panel["wash_count"] = panel["mem_wash_count"].fillna(0) + panel["ret_wash_count"].fillna(0)
@@ -178,6 +240,43 @@ def main():
             for c in agg.columns:
                 if c not in ("client_id", "site_id"):
                     row[c] = chosen[c]
+
+            # same-address twin segments (operator handoffs the panel keeps
+            # as separate client_ids because their windows share the seam
+            # month): aggregate actuals over the union of all segments.
+            twins = site_full[
+                (site_full["nstreet"] == chosen["nstreet"])
+                & (site_full["nstreet"].str.len() > 0)
+                & ~((site_full["client_id"] == chosen["client_id"])
+                    & (site_full["site_id"] == chosen["site_id"]))
+            ]
+            if pd.notna(chosen["zip5"]):
+                twins = twins[twins["zip5"] == chosen["zip5"]]
+            else:
+                twins = twins[twins["state"] == chosen["state"]]
+            twins = twins.sort_values("actual_n_months", ascending=False)
+
+            segs = [chosen] + [t for _, t in twins.iterrows()]
+            row["match_stitched"] = len(segs) > 1
+            row["match_secondary_segments"] = ";".join(
+                f"{s['client_id']}:{int(s['site_id'])}" for s in segs[1:])
+            if len(segs) > 1:
+                u = union_months([
+                    panel[(panel["client_id"] == s["client_id"])
+                          & (panel["site_id"] == s["site_id"])] for s in segs])
+                for k, v in agg_from_months(u).items():
+                    row[k] = v
+                starts = pd.to_datetime([s["operational_start"] for s in segs],
+                                        format="%m-%Y", errors="coerce").dropna()
+                if len(starts):
+                    row["match_operational_start"] = starts.min().strftime("%m-%Y")
+
+            row["actuals_suspect"] = bool(
+                row["actual_wash_count_monthly_avg"] < SUSPECT_WASHES_PER_MONTH)
+        else:
+            row["match_stitched"] = False
+            row["match_secondary_segments"] = ""
+            row["actuals_suspect"] = None
         out_rows.append(row)
 
     out = pd.DataFrame(out_rows)
@@ -186,6 +285,21 @@ def main():
     print("match_status counts:")
     print(out["match_status"].value_counts().to_string())
     print("\nmatched rows:", (out["match_status"].str.startswith("matched")).sum(), "/", len(out))
+
+    st = out[out["match_stitched"] == True]  # noqa: E712  (column may hold None)
+    print(f"\nstitched same-address handoffs: {len(st)}")
+    for _, r in st.iterrows():
+        print(f"  {r['address']}\n    primary {r['match_client_id']}:{int(r['match_site_id'])}"
+              f" + [{r['match_secondary_segments']}]"
+              f" -> {int(r['actual_n_months'])} mo, opens {r['match_operational_start']}")
+
+    sus = out[out["actuals_suspect"] == True]  # noqa: E712
+    print(f"\nactuals_suspect (<{SUSPECT_WASHES_PER_MONTH} washes/mo): {len(sus)}")
+    for _, r in sus.iterrows():
+        print(f"  {r['match_client_id']}:{int(r['match_site_id'])}"
+              f" avg={r['actual_wash_count_monthly_avg']:.1f}/mo"
+              f" over {int(r['actual_n_months'])} mo  ({r['address']})")
+
     print("\nsample matches:")
     cols = ["source_file", "address", "match_status", "match_client_name",
             "match_address1", "actual_wash_count_monthly_avg", "actual_revenue_monthly_avg"]
