@@ -1,0 +1,2467 @@
+{
+ "years": {
+  "Y1": {
+   "proforma": {
+    "n": 88,
+    "median_ratio": 0.8713398357250994,
+    "MdAPE_vs_act": 48.73646690487886,
+    "wMAPE": 56.90435808298816,
+    "miss_factor": 1.588877572415024,
+    "spearman": 0.24909302243668774,
+    "within_10": 14.772727272727273,
+    "within_20": 29.545454545454547,
+    "within_30": 38.63636363636363,
+    "within_50": 56.81818181818182
+   },
+   "coldstart_loo": {
+    "n": 88,
+    "median_ratio": 0.7208408337707288,
+    "MdAPE_vs_act": 51.04105658073751,
+    "wMAPE": 51.88894232901093,
+    "miss_factor": 1.6218826217087694,
+    "spearman": 0.4888806702905257,
+    "within_10": 7.954545454545454,
+    "within_20": 20.454545454545457,
+    "within_30": 34.090909090909086,
+    "within_50": 62.5
+   },
+   "coldstart_leaky": {
+    "n": 88,
+    "median_ratio": 0.7323186922988042,
+    "MdAPE_vs_act": 47.10414698032917,
+    "wMAPE": 48.573957432898645,
+    "miss_factor": 1.6183301665584313,
+    "spearman": 0.6179009981259835,
+    "within_10": 7.954545454545454,
+    "within_20": 20.454545454545457,
+    "within_30": 37.5,
+    "within_50": 62.5
+   },
+   "model_win_rate": 51.13636363636363,
+   "sign_test_p": 0.915186504842877
+  },
+  "Y2": {
+   "proforma": {
+    "n": 60,
+    "median_ratio": 0.9296647094077626,
+    "MdAPE_vs_act": 39.51731011877909,
+    "wMAPE": 45.581715745737526,
+    "miss_factor": 1.5351859932604481,
+    "spearman": 0.36537927202000564,
+    "within_10": 18.333333333333332,
+    "within_20": 33.33333333333333,
+    "within_30": 38.333333333333336,
+    "within_50": 58.333333333333336
+   },
+   "coldstart_loo": {
+    "n": 60,
+    "median_ratio": 0.7952593528996317,
+    "MdAPE_vs_act": 41.60036745011492,
+    "wMAPE": 41.635355904796526,
+    "miss_factor": 1.473607848788443,
+    "spearman": 0.5665263480172739,
+    "within_10": 8.333333333333332,
+    "within_20": 18.333333333333332,
+    "within_30": 40.0,
+    "within_50": 68.33333333333333
+   },
+   "coldstart_leaky": {
+    "n": 60,
+    "median_ratio": 0.8427540791350769,
+    "MdAPE_vs_act": 33.396206487197574,
+    "wMAPE": 36.700265791194354,
+    "miss_factor": 1.3867285364005326,
+    "spearman": 0.6725572737141652,
+    "within_10": 8.333333333333332,
+    "within_20": 18.333333333333332,
+    "within_30": 41.66666666666667,
+    "within_50": 76.66666666666667
+   },
+   "model_win_rate": 51.66666666666667,
+   "sign_test_p": 0.8974218269914307
+  },
+  "Y3": {
+   "proforma": {
+    "n": 46,
+    "median_ratio": 0.8491418069090126,
+    "MdAPE_vs_act": 38.603082681987466,
+    "wMAPE": 49.85740014393883,
+    "miss_factor": 1.5082248410748342,
+    "spearman": 0.30114091890225103,
+    "within_10": 13.043478260869565,
+    "within_20": 30.434782608695656,
+    "within_30": 39.130434782608695,
+    "within_50": 67.3913043478261
+   },
+   "coldstart_loo": {
+    "n": 46,
+    "median_ratio": 0.8158572770974014,
+    "MdAPE_vs_act": 35.59646093767949,
+    "wMAPE": 40.00352732427393,
+    "miss_factor": 1.3871770786752102,
+    "spearman": 0.5923527597903175,
+    "within_10": 13.043478260869565,
+    "within_20": 30.434782608695656,
+    "within_30": 50.0,
+    "within_50": 67.3913043478261
+   },
+   "coldstart_leaky": {
+    "n": 46,
+    "median_ratio": 0.8929639671516296,
+    "MdAPE_vs_act": 26.926209919483096,
+    "wMAPE": 33.76997947905729,
+    "miss_factor": 1.2966443844571809,
+    "spearman": 0.6860931236509404,
+    "within_10": 19.565217391304348,
+    "within_20": 36.95652173913043,
+    "within_30": 52.17391304347826,
+    "within_50": 73.91304347826086
+   },
+   "model_win_rate": 52.17391304347826,
+   "sign_test_p": 0.8829959121223965
+  },
+  "Y4": {
+   "proforma": {
+    "n": 21,
+    "median_ratio": 0.8537524828394426,
+    "MdAPE_vs_act": 30.53232031265679,
+    "wMAPE": 46.33401868339458,
+    "miss_factor": 1.4395183551555946,
+    "spearman": 0.3766233766233766,
+    "within_10": 19.047619047619047,
+    "within_20": 38.095238095238095,
+    "within_30": 42.857142857142854,
+    "within_50": 71.42857142857143
+   },
+   "coldstart_loo": {
+    "n": 21,
+    "median_ratio": 0.7874907112596066,
+    "MdAPE_vs_act": 32.38688129545944,
+    "wMAPE": 34.06652377535175,
+    "miss_factor": 1.4405780403569335,
+    "spearman": 0.5961038961038961,
+    "within_10": 23.809523809523807,
+    "within_20": 33.33333333333333,
+    "within_30": 47.61904761904761,
+    "within_50": 76.19047619047619
+   },
+   "coldstart_leaky": {
+    "n": 21,
+    "median_ratio": 0.9127137156432787,
+    "MdAPE_vs_act": 19.7596230797518,
+    "wMAPE": 28.525232937139023,
+    "miss_factor": 1.2409760613623104,
+    "spearman": 0.6974025974025975,
+    "within_10": 28.57142857142857,
+    "within_20": 47.61904761904761,
+    "within_30": 61.904761904761905,
+    "within_50": 85.71428571428571
+   },
+   "model_win_rate": 57.14285714285714,
+   "sign_test_p": 0.6636238098144531
+  },
+  "Y5": {
+   "proforma": {
+    "n": 12,
+    "median_ratio": 0.8228083740766359,
+    "MdAPE_vs_act": 38.29746564826756,
+    "wMAPE": 50.100546826674716,
+    "miss_factor": 1.4479196911144985,
+    "spearman": 0.22377622377622378,
+    "within_10": 8.333333333333332,
+    "within_20": 25.0,
+    "within_30": 41.66666666666667,
+    "within_50": 75.0
+   },
+   "coldstart_loo": {
+    "n": 12,
+    "median_ratio": 0.8262514235575179,
+    "MdAPE_vs_act": 34.54505024301239,
+    "wMAPE": 38.070430477995,
+    "miss_factor": 1.3503250998681462,
+    "spearman": 0.3706293706293707,
+    "within_10": 8.333333333333332,
+    "within_20": 33.33333333333333,
+    "within_30": 50.0,
+    "within_50": 66.66666666666666
+   },
+   "coldstart_leaky": {
+    "n": 12,
+    "median_ratio": 0.8574645409956598,
+    "MdAPE_vs_act": 32.07168411493079,
+    "wMAPE": 31.934147094893362,
+    "miss_factor": 1.320360308976696,
+    "spearman": 0.6363636363636365,
+    "within_10": 16.666666666666664,
+    "within_20": 33.33333333333333,
+    "within_30": 58.333333333333336,
+    "within_50": 75.0
+   },
+   "model_win_rate": 58.333333333333336,
+   "sign_test_p": 0.7744140625
+  }
+ },
+ "sites": {
+  "Y1": [
+   {
+    "name": "Wash & Wax Pros",
+    "addr": "3050 N University Dr., Sunrise, FL 33322",
+    "act": 1821.75,
+    "proforma": 4071.444340533088,
+    "model": 3493.354868916776
+   },
+   {
+    "name": "Big Peach Tallahassee",
+    "addr": "3738 Monroe Street, Tallahassee FL 32303",
+    "act": 2409.1666666666665,
+    "proforma": 7090.948601470587,
+    "model": 4037.2731664955018
+   },
+   {
+    "name": "True Clean",
+    "addr": "29002 Crossroads Ln., Evergreen, CO 80439",
+    "act": 6224.666666666667,
+    "proforma": 4105.2326986862745,
+    "model": 5666.158757813932
+   },
+   {
+    "name": "Shammy's Unlimited Central",
+    "addr": "8040 Forest Lane, Dallas, TX 75243",
+    "act": 6115.666666666667,
+    "proforma": 8919.24729319853,
+    "model": 8506.995435534669
+   },
+   {
+    "name": "Living Water - County Line",
+    "addr": "5651 County Line Pl., Highlands Ranch, CO 80126",
+    "act": 3247.4166666666665,
+    "proforma": 5130.985082450981,
+    "model": 2641.0038373971784
+   },
+   {
+    "name": "Virginia Car Wash Co.",
+    "addr": "4830 Portsmouth Blvd., Chesapeake, VA 23321",
+    "act": 1650.0,
+    "proforma": 4832.8791875,
+    "model": 4878.800517318642
+   },
+   {
+    "name": "West Norriton",
+    "addr": "444 Egypt Rd., Norristown, PA 19403",
+    "act": 3327.1666666666665,
+    "proforma": 4637.413796715687,
+    "model": 6272.619948452179
+   },
+   {
+    "name": "Aladdin Car Wash",
+    "addr": "1616 S 57th St., Temple, TX 76504",
+    "act": 2278.6666666666665,
+    "proforma": 8728.984292945772,
+    "model": 4560.012755021132
+   },
+   {
+    "name": "Waterworks Express Car Wash",
+    "addr": "1557 Marinette Ave., Marinette, WI 54143",
+    "act": 3111.8333333333335,
+    "proforma": 2497.2442800392164,
+    "model": 5843.772423509735
+   },
+   {
+    "name": "Mr. D Cranston",
+    "addr": "1405 Cranston Rd., Beloit, WI 53511",
+    "act": 433.75,
+    "proforma": 4088.399612671568,
+    "model": 6071.783829322598
+   },
+   {
+    "name": "Hercules/Elite Care Auto",
+    "addr": "1401 Lexington Ave., Mansfield, OH 44907",
+    "act": 5231.833333333333,
+    "proforma": 3116.586866664216,
+    "model": 6032.238261287191
+   },
+   {
+    "name": "Scrub Brothers",
+    "addr": ", 1809 E Fire Tower Road, Greenville NC 27858",
+    "act": 3587.75,
+    "proforma": 4114.623161764707,
+    "model": 6795.719246121171
+   },
+   {
+    "name": "Shine Time Buford",
+    "addr": ", 3361 Buford Drive, Buford GA 30519",
+    "act": 10494.416666666666,
+    "proforma": 8799.136952941177,
+    "model": 5149.224124276371
+   },
+   {
+    "name": "American Pride Six Forks",
+    "addr": ", 8909 Six Forks Road, Raleigh NC 27615",
+    "act": 9575.166666666666,
+    "proforma": 7820.616987132352,
+    "model": 7482.786051332639
+   },
+   {
+    "name": "Green Valley Grocery 95",
+    "addr": "7989 N Hualapai Way, Las Vegas, NV 89166",
+    "act": 608.5833333333334,
+    "proforma": 1005.412030514706,
+    "model": 6051.006137819791
+   },
+   {
+    "name": "Lickety Split Express",
+    "addr": "1245 Fremont St., Fernley, NV 89408",
+    "act": 6268.272727272727,
+    "proforma": 4984.926271268381,
+    "model": 5260.725193244461
+   },
+   {
+    "name": "Pelican Car Wash",
+    "addr": "Sebastian Family Car Wash, LLC., 13020 US-1, Sebastian, FL 32958",
+    "act": 4386.583333333333,
+    "proforma": 4915.78177665441,
+    "model": 7119.5140363221435
+   },
+   {
+    "name": "Primo Express Car Wash",
+    "addr": "13106 Valley blvd., La Puente, CA 91746",
+    "act": 3258.25,
+    "proforma": 7225.327901286765,
+    "model": 5840.814536759913
+   },
+   {
+    "name": "WashU Des Plaines",
+    "addr": "1360 Lee St., Des Plaines, IL 60018",
+    "act": 18084.916666666668,
+    "proforma": 3951.078538235294,
+    "model": 6887.510043219428
+   },
+   {
+    "name": "Van Nuys",
+    "addr": ", 14537 Sherman Way, Los Angeles, CA 91405",
+    "act": 20338.333333333332,
+    "proforma": 7564.264838272058,
+    "model": 10255.204627970015
+   },
+   {
+    "name": "Avatar",
+    "addr": "1623 S Poinciana Blvd., Kissimmee, FL 34758",
+    "act": 10303.416666666666,
+    "proforma": 4417.395435340072,
+    "model": 9244.355746842257
+   },
+   {
+    "name": "Joe Holland Express CW",
+    "addr": "231 MacCorkle Ave SW, South Charleston, WV 25303",
+    "act": 4084.25,
+    "proforma": 4906.997018823528,
+    "model": 5757.68226798869
+   },
+   {
+    "name": "Evanston Car Wash",
+    "addr": "Goodluck Enterprise, 2416 Dempdter St., Evanston, IL 60202",
+    "act": 2319.5833333333335,
+    "proforma": 2481.1855682352934,
+    "model": 5678.036624361062
+   },
+   {
+    "name": "Thoroughbred Hurricane",
+    "addr": "3111 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 2920.1666666666665,
+    "proforma": 3446.28458382353,
+    "model": 6893.286862761049
+   },
+   {
+    "name": "Bubble Down Palm Harbor",
+    "addr": "35952 US Hwy 19 N, Palm Harbor, FL 34684",
+    "act": 9070.25,
+    "proforma": 13542.47011764706,
+    "model": 6650.163942113769
+   },
+   {
+    "name": "Floris Car Wash",
+    "addr": "3893 McCoy Rd., Orlando, FL 32812",
+    "act": 7121.333333333333,
+    "proforma": 2738.1027938970587,
+    "model": 9819.723483139556
+   },
+   {
+    "name": "Thoroughbred Teays",
+    "addr": "3972 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 3876.0833333333335,
+    "proforma": 6204.678919558824,
+    "model": 6738.325175320529
+   },
+   {
+    "name": "ZoomWash",
+    "addr": "Just Auto, 4300 Clinton Hwy., Knoxville, TN 37912",
+    "act": 2083.8,
+    "proforma": 5892.751972573528,
+    "model": 4367.922186092902
+   },
+   {
+    "name": "Oasis Auto Spa",
+    "addr": "5001 Collin McKinney Pkwy., McKinney, TX 75070",
+    "act": 2650.75,
+    "proforma": 6416.739489485294,
+    "model": 8437.250998057929
+   },
+   {
+    "name": "Classie Express Wash",
+    "addr": "510 E Broadway, Louisville, KY 40202",
+    "act": 965.75,
+    "proforma": 4019.500535183824,
+    "model": 4879.145697914383
+   },
+   {
+    "name": "Shortman Main Joplin",
+    "addr": "5958 N Main St., Joplin, Joplin, MO 64870",
+    "act": 3023.0,
+    "proforma": 7188.373204044117,
+    "model": 4697.2000375405905
+   },
+   {
+    "name": "Lavado Xpress",
+    "addr": "710 Jamacha Rd., El Cajon, CA 92019",
+    "act": 1979.8181818181818,
+    "proforma": 10344.500970588237,
+    "model": 4406.592261418593
+   },
+   {
+    "name": "Reseda",
+    "addr": ", 7326 Reseda Blvd., Los Angeles, CA 91335",
+    "act": 15362.25,
+    "proforma": 6946.762022426469,
+    "model": 9799.01411705003
+   },
+   {
+    "name": "Cadillac Express Cullen",
+    "addr": "9520 Cullen Blvd., Houston, TX 77051",
+    "act": 5137.583333333333,
+    "proforma": 5516.241336194853,
+    "model": 7639.358957170968
+   },
+   {
+    "name": "Buford",
+    "addr": "Mr. K Express Car Wash, 4227 Buford Dr., Buford, GA 30518",
+    "act": 4566.333333333333,
+    "proforma": 7601.340193511028,
+    "model": 6168.486979816397
+   },
+   {
+    "name": "Happy's Roseville",
+    "addr": "525 Cirby Way, Roseville, CA 95678",
+    "act": 4341.083333333333,
+    "proforma": 4423.290358014707,
+    "model": 5276.457321443486
+   },
+   {
+    "name": "Unrivaled Car Wash",
+    "addr": "10621 Fischer Park Dr., Louisville, KY 40241",
+    "act": 6600.583333333333,
+    "proforma": 7196.332320625002,
+    "model": 4934.980761580788
+   },
+   {
+    "name": "Magic City Car Wash",
+    "addr": "619 N Broadway, Minot ND 58703",
+    "act": 5542.0,
+    "proforma": 4922.17173977941,
+    "model": 5256.291682384993
+   },
+   {
+    "name": "Monster Express #2",
+    "addr": "3373 SE Federal Hwy., Stuart, FL 34997",
+    "act": 4538.833333333333,
+    "proforma": 11755.050911676472,
+    "model": 7329.226651407622
+   },
+   {
+    "name": "Big Dan's Bradenton 14th St",
+    "addr": "6310 14th St. W, Bradenton, FL 34207",
+    "act": 15941.416666666666,
+    "proforma": 8920.763805882352,
+    "model": 7787.631726058527
+   },
+   {
+    "name": "Cadillac Express Little York",
+    "addr": "235 E Little York, Houston, TX 77076",
+    "act": 8869.583333333334,
+    "proforma": 5662.105852941176,
+    "model": 8116.913267284478
+   },
+   {
+    "name": "Happy's Petaluma",
+    "addr": "Oilstop, 1004 Lakeville St., Petaluma, CA 94952",
+    "act": 16736.75,
+    "proforma": 4477.289181029412,
+    "model": 5769.4771594561025
+   },
+   {
+    "name": "Tampa",
+    "addr": "6301 E Hillsborough Ave., Tampa, FL 33610",
+    "act": 6621.75,
+    "proforma": 8173.092046875,
+    "model": 8512.550383642842
+   },
+   {
+    "name": "OBXpress",
+    "addr": "OBXpress Car Wash, 4011 N Croatan Hwy., Kitty Hawk, NC 27949",
+    "act": 3041.5,
+    "proforma": 2724.854751397059,
+    "model": 5866.400386221899
+   },
+   {
+    "name": "Euclid Anaheim Car Wash",
+    "addr": "1240 N Euclid St., Anaheim, CA 92801",
+    "act": 8080.833333333333,
+    "proforma": 9959.360072426469,
+    "model": 6331.66551920562
+   },
+   {
+    "name": "Heroes Express Salisbury",
+    "addr": "1420 E Innes St., Salisbury, NC 28146",
+    "act": 12442.416666666666,
+    "proforma": 4689.778305882353,
+    "model": 7000.201632240529
+   },
+   {
+    "name": "JJ Express Car Wash",
+    "addr": "2185 US-70, Thatcher, AZ 85552",
+    "act": 4599.833333333333,
+    "proforma": 4601.53196742647,
+    "model": 5407.15497313001
+   },
+   {
+    "name": "Big Dan's Bradenton 301",
+    "addr": "118 301 Blvd. W, Bradenton, FL 34205",
+    "act": 10929.833333333334,
+    "proforma": 10265.00482077206,
+    "model": 7683.988586054845
+   },
+   {
+    "name": "Cedar Place",
+    "addr": "1398 S Wadsworth Blvd., Lakewood, CO 80232",
+    "act": 1968.9166666666667,
+    "proforma": 9805.754415882351,
+    "model": 6365.427662563919
+   },
+   {
+    "name": "Dore's Mobil",
+    "addr": "1179 E Cedar Ave., Gladwin, MI 48624",
+    "act": 2039.9166666666667,
+    "proforma": 1547.1939947058827,
+    "model": 5768.849895916405
+   },
+   {
+    "name": "Dix Hill Car Wash",
+    "addr": "1232 E Jericho Turnpike, Huntington NY 11743",
+    "act": 2684.0,
+    "proforma": 4188.549515294119,
+    "model": 2961.956455747652
+   },
+   {
+    "name": "Suds Deluxe Tomball",
+    "addr": "Cadillac Express Car Wash, 24624 Kuykendahl Rd., Tomball, TX 77375",
+    "act": 7426.5,
+    "proforma": 6618.925455882352,
+    "model": 6512.149007319026
+   },
+   {
+    "name": "Aqua Shine Greenville",
+    "addr": "509 S Pleasantburg Dr., Greenville, SC 29607",
+    "act": 4548.0,
+    "proforma": 6179.04510485294,
+    "model": 7257.358190200755
+   },
+   {
+    "name": "Rock N Roll Stuart",
+    "addr": "Monster Express Car Wash, 1615 SE Decker Ave., Stuart, FL 34994",
+    "act": 2457.5,
+    "proforma": 7263.1034,
+    "model": 7058.658381655557
+   },
+   {
+    "name": "Stevens Creek Xpress",
+    "addr": "(Harv's Car Wash), 3655 Stevens Creek Blvd., Santa Clara, CA 95051",
+    "act": 8950.0,
+    "proforma": 11942.850251911766,
+    "model": 8464.40412005804
+   },
+   {
+    "name": "Buff It #2",
+    "addr": "The Short Co., 1699 Stick Ross Mountain Rd., Tahlequah, OK 74464",
+    "act": 3722.0,
+    "proforma": 2621.236735147059,
+    "model": 4877.765737489161
+   },
+   {
+    "name": "Varsity Carwash  Duff",
+    "addr": "1016 S Duff Ave., Ames, IA 50010",
+    "act": 7173.916666666667,
+    "proforma": 7108.64696275245,
+    "model": 6371.0535293061685
+   },
+   {
+    "name": "Super Scrub Car Wash",
+    "addr": "Pacific Car Wash, 4405 Pacific Ave., Stockton, CA 95207-7601",
+    "act": 1895.5454545454545,
+    "proforma": 3679.095772058823,
+    "model": 4099.524832318562
+   },
+   {
+    "name": "Splash Car Wash",
+    "addr": "905 Abbott St., Salinas, CA 93901",
+    "act": 6600.833333333333,
+    "proforma": 5223.116103097427,
+    "model": 5365.357322936681
+   },
+   {
+    "name": "Galaxy Car Wash",
+    "addr": "925 Lockwood Blvd., Oviedo, FL 32765",
+    "act": 4526.916666666667,
+    "proforma": 4564.73481165625,
+    "model": 8092.62559848027
+   },
+   {
+    "name": "Wash Guys",
+    "addr": "10380 N 59th Ave., Glendale, AZ 85302",
+    "act": 737.0,
+    "proforma": 5732.778400613971,
+    "model": 3397.4586005706983
+   },
+   {
+    "name": "Grimsby Tunnel Wash",
+    "addr": "5 Industrial Dr., Grimsby, ON L3M 5H8",
+    "act": 5080.5,
+    "proforma": 4318.999752941177,
+    "model": 5978.471913951496
+   },
+   {
+    "name": "Shortman Zero St",
+    "addr": "2121 S Zero St., Fort Smith, AR 72901",
+    "act": 1352.2727272727273,
+    "proforma": 5803.72128617647,
+    "model": 5627.1194117221685
+   },
+   {
+    "name": "Jupiter Galaxy Car Wash",
+    "addr": "MacMillan Oil Company, LLC, 6751 W Indiantown Rd., Jupiter, FL 33458",
+    "act": 1371.0,
+    "proforma": 8174.911095312498,
+    "model": 6620.560962882493
+   },
+   {
+    "name": "Thoroughbred Seymour",
+    "addr": "1550 E. Tipton St., Seymour IN 47274",
+    "act": 8633.5,
+    "proforma": 8028.928950000001,
+    "model": 6626.792076629264
+   },
+   {
+    "name": "Blue Rhino Car Wash",
+    "addr": "3614 Cobb Pkwy NW, Acworth, GA 30101",
+    "act": 5918.083333333333,
+    "proforma": 5739.9064509191185,
+    "model": 7121.483190196891
+   },
+   {
+    "name": "Sonny's Car Wash",
+    "addr": "801 Wadsworth Blvd., Lakewood, CO 80214",
+    "act": 2732.0833333333335,
+    "proforma": 10183.480514374996,
+    "model": 5016.459179762808
+   },
+   {
+    "name": "Thoroughbred Campbellsville",
+    "addr": "862 W Broadway, Campbellsville KY 42718",
+    "act": 2156.5,
+    "proforma": 4360.582923529412,
+    "model": 6201.361985031224
+   },
+   {
+    "name": "Ford CarWash",
+    "addr": "AHD Management, 25535 Ford Rd., Dearborn Heights, MI 48127",
+    "act": 7659.166666666667,
+    "proforma": 9462.07714921875,
+    "model": 4415.809104297129
+   },
+   {
+    "name": "Baymeadows",
+    "addr": "Zips Car Wash, 9491 Baymeadows Rd., Jacksonville, FL 32256",
+    "act": 2889.1666666666665,
+    "proforma": 9101.7745,
+    "model": 6042.447645829333
+   },
+   {
+    "name": "Dunn",
+    "addr": "1555 Dunn Ave., Jacksonville, FL 32218",
+    "act": 6882.583333333333,
+    "proforma": 7904.395457077208,
+    "model": 11154.917249844915
+   },
+   {
+    "name": "Atlantic Blvd",
+    "addr": "Zips Car Wash, 8714 Atlantic Blvd., Jacksonville, FL 32211",
+    "act": 3839.4166666666665,
+    "proforma": 6947.932352941174,
+    "model": 5688.026807468105
+   },
+   {
+    "name": "Jones",
+    "addr": "Foamy's Car Wash, 5730 S Jones Blvd., Las Vegas, NV 89118",
+    "act": 5066.5,
+    "proforma": 9519.164138235294,
+    "model": 7853.731353515291
+   },
+   {
+    "name": "Havasu Express Car Wash",
+    "addr": "108 N Lake Havasu Ave., Lake Havasu City AZ 86403",
+    "act": 1115.5833333333333,
+    "proforma": 3878.913839705882,
+    "model": 5292.760575787017
+   },
+   {
+    "name": "Shine Time CW",
+    "addr": "4343 N Wilson Way, Stockton CA 95205",
+    "act": 2619.9166666666665,
+    "proforma": 4186.06155882353,
+    "model": 4278.564023115545
+   },
+   {
+    "name": "The Auto Spa @ University",
+    "addr": "3212 University Place, Durant OK 74701",
+    "act": 6494.166666666667,
+    "proforma": 2145.1760677941174,
+    "model": 5333.155249187985
+   },
+   {
+    "name": "Varsity Carwash Lincoln",
+    "addr": "3705 Lincoln Way, Ames, IA 50014",
+    "act": 5940.166666666667,
+    "proforma": 4485.545671696079,
+    "model": 6414.223839191582
+   },
+   {
+    "name": "Radiant Fletcher",
+    "addr": "1718 W Fletcher Ave., Tampa, FL 33612",
+    "act": 5285.833333333333,
+    "proforma": 5046.999099264706,
+    "model": 7313.166551086971
+   },
+   {
+    "name": "Raceway Elgin",
+    "addr": "313 Dundee Ave, Elgin, IL 60120",
+    "act": 2844.9166666666665,
+    "proforma": 2354.9218627941173,
+    "model": 5799.3452534983435
+   },
+   {
+    "name": "Glacier Express King Ave",
+    "addr": "1832 King Ave. W, Billings, MT 59102",
+    "act": 9216.583333333334,
+    "proforma": 6505.02321048897,
+    "model": 5785.816074040871
+   },
+   {
+    "name": "Brookhurst Express Car Wash",
+    "addr": "14571 Brookhurst St., Westminster, CA 92683",
+    "act": 4049.181818181818,
+    "proforma": 9349.622804117646,
+    "model": 5792.227063969938
+   },
+   {
+    "name": "Coatesville",
+    "addr": "821 Lincoln Hwy E., Coatesville, PA 19320",
+    "act": 5630.666666666667,
+    "proforma": 2918.573658368872,
+    "model": 6155.4309912350045
+   },
+   {
+    "name": "Valley Forge",
+    "addr": "175 N Henderson Rd., King of Prussia, PA 19406",
+    "act": 14515.583333333334,
+    "proforma": 2464.2070599999997,
+    "model": 7000.919538839455
+   },
+   {
+    "name": "Clean Wave Express Carwash",
+    "addr": "11031 Los Alamitos Blvd., Los Alamitos, CA 90720",
+    "act": 10018.833333333334,
+    "proforma": 10877.784534509805,
+    "model": 5493.297725899071
+   },
+   {
+    "name": "Great Valley",
+    "addr": "120 Lancaster Ave., Frazier, PA 19355",
+    "act": 14137.166666666666,
+    "proforma": 4154.542016470588,
+    "model": 5926.488710195431
+   },
+   {
+    "name": "Hero CarWash",
+    "addr": "101 Continental Dr., Lewisville, TX 75067",
+    "act": 3358.75,
+    "proforma": 7099.378407444851,
+    "model": 6625.113120709807
+   },
+   {
+    "name": "Soapy Shark Okeechobee",
+    "addr": "2200 Okeechobee Blvd., West Palm Beach, FL 33409",
+    "act": 5149.833333333333,
+    "proforma": 10291.9470215625,
+    "model": 5832.109915637014
+   },
+   {
+    "name": "Wash City Casselberry",
+    "addr": "2699 Cassel Creek Blvd, Casselberry, FL 32707",
+    "act": 9346.666666666666,
+    "proforma": 9121.906700735297,
+    "model": 11154.917249844915
+   }
+  ],
+  "Y2": [
+   {
+    "name": "Wash & Wax Pros",
+    "addr": "3050 N University Dr., Sunrise, FL 33322",
+    "act": 2013.75,
+    "proforma": 5373.800760020381,
+    "model": 4060.816207584912
+   },
+   {
+    "name": "Big Peach Tallahassee",
+    "addr": "3738 Monroe Street, Tallahassee FL 32303",
+    "act": 3283.5833333333335,
+    "proforma": 9359.171290760867,
+    "model": 4703.635082261481
+   },
+   {
+    "name": "True Clean",
+    "addr": "29002 Crossroads Ln., Evergreen, CO 80439",
+    "act": 9911.666666666666,
+    "proforma": 5418.397195471015,
+    "model": 7940.677106290902
+   },
+   {
+    "name": "Virginia Car Wash Co.",
+    "addr": "4830 Portsmouth Blvd., Chesapeake, VA 23321",
+    "act": 3009.1666666666665,
+    "proforma": 6378.800169836956,
+    "model": 5784.312670706563
+   },
+   {
+    "name": "Aladdin Car Wash",
+    "addr": "1616 S 57th St., Temple, TX 76504",
+    "act": 2855.1666666666665,
+    "proforma": 11521.174920813515,
+    "model": 5484.730429706301
+   },
+   {
+    "name": "Waterworks Express Car Wash",
+    "addr": "1557 Marinette Ave., Marinette, WI 54143",
+    "act": 4572.333333333333,
+    "proforma": 3296.0522329710147,
+    "model": 7008.21994260389
+   },
+   {
+    "name": "Hercules/Elite Care Auto",
+    "addr": "1401 Lexington Ave., Mansfield, OH 44907",
+    "act": 6328.916666666667,
+    "proforma": 4113.507510348732,
+    "model": 7675.438968965035
+   },
+   {
+    "name": "American Pride Six Forks",
+    "addr": ", 8909 Six Forks Road, Raleigh NC 27615",
+    "act": 15387.5,
+    "proforma": 10322.242917798916,
+    "model": 9239.621220188392
+   },
+   {
+    "name": "Lickety Split Express",
+    "addr": "1245 Fremont St., Fernley, NV 89408",
+    "act": 9610.083333333334,
+    "proforma": 6579.483432574728,
+    "model": 7039.41701006709
+   },
+   {
+    "name": "Pelican Car Wash",
+    "addr": "Sebastian Family Car Wash, LLC., 13020 US-1, Sebastian, FL 32958",
+    "act": 5774.333333333333,
+    "proforma": 6488.221289062501,
+    "model": 8443.432195494328
+   },
+   {
+    "name": "Van Nuys",
+    "addr": ", 14537 Sherman Way, Los Angeles, CA 91405",
+    "act": 20712.583333333332,
+    "proforma": 9983.889926290762,
+    "model": 15148.723401130432
+   },
+   {
+    "name": "Avatar",
+    "addr": "1623 S Poinciana Blvd., Kissimmee, FL 34758",
+    "act": 13994.0,
+    "proforma": 5830.41322987432,
+    "model": 11533.234968001738
+   },
+   {
+    "name": "Evanston Car Wash",
+    "addr": "Goodluck Enterprise, 2416 Dempdter St., Evanston, IL 60202",
+    "act": 2305.6666666666665,
+    "proforma": 3274.8567282608697,
+    "model": 6153.545912925781
+   },
+   {
+    "name": "Thoroughbred Hurricane",
+    "addr": "3111 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 4424.5,
+    "proforma": 4548.667540760871,
+    "model": 8189.87996951324
+   },
+   {
+    "name": "Floris Car Wash",
+    "addr": "3893 McCoy Rd., Orlando, FL 32812",
+    "act": 12273.666666666666,
+    "proforma": 3613.955550951087,
+    "model": 12910.938043786511
+   },
+   {
+    "name": "Thoroughbred Teays",
+    "addr": "3972 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 6558.916666666667,
+    "proforma": 8189.405406250003,
+    "model": 8063.576031815631
+   },
+   {
+    "name": "Oasis Auto Spa",
+    "addr": "5001 Collin McKinney Pkwy., McKinney, TX 75070",
+    "act": 4925.333333333333,
+    "proforma": 8469.299015625,
+    "model": 10457.273045396416
+   },
+   {
+    "name": "Classie Express Wash",
+    "addr": "510 E Broadway, Louisville, KY 40202",
+    "act": 2605.0,
+    "proforma": 5305.241389605979,
+    "model": 5729.725532180389
+   },
+   {
+    "name": "Reseda",
+    "addr": ", 7326 Reseda Blvd., Los Angeles, CA 91335",
+    "act": 18316.75,
+    "proforma": 9168.862917798911,
+    "model": 14486.996316939774
+   },
+   {
+    "name": "Cadillac Express Cullen",
+    "addr": "9520 Cullen Blvd., Houston, TX 77051",
+    "act": 7470.166666666667,
+    "proforma": 7280.753316406249,
+    "model": 9544.671301208567
+   },
+   {
+    "name": "Buford",
+    "addr": "Mr. K Express Car Wash, 4227 Buford Dr., Buford, GA 30518",
+    "act": 4290.181818181818,
+    "proforma": 10032.82478957201,
+    "model": 7748.604193639128
+   },
+   {
+    "name": "Unrivaled Car Wash",
+    "addr": "10621 Fischer Park Dr., Louisville, KY 40241",
+    "act": 10482.4,
+    "proforma": 9498.264708899456,
+    "model": 5754.123656099204
+   },
+   {
+    "name": "Magic City Car Wash",
+    "addr": "619 N Broadway, Minot ND 58703",
+    "act": 5616.5,
+    "proforma": 6496.655246603262,
+    "model": 5805.97569137916
+   },
+   {
+    "name": "Big Dan's Bradenton 14th St",
+    "addr": "6310 14th St. W, Bradenton, FL 34207",
+    "act": 17738.583333333332,
+    "proforma": 11774.300054347828,
+    "model": 9712.771996508369
+   },
+   {
+    "name": "Cadillac Express Little York",
+    "addr": "235 E Little York, Houston, TX 77076",
+    "act": 12365.083333333334,
+    "proforma": 7473.276358695653,
+    "model": 10505.95133162982
+   },
+   {
+    "name": "Tampa",
+    "addr": "6301 E Hillsborough Ave., Tampa, FL 33610",
+    "act": 8469.583333333334,
+    "proforma": 10787.4662109375,
+    "model": 10969.023492753571
+   },
+   {
+    "name": "OBXpress",
+    "addr": "OBXpress Car Wash, 4011 N Croatan Hwy., Kitty Hawk, NC 27949",
+    "act": 2946.0,
+    "proforma": 3596.469780570653,
+    "model": 6936.001367811532
+   },
+   {
+    "name": "Heroes Express Salisbury",
+    "addr": "1420 E Innes St., Salisbury, NC 28146",
+    "act": 16980.416666666668,
+    "proforma": 6189.924782608697,
+    "model": 8715.179581751778
+   },
+   {
+    "name": "JJ Express Car Wash",
+    "addr": "2185 US-70, Thatcher, AZ 85552",
+    "act": 6781.25,
+    "proforma": 6073.450578125,
+    "model": 7196.127188174859
+   },
+   {
+    "name": "Big Dan's Bradenton 301",
+    "addr": "118 301 Blvd. W, Bradenton, FL 34205",
+    "act": 14329.416666666666,
+    "proforma": 13548.531207540762,
+    "model": 9677.829047094476
+   },
+   {
+    "name": "Panorama Car Wash",
+    "addr": "13800 Roscoe Blvd., Panorama City, CA 91402",
+    "act": 6273.2,
+    "proforma": 15388.957494140624,
+    "model": 14379.410523784249
+   },
+   {
+    "name": "Cedar Place",
+    "addr": "1398 S Wadsworth Blvd., Lakewood, CO 80232",
+    "act": 2910.4166666666665,
+    "proforma": 12942.377722826088,
+    "model": 8518.725899011182
+   },
+   {
+    "name": "Dix Hill Car Wash",
+    "addr": "1232 E Jericho Turnpike, Huntington NY 11743",
+    "act": 2866.0833333333335,
+    "proforma": 5528.365043478262,
+    "model": 3156.1311521772363
+   },
+   {
+    "name": "Suds Deluxe Tomball",
+    "addr": "Cadillac Express Car Wash, 24624 Kuykendahl Rd., Tomball, TX 77375",
+    "act": 9485.833333333334,
+    "proforma": 8736.159374999997,
+    "model": 8296.08986908554
+   },
+   {
+    "name": "Aqua Shine Greenville",
+    "addr": "509 S Pleasantburg Dr., Greenville, SC 29607",
+    "act": 4703.083333333333,
+    "proforma": 8155.571955163042,
+    "model": 9235.999323793914
+   },
+   {
+    "name": "Rock N Roll Stuart",
+    "addr": "Monster Express Car Wash, 1615 SE Decker Ave., Stuart, FL 34994",
+    "act": 4189.25,
+    "proforma": 9586.394239130435,
+    "model": 8410.167315241843
+   },
+   {
+    "name": "Stevens Creek Xpress",
+    "addr": "(Harv's Car Wash), 3655 Stevens Creek Blvd., Santa Clara, CA 95051",
+    "act": 19776.166666666668,
+    "proforma": 15763.078748641305,
+    "model": 11101.860439973709
+   },
+   {
+    "name": "Buff It #2",
+    "addr": "The Short Co., 1699 Stick Ross Mountain Rd., Tahlequah, OK 74464",
+    "act": 3950.4166666666665,
+    "proforma": 3459.7068709239124,
+    "model": 5452.433932285317
+   },
+   {
+    "name": "Varsity Carwash  Duff",
+    "addr": "1016 S Duff Ave., Ames, IA 50010",
+    "act": 8996.666666666666,
+    "proforma": 9382.530929098732,
+    "model": 7942.353675509531
+   },
+   {
+    "name": "Super Scrub Car Wash",
+    "addr": "Pacific Car Wash, 4405 Pacific Ave., Stockton, CA 95207-7601",
+    "act": 3286.5,
+    "proforma": 4855.949388586957,
+    "model": 5398.16633308835
+   },
+   {
+    "name": "Splash Car Wash",
+    "addr": "905 Abbott St., Salinas, CA 93901",
+    "act": 6968.083333333333,
+    "proforma": 6893.864421790084,
+    "model": 6981.045445915654
+   },
+   {
+    "name": "Jupiter Galaxy Car Wash",
+    "addr": "MacMillan Oil Company, LLC, 6751 W Indiantown Rd., Jupiter, FL 33458",
+    "act": 1146.5,
+    "proforma": 10789.86712890625,
+    "model": 7684.819387736165
+   },
+   {
+    "name": "Thoroughbred Seymour",
+    "addr": "1550 E. Tipton St., Seymour IN 47274",
+    "act": 10311.833333333334,
+    "proforma": 10597.18883152174,
+    "model": 7635.7030995292125
+   },
+   {
+    "name": "Blue Rhino Car Wash",
+    "addr": "3614 Cobb Pkwy NW, Acworth, GA 30101",
+    "act": 7068.916666666667,
+    "proforma": 7575.96348335598,
+    "model": 8760.981072307193
+   },
+   {
+    "name": "Thoroughbred Campbellsville",
+    "addr": "862 W Broadway, Campbellsville KY 42718",
+    "act": 3259.3333333333335,
+    "proforma": 5755.427771739131,
+    "model": 7495.7470159337245
+   },
+   {
+    "name": "Ford CarWash",
+    "addr": "AHD Management, 25535 Ford Rd., Dearborn Heights, MI 48127",
+    "act": 12477.5,
+    "proforma": 12488.766423658288,
+    "model": 5330.162455146133
+   },
+   {
+    "name": "Baymeadows",
+    "addr": "Zips Car Wash, 9491 Baymeadows Rd., Jacksonville, FL 32256",
+    "act": 5135.916666666667,
+    "proforma": 12013.211684782606,
+    "model": 7532.36324653917
+   },
+   {
+    "name": "Dunn",
+    "addr": "1555 Dunn Ave., Jacksonville, FL 32218",
+    "act": 10931.416666666666,
+    "proforma": 10432.820090862771,
+    "model": 13952.884239806885
+   },
+   {
+    "name": "Atlantic Blvd",
+    "addr": "Zips Car Wash, 8714 Atlantic Blvd., Jacksonville, FL 32211",
+    "act": 5481.75,
+    "proforma": 9170.40760869565,
+    "model": 6995.105258467662
+   },
+   {
+    "name": "Jones",
+    "addr": "Foamy's Car Wash, 5730 S Jones Blvd., Las Vegas, NV 89118",
+    "act": 6679.5,
+    "proforma": 12564.114157608696,
+    "model": 10722.411694010008
+   },
+   {
+    "name": "Havasu Express Car Wash",
+    "addr": "108 N Lake Havasu Ave., Lake Havasu City AZ 86403",
+    "act": 2704.8333333333335,
+    "proforma": 5119.684415760869,
+    "model": 6728.246468685459
+   },
+   {
+    "name": "The Auto Spa @ University",
+    "addr": "3212 University Place, Durant OK 74701",
+    "act": 9199.083333333334,
+    "proforma": 2831.3659279891303,
+    "model": 6173.248580053879
+   },
+   {
+    "name": "Varsity Carwash Lincoln",
+    "addr": "3705 Lincoln Way, Ames, IA 50014",
+    "act": 9259.5,
+    "proforma": 5920.363075996377,
+    "model": 7706.57402210835
+   },
+   {
+    "name": "Raceway Elgin",
+    "addr": "313 Dundee Ave, Elgin, IL 60120",
+    "act": 5135.25,
+    "proforma": 3108.2043220108694,
+    "model": 6815.106988592618
+   },
+   {
+    "name": "Glacier Express King Ave",
+    "addr": "1832 King Ave. W, Billings, MT 59102",
+    "act": 12904.916666666666,
+    "proforma": 8585.822560427989,
+    "model": 7031.556396822071
+   },
+   {
+    "name": "Brookhurst Express Car Wash",
+    "addr": "14571 Brookhurst St., Westminster, CA 92683",
+    "act": 10136.75,
+    "proforma": 12340.340657608693,
+    "model": 7993.782792075734
+   },
+   {
+    "name": "Clean Wave Express Carwash",
+    "addr": "11031 Los Alamitos Blvd., Los Alamitos, CA 90720",
+    "act": 13298.583333333334,
+    "proforma": 14357.324307971016,
+    "model": 7509.902348733103
+   },
+   {
+    "name": "Hero CarWash",
+    "addr": "101 Continental Dr., Lewisville, TX 75067",
+    "act": 4477.166666666667,
+    "proforma": 9370.297587466031,
+    "model": 7629.2305959082
+   },
+   {
+    "name": "Soapy Shark Okeechobee",
+    "addr": "2200 Okeechobee Blvd., West Palm Beach, FL 33409",
+    "act": 8868.0,
+    "proforma": 13584.091565726902,
+    "model": 6916.787424554655
+   },
+   {
+    "name": "Wash City Casselberry",
+    "addr": "2699 Cassel Creek Blvd, Casselberry, FL 32707",
+    "act": 10734.583333333334,
+    "proforma": 12039.783688858695,
+    "model": 13952.884239806885
+   }
+  ],
+  "Y3": [
+   {
+    "name": "Wash & Wax Pros",
+    "addr": "3050 N University Dr., Sunrise, FL 33322",
+    "act": 1658.75,
+    "proforma": 5816.349057904412,
+    "model": 3979.246684856869
+   },
+   {
+    "name": "True Clean",
+    "addr": "29002 Crossroads Ln., Evergreen, CO 80439",
+    "act": 10224.916666666666,
+    "proforma": 5864.618140980393,
+    "model": 8247.104347210077
+   },
+   {
+    "name": "Virginia Car Wash Co.",
+    "addr": "4830 Portsmouth Blvd., Chesapeake, VA 23321",
+    "act": 3493.3,
+    "proforma": 6904.113125,
+    "model": 6238.345053383811
+   },
+   {
+    "name": "Aladdin Car Wash",
+    "addr": "1616 S 57th St., Temple, TX 76504",
+    "act": 2811.6666666666665,
+    "proforma": 12719.377112578126,
+    "model": 5807.144648447542
+   },
+   {
+    "name": "Waterworks Express Car Wash",
+    "addr": "1557 Marinette Ave., Marinette, WI 54143",
+    "act": 5052.5,
+    "proforma": 3567.491828627452,
+    "model": 7382.929268914264
+   },
+   {
+    "name": "Hercules/Elite Care Auto",
+    "addr": "1401 Lexington Ave., Mansfield, OH 44907",
+    "act": 6885.833333333333,
+    "proforma": 4452.266952377451,
+    "model": 8298.720550556134
+   },
+   {
+    "name": "American Pride Six Forks",
+    "addr": ", 8909 Six Forks Road, Raleigh NC 27615",
+    "act": 17546.75,
+    "proforma": 11172.30998161765,
+    "model": 9762.2305401247
+   },
+   {
+    "name": "Pelican Car Wash",
+    "addr": "Sebastian Family Car Wash, LLC., 13020 US-1, Sebastian, FL 32958",
+    "act": 6341.181818181818,
+    "proforma": 7162.996303124998,
+    "model": 8499.27408913536
+   },
+   {
+    "name": "Evanston Car Wash",
+    "addr": "Goodluck Enterprise, 2416 Dempdter St., Evanston, IL 60202",
+    "act": 3131.75,
+    "proforma": 3579.996319882353,
+    "model": 6349.907459222824
+   },
+   {
+    "name": "Floris Car Wash",
+    "addr": "3893 McCoy Rd., Orlando, FL 32812",
+    "act": 13097.833333333334,
+    "proforma": 3989.80692825,
+    "model": 13574.307414531242
+   },
+   {
+    "name": "Thoroughbred Teays",
+    "addr": "3972 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 7409.1,
+    "proforma": 8952.46529822059,
+    "model": 8740.062610838942
+   },
+   {
+    "name": "Oasis Auto Spa",
+    "addr": "5001 Collin McKinney Pkwy., McKinney, TX 75070",
+    "act": 5828.333333333333,
+    "proforma": 9716.776941220587,
+    "model": 10961.479082564998
+   },
+   {
+    "name": "Classie Express Wash",
+    "addr": "510 E Broadway, Louisville, KY 40202",
+    "act": 3931.5,
+    "proforma": 5856.986494125001,
+    "model": 6140.998913570466
+   },
+   {
+    "name": "Cadillac Express Cullen",
+    "addr": "9520 Cullen Blvd., Houston, TX 77051",
+    "act": 7748.916666666667,
+    "proforma": 7959.148213652574,
+    "model": 9662.37428558288
+   },
+   {
+    "name": "Magic City Car Wash",
+    "addr": "619 N Broadway, Minot ND 58703",
+    "act": 6159.833333333333,
+    "proforma": 7172.30739225,
+    "model": 5876.242072472963
+   },
+   {
+    "name": "Big Dan's Bradenton 14th St",
+    "addr": "6310 14th St. W, Bradenton, FL 34207",
+    "act": 17738.166666666668,
+    "proforma": 12871.387777058824,
+    "model": 10822.407253151969
+   },
+   {
+    "name": "Cadillac Express Little York",
+    "addr": "235 E Little York, Houston, TX 77076",
+    "act": 13955.0,
+    "proforma": 8250.497100000002,
+    "model": 10946.742851873942
+   },
+   {
+    "name": "Tampa",
+    "addr": "6301 E Hillsborough Ave., Tampa, FL 33610",
+    "act": 9111.416666666666,
+    "proforma": 11675.84578125,
+    "model": 11685.450028151605
+   },
+   {
+    "name": "OBXpress",
+    "addr": "OBXpress Car Wash, 4011 N Croatan Hwy., Kitty Hawk, NC 27949",
+    "act": 2963.5,
+    "proforma": 3892.649644852942,
+    "model": 7392.540838500172
+   },
+   {
+    "name": "Heroes Express Salisbury",
+    "addr": "1420 E Innes St., Salisbury, NC 28146",
+    "act": 18217.833333333332,
+    "proforma": 6699.683294117648,
+    "model": 8950.35131894133
+   },
+   {
+    "name": "JJ Express Car Wash",
+    "addr": "2185 US-70, Thatcher, AZ 85552",
+    "act": 5650.5,
+    "proforma": 6705.089438249998,
+    "model": 7331.548330720943
+   },
+   {
+    "name": "Cedar Place",
+    "addr": "1398 S Wadsworth Blvd., Lakewood, CO 80232",
+    "act": 3679.1666666666665,
+    "proforma": 14008.220594117647,
+    "model": 8545.225104839485
+   },
+   {
+    "name": "Dix Hill Car Wash",
+    "addr": "1232 E Jericho Turnpike, Huntington NY 11743",
+    "act": 2625.75,
+    "proforma": 5983.642164705884,
+    "model": 3149.694058381215
+   },
+   {
+    "name": "Suds Deluxe Tomball",
+    "addr": "Cadillac Express Car Wash, 24624 Kuykendahl Rd., Tomball, TX 77375",
+    "act": 9068.416666666666,
+    "proforma": 10495.724651470588,
+    "model": 8805.369608831394
+   },
+   {
+    "name": "Aqua Shine Greenville",
+    "addr": "509 S Pleasantburg Dr., Greenville, SC 29607",
+    "act": 5003.5,
+    "proforma": 8915.479365573528,
+    "model": 9626.259805650518
+   },
+   {
+    "name": "Rock N Roll Stuart",
+    "addr": "Monster Express Car Wash, 1615 SE Decker Ave., Stuart, FL 34994",
+    "act": 5888.083333333333,
+    "proforma": 10583.379240000002,
+    "model": 8453.29698059054
+   },
+   {
+    "name": "Stevens Creek Xpress",
+    "addr": "(Harv's Car Wash), 3655 Stevens Creek Blvd., Santa Clara, CA 95051",
+    "act": 23692.083333333332,
+    "proforma": 17061.214645588236,
+    "model": 11300.51520542751
+   },
+   {
+    "name": "Buff It #2",
+    "addr": "The Short Co., 1699 Stick Ross Mountain Rd., Tahlequah, OK 74464",
+    "act": 4278.583333333333,
+    "proforma": 3931.855102720588,
+    "model": 5345.701055135826
+   },
+   {
+    "name": "Varsity Carwash  Duff",
+    "addr": "1016 S Duff Ave., Ames, IA 50010",
+    "act": 9331.416666666666,
+    "proforma": 10155.209946789217,
+    "model": 8661.040038411045
+   },
+   {
+    "name": "Super Scrub Car Wash",
+    "addr": "Pacific Car Wash, 4405 Pacific Ave., Stockton, CA 95207-7601",
+    "act": 3755.6666666666665,
+    "proforma": 5466.085147058824,
+    "model": 5609.669090917738
+   },
+   {
+    "name": "Splash Car Wash",
+    "addr": "905 Abbott St., Salinas, CA 93901",
+    "act": 6926.833333333333,
+    "proforma": 7610.826321656252,
+    "model": 7049.469675075615
+   },
+   {
+    "name": "Jupiter Galaxy Car Wash",
+    "addr": "MacMillan Oil Company, LLC, 6751 W Indiantown Rd., Jupiter, FL 33458",
+    "act": 785.8333333333334,
+    "proforma": 11912.013310312504,
+    "model": 8131.891877766793
+   },
+   {
+    "name": "Thoroughbred Seymour",
+    "addr": "1550 E. Tipton St., Seymour IN 47274",
+    "act": 9813.25,
+    "proforma": 11469.8985,
+    "model": 7893.61906934018
+   },
+   {
+    "name": "Baymeadows",
+    "addr": "Zips Car Wash, 9491 Baymeadows Rd., Jacksonville, FL 32256",
+    "act": 6171.25,
+    "proforma": 13392.61105,
+    "model": 7871.75951529983
+   },
+   {
+    "name": "Dunn",
+    "addr": "1555 Dunn Ave., Jacksonville, FL 32218",
+    "act": 12287.3,
+    "proforma": 11404.913445211396,
+    "model": 14789.322906092057
+   },
+   {
+    "name": "Atlantic Blvd",
+    "addr": "Zips Car Wash, 8714 Atlantic Blvd., Jacksonville, FL 32211",
+    "act": 5574.0,
+    "proforma": 10024.87382352941,
+    "model": 7308.172408951593
+   },
+   {
+    "name": "Jones",
+    "addr": "Foamy's Car Wash, 5730 S Jones Blvd., Las Vegas, NV 89118",
+    "act": 6816.833333333333,
+    "proforma": 13734.793970882356,
+    "model": 10629.755126035883
+   },
+   {
+    "name": "Havasu Express Car Wash",
+    "addr": "108 N Lake Havasu Ave., Lake Havasu City AZ 86403",
+    "act": 5586.916666666667,
+    "proforma": 5652.131594999999,
+    "model": 6730.255643467243
+   },
+   {
+    "name": "The Auto Spa @ University",
+    "addr": "3212 University Place, Durant OK 74701",
+    "act": 9615.5,
+    "proforma": 3064.5372397058823,
+    "model": 5939.149262199878
+   },
+   {
+    "name": "Varsity Carwash Lincoln",
+    "addr": "3705 Lincoln Way, Ames, IA 50014",
+    "act": 7075.416666666667,
+    "proforma": 6407.922388137255,
+    "model": 8300.08293262572
+   },
+   {
+    "name": "Glacier Express King Ave",
+    "addr": "1832 King Ave. W, Billings, MT 59102",
+    "act": 11379.916666666666,
+    "proforma": 9292.89030069853,
+    "model": 6822.087945294336
+   },
+   {
+    "name": "Brookhurst Express Car Wash",
+    "addr": "14571 Brookhurst St., Westminster, CA 92683",
+    "act": 8747.416666666666,
+    "proforma": 13356.604005882353,
+    "model": 8281.935271929267
+   },
+   {
+    "name": "Clean Wave Express Carwash",
+    "addr": "11031 Los Alamitos Blvd., Los Alamitos, CA 90720",
+    "act": 12332.166666666666,
+    "proforma": 15539.692192156865,
+    "model": 7749.539011367905
+   },
+   {
+    "name": "Hero CarWash",
+    "addr": "101 Continental Dr., Lewisville, TX 75067",
+    "act": 3714.9166666666665,
+    "proforma": 10141.969153492646,
+    "model": 8043.471086175528
+   },
+   {
+    "name": "Soapy Shark Okeechobee",
+    "addr": "2200 Okeechobee Blvd., West Palm Beach, FL 33409",
+    "act": 8952.75,
+    "proforma": 14996.8370885625,
+    "model": 7044.071096663193
+   },
+   {
+    "name": "Wash City Casselberry",
+    "addr": "2699 Cassel Creek Blvd, Casselberry, FL 32707",
+    "act": 7379.666666666667,
+    "proforma": 13031.295286764707,
+    "model": 15153.594903276557
+   }
+  ],
+  "Y4": [
+   {
+    "name": "Wash & Wax Pros",
+    "addr": "3050 N University Dr., Sunrise, FL 33322",
+    "act": 1571.6666666666667,
+    "proforma": 6029.142316120427,
+    "model": 3847.4015521693655
+   },
+   {
+    "name": "Waterworks Express Car Wash",
+    "addr": "1557 Marinette Ave., Marinette, WI 54143",
+    "act": 4254.916666666667,
+    "proforma": 3698.009822357724,
+    "model": 7374.314496343359
+   },
+   {
+    "name": "Hercules/Elite Care Auto",
+    "addr": "1401 Lexington Ave., Mansfield, OH 44907",
+    "act": 6643.6,
+    "proforma": 4615.154767708334,
+    "model": 8436.416969761376
+   },
+   {
+    "name": "American Pride Six Forks",
+    "addr": ", 8909 Six Forks Road, Raleigh NC 27615",
+    "act": 18737.666666666668,
+    "proforma": 11581.053029725612,
+    "model": 10322.19360011352
+   },
+   {
+    "name": "Evanston Car Wash",
+    "addr": "Goodluck Enterprise, 2416 Dempdter St., Evanston, IL 60202",
+    "act": 3730.909090909091,
+    "proforma": 3674.2295,
+    "model": 6483.092192507796
+   },
+   {
+    "name": "Floris Car Wash",
+    "addr": "3893 McCoy Rd., Orlando, FL 32812",
+    "act": 12792.416666666666,
+    "proforma": 4095.228656028963,
+    "model": 13889.19554056864
+   },
+   {
+    "name": "Magic City Car Wash",
+    "addr": "619 N Broadway, Minot ND 58703",
+    "act": 5933.416666666667,
+    "proforma": 7434.708882210366,
+    "model": 5703.131643127818
+   },
+   {
+    "name": "Cadillac Express Little York",
+    "addr": "235 E Little York, Houston, TX 77076",
+    "act": 12245.916666666666,
+    "proforma": 8552.34455487805,
+    "model": 11127.0323399629
+   },
+   {
+    "name": "JJ Express Car Wash",
+    "addr": "2185 US-70, Thatcher, AZ 85552",
+    "act": 4694.333333333333,
+    "proforma": 6950.397588429877,
+    "model": 7066.014926243745
+   },
+   {
+    "name": "Cedar Place",
+    "addr": "1398 S Wadsworth Blvd., Lakewood, CO 80232",
+    "act": 3514.75,
+    "proforma": 14520.716469512196,
+    "model": 8041.426013230862
+   },
+   {
+    "name": "Suds Deluxe Tomball",
+    "addr": "Cadillac Express Car Wash, 24624 Kuykendahl Rd., Tomball, TX 77375",
+    "act": 9288.583333333334,
+    "proforma": 10879.714577743902,
+    "model": 9259.061675698407
+   },
+   {
+    "name": "Aqua Shine Greenville",
+    "addr": "509 S Pleasantburg Dr., Greenville, SC 29607",
+    "act": 4231.916666666667,
+    "proforma": 9150.153900914633,
+    "model": 9826.664699380552
+   },
+   {
+    "name": "Rock N Roll Stuart",
+    "addr": "Monster Express Car Wash, 1615 SE Decker Ave., Stuart, FL 34994",
+    "act": 6547.5,
+    "proforma": 10863.021374390246,
+    "model": 8399.280158108464
+   },
+   {
+    "name": "Buff It #2",
+    "addr": "The Short Co., 1699 Stick Ross Mountain Rd., Tahlequah, OK 74464",
+    "act": 4686.833333333333,
+    "proforma": 4036.887236707316,
+    "model": 5272.978326727384
+   },
+   {
+    "name": "Varsity Carwash  Duff",
+    "addr": "1016 S Duff Ave., Ames, IA 50010",
+    "act": 9752.25,
+    "proforma": 10526.74201801321,
+    "model": 8996.960821051813
+   },
+   {
+    "name": "Super Scrub Car Wash",
+    "addr": "Pacific Car Wash, 4405 Pacific Ave., Stockton, CA 95207-7601",
+    "act": 3904.6666666666665,
+    "proforma": 5666.063871951221,
+    "model": 5624.9770549137065
+   },
+   {
+    "name": "Jones",
+    "addr": "Foamy's Car Wash, 5730 S Jones Blvd., Las Vegas, NV 89118",
+    "act": 5910.454545454545,
+    "proforma": 14237.28643323171,
+    "model": 9815.621877649915
+   },
+   {
+    "name": "Varsity Carwash Lincoln",
+    "addr": "3705 Lincoln Way, Ames, IA 50014",
+    "act": 6705.25,
+    "proforma": 6642.358573069106,
+    "model": 8581.758355190888
+   },
+   {
+    "name": "Glacier Express King Ave",
+    "addr": "1832 King Ave. W, Billings, MT 59102",
+    "act": 9260.166666666666,
+    "proforma": 9632.8740921875,
+    "model": 6261.087480571629
+   },
+   {
+    "name": "Brookhurst Express Car Wash",
+    "addr": "14571 Brookhurst St., Westminster, CA 92683",
+    "act": 8068.583333333333,
+    "proforma": 13845.26025,
+    "model": 8120.3489915561395
+   },
+   {
+    "name": "Clean Wave Express Carwash",
+    "addr": "11031 Los Alamitos Blvd., Los Alamitos, CA 90720",
+    "act": 13703.916666666666,
+    "proforma": 16108.217516260163,
+    "model": 7569.144012587713
+   }
+  ],
+  "Y5": [
+   {
+    "name": "Waterworks Express Car Wash",
+    "addr": "1557 Marinette Ave., Marinette, WI 54143",
+    "act": 3912.5,
+    "proforma": 3989.9579662280703,
+    "model": 7398.953151504455
+   },
+   {
+    "name": "American Pride Six Forks",
+    "addr": ", 8909 Six Forks Road, Raleigh NC 27615",
+    "act": 17887.333333333332,
+    "proforma": 12495.34668996711,
+    "model": 10609.010611835723
+   },
+   {
+    "name": "Floris Car Wash",
+    "addr": "3893 McCoy Rd., Orlando, FL 32812",
+    "act": 11202.583333333334,
+    "proforma": 4418.536181504934,
+    "model": 13918.198576743904
+   },
+   {
+    "name": "Cadillac Express Little York",
+    "addr": "235 E Little York, Houston, TX 77076",
+    "act": 11536.166666666666,
+    "proforma": 9227.52965131579,
+    "model": 11125.375213942976
+   },
+   {
+    "name": "Cedar Place",
+    "addr": "1398 S Wadsworth Blvd., Lakewood, CO 80232",
+    "act": 3305.0833333333335,
+    "proforma": 15667.08882236842,
+    "model": 7925.921006962243
+   },
+   {
+    "name": "Suds Deluxe Tomball",
+    "addr": "Cadillac Express Car Wash, 24624 Kuykendahl Rd., Tomball, TX 77375",
+    "act": 8015.416666666667,
+    "proforma": 11738.639412828948,
+    "model": 9456.431153953628
+   },
+   {
+    "name": "Aqua Shine Greenville",
+    "addr": "509 S Pleasantburg Dr., Greenville, SC 29607",
+    "act": 4418.333333333333,
+    "proforma": 9872.534472039471,
+    "model": 9854.88251523928
+   },
+   {
+    "name": "Rock N Roll Stuart",
+    "addr": "Monster Express Car Wash, 1615 SE Decker Ave., Stuart, FL 34994",
+    "act": 6352.416666666667,
+    "proforma": 11720.628325,
+    "model": 8343.362531131914
+   },
+   {
+    "name": "Varsity Carwash Lincoln",
+    "addr": "3705 Lincoln Way, Ames, IA 50014",
+    "act": 6380.416666666667,
+    "proforma": 7166.75530252193,
+    "model": 8788.931454546184
+   },
+   {
+    "name": "Glacier Express King Ave",
+    "addr": "1832 King Ave. W, Billings, MT 59102",
+    "act": 8207.0,
+    "proforma": 10393.36415209704,
+    "model": 6200.044251492535
+   },
+   {
+    "name": "Brookhurst Express Car Wash",
+    "addr": "14571 Brookhurst St., Westminster, CA 92683",
+    "act": 9154.0,
+    "proforma": 14938.307111842105,
+    "model": 8158.7021822049965
+   },
+   {
+    "name": "Clean Wave Express Carwash",
+    "addr": "11031 Los Alamitos Blvd., Los Alamitos, CA 90720",
+    "act": 14876.833333333334,
+    "proforma": 17379.918899122807,
+    "model": 7599.733069099807
+   }
+  ]
+ },
+ "pooled": {
+  "proforma": {
+   "n": 227,
+   "median_ratio": 0.8645217864895254,
+   "MdAPE_vs_act": 40.877842350412024,
+   "wMAPE": 50.46887107404967,
+   "miss_factor": 1.5269198341471124,
+   "spearman": 0.3571133986773883,
+   "within_10": 15.418502202643172,
+   "within_20": 31.277533039647576,
+   "within_30": 39.20704845814978,
+   "within_50": 61.67400881057269
+  },
+  "coldstart_loo": {
+   "n": 227,
+   "median_ratio": 0.7836551127467701,
+   "MdAPE_vs_act": 43.04685055043515,
+   "wMAPE": 43.52208737200917,
+   "miss_factor": 1.4936546793958652,
+   "spearman": 0.583701765860116,
+   "within_10": 10.572687224669604,
+   "within_20": 23.788546255506606,
+   "within_30": 40.969162995594715,
+   "within_50": 66.51982378854625
+  },
+  "coldstart_leaky": {
+   "n": 227,
+   "median_ratio": 0.8353386372967246,
+   "MdAPE_vs_act": 38.00704899623219,
+   "wMAPE": 38.66748314362171,
+   "miss_factor": 1.3964297480989125,
+   "spearman": 0.6861837161287916,
+   "within_10": 12.77533039647577,
+   "within_20": 26.431718061674008,
+   "within_30": 44.93392070484582,
+   "within_50": 71.36563876651982
+  },
+  "model_win_rate": 52.42290748898678,
+  "sign_test_p": 0.5069556871220087
+ },
+ "mature": {
+  "proforma_y5": {
+   "n": 70,
+   "median_ratio": 0.7058731139601057,
+   "MdAPE_vs_act": 58.45850117935269,
+   "wMAPE": 67.93607546359456,
+   "miss_factor": 1.6735847571520681,
+   "spearman": 0.3070072609570466,
+   "within_10": 4.285714285714286,
+   "within_20": 21.428571428571427,
+   "within_30": 37.142857142857146,
+   "within_50": 52.85714285714286
+  },
+  "coldstart_plateau_loo": {
+   "n": 70,
+   "median_ratio": 0.731688543284603,
+   "MdAPE_vs_act": 45.698274569273835,
+   "wMAPE": 50.49502320886714,
+   "miss_factor": 1.5904756783877776,
+   "spearman": 0.5925115912868516,
+   "within_10": 8.571428571428571,
+   "within_20": 24.285714285714285,
+   "within_30": 38.57142857142858,
+   "within_50": 62.857142857142854
+  },
+  "coldstart_plateau_leaky": {
+   "n": 70,
+   "median_ratio": 0.8090023440261733,
+   "MdAPE_vs_act": 33.16583129379772,
+   "wMAPE": 41.99552583851578,
+   "miss_factor": 1.38052082129315,
+   "spearman": 0.6937100866065962,
+   "within_10": 14.285714285714285,
+   "within_20": 32.857142857142854,
+   "within_30": 50.0,
+   "within_50": 72.85714285714285
+  },
+  "model_win_rate": 58.57142857142858,
+  "sign_test_p": 0.18821620302302766,
+  "sites": [
+   {
+    "name": "Wash & Wax Pros",
+    "addr": "3050 N University Dr., Sunrise, FL 33322",
+    "act": 1571.5,
+    "proforma": 6505.127235814144,
+    "model": 4173.330520891225
+   },
+   {
+    "name": "Big Peach Tallahassee",
+    "addr": "3738 Monroe Street, Tallahassee FL 32303",
+    "act": 2924.5,
+    "proforma": 11669.408835690789,
+    "model": 4836.561918855328
+   },
+   {
+    "name": "True Clean",
+    "addr": "29002 Crossroads Ln., Evergreen, CO 80439",
+    "act": 10178.5,
+    "proforma": 6559.112394517545,
+    "model": 8236.722369352772
+   },
+   {
+    "name": "Prestige Auto Spa",
+    "addr": "15180 Biscayne Blvd., N Miami Beach, FL 33160",
+    "act": 848.5,
+    "proforma": 16249.467652138155,
+    "model": 8519.409366559228
+   },
+   {
+    "name": "Texas Star Wash, LLC",
+    "addr": "810 E NASA Pkwy, Webster, TX 77598",
+    "act": 501.0,
+    "proforma": 3765.5364309210527,
+    "model": 8601.500924500944
+   },
+   {
+    "name": "The Auto Spa @ Main Street",
+    "addr": "2002 W Main Street, Durant OK 74701",
+    "act": 3679.5,
+    "proforma": 3425.650512952303,
+    "model": 6551.283897939687
+   },
+   {
+    "name": "Virginia Car Wash Co.",
+    "addr": "4830 Portsmouth Blvd., Chesapeake, VA 23321",
+    "act": 2896.5,
+    "proforma": 7721.7054687499985,
+    "model": 5972.4566828024335
+   },
+   {
+    "name": "Aladdin Car Wash",
+    "addr": "1616 S 57th St., Temple, TX 76504",
+    "act": 2449.0,
+    "proforma": 14225.61913906764,
+    "model": 5682.086584412117
+   },
+   {
+    "name": "Waterworks Express Car Wash",
+    "addr": "1557 Marinette Ave., Marinette, WI 54143",
+    "act": 3480.5,
+    "proforma": 3989.9579662280703,
+    "model": 7426.493019509199
+   },
+   {
+    "name": "Mr. D Cranston",
+    "addr": "1405 Cranston Rd., Beloit, WI 53511",
+    "act": 454.5,
+    "proforma": 6532.217426260963,
+    "model": 7684.587830917571
+   },
+   {
+    "name": "Seaford Car Wash",
+    "addr": "3470 Merrick Rd., Seaford, NY 11783",
+    "act": 3348.5,
+    "proforma": 6787.920435855262,
+    "model": 3109.991493799192
+   },
+   {
+    "name": "Hercules/Elite Care Auto",
+    "addr": "1401 Lexington Ave., Mansfield, OH 44907",
+    "act": 6141.5,
+    "proforma": 4979.509091474782,
+    "model": 8190.735372557412
+   },
+   {
+    "name": "The Washery",
+    "addr": "127 Airport Rd., Milnesville, PA 18202",
+    "act": 5770.0,
+    "proforma": 2128.229552631579,
+    "model": 7056.750321520014
+   },
+   {
+    "name": "West Chester Car Wash",
+    "addr": "1309 West Chester Pike, West Chester, PA 19382",
+    "act": 3852.0,
+    "proforma": 13225.837222450657,
+    "model": 6526.0057069472305
+   },
+   {
+    "name": "American Pride Six Forks",
+    "addr": ", 8909 Six Forks Road, Raleigh NC 27615",
+    "act": 17049.0,
+    "proforma": 12495.34668996711,
+    "model": 9629.169757624735
+   },
+   {
+    "name": "Lickety Split Express",
+    "addr": "1245 Fremont St., Fernley, NV 89408",
+    "act": 9962.0,
+    "proforma": 8044.28421782689,
+    "model": 7243.099284523803
+   },
+   {
+    "name": "Pelican Car Wash",
+    "addr": "Sebastian Family Car Wash, LLC., 13020 US-1, Sebastian, FL 32958",
+    "act": 6673.0,
+    "proforma": 7932.704239206414,
+    "model": 8718.679409775123
+   },
+   {
+    "name": "Van Nuys",
+    "addr": ", 14537 Sherman Way, Los Angeles, CA 91405",
+    "act": 18770.0,
+    "proforma": 12085.761489720397,
+    "model": 15850.55489971475
+   },
+   {
+    "name": "Avatar",
+    "addr": "1623 S Poinciana Blvd., Kissimmee, FL 34758",
+    "act": 13121.0,
+    "proforma": 7269.604706090665,
+    "model": 12046.994319435677
+   },
+   {
+    "name": "RAINDANCER OF GLENVILLE",
+    "addr": "172 Freemans Bridge Rd., Scotia, NY 12302",
+    "act": 1843.0,
+    "proforma": 4474.205093749999,
+    "model": 6117.917762240236
+   },
+   {
+    "name": "Evanston Car Wash",
+    "addr": "Goodluck Enterprise, 2416 Dempdter St., Evanston, IL 60202",
+    "act": 3303.5,
+    "proforma": 3964.30025,
+    "model": 6435.7699834897385
+   },
+   {
+    "name": "Thoroughbred Hurricane",
+    "addr": "3111 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 5369.5,
+    "proforma": 5506.281759868422,
+    "model": 8460.426625000724
+   },
+   {
+    "name": "Floris Car Wash",
+    "addr": "3893 McCoy Rd., Orlando, FL 32812",
+    "act": 9846.5,
+    "proforma": 4418.536181504934,
+    "model": 13637.745276719004
+   },
+   {
+    "name": "Thoroughbred Teays",
+    "addr": "3972 Teays Valley Rd., Hurricane, WV 25526",
+    "act": 6973.5,
+    "proforma": 9913.490754934212,
+    "model": 8343.902687206286
+   },
+   {
+    "name": "ROBIN AUTO WASH",
+    "addr": "45430 Schoenherr Rd., Shelby Township, MI 48315",
+    "act": 2165.5,
+    "proforma": 12915.732381887336,
+    "model": 3495.156466069802
+   },
+   {
+    "name": "Oasis Auto Spa",
+    "addr": "5001 Collin McKinney Pkwy., McKinney, TX 75070",
+    "act": 5632.5,
+    "proforma": 10764.924801439143,
+    "model": 10907.237897037572
+   },
+   {
+    "name": "Classie Express Wash",
+    "addr": "510 E Broadway, Louisville, KY 40202",
+    "act": 3804.5,
+    "proforma": 6550.577000008226,
+    "model": 6055.921576659653
+   },
+   {
+    "name": "Reseda",
+    "addr": ", 7326 Reseda Blvd., Los Angeles, CA 91335",
+    "act": 16731.5,
+    "proforma": 11099.14984786184,
+    "model": 15160.203280186632
+   },
+   {
+    "name": "Cadillac Express Cullen",
+    "addr": "9520 Cullen Blvd., Houston, TX 77051",
+    "act": 7787.5,
+    "proforma": 8813.54348828125,
+    "model": 9973.02618121304
+   },
+   {
+    "name": "Magic City Car Wash",
+    "addr": "619 N Broadway, Minot ND 58703",
+    "act": 6332.5,
+    "proforma": 8021.6595834375,
+    "model": 6087.967993995477
+   },
+   {
+    "name": "Extreme Express",
+    "addr": "655 W San Carlos St., San Jose, CA 95126",
+    "act": 20066.0,
+    "proforma": 11664.69479452714,
+    "model": 11287.048719902185
+   },
+   {
+    "name": "H2GLO CAR WASH",
+    "addr": "1905 Electric Rd., Roanoke, VA 24018",
+    "act": 2776.0,
+    "proforma": 9041.368959429825,
+    "model": 5591.596707656516
+   },
+   {
+    "name": "Big Dan's Bradenton 14th St",
+    "addr": "6310 14th St. W, Bradenton, FL 34207",
+    "act": 18425.0,
+    "proforma": 14395.63106644737,
+    "model": 10144.734182011216
+   },
+   {
+    "name": "Cadillac Express Little York",
+    "addr": "235 E Little York, Houston, TX 77076",
+    "act": 11070.0,
+    "proforma": 9227.52965131579,
+    "model": 11061.136368003898
+   },
+   {
+    "name": "Tampa",
+    "addr": "6301 E Hillsborough Ave., Tampa, FL 33610",
+    "act": 7975.5,
+    "proforma": 13058.511729029606,
+    "model": 11537.82046275747
+   },
+   {
+    "name": "OBXpress",
+    "addr": "OBXpress Car Wash, 4011 N Croatan Hwy., Kitty Hawk, NC 27949",
+    "act": 3259.0,
+    "proforma": 4353.621313322369,
+    "model": 7156.959197807139
+   },
+   {
+    "name": "Heroes Express Salisbury",
+    "addr": "1420 E Innes St., Salisbury, NC 28146",
+    "act": 18178.5,
+    "proforma": 7493.066842105264,
+    "model": 9099.209987031523
+   },
+   {
+    "name": "JJ Express Car Wash",
+    "addr": "2185 US-70, Thatcher, AZ 85552",
+    "act": 4555.5,
+    "proforma": 7499.1131875164465,
+    "model": 7397.095535277145
+   },
+   {
+    "name": "Big Dan's Bradenton 301",
+    "addr": "118 301 Blvd. W, Bradenton, FL 34205",
+    "act": 14962.0,
+    "proforma": 16728.870638363485,
+    "model": 10129.92437813315
+   },
+   {
+    "name": "Cedar Place",
+    "addr": "1398 S Wadsworth Blvd., Lakewood, CO 80232",
+    "act": 3283.5,
+    "proforma": 15667.08882236842,
+    "model": 8765.414165765362
+   },
+   {
+    "name": "Dix Hill Car Wash",
+    "addr": "1232 E Jericho Turnpike, Huntington NY 11743",
+    "act": 2276.0,
+    "proforma": 6692.231368421056,
+    "model": 3290.0014799068554
+   },
+   {
+    "name": "Suds Deluxe Tomball",
+    "addr": "Cadillac Express Car Wash, 24624 Kuykendahl Rd., Tomball, TX 77375",
+    "act": 7312.5,
+    "proforma": 11738.639412828948,
+    "model": 8705.079082945807
+   },
+   {
+    "name": "Aqua Shine Greenville",
+    "addr": "509 S Pleasantburg Dr., Greenville, SC 29607",
+    "act": 4180.0,
+    "proforma": 9872.534472039471,
+    "model": 9689.199592726629
+   },
+   {
+    "name": "Rock N Roll Stuart",
+    "addr": "Monster Express Car Wash, 1615 SE Decker Ave., Stuart, FL 34994",
+    "act": 2229.0,
+    "proforma": 11720.628325,
+    "model": 8693.738042368825
+   },
+   {
+    "name": "Stevens Creek Xpress",
+    "addr": "(Harv's Car Wash), 3655 Stevens Creek Blvd., Santa Clara, CA 95051",
+    "act": 24086.0,
+    "proforma": 19081.621643092105,
+    "model": 11381.620867271127
+   },
+   {
+    "name": "Buff It #2",
+    "addr": "The Short Co., 1699 Stick Ross Mountain Rd., Tahlequah, OK 74464",
+    "act": 4832.0,
+    "proforma": 4355.588860657895,
+    "model": 5549.806330258204
+   },
+   {
+    "name": "Varsity Carwash  Duff",
+    "addr": "1016 S Duff Ave., Ames, IA 50010",
+    "act": 9407.0,
+    "proforma": 11357.800598382675,
+    "model": 8455.505358459768
+   },
+   {
+    "name": "Super Scrub Car Wash",
+    "addr": "Pacific Car Wash, 4405 Pacific Ave., Stockton, CA 95207-7601",
+    "act": 3499.5,
+    "proforma": 6113.384703947369,
+    "model": 5538.203608158975
+   },
+   {
+    "name": "Splash Car Wash",
+    "addr": "905 Abbott St., Salinas, CA 93901",
+    "act": 41.0,
+    "proforma": 8428.656343062297,
+    "model": 7146.384039715595
+   },
+   {
+    "name": "Jupiter Galaxy Car Wash",
+    "addr": "MacMillan Oil Company, LLC, 6751 W Indiantown Rd., Jupiter, FL 33458",
+    "act": 622.5,
+    "proforma": 13192.032284446956,
+    "model": 7894.98532798245
+   },
+   {
+    "name": "Thoroughbred Seymour",
+    "addr": "1550 E. Tipton St., Seymour IN 47274",
+    "act": 8619.5,
+    "proforma": 12828.17595394737,
+    "model": 8051.032122568201
+   },
+   {
+    "name": "Blue Rhino Car Wash",
+    "addr": "3614 Cobb Pkwy NW, Acworth, GA 30101",
+    "act": 7164.5,
+    "proforma": 9354.321227343751,
+    "model": 9122.799801870073
+   },
+   {
+    "name": "Thoroughbred Campbellsville",
+    "addr": "862 W Broadway, Campbellsville KY 42718",
+    "act": 3570.0,
+    "proforma": 6967.09677631579,
+    "model": 7774.244047891132
+   },
+   {
+    "name": "Ford CarWash",
+    "addr": "AHD Management, 25535 Ford Rd., Dearborn Heights, MI 48127",
+    "act": 11451.5,
+    "proforma": 15117.98040758635,
+    "model": 5652.749611707792
+   },
+   {
+    "name": "Baymeadows",
+    "addr": "Zips Car Wash, 9491 Baymeadows Rd., Jacksonville, FL 32256",
+    "act": 5832.0,
+    "proforma": 14833.155059210529,
+    "model": 7866.479475913844
+   },
+   {
+    "name": "Dunn",
+    "addr": "1555 Dunn Ave., Jacksonville, FL 32218",
+    "act": 11265.0,
+    "proforma": 12755.49530056538,
+    "model": 14582.712724913175
+   },
+   {
+    "name": "Atlantic Blvd",
+    "addr": "Zips Car Wash, 8714 Atlantic Blvd., Jacksonville, FL 32211",
+    "act": 5116.5,
+    "proforma": 11212.029934210525,
+    "model": 7283.433251223257
+   },
+   {
+    "name": "Jones",
+    "addr": "Foamy's Car Wash, 5730 S Jones Blvd., Las Vegas, NV 89118",
+    "act": 6284.5,
+    "proforma": 15361.282730592107,
+    "model": 11072.066122929
+   },
+   {
+    "name": "U-DRIVE",
+    "addr": "U-Drive Express Car Wash, 6451 W Charleston Blvd., Las Vegas, NV 89146",
+    "act": 7005.5,
+    "proforma": 11078.244978618422,
+    "model": 11176.60568754442
+   },
+   {
+    "name": "Havasu Express Car Wash",
+    "addr": "108 N Lake Havasu Ave., Lake Havasu City AZ 86403",
+    "act": 5533.0,
+    "proforma": 6321.462968092105,
+    "model": 6857.509799227923
+   },
+   {
+    "name": "The Auto Spa @ University",
+    "addr": "3212 University Place, Durant OK 74701",
+    "act": 9766.0,
+    "proforma": 3427.4429654605265,
+    "model": 6337.822995638882
+   },
+   {
+    "name": "Varsity Carwash Lincoln",
+    "addr": "3705 Lincoln Way, Ames, IA 50014",
+    "act": 6490.5,
+    "proforma": 7166.75530252193,
+    "model": 8168.372401515611
+   },
+   {
+    "name": "Magic Belle",
+    "addr": "1601 S Main St., Bellefontaine, OH 43311",
+    "act": 6697.0,
+    "proforma": 5655.419126644738,
+    "model": 8107.079473466578
+   },
+   {
+    "name": "Raceway Elgin",
+    "addr": "313 Dundee Ave, Elgin, IL 60120",
+    "act": 4533.0,
+    "proforma": 3762.563126644736,
+    "model": 7203.725068158916
+   },
+   {
+    "name": "Glacier Express King Ave",
+    "addr": "1832 King Ave. W, Billings, MT 59102",
+    "act": 6108.5,
+    "proforma": 10393.36415209704,
+    "model": 7103.734437601391
+   },
+   {
+    "name": "Brookhurst Express Car Wash",
+    "addr": "14571 Brookhurst St., Westminster, CA 92683",
+    "act": 7362.0,
+    "proforma": 14938.307111842105,
+    "model": 8270.007616229504
+   },
+   {
+    "name": "Mr D Car Wash",
+    "addr": "525 E Sumner St., Hartford, WI 53027-1627",
+    "act": 3007.5,
+    "proforma": 4246.017056554277,
+    "model": 7818.09006834269
+   },
+   {
+    "name": "Clean Wave Express Carwash",
+    "addr": "11031 Los Alamitos Blvd., Los Alamitos, CA 90720",
+    "act": 14486.5,
+    "proforma": 17379.918899122807,
+    "model": 7756.627689087414
+   },
+   {
+    "name": "Hero CarWash",
+    "addr": "101 Continental Dr., Lewisville, TX 75067",
+    "act": 3323.5,
+    "proforma": 11342.99181640625,
+    "model": 7822.837417521663
+   },
+   {
+    "name": "Soapy Shark Okeechobee",
+    "addr": "2200 Okeechobee Blvd., West Palm Beach, FL 33409",
+    "act": 7751.0,
+    "proforma": 16772.778322734375,
+    "model": 7142.306324111784
+   }
+  ]
+ },
+ "y1_ratios": [
+  0.106,
+  0.129,
+  0.168,
+  0.191,
+  0.201,
+  0.233,
+  0.24,
+  0.261,
+  0.268,
+  0.288,
+  0.317,
+  0.338,
+  0.34,
+  0.341,
+  0.354,
+  0.386,
+  0.413,
+  0.421,
+  0.433,
+  0.447,
+  0.451,
+  0.473,
+  0.495,
+  0.5,
+  0.515,
+  0.532,
+  0.553,
+  0.601,
+  0.605,
+  0.625,
+  0.626,
+  0.633,
+  0.641,
+  0.67,
+  0.686,
+  0.717,
+  0.736,
+  0.749,
+  0.809,
+  0.81,
+  0.811,
+  0.832,
+  0.847,
+  0.871,
+  0.872,
+  0.892,
+  0.917,
+  0.921,
+  0.931,
+  0.935,
+  0.981,
+  0.992,
+  1.0,
+  1.009,
+  1.025,
+  1.031,
+  1.047,
+  1.065,
+  1.075,
+  1.116,
+  1.122,
+  1.126,
+  1.176,
+  1.193,
+  1.208,
+  1.224,
+  1.246,
+  1.257,
+  1.264,
+  1.318,
+  1.324,
+  1.417,
+  1.42,
+  1.516,
+  1.566,
+  1.679,
+  1.787,
+  1.929,
+  2.211,
+  2.332,
+  2.601,
+  2.653,
+  2.689,
+  3.027,
+  3.403,
+  3.738,
+  4.577,
+  5.891
+ ]
+}
