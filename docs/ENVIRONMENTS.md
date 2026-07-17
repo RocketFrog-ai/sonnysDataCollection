@@ -67,7 +67,7 @@ tolerances so it converges to the true minimum instead of stopping near it.
 
 ## The joblib rule
 
-`proforma/artifacts/coldstart_artifacts.joblib` is a **plain pickle of library objects** — a
+`proforma/artifacts/coldstart (models 1-4)/coldstart_artifacts.joblib` is a **plain pickle of library objects** — a
 dict of numpy arrays plus `lightgbm.Booster` / `LGBMRegressor` / `sklearn` `ExtraTreesRegressor`
 estimators. It contains **no reference to the module that wrote it**, verified by walking every
 `GLOBAL`/`STACK_GLOBAL` opcode in the pickle. That is why `coldstart_model.py` could be renamed to

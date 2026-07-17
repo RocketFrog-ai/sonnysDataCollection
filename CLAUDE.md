@@ -20,7 +20,7 @@ proforma/          ALL modelling. ONE tree. Versions are git tags, not folders.
   models/          coldstart.py — the model. tunnel_capex.py.
   pnl/             the shared P&L/market helper math (data, trend, opex, campaign). ONE copy,
                    Streamlit-free; imported by BOTH the UI and the API. See docs/DIVERGENCES.md §1.
-  artifacts/       the fitted joblib (~46 MB).
+  artifacts/       fitted models, one folder per model + model card (see its README).
   ui/              Streamlit only. app.py is a thin entry; panels/ holds the modes.
   backtests/       scripts (side effects at import). Run them; never import them.
 app/               FastAPI. app/main.py is the single entrypoint; app/server/ is the router layer.
@@ -60,7 +60,7 @@ which stops on a `1e-8` tolerance rather than exactly, so a different scipy buil
 `expense_plan` by ~1e-9 relative. `smoke.sh` asserts the pinned version. To upgrade: bump, re-capture
 the baseline, and commit that diff **alone**. See `docs/ENVIRONMENTS.md`.
 
-**Unpickle rule:** `proforma/artifacts/coldstart_artifacts.joblib` is a plain pickle of
+**Unpickle rule:** `proforma/artifacts/coldstart (models 1-4)/coldstart_artifacts.joblib` is a plain pickle of
 lightgbm/sklearn/numpy objects — it holds **no reference to the module that wrote it**, so the model
 module can be renamed freely. It *is* coupled to library versions: **refit it in the env that will
 load it** (conda `sonnys`). Inference-time logic needs no refit. Details, including the benign

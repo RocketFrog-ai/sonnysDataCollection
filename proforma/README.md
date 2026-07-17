@@ -10,7 +10,7 @@ proforma/
 ├── MODELLING.md      the authoritative method reference — read before changing math
 ├── models/           coldstart.py (the model), tunnel_capex.py
 ├── pnl/              shared P&L/market helper math (data, trend, opex, campaign) — imported by UI + API
-├── artifacts/        coldstart_artifacts.joblib — fitted; do not refit casually
+├── artifacts/        fitted models, one folder per model (+ model card README); do not refit casually
 ├── data/             every dataset, exactly once. Shared, immutable.
 ├── ui/               Streamlit only. app.py is a thin entry; panels/ holds the modes
 ├── backtests/        the evidence behind the model's design choices. Scripts, not libraries
@@ -89,7 +89,7 @@ before changing forecast behaviour.
 
 ## The artifact
 
-`artifacts/coldstart_artifacts.joblib` (~46 MB) is a plain pickle of numpy arrays plus lightgbm /
+`artifacts/coldstart (models 1-4)/coldstart_artifacts.joblib` (~46 MB) is a plain pickle of numpy arrays plus lightgbm /
 sklearn estimators. It carries **no reference to the module that wrote it**, so the module can be
 renamed freely — but it *is* coupled to library versions.
 

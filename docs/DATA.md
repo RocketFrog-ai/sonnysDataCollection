@@ -90,6 +90,6 @@ the classifier's raw output. See `docs/DIVERGENCES.md` §3.
 restructure too. `.gitattributes` used to carry 11 `filter=lfs` patterns, all dead — 9 matched
 untracked files, 2 matched nothing. It now carries an explanation instead.
 
-The largest tracked file, `proforma/artifacts/coldstart_artifacts.joblib` (~46 MB), is an
+The largest tracked file, `proforma/artifacts/coldstart (models 1-4)/coldstart_artifacts.joblib` (~46 MB), is an
 ordinary inline git blob. Do not convert it to LFS after the fact: a pattern added after a file is
 committed silently does nothing to the existing history.

@@ -58,9 +58,10 @@ find . -name __pycache__ -not -path './venv/*' -not -path './.claude/*' -exec rm
 echo "== 1/8 joblib artifact unpickles, un-refit =="
 "$PY" - <<'PY'
 import glob, joblib, sklearn
-hits = glob.glob("proforma/artifacts/coldstart_artifacts.joblib") or \
-       glob.glob("earnest-proforma-2.0/notebooks/artifacts/coldstart_artifacts.joblib")  # pre-refactor fallback
-assert hits, "coldstart_artifacts.joblib not found in either location"
+hits = glob.glob("proforma/artifacts/coldstart (models 1-4)/coldstart_artifacts.joblib") or \
+       glob.glob("proforma/artifacts/coldstart_artifacts.joblib") or \
+       glob.glob("earnest-proforma-2.0/notebooks/artifacts/coldstart_artifacts.joblib")  # older layouts
+assert hits, "coldstart_artifacts.joblib not found in any known location"
 a = joblib.load(hits[0])
 assert isinstance(a, dict) and "models" in a and "ramps" in a, "artifact shape changed"
 print(f"   ok  {hits[0]}  ({len(a)} keys, sklearn {sklearn.__version__})")
