@@ -48,6 +48,7 @@ class InsightsRequest(_PinRequest):
     last_n_months: int = Field(12, ge=3, le=36, description="Trailing window for the 'recent' metrics (months).")
     backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = INSIGHTS_LLM_BACKEND env (default azure).")
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order (no real names to the LLM).")
+    express_only: bool = Field(True, description="Ground the Key Insights on the Express-Tunnel-only local market (>=30-month express sites) — the SAME subset the explore map/KPIs default to. Pass False to describe the all-sites market.")
 
 
 class LocationSummaryRequest(_PinRequest):
@@ -65,6 +66,7 @@ class CompetitionScaleRequest(_PinRequest):
     min_months: int = Field(1, ge=1, le=72, description="Count the client's sites with >= this many months as the known portfolio (1 = every in-radius site).")
     backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = env default.")
     demo: bool = Field(False, description="Anonymized demo: don't send the client's real site names to the LLM.")
+    express_only: bool = Field(True, description="Count only the client's Express Tunnel sites as their portfolio (the analysis itself is always express/tunnel-scoped). Pass False to count every client site in the radius.")
 
 
 class PollinatedSummaryRequest(_PinRequest):
@@ -99,6 +101,24 @@ class PinpointForecastRequest(_PinRequest):
     ret_growth_pct: float = Field(0.0, ge=-20.0, le=15.0, description="Extra yr3-5 retail drift (%/yr) on top of the market trend.")
     horizon_months: int = Field(60, ge=12, le=60, description="Forecast horizon in months (<=60).")
     express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
+    # ── Model 5 (SUPER) — opt-in; defaults keep the response byte-identical (Model 3) ──
+    use_super: bool = Field(False, description="Switch the level to Model 5 (SUPER): the input-calibrated ridge when all 4 site inputs below are given (LOSO mature MdAPE ~29.6%), else the pin-only calibration (~31.8%); plus per-operating-year debias. A plateau_override wins outright and skips the layer, same as the Streamlit sidebar.")
+    open_year: Optional[int] = Field(None, ge=2021, le=2035, description="Planned opening year (Model 5 pin-only calibration's open-cohort term). Default: the current year.")
+    pay_stations: Optional[str] = Field(None, description="Model 5 site input: '1' | '2' | '3 or more' | 'live person'. All 4 site inputs together unlock the input-calibrated level; anything less falls back to pin-only.")
+    vacuum_slots: Optional[str] = Field(None, description="Model 5 site input: 'less than 12' | '12 - 20' | 'more than 20' | 'coin or none'.")
+    lot_type: Optional[str] = Field(None, description="Model 5 site input: 'corner lot with light' | 'corner lot without light' | 'inside lot near light' | 'inside lot no light'.")
+    traffic_count: Optional[float] = Field(None, ge=0, description="Model 5 site input: daily traffic count (vehicles/day).")
+    factors: Optional[Dict[str, str]] = Field(None, description="The client's proforma score-sheet factors, {factor: option value-or-label} — areaProfile, nearestCompetition, weeklyHoursCategory, siteAccessibility, entranceStackUpArea, visibility, trafficSpeed (camelCase or snake_case). Applied as a bounded relative-bucketing level multiplier (x0.75-x1.25; mid-bucket picks are ~neutral), itemised in summary.factor_adjustment. Sheet factors already inside the ridge (typeOfSite, numberOfPayStations, numberOfFreeVacuumSlots) are accepted but skipped, never double counted. Unknown factors/options are reported in `ignored`, not errors. Requires use_super=true.")
+
+
+class MarketForecastRequest(PinpointForecastRequest):
+    """Tab 2 — /market-forecast: the pinpoint inputs + the opt-in 🌐 true-market view (overall-market second
+    trajectory via an express-tunnel multiplier, and the projected-population growth overlay). Defaults leave
+    the response byte-identical to the plain PinpointForecastRequest call."""
+    use_competitors: bool = Field(False, description="Add the OVERALL-market trajectory (Sonny's + non-Sonny's express tunnels): the Sonny's-only market lines × the express-tunnel multiplier, plus history/forecast series for it. The gap between the two trajectories is the non-Sonny's volume — the market opportunity for the new entrant.")
+    market_multiplier: Optional[float] = Field(None, ge=1.0, le=25.0, description="Overall-market multiplier (total express tunnels ÷ Sonny's sites in the radius). OMIT for the normal path: the endpoint fetches the real Google-Places car washes near the pin (~5 mi, the Sitewise layer) and makes the one small express-only LLM call scoped to radius_miles, grounded on that observed set (falls back to the Places-count ratio when no LLM is configured, then ×1). Supply a value only to override — deterministic and reproducible (every request computes live; there is no response cache). market_view.multiplier_source says which path produced it (llm / places_ratio / user / unavailable).")
+    use_population_growth: bool = Field(False, description="Compound the trade area's projected '25→'30 population growth (council site-wise CSV, nearest covered site at 3/6/9 mi — the /site-factors source) onto every market forecast line. The entrant's own journey is never scaled.")
+    radius_miles: Optional[Literal[3, 6, 12]] = Field(None, description="Distance filter for the market plot: only sites within this many miles of the pin feed the history sum, trends, forecast lines, cannibalization and the multiplier's site count. None (default) = the legacy 20 km market, response unchanged. When set, the response echoes radius_miles/radius_km/n_sites_in_market.")
 
 
 class PnlForecastRequest(_PinRequest):

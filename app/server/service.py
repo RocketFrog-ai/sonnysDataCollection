@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 
 WASH_METRICS = {"mem_share_wash", "mem_wash_count", "ret_wash_count"}
 
+# How far out (driving miles) the Google Places ground-truth wash fetch looks. Also echoed into the
+# competition summary so the reader knows the observation radius behind the anchored counts.
+NEARBY_WASH_RADIUS_MILES = 11.0
+
 
 def resolve_lat_lon(latitude, longitude, address) -> Tuple[float, float]:
     """lat/lon if given, else geocode the address via TomTom. 400 if neither resolves."""
@@ -32,11 +36,12 @@ def resolve_lat_lon(latitude, longitude, address) -> Tuple[float, float]:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-def grounded_inputs(lat, lon, radius_km, min_months, demo):
+def grounded_inputs(lat, lon, radius_km, min_months, demo, express_only: bool = True):
     """Build (panel, meta, focal) for the grounded Key-Insights pipeline over the local market — the SAME subset
-    the KPI panels draw, with ASP recomputed per the Streamlit definitions. Returns None if no rich-history sites.
-    Shared by /insights and /insights/pollinated."""
-    df, site = D.load_panel()
+    the KPI panels draw, with ASP recomputed per the Streamlit definitions. `express_only` (the default) grounds
+    on the Express-Tunnel-only panel, matching the explore map/KPIs' default subset. Returns None if no
+    rich-history sites. Shared by /insights and /insights/pollinated."""
+    df, site = D.load_panel(express_only)
     site_rich = site[site.n_obs >= min_months]
     nb = market._neighbourhood(site_rich, lat, lon, radius_km)
     if nb.empty:
@@ -54,18 +59,19 @@ def grounded_inputs(lat, lon, radius_km, min_months, demo):
     return panel, meta, focal
 
 
-def known_site_names(lat, lon, radius_km, min_months, demo):
+def known_site_names(lat, lon, radius_km, min_months, demo, express_only: bool = True):
     """The client's OWN car washes in the radius (their portfolio) — names fed to the competition read so the LLM
-    can cross-reference them. [] in demo (don't leak identities)."""
+    can cross-reference them. `express_only` (the default) counts only their Express Tunnel sites, so the
+    'client runs N express site(s)' headline stays truthful. [] in demo (don't leak identities)."""
     if demo:
         return []
-    _, site = D.load_panel()
+    _, site = D.load_panel(express_only)
     pool = site[site.n_obs >= min_months] if min_months > 1 else site
     nb = market._neighbourhood(pool, lat, lon, radius_km)
     return [str(n) for n in nb.client_name.dropna().tolist()] if not nb.empty else []
 
 
-def nearby_washes(lat, lon, radius_miles: float = 11.0):
+def nearby_washes(lat, lon, radius_miles: float = NEARBY_WASH_RADIUS_MILES):
     """Real nearby car washes from Google Places (any wash type), fed to the express-scoped competition read as
     ground truth: name + driving distance + an express/tunnel name-keyword tag. The express keyword Text Searches
     are on, so express washes the type-only nearby search missed still surface. Mirrors the Streamlit explore

@@ -289,10 +289,11 @@ def render(df, site, pins, demo, express_only, radius, smooth):
 
     @st.cache_data(show_spinner=False, ttl=3600)
     def _compete_cached(_sig, lat, lon, radius_km, known_sites, backend, _nearby):
-        """LLM competitive-saturation estimate — client footprint vs total landscape, anchored to the real nearby
-        washes `_nearby` (name + distance from Google Places). Cached per (location, radius, known set)."""
+        """LLM competitive-saturation estimate — client footprint vs the express/tunnel landscape, anchored to the
+        real nearby washes `_nearby` (name + distance + express tag from Google Places, fetched at ~11 mi).
+        Cached per (location, radius, known set)."""
         return competition_scale_analysis(lat, lon, known_sites=list(known_sites), radius_km=radius_km, backend=backend,
-                                          nearby_washes=list(_nearby or []))
+                                          nearby_washes=list(_nearby or []), nearby_radius_miles=11)
 
 
     @st.cache_data(show_spinner=False, ttl=3600)

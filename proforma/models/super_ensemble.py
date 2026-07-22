@@ -68,10 +68,16 @@ def level_pin_only(plateau: float, model_plateau: float, anchor_level: float,
 
 def apply_super(traj, info: dict, open_year: int,
                 pay_stations: Optional[str] = None, vacuum_slots: Optional[str] = None,
-                lot_type: Optional[str] = None, traffic_count: Optional[float] = None):
+                lot_type: Optional[str] = None, traffic_count: Optional[float] = None,
+                extra_factors: Optional[dict] = None):
     """Rescale an existing coldstart (traj, info) to the SUPER calibrated level and apply
-    the per-operating-year debias. Used by predict_site_super and the Streamlit drop-pin
-    panel (which has its own predict_site call with trend sliders)."""
+    the per-operating-year debias. Used by predict_site_super, the Streamlit drop-pin
+    panel and the API's compute_trajectory.
+
+    `extra_factors` ({factor: option} from the client's proforma score sheet) applies the bounded
+    relative-bucketing level multiplier on TOP of the calibrated level — see
+    proforma/models/site_score_factors.py. The three sheet factors that are already ridge inputs
+    are skipped there, never double counted. info gains `factor_adjustment` when supplied."""
     art = load()
     plateau = info["plateau_med"]
     have_inputs = all(v is not None for v in (pay_stations, vacuum_slots, lot_type, traffic_count))
@@ -82,6 +88,13 @@ def apply_super(traj, info: dict, open_year: int,
         level = level_pin_only(plateau, info["model_plateau"], info["anchor_level"],
                                info["n_local_mature"], info["region"], open_year, art)
         src = "pin_only"
+    fadj = None
+    fmult = 1.0
+    if extra_factors:
+        from proforma.models.site_score_factors import factor_adjustment
+        fadj = factor_adjustment(extra_factors)
+        fmult = float(fadj["multiplier"])
+        level *= fmult
     scale = level / max(plateau, 1e-9)
     out = traj.copy()
     cy = art["year_debias"]
@@ -93,22 +106,28 @@ def apply_super(traj, info: dict, open_year: int,
                 super_version=art["version"],
                 plateau_med=level, plateau_lo=info["plateau_lo"] * scale,
                 plateau_hi=info["plateau_hi"] * scale)
+    if fadj is not None:
+        info["factor_adjustment"] = fadj
     return out, info
 
 
 def predict_site_super(lat: float, lon: float, open_year: int,
                        pay_stations: Optional[str] = None, vacuum_slots: Optional[str] = None,
                        lot_type: Optional[str] = None, traffic_count: Optional[float] = None,
+                       extra_factors: Optional[dict] = None,
                        coldstart_art: Optional[dict] = None, **predict_site_kwargs):
-    """Full trajectory: coldstart Model 3 -> calibrated level -> per-year debias.
+    """Full trajectory: coldstart Model 3 -> calibrated level -> per-year debias
+    (-> bounded score-sheet factor multiplier when `extra_factors` is supplied).
 
     Returns (traj_df, info) like coldstart.predict_site; info gains
-    level_source ('user_inputs'|'pin_only'), super_level, and rescaled plateau fields.
+    level_source ('user_inputs'|'pin_only'), super_level, rescaled plateau fields,
+    and `factor_adjustment` when extra_factors were given.
     """
     from proforma.models import coldstart as cm
     traj, info = cm.predict_site(lat, lon, art=coldstart_art,
                                  model_kind=predict_site_kwargs.pop("model_kind", "et"),
                                  **predict_site_kwargs)
-    return apply_super(traj, info, open_year, pay_stations, vacuum_slots, lot_type, traffic_count)
+    return apply_super(traj, info, open_year, pay_stations, vacuum_slots, lot_type, traffic_count,
+                       extra_factors=extra_factors)
 
 

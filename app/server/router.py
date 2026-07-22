@@ -7,8 +7,10 @@ Every pin-based forecast/market endpoint accepts `express_only`. It restricts th
 cluster gate and the model's level anchor to Express Tunnel sites with >=30 months of history,
 mirroring the Streamlit "Express-only sites" toggle. Default: True on the Explore-markets (tab 1)
 endpoints -- market exploration is express-first -- and False on the Forecast (tab 2) endpoints.
-The /insights/* endpoints do not take it -- they annotate, they do not model -- but their prompts
-are scoped to the express/tunnel segment (see location_poc.py)."""
+/insights and /insights/competition accept it too (default True): there it scopes what gets
+DESCRIBED -- the grounded market subset / the client's counted portfolio -- never a modelled
+number. The other /insights/* have no site data to scope, but their prompts are already
+express/tunnel-scoped (see location_poc.py)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -22,7 +24,6 @@ from app.pnl_analysis.insights.graph import market_insights as _insights_pipelin
 from app.pnl_analysis.insights import location_poc as _loc
 from app.pnl_analysis.insights import llm as _llm
 from app.server import service
-from app.server.cache import cached
 from app.server.schemas import (
     ExploreMarketRequest,
     ExploreKpisRequest,
@@ -32,6 +33,7 @@ from app.server.schemas import (
     CompetitionScaleRequest,
     PollinatedSummaryRequest,
     IndependentResearchRequest,
+    MarketForecastRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
     ExpensePlanRequest,
@@ -60,7 +62,6 @@ def get_operators():
 
 # ─────────────────────────── Explore-markets (tab 1) ───────────────────────────
 @router.post("/explore-market")
-@cached("explore-market")
 def explore_market(req: ExploreMarketRequest):
     """Tab 1 — the local-market MAP + header counts. Returns the in-market site markers (role-tagged
     focal/entrant/incumbent), geographic reference dots, and the highlighted operator's footprint — no
@@ -74,7 +75,6 @@ def explore_market(req: ExploreMarketRequest):
 
 
 @router.post("/explore-market/kpis")
-@cached("explore-market/kpis")
 def explore_market_kpis(req: ExploreKpisRequest):
     """Tab 1 — the 9 grouped per-site KPI series (washes x3 / revenue x3 / ASP x2 / membership purchases x1,
     always the LAST group) for the whole local market (every in-radius site with >= `min_months` of history).
@@ -88,7 +88,6 @@ def explore_market_kpis(req: ExploreKpisRequest):
 
 
 @router.post("/site-factors")
-@cached("site-factors")
 def site_factors(req: SiteFactorsRequest):
     """Tab 1 — the council site-factors extract for a pin (demographics / income bands / vehicles /
     competitors / mass-merchant anchors / StreetLight traffic), from the NEAREST covered site: matched
@@ -98,13 +97,12 @@ def site_factors(req: SiteFactorsRequest):
 
 
 @router.post("/insights")
-@cached("insights")
 def insights(req: InsightsRequest):
-    """Tab 1 — AI Key Insights (grounded on the local market's KPI panels). Returns JSON `{summary}` — the full
-    narrative as react-markdown-compatible markdown (plain `$`, `**bold**`, `- bullets`). 404 if the market is
-    too thin."""
+    """Tab 1 — AI Key Insights (grounded on the local market's KPI panels; by default the Express-Tunnel-only
+    subset, matching the explore map/KPIs). Returns JSON `{summary}` — the full narrative as
+    react-markdown-compatible markdown (plain `$`, `**bold**`, `- bullets`). 404 if the market is too thin."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    grounded = service.grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo)
+    grounded = service.grounded_inputs(lat, lon, req.radius_km, req.min_months, req.demo, req.express_only)
     if grounded is None:
         raise HTTPException(status_code=404, detail=f"No rich-history sites within {req.radius_km} km of this pin.")
     panel, meta, focal = grounded
@@ -115,7 +113,6 @@ def insights(req: InsightsRequest):
 
 
 @router.post("/insights/location")
-@cached("insights/location")
 def insights_location(req: LocationSummaryRequest):
     """Tab 1 — location-only LLM market read (world-knowledge from the pin alone). Returns JSON `{summary}` — the
     full Local Market Analysis markdown (no verdict; the verdict lives only in the pollinated summary). 503 if no
@@ -130,26 +127,25 @@ def insights_location(req: LocationSummaryRequest):
 
 
 @router.post("/insights/competition")
-@cached("insights/competition")
 def insights_competition(req: CompetitionScaleRequest):
     """Tab 1 — competitive landscape, EXPRESS/TUNNEL washes only (LLM sizes the express competitive set vs the
     client's own portfolio, anchored to the real nearby washes Google Places observes around the pin). Returns
     JSON `{summary}` — react-markdown that embeds the express-competitors table + saturation/positioning. 503 if
     no LLM answers."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    known = service.known_site_names(lat, lon, req.radius_km, req.min_months, req.demo)
+    known = service.known_site_names(lat, lon, req.radius_km, req.min_months, req.demo, req.express_only)
     nearby = service.nearby_washes(lat, lon)
     try:
         result = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
                                                  radius_km=req.radius_km, backend=req.backend,
-                                                 nearby_washes=nearby)
+                                                 nearby_washes=nearby,
+                                                 nearby_radius_miles=service.NEARBY_WASH_RADIUS_MILES)
         return _loc.build_competition_response(result)
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
 
 @router.post("/insights/pollinated")
-@cached("insights/pollinated")
 def insights_pollinated(req: PollinatedSummaryRequest):
     """Tab 1 — the fused ('pollinated') summary. CONSUMES the three insight responses the frontend already
     fetched — Key Insights (B), Local Market Analysis (A) and Competition Coverage (C) — passed in on the request,
@@ -176,7 +172,6 @@ def insights_pollinated(req: PollinatedSummaryRequest):
 
 
 @router.post("/insights/independent-research")
-@cached("insights/independent-research")
 def insights_independent_research(req: IndependentResearchRequest):
     """Tab 1 — independent EXTERNAL-LLM market research: can the model size a NEW car-wash market for this pin from
     world knowledge ALONE (no internal/operator data; optional web search)? Sizes each radius separately (default
@@ -193,35 +188,47 @@ def insights_independent_research(req: IndependentResearchRequest):
 
 # ─────────────────────────── Forecast (tab 2) ───────────────────────────
 @router.post("/pinpoint-forecast")
-@cached("pinpoint-forecast")
 def pinpoint_forecast(req: PinpointForecastRequest):
     """Tab 2 — the NEW SITE's own predicted 5-year monthly trajectory (total/membership/retail with P10-P90
-    bands) + the summary KPI cards. The whole-market growth plot is a separate call: POST /market-forecast."""
+    bands) + the summary KPI cards. `use_super` (+ the 4 site inputs and the score-sheet `factors`) switches
+    the level to Model 5 SUPER, mirroring the Streamlit sidebar; the summary then carries level provenance
+    and the itemised factor_adjustment. The whole-market growth plot is a separate call: POST /market-forecast."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     return market.pinpoint_forecast(
         lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
         horizon_months=req.horizon_months,
         express_only=req.express_only,
+        use_super=req.use_super, open_year=req.open_year,
+        pay_stations=req.pay_stations, vacuum_slots=req.vacuum_slots,
+        lot_type=req.lot_type, traffic_count=req.traffic_count, factors=req.factors,
     )
 
 
 @router.post("/market-forecast")
-@cached("market-forecast")
-def market_forecast(req: PinpointForecastRequest):
+def market_forecast(req: MarketForecastRequest):
     """Tab 2 — the TOTAL LOCAL-MARKET wash count: actual history + 5-year forecast (with vs without the new
-    site, a trend-CI band, and the entrant's own journey). Same inputs as /pinpoint-forecast."""
+    site, a trend-CI band, and the entrant's own journey). Same inputs as /pinpoint-forecast, plus the opt-in
+    🌐 true-market view: `use_competitors` (+ optional `market_multiplier`) adds the OVERALL-market second
+    trajectory (Sonny's ×multiplier; the gap to the Sonny's-only lines = the entrant's market opportunity),
+    `use_population_growth` compounds the projected '25→'30 trade-area population growth onto the forecast,
+    and either flag adds `market_view` with population ÷ (Sonny's + non-Sonny's sites + 1)."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     return market.market_forecast(
         lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
         mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
         horizon_months=req.horizon_months,
         express_only=req.express_only,
+        use_competitors=req.use_competitors, market_multiplier=req.market_multiplier,
+        use_population_growth=req.use_population_growth,
+        radius_miles=req.radius_miles,
+        use_super=req.use_super, open_year=req.open_year,
+        pay_stations=req.pay_stations, vacuum_slots=req.vacuum_slots,
+        lot_type=req.lot_type, traffic_count=req.traffic_count, factors=req.factors,
     )
 
 
 @router.post("/pnl-forecast")
-@cached("pnl-forecast")
 def pnl_forecast(req: PnlForecastRequest):
     """Tab 2 — the 💰 P&L chart: monthly revenue vs operating expense vs net over the 5-year horizon, with an
     optional retail→membership conversion campaign overlay. Revenue = forecast washes × cluster ASP; opex = the
@@ -238,7 +245,6 @@ def pnl_forecast(req: PnlForecastRequest):
 
 
 @router.post("/expense-plan")
-@cached("expense-plan")
 def expense_plan(req: ExpensePlanRequest):
     """Tab 2 — user-driven EXPENSE PLAN: monthly OPEX, CAPEX and combined-expenses lines over the 5-year horizon.
     `opex` is {year: % of revenue} fitted onto the learned new-site opex pattern; `capex` is {year: $} spread over
@@ -254,7 +260,6 @@ def expense_plan(req: ExpensePlanRequest):
 
 
 @router.post("/campaign/verdict")
-@cached("campaign/verdict")
 def campaign_verdict(req: CampaignVerdictRequest):
     """Tab 2 — 🎯 the campaign recommendation + the 3 supporting metrics (neighbours' membership share, established
     incumbents, this site's predicted membership). Only recommends a promo where the membership market is proven."""
@@ -267,7 +272,6 @@ def campaign_verdict(req: CampaignVerdictRequest):
 
 
 @router.post("/campaign/eating-the-market")
-@cached("campaign/eating-the-market")
 def eating_the_market(req: EatingMarketRequest):
     """Tab 2 — 📈 your site vs each incumbent, each forecast forward 5 years; with a campaign, the incumbents drift
     down as your promo steals their retail share (theft scales with market density, recovers as the promo fades)."""
@@ -289,7 +293,6 @@ def campaign_snapshot():
 
 
 @router.post("/campaign/local-evidence")
-@cached("campaign/local-evidence")
 def local_campaign_evidence(req: LocalCampaignsRequest):
     """Tab 2 — real campaigns in this local market: the nearest in-radius sites' monthly series for the chosen
     metric, with each site's detected promo-OPEX-spike months marked — the evidence behind the campaign model."""

@@ -229,14 +229,18 @@ def _format_competition(competition: Any) -> str:
     data = competition.get("data") or {}
     n_known = competition.get("known_count") or 0
     exp = data.get("estimated_express_tunnels") or {}
+    tot = data.get("estimated_total_carwashes") or {}
     se = competition.get("scale_express") or {}
-    parts = []                                        # express/tunnel segment only — the all-types count stays out
+    parts = []                                        # express/tunnel read; the all-types count is context only
     parts.append(f"Client runs {n_known} express site(s) of their own here.")
     if exp:
         line = f"Estimated {exp.get('low', '?')}–{exp.get('high', '?')} express tunnels operate in the radius"
         if se:
             line += f" -> client faces ~{se.get('low', '?')}x–{se.get('high', '?')}x its own count in express rivals"
         parts.append(line + ".")
+    if tot:
+        parts.append(f"({tot.get('low', '?')}–{tot.get('high', '?')} washes of ALL types exist in the radius — "
+                     "context only; the analysis covers express tunnels.)")
     share = data.get("estimated_client_share") or {}
     if share:
         parts.append(f"Est. client share of express tunnels: ~{share.get('low', '?')}–{share.get('high', '?')}%.")
@@ -334,8 +338,9 @@ COMPETITION_SYSTEM_PROMPT = (
     "SEGMENT SCOPE — the express/tunnel rule, be strict about it:\n"
     "- Everything you present — the named `competitors`, saturation, competitive intensity, pricing, headroom and the "
     "client's position — covers EXPRESS / CONVEYOR-TUNNEL car washes ONLY. Self-serve bays, in-bay automatics, hand "
-    "washes, detailing shops and gas-station washes are NOT the client's segment: never name them as competitors and "
-    "never let them drive the read. They may be counted ONLY inside `estimated_total_carwashes` (background context).\n"
+    "washes, detailing shops, gas-station washes and auto-service centres with wash add-ons are NOT the client's "
+    "segment: never name them as competitors and never let them drive the read — not even flagged as low-threat or "
+    "typed 'Other'. They may be counted ONLY inside `estimated_total_carwashes` (background context).\n"
     "- Observed nearby washes handed to you can be of ANY type: classify each from its name, its tag and your brand "
     "knowledge; keep the express/tunnel ones in the analysis and set the rest aside (they still count toward the "
     "all-types total, nothing else).\n\n"
@@ -369,7 +374,8 @@ def _format_nearby_washes(nearby_washes: List[dict]) -> str:
 
 def build_competition_messages(lat: float, lon: float, *, known_sites: Optional[List[str]] = None,
                                address: Optional[str] = None, radius_km: float = 20,
-                               nearby_washes: Optional[List[dict]] = None) -> List[dict]:
+                               nearby_washes: Optional[List[dict]] = None,
+                               nearby_radius_miles: Optional[float] = None) -> List[dict]:
     """Construct the competitive-saturation JSON request — location, radius, the client's OWN sites, and
     (when supplied) the REAL nearby car washes observed via Google Places (name + distance + express tag) as
     ground truth the estimate must be anchored to. The read is scoped to the EXPRESS/TUNNEL segment: the
@@ -379,9 +385,10 @@ def build_competition_messages(lat: float, lon: float, *, known_sites: Optional[
     known_block = ("; ".join(known)) if known else "(the client has no sites of their own in this radius)"
     observed_block = ""
     if nearby_washes:
+        ring = f"within ~{nearby_radius_miles:g} miles" if nearby_radius_miles else "near the pin"
         observed_block = (
             f"OBSERVED CAR WASHES near this pin from Google Places (GROUND TRUTH — real washes actually operating "
-            f"within ~11 miles, name + distance; {len(nearby_washes)} found, nearest first; the list can contain ANY "
+            f"{ring}, name + distance; {len(nearby_washes)} found, nearest first; the list can contain ANY "
             f"wash type — entries whose name suggests the client's segment are tagged '· likely express/tunnel'):\n"
             f"{_format_nearby_washes(nearby_washes)}\n"
             "Anchor your estimate to this observed set: classify each observed wash as express/conveyor tunnel or not "
@@ -408,7 +415,7 @@ def build_competition_messages(lat: float, lon: float, *, known_sites: Optional[
         "{\n"
         '  "estimated_total_carwashes": {"low": int, "high": int},   // background context ONLY: every wash of any type (tunnels, in-bay, self-serve) — never presented, never a competitor source\n'
         '  "estimated_express_tunnels": {"low": int, "high": int},   // express conveyor tunnels only (the client\'s segment) — total in the trade area, the client\'s own count included\n'
-        '  "competitors": [ {"name": str, "type": "Express tunnel", "scale": str, "threat": str, "note": str} ],  // EXPRESS/TUNNEL rivals ONLY — never list a self-serve, in-bay automatic, hand-wash, detailing or gas-station wash. scale = "National"|"Regional"|"Local/Independent"; threat = "High"|"Medium"|"Low" to the client\n'
+        '  "competitors": [ {"name": str, "type": "Express tunnel", "scale": str, "threat": str, "note": str} ],  // EXPRESS/TUNNEL rivals ONLY, type must be exactly "Express tunnel" — a self-serve, in-bay automatic, hand-wash, detailing, gas-station or auto-service wash must NOT appear in this list AT ALL, not even with type "Other" or a low threat. scale = "National"|"Regional"|"Local/Independent"; threat = "High"|"Medium"|"Low" to the client\n'
         '  "client_sites_recognized": [str],   // which of the CLIENT\'S OWN listed sites you recognize (names), [] if none\n'
         '  "client_position": str,             // 1-2 sentences: the client\'s competitive standing here vs these express rivals\n'
         '  "estimated_client_share": {"low": int, "high": int},  // client\'s share of the EXPRESS tunnels in the radius, as a PERCENT (their count ÷ total express)\n'
@@ -454,7 +461,8 @@ def competition_scale_analysis(lat: float, lon: float, *, known_sites: Optional[
                                address: Optional[str] = None, radius_km: float = 20,
                                backend: Optional[str] = None, max_tokens: int = 1900,
                                temperature: float = 0.3,
-                               nearby_washes: Optional[List[dict]] = None) -> Dict[str, Any]:
+                               nearby_washes: Optional[List[dict]] = None,
+                               nearby_radius_miles: Optional[float] = None) -> Dict[str, Any]:
     """Ask the LLM how many EXPRESS/CONVEYOR-TUNNEL washes really operate near this pin and size the client's
     competitive saturation in that segment. Other wash types never enter the presented read — the model keeps an
     all-types count as background calibration only.
@@ -469,7 +477,7 @@ def competition_scale_analysis(lat: float, lon: float, *, known_sites: Optional[
     known = [str(s) for s in (known_sites or []) if str(s).strip()]
     nearby = list(nearby_washes or [])
     messages = build_competition_messages(lat, lon, known_sites=known, address=address, radius_km=radius_km,
-                                          nearby_washes=nearby)
+                                          nearby_washes=nearby, nearby_radius_miles=nearby_radius_miles)
     text, used = llm_client.complete_cascade(messages, backend=backend, max_tokens=max_tokens,
                                              temperature=temperature, json_mode=True)
     data = _parse_json_lax(text)
@@ -497,6 +505,8 @@ def competition_scale_analysis(lat: float, lon: float, *, known_sites: Optional[
         "scale_express": _scale(data.get("estimated_express_tunnels")),
         "scale_total": _scale(data.get("estimated_total_carwashes")),
         "nearby_washes": nearby,            # real Google-Places washes fed as ground truth (name + distance)
+        "radius_km": radius_km,             # trade area analysed — echoed into the summary
+        "nearby_radius_miles": nearby_radius_miles,  # Places observation ring — echoed into the summary
         "backend": used,
         "prompt": messages[-1]["content"],
         "raw": (text or "").strip(),
@@ -510,29 +520,36 @@ def _rng(rng: Any) -> str:
     return "?"
 
 
-_NON_EXPRESS_TYPE_HINTS = ("in-bay", "in bay", "self-serve", "self serve", "self-service",
-                           "hand wash", "handwash", "detail", "gas")
-
-
 def _non_express(c: dict) -> bool:
-    """True when a competitor row is clearly typed OUTSIDE the express/tunnel segment. The prompt already
-    demands express-only rows; this keeps the rendered read honest if the model slips one through. Blank or
-    unrecognised types are kept — the model may omit the type on a genuine express rival."""
-    return any(h in str(c.get("type") or "").lower() for h in _NON_EXPRESS_TYPE_HINTS)
+    """True when a competitor row is typed OUTSIDE the express/tunnel segment — any stated type that isn't
+    express/tunnel/conveyor is dropped ("In-bay automatic", "Self-serve", "Other", "Auto service", ...). The
+    prompt already demands express-only rows; this keeps the rendered read honest if the model slips one
+    through. Only a BLANK type is kept, since the model may omit it on a genuine express rival."""
+    t = str(c.get("type") or "").strip().lower()
+    if not t:
+        return False
+    return not any(h in t for h in ("express", "tunnel", "conveyor"))
 
 
 def _competition_summary_md(result: Dict[str, Any]) -> str:
     """Build the Competition Coverage markdown SUMMARY from a `competition_scale_analysis` result — deterministic,
     no extra LLM call. React-markdown compatible (headings / **bold** / `- ` bullets). EXPRESS/TUNNEL washes only:
-    the all-types estimate stays out of the read, and competitor rows typed outside the segment are dropped."""
+    the all-types estimate survives as ONE context bullet, everything else (competitor rows, narrative) is the
+    express segment; rows typed outside it are dropped. States both radii — the trade area analysed and the
+    Google Places observation ring — so the reader knows the geography behind every count."""
     data = result.get("data") or {}
     n = result.get("known_count") or 0
-    exp = data.get("estimated_express_tunnels") or {}
+    exp, tot = data.get("estimated_express_tunnels") or {}, data.get("estimated_total_carwashes") or {}
     se = result.get("scale_express") or {}
     share = data.get("estimated_client_share") or {}
-    out: List[str] = ["## Nearby Carwash Analysis",
-                      "_Express / conveyor-tunnel car washes only — other wash types are out of scope for this read._",
-                      ""]
+    rk = result.get("radius_km")
+    pr = result.get("nearby_radius_miles")
+    scope = "_Express / conveyor-tunnel car washes only — other wash types count toward the all-types total and nothing else."
+    if isinstance(rk, (int, float)) and rk > 0:
+        scope += f" Trade area analysed: **{rk:g} km (≈{rk * 0.621:.0f} mi)** around the pin."
+    if isinstance(pr, (int, float)) and pr > 0:
+        scope += f" Ground truth: Google Places car washes within **~{pr:g} mi driving**."
+    out: List[str] = ["## Nearby Carwash Analysis", scope + "_", ""]
 
     # headline
     head = f"The client runs **{n}** express site(s) of their own here"
@@ -546,6 +563,8 @@ def _competition_summary_md(result: Dict[str, Any]) -> str:
     sat_bullets = []
     if exp:
         sat_bullets.append(f"- **Express tunnels (client's segment):** ~**{_rng(exp)}** in the radius.")
+    if tot:
+        sat_bullets.append(f"- **All car washes, every type (context only — not analysed):** ~**{_rng(tot)}** in the radius.")
     if share:
         sat_bullets.append(f"- **Client share of express tunnels:** ~**{_rng(share)}%**.")
     for label, key in (("Saturation", "saturation"), ("Competitive intensity", "competitive_intensity"),
@@ -583,7 +602,8 @@ def _competition_summary_md(result: Dict[str, Any]) -> str:
         if nearby:
             exp_names = [str(w.get("name")) for w in nearby if w.get("express_likely") and w.get("name")]
             tag = ("; " + f"{len(exp_names)} name-tagged express/tunnel: " + ", ".join(exp_names[:6])) if exp_names else ""
-            out.append(f"- Anchored to **{len(nearby)}** real washes of all types observed nearby via "
+            ring = f" within ~{pr:g} mi driving of the pin" if isinstance(pr, (int, float)) and pr > 0 else " nearby"
+            out.append(f"- Anchored to **{len(nearby)}** real washes of all types observed{ring} via "
                        f"Google Places{tag}.")
         if data.get("confidence"):
             out.append(f"- **Confidence:** {data['confidence']}")

@@ -24,6 +24,7 @@ import pandas as pd
 
 from proforma.pnl import data as D
 from proforma.pnl.data import cm, haversine_km, rank_sites as _rank_sites
+from proforma.pnl.demographics import annual_pop_growth, pin_demographics
 from proforma.pnl.trend import forecast_series, market_trend
 
 # role -> marker colour (mirrors the Explore-markets map in app.py)
@@ -260,7 +261,11 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
                        ret_growth_pct: float = 0.0, horizon_months: int = 60,
                        radius_km: float = 20.0,
                        model_kind: str = "et",
-                       express_only: bool = False) -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
+                       express_only: bool = False,
+                       use_super: bool = False, open_year: Optional[int] = None,
+                       pay_stations: Optional[str] = None, vacuum_slots: Optional[str] = None,
+                       lot_type: Optional[str] = None, traffic_count: Optional[float] = None,
+                       factors: Optional[Dict[str, str]] = None) -> Tuple[pd.DataFrame, Dict[str, Any], Dict[str, Any]]:
     """The cold-start 5-yr monthly trajectory for a pin + the local-market per-component trends it used.
 
     Learns this market's membership / retail trends from the ≤`radius_km` neighbours' own series
@@ -268,6 +273,13 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
     Returns (traj_df, info, trends). `trends` carries the RAW market trend (no slider) + the applied
     slider fractions, so callers can reuse them consistently (e.g. the market baseline forecast uses the
     raw trend while the entrant's trajectory uses raw+slider). Shared by pinpoint_forecast / pnl / campaign.
+
+    `use_super` switches the level to Model 5 (SUPER, mirroring the Streamlit sidebar): the calibrated
+    ridge level when all 4 site inputs (pay_stations, vacuum_slots, lot_type, traffic_count) are given,
+    else the pin-only calibration — plus per-operating-year debias, and the bounded score-sheet factor
+    multiplier when `factors` ({factor: option} — areaProfile, nearestCompetition, weeklyHoursCategory,
+    siteAccessibility, entranceStackUpArea, visibility, trafficSpeed; ridge-covered ones skipped) is
+    supplied. A manual `plateau_override` wins outright and skips the whole layer, same as the UI.
     """
     df, site = D.load_panel(express_only)
     art = D.load_model()
@@ -298,6 +310,14 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
         horizon=horizon_months, art=art, model_kind=model_kind,   # default "et" = Model 3 (most accurate)
         anchor_keys=anchor_keys,
     )
+    # Model 5 (SUPER): calibrated level + per-year debias + optional score-sheet factor multiplier.
+    # A manual plateau override wins outright (skip the layer), exactly as the Streamlit sidebar does.
+    if use_super and not plateau_override:
+        from proforma.models import super_ensemble as se
+        traj, info = se.apply_super(
+            traj, info, open_year=int(open_year) if open_year else int(pd.Timestamp.now().year),
+            pay_stations=pay_stations, vacuum_slots=vacuum_slots,
+            lot_type=lot_type, traffic_count=traffic_count, extra_factors=factors)
     trends = {"mem_g": mem_g, "mem_lo": mem_lo, "mem_hi": mem_hi,
               "ret_g": ret_g, "ret_lo": ret_lo, "ret_hi": ret_hi,
               "gm": gm, "gr": gr, "neighbour_keys": keys}
@@ -307,28 +327,47 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
 # ─────────────────────────── tab 2a: the new site's 5-year trajectory ───────────────────────────
 def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
                       mem_growth_pct: float, ret_growth_pct: float, horizon_months: int,
-                      express_only: bool = False) -> Dict[str, Any]:
+                      express_only: bool = False,
+                      use_super: bool = False, open_year: Optional[int] = None,
+                      pay_stations: Optional[str] = None, vacuum_slots: Optional[str] = None,
+                      lot_type: Optional[str] = None, traffic_count: Optional[float] = None,
+                      factors: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """The NEW SITE's own 5-year monthly trajectory (the "Predicted 5-year trajectory" chart) + the summary
     KPI cards. Total / membership / retail washes with a P10–P90 band.
 
     `mem_growth_pct` / `ret_growth_pct` are extra yr3-5 drift (%/yr) on top of the market's own trend.
-    The whole-market history+forecast plot is a SEPARATE endpoint — see `market_forecast`.
+    `use_super` (+ the 4 site inputs, `open_year`, and the score-sheet `factors`) switches the level to
+    Model 5 — see compute_trajectory; the summary then gains model/level provenance + the itemised
+    `factor_adjustment`. The whole-market history+forecast plot is a SEPARATE endpoint — see
+    `market_forecast`.
     """
     traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
                                             mem_growth_pct, ret_growth_pct, horizon_months,
-                                            express_only=express_only)
+                                            express_only=express_only,
+                                            use_super=use_super, open_year=open_year,
+                                            pay_stations=pay_stations, vacuum_slots=vacuum_slots,
+                                            lot_type=lot_type, traffic_count=traffic_count,
+                                            factors=factors)
     mem_g, ret_g = trends["mem_g"], trends["ret_g"]
     g = traj.set_index("month")
     tj_years, tj_quarters = age_periods(g.index)
+    summary: Dict[str, Any] = {
+        "plateau_med": float(info["plateau_med"]), "plateau_lo": float(info["plateau_lo"]),
+        "plateau_hi": float(info["plateau_hi"]), "mem_share": float(info["mem_share"]),
+        "n_neighbours_20km": int(info["n_neighbours_20km"]), "brand_known": bool(info["brand_known"]),
+        "ramp_source": info["ramp_source"], "region": info.get("region"), "state": info.get("state"),
+        "mem_growth": float(mem_g + trends["gm"]), "ret_growth": float(ret_g + trends["gr"]),
+    }
+    if use_super:
+        summary.update({
+            "model": "super" if info.get("level_source") else "coldstart_m3",  # override skips the layer
+            "level_source": info.get("level_source"),          # "user_inputs" | "pin_only" | None
+            "super_level": (float(info["super_level"]) if info.get("super_level") is not None else None),
+            "factor_adjustment": info.get("factor_adjustment"),  # itemised score-sheet multiplier, or None
+        })
     return {
         "lat": lat, "lon": lon, "brand": brand,
-        "summary": {
-            "plateau_med": float(info["plateau_med"]), "plateau_lo": float(info["plateau_lo"]),
-            "plateau_hi": float(info["plateau_hi"]), "mem_share": float(info["mem_share"]),
-            "n_neighbours_20km": int(info["n_neighbours_20km"]), "brand_known": bool(info["brand_known"]),
-            "ramp_source": info["ramp_source"], "region": info.get("region"), "state": info.get("state"),
-            "mem_growth": float(mem_g + trends["gm"]), "ret_growth": float(ret_g + trends["gr"]),
-        },
+        "summary": summary,
         "trajectory": {
             "months": [int(m) for m in g.index],
             "years": tj_years, "quarters": tj_quarters,
@@ -340,19 +379,147 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
 
 
 # ─────────────────────────── tab 2b: total local-market wash count (history + forecast) ───────────────────────────
+_PLACES_CACHE: Dict[Tuple[float, float], Tuple[float, List[dict]]] = {}
+_PLACES_TTL_S = 3600.0   # 1 h, same freshness as the 🛰️ Sitewise wash layer (st.cache_data ttl)
+
+
+def _places_car_washes(lat: float, lon: float) -> List[dict]:
+    """Real car washes (any type) within ~5 mi of the pin, nearest first: [{name, lat, lng, m}].
+    Reuses the existing Places(New) wrapper (`app.core.places.search_nearby` — the Competition
+    Coverage source) with the same 5 mi ring the 🛰️ Sitewise wash layer shows. [] when no
+    GOOGLE_MAPS_API_KEY is configured or the call fails — treated as "no ground truth", never an
+    error. In-process cache per ~110 m pin, 1 h TTL — so one 3/6/12-mi radius sweep bills one
+    Places call, but a long-lived server never serves a stale wash list."""
+    import time
+    from app.core import common as calib
+    key = calib.GOOGLE_MAPS_API_KEY or ""
+    if not key:
+        return []
+    ck = (round(lat, 3), round(lon, 3))
+    hit = _PLACES_CACHE.get(ck)
+    if hit is not None and (time.monotonic() - hit[0]) < _PLACES_TTL_S:
+        return hit[1]
+    out: List[dict] = []
+    try:
+        from app.core.places.search_nearby import find_nearby_places
+        resp = find_nearby_places(key, lat, lon, radius_miles=5.0, included_types=["car_wash"],
+                                  max_results=20, rank_preference="DISTANCE") or {}
+        for p in (resp.get("places") or []):
+            loc = p.get("location") or {}
+            plat, plon = loc.get("latitude"), loc.get("longitude")
+            if plat is None or plon is None:
+                continue
+            m = float(haversine_km(lat, lon, np.array([plat]), np.array([plon]))[0] * 1000.0)
+            out.append({"name": (p.get("displayName") or {}).get("text") or "—",
+                        "lat": plat, "lng": plon, "m": round(m)})
+        out.sort(key=lambda x: x["m"])
+    except Exception:
+        out = []
+    _PLACES_CACHE[ck] = (time.monotonic(), out)
+    return out
+
+
+def _resolve_market_multiplier(lat: float, lon: float, n_own: int, radius_km: float,
+                               market_multiplier: Optional[float],
+                               own_coords: Optional[pd.DataFrame] = None) -> Dict[str, Any]:
+    """The overall-market ÷ Sonny's-only multiplier for the 🌐 true-market view, sized for THIS radius.
+
+    Resolution ladder (mirrors the Streamlit 🌐 expander):
+      1. a caller-supplied `market_multiplier` wins outright (deterministic, cache-friendly);
+      2. else ONE small express-only LLM call (`market_scale_multiplier`) — grounded on the REAL car
+         washes Google Places sees near the pin (the same ~5 mi layer the 🛰️ Sitewise tab shows; the
+         prompt tells the model to extrapolate that observed set to the full `radius_km`), with the
+         radius-scoped Sonny's site count;
+      3. else (no LLM configured / it fails) the Places-count ratio (Sonny's + unseen washes) ÷ Sonny's —
+         a lower bound, source "places_ratio";
+      4. else ×1 with source "unavailable".
+    Always returns {multiplier, source, confidence, total_express_tunnels, n_places_washes,
+    n_places_non_sonnys}. `own_coords` (lat/lon of the in-radius Sonny's sites) is what separates a
+    Places wash we already track (<0.25 km from a panel site) from an unseen competitor."""
+    gw = _places_car_washes(lat, lon)                  # [] when no key / API down — never fatal
+    gw_new = gw
+    if len(gw) and own_coords is not None and len(own_coords):
+        gw_new = [w for w in gw
+                  if float(haversine_km(w["lat"], w["lng"],
+                                        own_coords.lat.values, own_coords.lon.values).min()) > 0.25]
+    grounding = {"n_places_washes": len(gw), "n_places_non_sonnys": len(gw_new)}
+
+    if market_multiplier is not None:
+        return {"multiplier": float(min(max(market_multiplier, 1.0), 25.0)), "source": "user",
+                "confidence": None, "total_express_tunnels": None, **grounding}
+    try:
+        import os as _os
+        from app.pnl_analysis.insights.llm import insights_llm_ready as _llm_ready
+        from app.pnl_analysis.insights.location_poc import market_scale_multiplier as _mult_llm
+        _backend = _os.getenv("INSIGHTS_LLM_BACKEND", "azure").strip().lower()
+        if _llm_ready(_backend):
+            _nearby = [{"name": w.get("name"), "distance_miles": round((w.get("m") or 0) / 1609.34, 1)}
+                       for w in gw]
+            ai = _mult_llm(lat, lon, n_client_sites=max(n_own, 1), radius_km=radius_km,
+                           nearby_washes=_nearby, backend=_backend)
+            if ai.get("multiplier"):
+                return {"multiplier": float(ai["multiplier"]), "source": "llm",
+                        "confidence": ai.get("confidence"),
+                        "total_express_tunnels": ai.get("total"), **grounding}
+    except Exception:                                  # LLM must never break the deterministic forecast
+        pass
+    if n_own > 0 and len(gw_new):                      # Places-count ratio — a lower bound (~5 mi ring)
+        return {"multiplier": float(min((n_own + len(gw_new)) / n_own, 25.0)), "source": "places_ratio",
+                "confidence": None, "total_express_tunnels": None, **grounding}
+    return {"multiplier": 1.0, "source": "unavailable", "confidence": None,
+            "total_express_tunnels": None, **grounding}
+
+
+_MILE_KM = 1.609344
+MARKET_RADII_MILES = (3, 6, 12)   # the distance filter the frontend offers for the market plot
+
+
 def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
                     mem_growth_pct: float, ret_growth_pct: float, horizon_months: int,
-                    express_only: bool = False) -> Dict[str, Any]:
+                    express_only: bool = False, use_competitors: bool = False,
+                    market_multiplier: Optional[float] = None,
+                    use_population_growth: bool = False,
+                    radius_miles: Optional[float] = None,
+                    use_super: bool = False, open_year: Optional[int] = None,
+                    pay_stations: Optional[str] = None, vacuum_slots: Optional[str] = None,
+                    lot_type: Optional[str] = None, traffic_count: Optional[float] = None,
+                    factors: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     """The TOTAL LOCAL-MARKET wash count: actual history + 5-year forecast (the "Total local-market wash
     count" growth plot). The forecast carries every neighbour forward at the local trend, subtracts the new
     site's (distance-learned, retail) cannibalization phased over the first year, and adds the entrant's own
     journey. Returns history + four forecast series; the cannibalization params themselves are internal.
+
+    🌐 True-market view (all opt-in; defaults leave the response byte-identical):
+      • `use_competitors` — adds a SECOND "overall market" trajectory (history + forecast) = the Sonny's-only
+        lines × an express-tunnel multiplier, so the chart shows BOTH the Sonny's-clients market and the full
+        competitive market; the gap between them is the non-Sonny's volume — the opportunity a new entrant
+        can capture. The multiplier comes from `market_multiplier` when supplied (deterministic), else one
+        small express-only LLM call (the same one the Streamlit 🌐 expander makes; NOTE: that path is
+        non-deterministic, and every request computes LIVE — the DB response cache was removed 2026-07-22 —
+        so it is re-sized on each call; pass `market_multiplier` for a stable number).
+      • `use_population_growth` — compounds the trade area's projected '25→'30 population growth (council
+        site-wise CSV, nearest covered site at 3→6→9 mi — same source as /site-factors) onto every market
+        forecast line. The entrant's own journey is NEVER scaled by either factor.
+    When either flag is on, the response gains a `market_view` block carrying the multiplier provenance, the
+    population record used and `population_per_wash_site` = population ÷ (Sonny's sites + non-Sonny's sites
+    + 1 for the new entrant) — the headline people-per-tunnel saturation metric.
+
+    `radius_miles` (3 / 6 / 12) filters the LOCAL MARKET by distance: every plotted number — the history
+    sum, the neighbour trends, the forecast lines, cannibalization, the multiplier's site count — is
+    computed over the sites within that ring of the pin. None (the default) keeps the legacy 20 km market,
+    byte-identical to before. The response echoes `radius_miles` / `radius_km` / `n_sites_in_market`.
     """
     df, site = D.load_panel(express_only)
     art = D.load_model()
+    radius_km = float(radius_miles) * _MILE_KM if radius_miles else 20.0
     traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
                                             mem_growth_pct, ret_growth_pct, horizon_months,
-                                            express_only=express_only)
+                                            radius_km=radius_km,
+                                            express_only=express_only,
+                                            use_super=use_super, open_year=open_year,
+                                            pay_stations=pay_stations, vacuum_slots=vacuum_slots,
+                                            lot_type=lot_type, traffic_count=traffic_count,
+                                            factors=factors)
     keys = trends["neighbour_keys"]
     mem_g, mem_lo, mem_hi = trends["mem_g"], trends["mem_lo"], trends["mem_hi"]
     ret_g, ret_lo, ret_hi = trends["ret_g"], trends["ret_lo"], trends["ret_hi"]
@@ -390,6 +557,49 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         "lat": lat, "lon": lon, "brand": brand,
         "open_date": open_date.strftime("%Y-%m-%d"),
     }
+    if radius_miles:                                   # echo the distance filter behind every plotted number
+        out.update({"radius_miles": float(radius_miles), "radius_km": radius_km,
+                    "n_sites_in_market": len(keys)})   # (absent on the legacy 20 km default — golden-safe)
+
+    # ── 🌐 true-market view (opt-in): the multiplier, the trade-area demographics and the headline
+    #    population-per-tunnel metric. _k / pop_g stay (1.0, 0.0) unless the flags ask otherwise, so the
+    #    default response is untouched. ──
+    _k, pop_g = 1.0, 0.0
+    if use_competitors or use_population_growth:
+        n_own = len(keys)
+        dem = pin_demographics(lat, lon)
+        pop = dem.get("population") if dem.get("found") else None
+        pop_growth = dem.get("growth_2030_2025") if dem.get("found") else None
+        pop_g_annual = annual_pop_growth(pop_growth) if pop_growth is not None else None
+        if use_population_growth and pop_g_annual is not None:
+            pop_g = pop_g_annual
+        _own_xy = site.loc[site.site_key.isin(keys), ["lat", "lon"]] if keys else None
+        mult_info = (_resolve_market_multiplier(lat, lon, n_own, radius_km, market_multiplier,
+                                                own_coords=_own_xy)
+                     if (use_competitors and n_own > 0) else
+                     {"multiplier": 1.0, "source": ("no_neighbours" if use_competitors else "off"),
+                      "confidence": None, "total_express_tunnels": None})
+        if use_competitors:
+            _k = float(mult_info["multiplier"])
+        n_non = max(0, int(round(n_own * _k)) - n_own)             # implied non-Sonny's express tunnels
+        out["market_view"] = {
+            "use_competitors": use_competitors, "use_population_growth": use_population_growth,
+            "multiplier": _k, "multiplier_source": mult_info["source"],
+            "multiplier_confidence": mult_info["confidence"],
+            "total_express_tunnels": mult_info["total_express_tunnels"],
+            # Places grounding behind the multiplier (absent counts = 0: no key / no washes seen)
+            "n_places_washes": mult_info.get("n_places_washes", 0),
+            "n_places_non_sonnys": mult_info.get("n_places_non_sonnys", 0),
+            "n_sonnys_sites": n_own, "n_non_sonnys_sites": n_non,
+            "population": pop,
+            "population_growth_2030_2025": pop_growth,
+            "population_growth_annual": pop_g_annual,
+            "population_growth_applied": bool(use_population_growth and pop_g),
+            "population_source": ({"radius_used_miles": dem.get("radius_used_miles"),
+                                   **(dem.get("match") or {})} if dem.get("found") else None),
+            # the whiteboard metric: people per wash site once the new entrant opens
+            "population_per_wash_site": (float(pop) / (n_own + n_non + 1) if pop else None),
+        }
 
     if keys:
         nb = site[site.has_coords]
@@ -404,6 +614,12 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         base_fc = base_mem + base_ret
         base_mem_lo = forecast_series(hist_mem, H, g=mem_lo, seasonal=True); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi, seasonal=True)
         base_ret_lo = forecast_series(hist_ret, H, g=ret_lo, seasonal=True); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi, seasonal=True)
+        if pop_g:                                                             # 🌐 demographic drift: projected population
+            _demog = (1.0 + pop_g) ** (np.arange(1, H + 1) / 12.0)            # growth compounds over the forecast years
+            base_mem, base_ret = base_mem * _demog, base_ret * _demog
+            base_mem_lo, base_mem_hi = base_mem_lo * _demog, base_mem_hi * _demog
+            base_ret_lo, base_ret_hi = base_ret_lo * _demog, base_ret_hi * _demog
+            base_fc = base_mem + base_ret
 
         nb_keyed = nb.set_index("site_key").loc[keys]
         dist_by_key = pd.Series(haversine_km(lat, lon, nb_keyed.lat.values, nb_keyed.lon.values), index=keys)
@@ -415,6 +631,16 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
         with_fc = np.clip(base_mem + np.clip(base_ret - cannib_full * phase, 0, None) + new_traj, 0, None)
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
+
+        # 🌐 overall market (Sonny's + non-Sonny's): the Sonny's-only history/forecast scaled ×k — the unseen
+        # express competitors lose retail to the entrant too, so cannibalization scales with the market. The
+        # entrant's own journey is added once, NEVER scaled. The gap between these lines and the Sonny's-only
+        # ones is the non-Sonny's volume — the market opportunity the frontend shades.
+        if _k > 1.0:
+            mkt_hist = hist * _k
+            mkt_base = base_fc * _k
+            mkt_with = np.clip(base_mem * _k + np.clip(base_ret * _k - cannib_full * _k * phase, 0, None)
+                               + new_traj, 0, None)
 
         hist_years, hist_quarters = calendar_periods(hist.index)
         fc_years, fc_quarters = calendar_periods(fdates)
@@ -437,6 +663,11 @@ def market_forecast(lat: float, lon: float, brand: Optional[str], plateau_overri
                          "new_entrant_years": ent_years, "new_entrant_quarters": ent_quarters},
             "net_change_year5": float(with_fc[-1] - base_fc[-1]),
         })
+        if _k > 1.0:                                   # 🌐 the second, overall-market trajectory (opt-in)
+            out["history"]["market_values"] = [None if pd.isna(v) else float(v) for v in mkt_hist.values]
+            out["forecast"]["market_without_new_site"] = [float(v) for v in mkt_base]
+            out["forecast"]["market_with_new_site"] = [None if i < open_off else float(mkt_with[i])
+                                                       for i in range(H)]
     else:
         fc_years, fc_quarters = calendar_periods(fdates)
         out.update({

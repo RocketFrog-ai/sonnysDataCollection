@@ -1,8 +1,8 @@
 {
  "_counts": {
-  "ast_files": 43,
+  "ast_files": 44,
   "import_failed": 0,
-  "import_ok": 35,
+  "import_ok": 36,
   "import_skipped": 8
  },
  "_detail_ast": {
@@ -42,6 +42,7 @@
   "proforma/backtests/backtest_models.py": "ok",
   "proforma/backtests/backtest_proxy_robust.py": "ok",
   "proforma/models/coldstart.py": "ok",
+  "proforma/models/super_ensemble.py": "ok",
   "proforma/models/tunnel_capex.py": "ok",
   "proforma/ui/app.py": "ok",
   "proforma/ui/panels/__init__.py": "ok",
@@ -87,6 +88,7 @@
   "proforma/backtests/backtest_models.py": "skipped: script tree, side effects at import (see AST_ONLY_PREFIXES)",
   "proforma/backtests/backtest_proxy_robust.py": "skipped: script tree, side effects at import (see AST_ONLY_PREFIXES)",
   "proforma/models/coldstart.py": "ok",
+  "proforma/models/super_ensemble.py": "ok",
   "proforma/models/tunnel_capex.py": "ok",
   "proforma/ui/app.py": "skipped: streamlit entrypoint (executes on import)",
   "proforma/ui/panels/__init__.py": "ok",

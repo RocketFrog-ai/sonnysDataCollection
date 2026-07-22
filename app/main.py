@@ -12,7 +12,6 @@ and its whole subsystem were removed in 2026-07 — nothing rendered them — so
 became the same app and were collapsed into this one.
 """
 import logging
-from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -26,21 +25,10 @@ logger = logging.getLogger(__name__)
 FAST_API_HOST = calib.FAST_API_HOST
 FAST_API_PORT = calib.FAST_API_PORT
 
+# Every request computes LIVE. The DB read-through pin cache (app/db + app/server/cache.py) was
+# REMOVED 2026-07-22 — stale cached responses were worse than the recompute cost.
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """On boot, ensure the pin read-through cache table exists and prune expired rows. Best-effort:
-    a missing/unreachable DB just logs 'disabled' and the API serves live (see app/db/pin_cache.py)."""
-    try:
-        from app.db import pin_cache
-        ready = pin_cache.init(create=True, prune=True)
-        logger.info("pin-cache: %s", "ready" if ready else "disabled (no DB / unreachable)")
-    except Exception:  # never let cache setup stop the app from starting
-        logger.warning("pin-cache: init raised; caching disabled", exc_info=True)
-    yield
-
-
-app = FastAPI(title="Earnest Proforma backend", version="2.0", lifespan=lifespan)
+app = FastAPI(title="Earnest Proforma backend", version="2.0")
 
 app.add_middleware(
     CORSMiddleware,

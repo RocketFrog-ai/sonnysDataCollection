@@ -107,9 +107,13 @@ identical cluster labels.** At `false` every number is bit-for-bit unchanged —
 now default `express_only` to **`true`** — market exploration is express-first — while the 6
 Forecast-tab requests keep `false`. The golden capture pins `express_only=false` on the explore
 cases (`scripts/_golden/capture_api.py`), so the frozen all-sites numbers still verify. Relatedly,
-the `/insights/*` prompts are scoped to the express/tunnel segment: `/insights/competition` analyses
-express/conveyor-tunnel rivals only and is grounded on a Google Places nearby fetch (any wash type,
-express-keyword-tagged; see `app/core/places/nearby_competitors.py`).
+the `/insights/*` prompts are scoped to the express/tunnel segment, and two insight requests grew
+their own `express_only: true` default — on `/insights` it grounds Key Insights on the express-only
+panel, on `/insights/competition` it counts only express sites as the client portfolio; neither
+touches a modelled number. `/insights/competition` analyses express/conveyor-tunnel rivals only
+(the all-types count survives as one labelled context line), states the trade-area + Places radii in
+its summary, and is grounded on a Google Places nearby fetch (any wash type, express-keyword-tagged;
+see `app/core/places/nearby_competitors.py`).
 
 ### Why this is not fixed here
 

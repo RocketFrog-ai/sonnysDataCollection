@@ -15,6 +15,8 @@ import folium
 from streamlit_folium import st_folium
 
 from proforma.models import coldstart as cm
+from proforma.models.site_score_factors import FACTORS as SCORE_SHEET_FACTORS
+from proforma.pnl.demographics import pin_demographics
 from proforma.pnl.opex import _drop_corrupt_asp_rows, global_healthy_asp, opex_pct_curve_fit
 from proforma.pnl.campaign import campaign_conv_pct, campaign_effect, campaign_months_by_site, _campaigns_df
 from proforma.pnl.trend import forecast_series, market_trend, robust_growth
@@ -470,6 +472,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         # Model 5 (SUPER): the 4 optional site inputs. All four together switch the level to the
         # input-calibrated ridge (level_A); anything less falls back to the pin-only calibration.
         sup_pay = sup_vac = sup_lot = sup_traffic = None
+        sup_factors: dict = {}
         sup_open_year = int(pd.Timestamp.now().year)
         if strat.get("super"):
             st.markdown("**Site inputs** — all 4 unlock the input-calibrated level (±20% hit-rate 34%→39%)")
@@ -486,6 +489,20 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                 sup_pay, sup_vac, sup_lot, sup_traffic = _sp, _sv, _sl, float(_st)
             elif any(x != "(unknown)" for x in (_sp, _sv, _sl)) or _st > 0:
                 st.caption("Need all 4 inputs for the input-calibrated level — using pin-only calibration for now.")
+            # ── the client's proforma score-sheet factors (optional). The 3 capacity factors above are
+            #    already model inputs; these 7 apply a bounded ±25% relative-bucketing level adjustment
+            #    (mid-bucket picks are ~neutral). Backtested r ≈ −0.08…0.21, none survive FDR — this
+            #    layer exists for score-sheet parity, and every contribution is shown, not hidden. ──
+            with st.expander("📋 Proforma score-sheet factors (optional)"):
+                st.caption("Client score sheet — each pick shifts the level by its score minus the "
+                           "factor's average score; total clipped to ±25%. Leave '(not set)' to skip.")
+                for _f in SCORE_SHEET_FACTORS:
+                    if _f.get("ridge_input"):
+                        continue                        # pay stations / vacuums / lot type live above
+                    _c = st.selectbox(_f["label"], ["(not set)"] + [o["label"] for o in _f["options"]],
+                                      key=f"ssf_{_f['name']}")
+                    if _c != "(not set)":
+                        sup_factors[_f["name"]] = _c
         gm = st.slider("Yr 3–5 membership — extra on top of per-site trend (%/yr)", -15, 25, 0)
         gr = st.slider("Yr 3–5 retail — extra on top of per-site trend (%/yr)", -20, 15, 0)
     lat, lon = st.session_state.pin
@@ -539,7 +556,8 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         from proforma.models import super_ensemble as se
         traj, info = se.apply_super(traj, info, open_year=sup_open_year,
                                     pay_stations=sup_pay, vacuum_slots=sup_vac,
-                                    lot_type=sup_lot, traffic_count=sup_traffic)
+                                    lot_type=sup_lot, traffic_count=sup_traffic,
+                                    extra_factors=(sup_factors or None))
     g = traj.set_index("month")
     # ── big, full-width interactive map: pan/zoom is smooth (no rerun) → click to drop the pin ──
     # EVERY site within the radius is a neighbour the model actually uses (local trend + level anchor) — including
@@ -615,11 +633,13 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
             n_own = int(len(nbk))
             c_comp, c_pop = st.columns(2)
             use_comp = c_comp.toggle(
-                "Scale market to ALL competitors", value=False, key="mkt_use_comp",
-                help="The blue market lines sum Sonny's client sites only. Estimate the TOTAL washes competing in "
-                     "this radius (Google Places / AI) and scale the market history + forecast accordingly — "
-                     "assumes a typical competitor does similar volume to a typical client site. Turning this on "
-                     "triggers the same (cached, 1 h) Places fetch the 🛰️ Sitewise tab uses.")
+                "Show the OVERALL market (incl. non-Sonny's)", value=False, key="mkt_use_comp",
+                help="The blue market lines sum Sonny's client sites only. Estimate the TOTAL express-tunnel "
+                     "washes competing in this radius (Google Places / AI) and draw a SECOND trajectory for the "
+                     "overall market next to the Sonny's-only one — the shaded gap between them is the "
+                     "non-Sonny's volume a new entrant can capture. Assumes a typical competitor does similar "
+                     "volume to a typical client site. Turning this on triggers the same (cached, 1 h) Places "
+                     "fetch the 🛰️ Sitewise tab uses.")
             use_pop = c_pop.toggle(
                 "Grow forecast with population (’25→’30 proj.)", value=False, key="mkt_use_pop",
                 help="Overlay the trade area's projected population growth on the 5-yr market forecast. The local "
@@ -679,42 +699,51 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                 if "mkt_mult_edit" not in st.session_state:
                     st.session_state.mkt_mult_edit = round(max(1.0, _default), 2)
                 mkt_scale_k = float(st.number_input(
-                    "Market multiplier — the blue market lines are scaled ×this", min_value=1.0, max_value=25.0,
-                    step=0.05, key="mkt_mult_edit",
+                    "Market multiplier — the overall-market line = Sonny's clients ×this", min_value=1.0,
+                    max_value=25.0, step=0.05, key="mkt_mult_edit",
                     help="TOTAL express tunnels ÷ Sonny's sites in the radius. Set by the AI call "
                          "(Places-count ratio when no LLM is configured); edit to override."))
-                st.caption(f"→ market history + forecast scaled **×{mkt_scale_k:.2f}**. "
-                           "The 🆕 entrant's own line is never scaled.")
+                st.caption(f"→ a second **overall market** trajectory (Sonny's ×**{mkt_scale_k:.2f}**) is drawn "
+                           "next to the Sonny's-clients lines; the shaded gap between them is the non-Sonny's "
+                           "volume — the 🆕 entrant's market opportunity. Its own line is never scaled.")
             elif use_comp:
                 st.info("No Sonny's sites within the radius — there is no panel market line to scale.")
-            # ── demographics: nearest trade-area record (same CSV as the Sitewise right panel) ──
-            _row = _dkm = None
+            # ── demographics: the council site-wise extract — SAME source + 3→6→9 mi escalation as the
+            #    Site-factors tab (experiments/council/data/Council--site-wise-data.csv). The pin only "has"
+            #    demographics when a council-enriched site lies within 9 miles; no interpolation. ──
             try:
-                _row, _dkm = svp.nearest_site(svp.load_features(), lat, lon)
+                _dem = pin_demographics(lat, lon)
             except Exception:                                  # pragma: no cover — CSV missing/unreadable
-                pass
-            if _row is not None:
-                _pop = _row.get("2025 Estimate"); _g30 = _row.get("Growth 2030-2025")
-                _veh = _row.get("Total Vehicles Available in the Market")
-                _pop = float(_pop) if pd.notna(_pop) else None
-                _g30 = float(_g30) if pd.notna(_g30) else None
-                _veh = float(_veh) if pd.notna(_veh) else None
+                _dem = {"found": False}
+            if _dem.get("found"):
+                _pop, _g30, _veh = _dem.get("population"), _dem.get("growth_2030_2025"), _dem.get("vehicles")
                 _pen = None
                 if _veh and n_own:                             # market washes / vehicle / month (with the scale applied)
                     _mv = (df[df.site_key.isin(nbk.site_key)].groupby("date")[["mem_wash_count", "ret_wash_count"]]
                            .sum().sum(axis=1))
                     if len(_mv):
                         _pen = float(_mv.tail(12).mean()) * mkt_scale_k / _veh
-                d1, d2, d3, d4 = st.columns(4)
+                # the whiteboard metric: people per wash site once the 🆕 entrant opens —
+                # population ÷ (Sonny's sites + implied non-Sonny's express tunnels + 1 for the new site)
+                _n_non = max(0, int(round(n_own * mkt_scale_k)) - n_own)
+                _pps = (_pop / (n_own + _n_non + 1)) if _pop else None
+                d1, d2, d3, d4, d5 = st.columns(5)
                 d1.metric("Population (2025)", f"{_pop:,.0f}" if _pop else "—")
                 d2.metric("Proj. growth ’25→’30", f"{_g30:+.1%}" if _g30 is not None else "—")
                 d3.metric("Vehicles in market", f"{_veh:,.0f}" if _veh else "—")
                 d4.metric("Washes / vehicle / mo", f"{_pen:.2f}" if _pen is not None else "—",
                           help="Current market washes (last 12-mo avg, scale applied) ÷ vehicles in the trade "
                                "area — a saturation gauge. >0.5 would mean every other vehicle washes monthly.")
-                if _dkm is not None and _dkm > 15:
-                    st.caption(f"⚠️ Nearest trade-area record is ~{_dkm:.0f} km from the pin — its demographics "
-                               "may not describe this exact spot.")
+                d5.metric("Population / wash site (incl. 🆕)", f"{_pps:,.0f}" if _pps else "—",
+                          help="Population ÷ (Sonny's sites + non-Sonny's express tunnels + 1 for the new "
+                               "entrant) — people per tunnel once the new site opens. Non-Sonny's count is "
+                               "implied by the market multiplier above.")
+                _m = _dem.get("match") or {}
+                st.caption(f"📇 Demographics from council site **{_m.get('name', '?')}** "
+                           f"({_m.get('dist_miles', 0):.1f} mi from the pin, matched within "
+                           f"{_dem.get('radius_used_miles', 0):g} mi — same lookup as the Site-factors tab). "
+                           + (f"Non-Sonny's sites implied by ×{mkt_scale_k:.2f}: **{_n_non}**."
+                              if mkt_scale_k > 1 else ""))
                 if use_pop:
                     if _g30 is not None:
                         mkt_pop_g = (1.0 + _g30) ** (1.0 / 5.0) - 1.0
@@ -722,8 +751,9 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                                    f"(projected population ’25→’30: {_g30:+.1%} over 5 yr).")
                     else:
                         st.caption("No projected-growth value for this trade area — population overlay inactive.")
-            elif use_pop:
-                st.info("Trade-area CSV unavailable — population overlay inactive.")
+            else:
+                st.info("No council trade-area record within 9 miles of the pin — demographics unavailable"
+                        + (" and the population overlay is inactive." if use_pop else "."))
     fig = go.Figure()
     if len(nbk):
         keys = nbk.site_key.tolist()
@@ -742,9 +772,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         new_hi[open_off:open_off + _n] = _tj["total_hi"].reindex(range(H)).to_numpy()[:_n]
         idx = pd.date_range(comp.index.min(), today, freq="MS")
         hist_mem = comp["mem_wash_count"].reindex(idx); hist_ret = comp["ret_wash_count"].reindex(idx)
-        if mkt_scale_k != 1.0:                                                        # 🌐 full-market view: scale the PANEL
-            hist_mem = hist_mem * mkt_scale_k; hist_ret = hist_ret * mkt_scale_k      # history → the forecasts inherit it
-        hist = hist_mem.add(hist_ret, fill_value=0)                                   # total = membership + retail
+        hist = hist_mem.add(hist_ret, fill_value=0)                                   # total = membership + retail (Sonny's clients)
         hist_disp = hist.rolling(smooth, center=True, min_periods=1).mean() if (smooth and smooth > 1) else hist   # honor the smoothing slider
         base_mem = forecast_series(hist_mem, H, g=mem_g, seasonal=True)               # membership forecast (central trend + yearly seasonality)
         base_ret = forecast_series(hist_ret, H, g=ret_g, seasonal=True)               # retail forecast (central trend + yearly seasonality)
@@ -762,25 +790,52 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         rec = (df[df.site_key.isin(keys)].sort_values("date").groupby("site_key").tail(12)
                .groupby("site_key").agg(ret=("ret_wash_count", "mean")).join(nbk.set_index("site_key").d))
         cp = cm.cannib_params(art, lat, lon)                                          # LEARNED a·exp(-d/L) for this region
-        cannib_full = float((cm._cannib_ret(rec.d.values, cp) * rec.ret.values).sum()) * mkt_scale_k  # 🌐 unseen competitors lose retail too
+        cannib_full = float((cm._cannib_ret(rec.d.values, cp) * rec.ret.values).sum())
         phase = np.clip((np.arange(H) - open_off + 1) / 12.0, 0.0, 1.0)              # cannibalization ramps from the OPENING month
         with_fc = np.clip(base_mem + np.clip(base_ret - cannib_full * phase, 0, None) + new_traj, 0, None)
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
-        MKT = "#0a84ff"    # bright blue — one colour for the market total: solid history -> dotted forecast
-        _sfx = f" · full market ×{mkt_scale_k:.2f}" if mkt_scale_k != 1.0 else ""     # 🌐 label the scaled view honestly
+        # 🌐 overall market (Sonny's + non-Sonny's): a SECOND trajectory = the Sonny's-clients lines ×k. The
+        # unseen express competitors lose retail to the entrant too (cannibalization scales with the market);
+        # the 🆕 entrant's own journey is added once, never scaled. The gap between the two trajectories is
+        # the non-Sonny's volume — the market opportunity a new entrant can capture.
+        if mkt_scale_k > 1.0:
+            mkt_with_fc = np.clip(base_mem * mkt_scale_k
+                                  + np.clip(base_ret * mkt_scale_k - cannib_full * mkt_scale_k * phase, 0, None)
+                                  + new_traj, 0, None)
+        MKT = "#0a84ff"    # bright blue — the Sonny's-clients market total: solid history -> dotted forecast
+        ALLM = "#9d5cf6"   # violet — the OVERALL market (Sonny's + non-Sonny's), shown when the multiplier is on
         hist_s = rs_dates(hist_disp.dropna(), gmk)                                  # history summed into the chosen window
         _fc = lambda a: rs_dates(pd.Series(np.asarray(a, float), index=fdates), gmk)
         _ent = new_traj.astype(float).copy(); _ent[:open_off] = np.nan               # entrant line only from its opening month
         wfc, bfc, whi, wlo, ntr = _fc(with_fc), _fc(base_fc), _fc(with_hi), _fc(with_lo), _fc(_ent)
         last, last_x = float(hist_s.iloc[-1]), hist_s.index[-1]                     # connect forecast to history endpoint
+        _lbl = "Sonny's clients" if mkt_scale_k > 1.0 else "market total"           # honest label once two trajectories show
+        if mkt_scale_k > 1.0:
+            # 🌐 the opportunity region FIRST (bottom layer): the gap between the overall market and the
+            # Sonny's-clients trajectory across history + forecast = the non-Sonny's volume a 🆕 entrant can chase
+            mkt_hist_s = hist_s * mkt_scale_k
+            mwfc = _fc(mkt_with_fc)
+            mlast = last * mkt_scale_k
+            _xs = list(hist_s.index) + [last_x] + list(wfc.index)
+            _top = list(mkt_hist_s.values) + [mlast] + list(mwfc.values)
+            _bot = list(hist_s.values) + [last] + list(wfc.values)
+            fig.add_trace(go.Scatter(x=_xs + _xs[::-1], y=_top + _bot[::-1],
+                                     fill="toself", fillcolor="rgba(255,55,95,0.07)", line=dict(width=0),
+                                     name="market opportunity — non-Sonny's volume", hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=[last_x] + list(whi.index) + list(whi.index[::-1]) + [last_x],
                                  y=[last] + list(whi.values) + list(wlo.values[::-1]) + [last],
                                  fill="toself", fillcolor="rgba(10,132,255,0.12)", line=dict(width=0),
                                  name="forecast band (trend CI)", hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=hist_s.index, y=hist_s.values, line=dict(color=MKT, width=3.2), name=f"market total — actual history{_sfx}"))
-        fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name=f"market total — forecast (with new site){_sfx}"))
-        fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name=f"market without the new site{_sfx}"))
+        fig.add_trace(go.Scatter(x=hist_s.index, y=hist_s.values, line=dict(color=MKT, width=3.2), name=f"{_lbl} — actual history"))
+        fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name=f"{_lbl} — forecast (with new site)"))
+        fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name=f"{_lbl} — without the new site"))
+        if mkt_scale_k > 1.0:                                                        # 🌐 the overall-market trajectory on top
+            fig.add_trace(go.Scatter(x=mkt_hist_s.index, y=mkt_hist_s.values, line=dict(color=ALLM, width=2.6),
+                                     name=f"overall market incl. non-Sonny's ×{mkt_scale_k:.2f} — history"))
+            fig.add_trace(go.Scatter(x=[last_x] + list(mwfc.index), y=[mlast] + list(mwfc.values),
+                                     line=dict(color=ALLM, width=2.6, dash="dot"),
+                                     name="overall market — forecast (with new site)"))
         fig.add_trace(go.Scatter(x=ntr.dropna().index, y=ntr.dropna().values, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
         fig.add_vline(x=_open, line=dict(color="#c0392b", dash="dash", width=1.5))
         fig.add_annotation(x=_open, yref="paper", y=1.03, text="new site opens", showarrow=False, font=dict(color="#c0392b", size=11))
@@ -790,7 +845,7 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         # ── mark the factors ON the plot (top-left badge): local trend always; 🌐 adjustments when active ──
         _fac = [f"trend: mem {mem_g:+.1%}/yr · ret {ret_g:+.1%}/yr"]
         if mkt_scale_k != 1.0:
-            _fac.append(f"🌐 express competitors ×{mkt_scale_k:.2f}")
+            _fac.append(f"🌐 overall market = Sonny's ×{mkt_scale_k:.2f}")
         if mkt_pop_g:
             _fac.append(f"👥 population {mkt_pop_g:+.2%}/yr")
         fig.add_annotation(xref="paper", yref="paper", x=0.01, y=0.98, align="left", showarrow=False,
@@ -801,7 +856,8 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         _fbits = [f"local per-site trend (membership {mem_g:+.1%}/yr · retail {ret_g:+.1%}/yr)",
                   "yearly seasonality", "entrant cannibalization a·e^(−d/L) on retail"]
         if mkt_scale_k != 1.0:
-            _fbits.append(f"🌐 express-competitor scale ×{mkt_scale_k:.2f}")
+            _fbits.append(f"🌐 overall-market trajectory = Sonny's ×{mkt_scale_k:.2f} "
+                          "(shaded gap = non-Sonny's volume, the entrant's opportunity)")
         if mkt_pop_g:
             _fbits.append(f"👥 projected population growth {mkt_pop_g:+.2%}/yr")
         st.caption("**Factors in this forecast:** " + " · ".join(_fbits) +
@@ -826,6 +882,15 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         st.caption(f"🏆 **Model 5 SUPER:** Model 3 plateau recalibrated to **{info['plateau_med']:,.0f}/mo** — "
                    f"{_src} — plus per-operating-year debias. "
                    f"(Backtest: mature MdAPE 29.6% with inputs / 31.8% pin-only, vs 40.2% raw cold-start WAPE.)")
+        _fa = info.get("factor_adjustment")
+        if _fa:
+            _bits = ", ".join(f"{c['label']}: {c['option_label']} ({c['delta']:+.3f})"
+                              for c in _fa["contributions"])
+            st.caption(f"📋 Score-sheet factors **×{_fa['multiplier']:.3f}** on the level "
+                       f"({_fa['n_used']} factor{'s' if _fa['n_used'] != 1 else ''}: {_bits}"
+                       + ("; clipped at ±25%" if _fa.get("clipped") else "") + "). "
+                       "Relative bucketing — each pick scored against its factor's average option; "
+                       "the capacity factors are already inside the calibrated level, never double counted.")
     elif info.get("brand_known"):
         st.caption(f"🏢 **Model 4 (operator):** using **{op_label}** — that operator's avg mature level "
                    f"({art['brand_mean'][brand]:,.0f}/mo) → plateau **{info['plateau_med']:,.0f}/mo**. "
