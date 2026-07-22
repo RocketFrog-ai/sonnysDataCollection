@@ -21,13 +21,57 @@ Usage:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Dict, Optional
 
 import joblib
 import numpy as np
 
 MODEL_PATH = Path(__file__).resolve().parents[1] / "artifacts" / "ensemble_super (model 5)" / "super_ensemble_v1.joblib"
 _CACHE: dict = {}
+
+_RIDGE_INPUT_ALIASES = {
+    "pay_map": {
+        "3_or_more": "3 or more",
+        "3 or more": "3 or more",
+        "live_person": "live person",
+        "live person": "live person",
+    },
+    "vac_map": {
+        "more_than_20": "more than 20",
+        "more than 20": "more than 20",
+        "12_to_20": "12 - 20",
+        "12 to 20": "12 - 20",
+        "12 - 20": "12 - 20",
+        "less_than_12": "less than 12",
+        "less than 12": "less than 12",
+        "coin_or_none": "coin or none",
+        "coin or none": "coin or none",
+    },
+    "lot_map": {
+        "corner_lot_with_light": "corner lot with light",
+        "corner lot with light": "corner lot with light",
+        "corner_lot_without_light": "corner lot without light",
+        "corner lot without light": "corner lot without light",
+        "inside_lot_near_light": "inside lot near light",
+        "inside lot near light": "inside lot near light",
+        "inside_lot_no_light": "inside lot no light",
+        "inside lot no light": "inside lot no light",
+    },
+}
+
+
+def _choice_key(value: str) -> str:
+    return " ".join(str(value).strip().lower().replace("_", " ").replace("-", " ").split())
+
+
+def _resolve_choice(mapping: Dict[str, float], choice: str, aliases: Dict[str, str]) -> float:
+    normalized = _choice_key(choice)
+    canonical = aliases.get(normalized, choice)
+    norm_map = {_choice_key(k): v for k, v in mapping.items()}
+    key = _choice_key(canonical)
+    if key in norm_map:
+        return norm_map[key]
+    raise KeyError(str(choice))
 
 
 def load() -> dict:
@@ -46,9 +90,9 @@ def level_with_inputs(plateau: float, pay_stations: str, vacuum_slots: str,
     """level_A: user supplies the 4 runtime inputs. Choice strings are case-insensitive
     and must match the proforma option labels (see the maps in the artifact)."""
     a = (art or load())["level_A"]
-    pay = a["pay_map"][pay_stations.strip().lower()]
-    vac = a["vac_map"][vacuum_slots.strip().lower()]
-    lot = a["lot_map"][lot_type.strip().lower()]
+    pay = _resolve_choice(a["pay_map"], pay_stations, _RIDGE_INPUT_ALIASES["pay_map"])
+    vac = _resolve_choice(a["vac_map"], vacuum_slots, _RIDGE_INPUT_ALIASES["vac_map"])
+    lot = _resolve_choice(a["lot_map"], lot_type, _RIDGE_INPUT_ALIASES["lot_map"])
     x = np.array([np.log(plateau), pay, vac, lot, np.log(max(traffic_count, 1.0))])
     return float(np.exp(_ridge_predict(a, x)))
 
@@ -129,5 +173,4 @@ def predict_site_super(lat: float, lon: float, open_year: int,
                                  **predict_site_kwargs)
     return apply_super(traj, info, open_year, pay_stations, vacuum_slots, lot_type, traffic_count,
                        extra_factors=extra_factors)
-
 
