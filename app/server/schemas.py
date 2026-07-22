@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -171,3 +171,38 @@ class LocalCampaignsRequest(_PinRequest):
     max_sites: int = Field(8, ge=1, le=20, description="Max (nearest) in-market sites drawn.")
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
     express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
+
+
+# ─────────────────────────── Bosch prediction (proforma volume estimate) ───────────────────────────
+class SiteFactorsInput(BaseModel):
+    """The 10 site-selection factors from Rafal's proforma sheet — one categorical choice each,
+    each option carrying a fixed 'site score' weight (app/pnl_analysis/modelling/bosch_forecast.py
+    SITE_FACTOR_WEIGHTS has the full weight table). Option keys are ordered best -> worst site."""
+    area_profile: Literal["shopping", "business", "residential", "industrial"] = Field(..., description="Area profile around the site.")
+    nearest_competition: Literal["one_in_4mi", "multiple_in_4mi", "one_in_2mi", "multiple_in_2mi"] = Field(..., description="Nearest car-wash competitor(s).")
+    weekly_hours: Literal["more_than_70", "hours_65_70", "hours_60_64", "less_than_60"] = Field(..., description="Weekly hours of operation.")
+    type_of_site: Literal["corner_with_light", "corner_no_light", "inside_near_light", "inside_no_light"] = Field(..., description="Corner vs. inside lot, and light proximity.")
+    site_accessibility: Literal["easy_in_out", "easy_in_out_divided_hwy", "easy_one_way", "difficult"] = Field(..., description="Ease of entering/exiting the site.")
+    entrance_stack_up: Literal["more_than_20", "veh_20_15", "veh_14_10", "less_than_10"] = Field(..., description="Vehicle stack-up capacity at the entrance.")
+    free_vacuum_slots: Literal["more_than_20", "veh_12_20", "less_than_12", "coin_or_none"] = Field(..., description="Free vacuum slot capacity.")
+    pay_stations: Literal["three_or_more", "two", "one", "live_person"] = Field(..., description="Number of pay stations.")
+    visibility: Literal["more_than_500ft", "ft_400_500", "ft_300_400", "less_than_300ft"] = Field(..., description="Site visibility, both directions.")
+    traffic_speed: Literal["less_than_30mph", "mph_30_40", "mph_40_50", "more_than_50mph"] = Field(..., description="Posted traffic speed past the site.")
+
+
+class BoschForecastRequest(BaseModel):
+    """The Bosch prediction — Rafal's proforma Excel formula ported to an API (see
+    experiments/bosch-prediction-api/agent.md): 10 site factors + 4 demographic components +
+    a traffic-count input -> a Year 1-5 car-wash-volume estimate. Deterministic formula, NOT the
+    coldstart ML model behind /pinpoint-forecast. Not pin-driven — every input is supplied
+    directly (the front end may auto-fill some from /site-factors or the council dataset)."""
+    site_factors: SiteFactorsInput = Field(..., description="The 10 site-selection factor choices.")
+    avg_household_size: float = Field(..., gt=0, description="Average household size near the site (target 2.1).")
+    pct_pop_25_65: float = Field(..., ge=0, le=1, description="Fraction of population aged 25-65 (0.55 = 55%; target 0.55). NOT a 0-100 percentage.")
+    pct_hh_income_over_35k: float = Field(..., ge=0, le=1, description="Fraction of households with income > $35k (target 0.5). NOT a 0-100 percentage.")
+    base_price_carwash: float = Field(..., gt=0, description="Base price of the car wash, $ (target/baseline $5).")
+    base_traffic: float = Field(..., ge=0, description="Estimated 24-hour bidirectional traffic count at the site.")
+    year3_growth_pct: float = Field(0.0, ge=-1.0, description="Year-3 traffic growth rate, additive (0.0 = flat, 0.02 = +2%). Applied independently to base_traffic, NOT compounded with year 4/5.")
+    year4_growth_pct: float = Field(0.0, ge=-1.0, description="Year-4 traffic growth rate, additive. Applied independently to base_traffic, NOT compounded on year 3.")
+    year5_growth_pct: float = Field(0.0, ge=-1.0, description="Year-5 traffic growth rate, additive. Applied independently to base_traffic, NOT compounded on year 4.")
+    operating_days_per_year: float = Field(300.0, gt=0, le=366, description="Assumed operating days/year. 300 is the modal value across the source workbooks, but 280/310/330 all appear too -- a per-site assumption, not a fixed constant.")

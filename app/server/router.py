@@ -15,6 +15,7 @@ from app.pnl_analysis.modelling import market
 from app.pnl_analysis.modelling import site_factors as site_factors_engine
 from app.pnl_analysis.modelling import pnl as pnl_engine
 from app.pnl_analysis.modelling import campaign as campaign_engine
+from app.pnl_analysis.modelling import bosch_forecast as bosch_engine
 from app.pnl_analysis.insights.graph import market_insights as _insights_pipeline
 from app.pnl_analysis.insights import location_poc as _loc
 from app.pnl_analysis.insights import llm as _llm
@@ -35,6 +36,7 @@ from app.server.schemas import (
     CampaignVerdictRequest,
     EatingMarketRequest,
     LocalCampaignsRequest,
+    BoschForecastRequest,
 )
 
 router = APIRouter(prefix="/pnl_analysis")
@@ -292,4 +294,26 @@ def local_campaign_evidence(req: LocalCampaignsRequest):
     return campaign_engine.local_campaign_evidence(
         lat=lat, lon=lon, radius_km=req.radius_km, metric=req.metric, max_sites=req.max_sites, demo=req.demo,
         express_only=req.express_only,
+    )
+
+
+# ─────────────────────────── Bosch prediction (proforma volume estimate) ───────────────────────────
+@router.post("/bosch-forecast")
+def bosch_forecast(req: BoschForecastRequest):
+    """The 10 site factors + 4 demographics + traffic -> Year 1-5 car-wash-volume estimate (yearly
+    and monthly), ported from Rafal's proforma Excel formula. Deterministic, not the coldstart ML
+    model. Not pin-driven -- every input is supplied directly on the request, so this skips
+    @cached (that decorator assumes a lat/lon pin; this is a pure, cheap computation anyway). See
+    experiments/bosch-prediction-api/agent.md for the formula derivation."""
+    return bosch_engine.bosch_forecast(
+        site_factors=req.site_factors.model_dump(),
+        avg_household_size=req.avg_household_size,
+        pct_pop_25_65=req.pct_pop_25_65,
+        pct_hh_income_over_35k=req.pct_hh_income_over_35k,
+        base_price_carwash=req.base_price_carwash,
+        base_traffic=req.base_traffic,
+        year3_growth_pct=req.year3_growth_pct,
+        year4_growth_pct=req.year4_growth_pct,
+        year5_growth_pct=req.year5_growth_pct,
+        operating_days_per_year=req.operating_days_per_year,
     )
