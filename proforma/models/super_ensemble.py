@@ -29,49 +29,47 @@ import numpy as np
 MODEL_PATH = Path(__file__).resolve().parents[1] / "artifacts" / "ensemble_super (model 5)" / "super_ensemble_v1.joblib"
 _CACHE: dict = {}
 
-_RIDGE_INPUT_ALIASES = {
-    "pay_map": {
-        "3_or_more": "3 or more",
-        "3 or more": "3 or more",
-        "live_person": "live person",
-        "live person": "live person",
-    },
-    "vac_map": {
-        "more_than_20": "more than 20",
-        "more than 20": "more than 20",
-        "12_to_20": "12 - 20",
-        "12 to 20": "12 - 20",
-        "12 - 20": "12 - 20",
-        "less_than_12": "less than 12",
-        "less than 12": "less than 12",
-        "coin_or_none": "coin or none",
-        "coin or none": "coin or none",
-    },
-    "lot_map": {
-        "corner_lot_with_light": "corner lot with light",
-        "corner lot with light": "corner lot with light",
-        "corner_lot_without_light": "corner lot without light",
-        "corner lot without light": "corner lot without light",
-        "inside_lot_near_light": "inside lot near light",
-        "inside lot near light": "inside lot near light",
-        "inside_lot_no_light": "inside lot no light",
-        "inside lot no light": "inside lot no light",
-    },
-}
+# The 3 ridge site-inputs and the score-sheet factor they correspond to. The score sheet
+# (site_score_factors.FACTORS) is the single source of truth for the frontend `value` AND `label`
+# spellings; the ridge maps in the artifact key on their own human-readable labels. We accept any of
+# the three (ridge key / frontend value / frontend label) by matching on the shared option SCORE —
+# every option's score is unique within its factor and identical across the two configs.
+_RIDGE_TO_FACTOR = {"pay_map": "numberOfPayStations",
+                    "vac_map": "numberOfFreeVacuumSlots",
+                    "lot_map": "typeOfSite"}
 
 
 def _choice_key(value: str) -> str:
     return " ".join(str(value).strip().lower().replace("_", " ").replace("-", " ").split())
 
 
-def _resolve_choice(mapping: Dict[str, float], choice: str, aliases: Dict[str, str]) -> float:
-    normalized = _choice_key(choice)
-    canonical = aliases.get(normalized, choice)
-    norm_map = {_choice_key(k): v for k, v in mapping.items()}
-    key = _choice_key(canonical)
-    if key in norm_map:
-        return norm_map[key]
-    raise KeyError(str(choice))
+def _accepted_spellings(mapping: Dict[str, float], factor_name: Optional[str]) -> Dict[str, float]:
+    """Every normalized spelling -> ridge score for one input: the artifact's own map keys plus, when
+    the score-sheet factor is known, that factor's frontend `value` and `label` (paired to the ridge
+    key by their identical score). Built per call off the (small) maps — no import-time side effects."""
+    out = {_choice_key(k): v for k, v in mapping.items()}
+    try:
+        from proforma.models.site_score_factors import _BY_NAME
+        f = _BY_NAME.get(factor_name) if factor_name else None
+        if f:
+            score_to_val = {round(v, 6): v for v in mapping.values()}   # ridge score -> itself
+            for o in f["options"]:
+                v = score_to_val.get(round(o["score"], 6))
+                if v is not None:
+                    out.setdefault(_choice_key(o["value"]), v)
+                    out.setdefault(_choice_key(o["label"]), v)
+    except Exception:                                                   # config missing -> ridge keys only
+        pass
+    return out
+
+
+def _resolve_choice(mapping: Dict[str, float], choice: str, factor_name: Optional[str] = None) -> float:
+    accepted = _accepted_spellings(mapping, factor_name)
+    key = _choice_key(choice)
+    if key in accepted:
+        return accepted[key]
+    labels = sorted({k for k in mapping})
+    raise ValueError(f"unrecognized site input {choice!r}; accepted values: {labels}")
 
 
 def load() -> dict:
@@ -90,9 +88,9 @@ def level_with_inputs(plateau: float, pay_stations: str, vacuum_slots: str,
     """level_A: user supplies the 4 runtime inputs. Choice strings are case-insensitive
     and must match the proforma option labels (see the maps in the artifact)."""
     a = (art or load())["level_A"]
-    pay = _resolve_choice(a["pay_map"], pay_stations, _RIDGE_INPUT_ALIASES["pay_map"])
-    vac = _resolve_choice(a["vac_map"], vacuum_slots, _RIDGE_INPUT_ALIASES["vac_map"])
-    lot = _resolve_choice(a["lot_map"], lot_type, _RIDGE_INPUT_ALIASES["lot_map"])
+    pay = _resolve_choice(a["pay_map"], pay_stations, "numberOfPayStations")
+    vac = _resolve_choice(a["vac_map"], vacuum_slots, "numberOfFreeVacuumSlots")
+    lot = _resolve_choice(a["lot_map"], lot_type, "typeOfSite")
     x = np.array([np.log(plateau), pay, vac, lot, np.log(max(traffic_count, 1.0))])
     return float(np.exp(_ridge_predict(a, x)))
 

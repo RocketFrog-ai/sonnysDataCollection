@@ -19,8 +19,11 @@ logger = logging.getLogger(__name__)
 
 WASH_METRICS = {"mem_share_wash", "mem_wash_count", "ret_wash_count"}
 
-# How far out (driving miles) the Google Places ground-truth wash fetch looks. Also echoed into the
-# competition summary so the reader knows the observation radius behind the anchored counts.
+KM_PER_MILE = 1.609344
+
+# Fallback trade-area radius (driving miles) for the Places ground-truth fetch when a caller doesn't
+# pass one. The /insights/competition route overrides this with the request's own radius_km (converted
+# to miles), so the Places fetch + the express-tunnel count cover exactly the radius the client asked for.
 NEARBY_WASH_RADIUS_MILES = 11.0
 
 

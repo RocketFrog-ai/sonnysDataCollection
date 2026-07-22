@@ -134,12 +134,15 @@ def insights_competition(req: CompetitionScaleRequest):
     no LLM answers."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     known = service.known_site_names(lat, lon, req.radius_km, req.min_months, req.demo, req.express_only)
-    nearby = service.nearby_washes(lat, lon)
+    # The Google-Places ground truth and the express-tunnel count are scoped to the SAME trade-area the
+    # request asked for: radius_km -> miles, used for both the fetch and the radius echoed to the LLM.
+    radius_miles = req.radius_km / service.KM_PER_MILE
+    nearby = service.nearby_washes(lat, lon, radius_miles=radius_miles)
     try:
         result = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
                                                  radius_km=req.radius_km, backend=req.backend,
                                                  nearby_washes=nearby,
-                                                 nearby_radius_miles=service.NEARBY_WASH_RADIUS_MILES)
+                                                 nearby_radius_miles=radius_miles)
         return _loc.build_competition_response(result)
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
@@ -194,15 +197,18 @@ def pinpoint_forecast(req: PinpointForecastRequest):
     the level to Model 5 SUPER, mirroring the Streamlit sidebar; the summary then carries level provenance
     and the itemised factor_adjustment. The whole-market growth plot is a separate call: POST /market-forecast."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    return market.pinpoint_forecast(
-        lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
-        mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
-        horizon_months=req.horizon_months,
-        express_only=req.express_only,
-        use_super=req.use_super, open_year=req.open_year,
-        pay_stations=req.pay_stations, vacuum_slots=req.vacuum_slots,
-        lot_type=req.lot_type, traffic_count=req.traffic_count, factors=req.factors,
-    )
+    try:
+        return market.pinpoint_forecast(
+            lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
+            mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
+            horizon_months=req.horizon_months,
+            express_only=req.express_only,
+            use_super=req.use_super, open_year=req.open_year,
+            pay_stations=req.pay_stations, vacuum_slots=req.vacuum_slots,
+            lot_type=req.lot_type, traffic_count=req.traffic_count, factors=req.factors,
+        )
+    except ValueError as e:                     # unrecognized Model 5 site input -> 422, not 500
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.post("/market-forecast")
@@ -214,18 +220,21 @@ def market_forecast(req: MarketForecastRequest):
     `use_population_growth` compounds the projected '25→'30 trade-area population growth onto the forecast,
     and either flag adds `market_view` with population ÷ (Sonny's + non-Sonny's sites + 1)."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
-    return market.market_forecast(
-        lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
-        mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
-        horizon_months=req.horizon_months,
-        express_only=req.express_only,
-        use_competitors=req.use_competitors, market_multiplier=req.market_multiplier,
-        use_population_growth=req.use_population_growth,
-        radius_miles=req.radius_miles,
-        use_super=req.use_super, open_year=req.open_year,
-        pay_stations=req.pay_stations, vacuum_slots=req.vacuum_slots,
-        lot_type=req.lot_type, traffic_count=req.traffic_count, factors=req.factors,
-    )
+    try:
+        return market.market_forecast(
+            lat=lat, lon=lon, brand=req.brand, plateau_override=req.plateau_override,
+            mem_growth_pct=req.mem_growth_pct, ret_growth_pct=req.ret_growth_pct,
+            horizon_months=req.horizon_months,
+            express_only=req.express_only,
+            use_competitors=req.use_competitors, market_multiplier=req.market_multiplier,
+            use_population_growth=req.use_population_growth,
+            radius_miles=req.radius_miles,
+            use_super=req.use_super, open_year=req.open_year,
+            pay_stations=req.pay_stations, vacuum_slots=req.vacuum_slots,
+            lot_type=req.lot_type, traffic_count=req.traffic_count, factors=req.factors,
+        )
+    except ValueError as e:                     # unrecognized Model 5 site input -> 422, not 500
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.post("/pnl-forecast")
