@@ -259,17 +259,21 @@ def render(df, site, pins, demo, express_only, radius, smooth):
 
     @st.cache_data(show_spinner=False, ttl=3600)
     def _nearby_washes_cached(lat, lon, radius_miles=11):
-        """Real nearby car washes (name + distance) from Google Places — the ground truth that anchors the
-        competitive-saturation read. Cached per (rounded location, radius). [] if the key/fetch is unavailable."""
+        """Real nearby car washes (name + distance + express/tunnel name tag) from Google Places — the ground
+        truth that anchors the express-scoped competitive-saturation read. The express keyword Text Searches are
+        on, so express washes the type-only nearby search missed still surface. Cached per (rounded location,
+        radius). [] if the key/fetch is unavailable."""
         try:
-            from app.core.places.nearby_competitors import get_nearby_competitors
+            from app.core.places.nearby_competitors import EXPRESS_KEYWORD_QUERIES, get_nearby_competitors
             from app.core import common as _calib
             key = _calib.GOOGLE_MAPS_API_KEY or ""
             if not key:
                 return []
             data = get_nearby_competitors(key, lat, lon, radius_miles=radius_miles,
-                                          fetch_place_details=False, max_results=20)
-            return [{"name": c.get("name"), "distance_miles": c.get("distance_miles")}
+                                          fetch_place_details=False, max_results=20,
+                                          keyword_queries=EXPRESS_KEYWORD_QUERIES)
+            return [{"name": c.get("name"), "distance_miles": c.get("distance_miles"),
+                     "express_likely": bool(c.get("express_likely"))}
                     for c in (data.get("competitors") or []) if c.get("name")]
         except Exception:
             return []

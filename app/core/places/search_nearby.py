@@ -82,6 +82,66 @@ def find_nearby_places(api_key, latitude, longitude, radius_miles=2, included_ty
         )
     return None
 
+def find_places_text(api_key, text_query, latitude, longitude, radius_miles=2, max_results=10,
+                     included_type="car_wash"):
+    """
+    Keyword search via the Google Places API Text Search (New).
+
+    Nearby Search only filters on fixed place types ("car_wash"), so keyword lookups like
+    "express car wash" / "car wash tunnel" need this endpoint. The circle around the pin is a
+    locationBias (not a hard restriction), so callers must still distance-filter the results.
+    Requests a lean field mask (not "*") — just the fields get_nearby_competitors reads.
+
+    Returns the JSON response ({"places": [...]}), or None on error.
+    """
+    base_url = "https://places.googleapis.com/v1/places:searchText"
+
+    radius_meters = min(radius_miles * 1609.34, 50000.0)
+    if radius_meters <= 0.0:
+        print("Error: Radius must be positive.")
+        return None
+
+    headers = {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": api_key,
+        "X-Goog-FieldMask": ",".join((
+            "places.id", "places.name", "places.displayName", "places.location",
+            "places.rating", "places.userRatingCount", "places.formattedAddress",
+            "places.shortFormattedAddress", "places.types", "places.businessStatus",
+        )),
+    }
+
+    payload = {
+        "textQuery": text_query,
+        "includedType": included_type,
+        "locationBias": {
+            "circle": {
+                "center": {"latitude": latitude, "longitude": longitude},
+                "radius": radius_meters,
+            }
+        },
+        "pageSize": min(max(1, max_results), 20),
+    }
+
+    try:
+        response = requests.post(base_url, headers=headers, data=json.dumps(payload))
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.HTTPError as http_err:
+        logger.warning(
+            "find_places_text HTTP error for %r: %s; response: %s",
+            text_query, http_err, response.text[:500] if response.text else "",
+        )
+    except requests.exceptions.RequestException as req_err:
+        logger.warning("find_places_text request error for %r: %s", text_query, req_err)
+    except json.JSONDecodeError:
+        logger.warning(
+            "find_places_text JSON decode error for %r; response: %s",
+            text_query, response.text[:500] if response.text else "",
+        )
+    return None
+
+
 if __name__ == "__main__":
     # --- Configuration ---
     API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")

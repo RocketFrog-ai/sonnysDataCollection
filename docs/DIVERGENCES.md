@@ -91,7 +91,7 @@ baseline to verify the move against (§6).
 
 ### 1b. ~~`express_only` exists only in the UI~~ — RESOLVED (2026-07)
 
-The API now accepts `express_only: bool = False` on the 8 pin-based modelling requests
+The API now accepts `express_only` on the 8 pin-based modelling requests
 (ExploreMarket, ExploreKpis, PinpointForecast, PnlForecast, ExpensePlan, CampaignVerdict,
 EatingMarket, LocalCampaigns; not on `/insights/*`, which annotate rather than model). It applies
 the UI's two filters in the UI's order — `primary_carwash_type == "Express Tunnel"`, then
@@ -100,8 +100,16 @@ the UI's two filters in the UI's order — `primary_carwash_type == "Express Tun
 stay on the full site set.
 
 Verified against the UI in both conda envs: **742 sites, 35,778 rows, identical `site_key` sets and
-identical cluster labels.** The default (`false`) leaves every number bit-for-bit unchanged —
+identical cluster labels.** At `false` every number is bit-for-bit unchanged —
 `api.json` and `model.json` still match the frozen baselines.
+
+**Defaults diverge by tab (2026-07):** the two Explore-markets requests (ExploreMarket, ExploreKpis)
+now default `express_only` to **`true`** — market exploration is express-first — while the 6
+Forecast-tab requests keep `false`. The golden capture pins `express_only=false` on the explore
+cases (`scripts/_golden/capture_api.py`), so the frozen all-sites numbers still verify. Relatedly,
+the `/insights/*` prompts are scoped to the express/tunnel segment: `/insights/competition` analyses
+express/conveyor-tunnel rivals only and is grounded on a Google Places nearby fetch (any wash type,
+express-keyword-tagged; see `app/core/places/nearby_competitors.py`).
 
 ### Why this is not fixed here
 

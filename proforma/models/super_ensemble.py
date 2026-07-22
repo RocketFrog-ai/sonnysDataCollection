@@ -110,3 +110,5 @@ def predict_site_super(lat: float, lon: float, open_year: int,
                                  model_kind=predict_site_kwargs.pop("model_kind", "et"),
                                  **predict_site_kwargs)
     return apply_super(traj, info, open_year, pay_stations, vacuum_slots, lot_type, traffic_count)
+
+

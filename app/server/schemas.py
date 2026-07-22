@@ -21,7 +21,7 @@ class ExploreMarketRequest(_PinRequest):
     min_months: int = Field(36, ge=1, le=72, description="Keep rich-history sites (>= this many monthly records). 36 = the Explore view (≥3 yrs).")
     operator: Optional[str] = Field(None, description="Operator client_name (see GET /operators) to plot its whole footprint on the map.")
     demo: bool = Field(False, description="Anonymized client demo: hide names, drop exact site dots, shade cluster regions.")
-    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
+    express_only: bool = Field(True, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default True (Explore-markets is express-first); pass False to include every site.")
 
 
 class ExploreKpisRequest(_PinRequest):
@@ -31,7 +31,7 @@ class ExploreKpisRequest(_PinRequest):
     smoothing: int = Field(1, ge=1, le=12, description="Centered rolling-mean window in months (1 = none).")
     min_months: int = Field(36, ge=1, le=72, description="Keep only sites with >= this many monthly records (rich-history filter).")
     demo: bool = Field(False, description="Anonymized client demo: sites become 'Site N' by opening order.")
-    express_only: bool = Field(False, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default False = every site, unchanged.")
+    express_only: bool = Field(True, description="Restrict the local market, the cluster gate and the level anchor to Express Tunnel sites with >=30 months of history. Mirrors the Streamlit \"Express-only sites\" toggle. Default True (Explore-markets is express-first); pass False to include every site.")
 
 
 class SiteFactorsRequest(_PinRequest):

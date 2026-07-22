@@ -1,12 +1,18 @@
-"""Assemble the proforma backtest analysis notebook.
+"""Assemble the proforma backtest notebook: OLD PROFORMA vs OUR MODEL vs ACTUAL.
 
 Regenerate + execute with:
     conda run -n sonnys python code/make_notebook.py
     conda run -n sonnys jupyter nbconvert --to notebook --execute --inplace proforma_backtest.ipynb
 
-Kept as a script so the notebook is reproducible.  Every output cell is followed
-by an **Insights** markdown cell derived from that output (see the repo skill
-`.claude/skills/output-insights`).
+Kept as a script so the notebook is reproducible. Every output cell is followed by an
+**Insights** markdown cell derived from that output (repo skill: .claude/skills/output-insights).
+
+Data (all committed):
+  ensemble/results/ensemble_features.csv  one row per matched proforma site, aligning the three
+      forecasters + actuals: pf_y1..5 (old proforma), cs_y1..5 / plateau_loo (our cold-start
+      model, leave-one-out), act_y1..5 / mature_wash (ground truth), + capacity factor scores.
+  old-proforma-combined.csv               the full site-factor score set (for §4 significance).
+  ensemble/results/ensemble_r_blend.json  the leave-one-site-out ensemble scorecard row.
 """
 import nbformat as nbf
 import os
@@ -16,615 +22,399 @@ cells = []
 def md(t): cells.append(nbf.v4.new_markdown_cell(t))
 def code(t): cells.append(nbf.v4.new_code_cell(t))
 
-md("""# Proforma Backtest — do the site-selection factors & projections match reality?
+md("""# Proforma backtest — **old proforma vs our model vs actual**
 
-**Question.** Sonny's proformas score a prospective site on ~10 site-selection factors plus
-demographics, roll them into target capture scores, and project a 5-year wash volume. The
-projection is mechanically **`vol_yearly_yN = traffic_count x target_score_yN x ~300 operating
-days`** (verified below, r=0.997) — so the whole backtest decomposes into: was the *capture*
-assumption right, and do the *factors* that set it actually move real volume?
+Every built site had a pre-build **old-proforma projection (v1.0)**. We test it against two of
+our own forecasts for the same pin (both leave-one-out — they never see the site's own history):
+**Model v1.5**, the cold-start model from *location alone*, and **Model 5**, the super ensemble
+that adds the site's own capacity inputs (**pay stations, vacuums, site type — taken from the
+proforma's own data** — plus traffic). All are scored against the **actual** operating wash
+counts. This notebook, simply:
 
-We address:
+1. **Accuracy** — how close did each forecast land to reality, year by year and at maturity? (§1–§3)
+2. **What actually drives volume** — of the ~10 site-selection factors the proforma scores, do
+   only **pay stations, vacuums and site type** carry real signal, and are the rest noise? (§4–§5)
+3. **How good, really** — the spread behind the medians, a reality-check at scale (862 sites),
+   and how far the forecast sharpens once a site opens. (§6–§8)
 
-1. **Assumption vs reality** — projected vs actual volume, aligned by operating year from the
-   real open date.
-2. **Signal** — which factor scores/choices genuinely correlate with real performance
-   (permutation p-values + Benjamini-Hochberg FDR, so 16 tested drivers can't produce cheap stars).
-3. **Combinations** — are there factor *combos* with outsized wash-counts, or is that fluke?
-   (max-statistic permutation over the searched combos).
-4. **Weightage & predictive power** — the template's assumed weights vs empirical signal, and an
-   honest *out-of-sample* test of what the inputs can predict.
+Colours are consistent throughout: **Proforma v1.0 = orange, Model v1.5 = blue, Model 5 = green,
+actual = the reference (grey line / axis).**""")
 
-Data: `old-proforma-combined-monthly.csv` / `old-proforma-combined.csv` (121 proformas, 115
-address-matched to the actuals panel; operator-handoff sites are stitched across client_ids and
-`match_operational_start` is the earliest segment's open; 3 near-dead panel records are flagged
-`actuals_suspect` and excluded).""")
-
-code("""import numpy as np, pandas as pd
-import matplotlib.pyplot as plt
+code("""import json, os as _os
+import numpy as np, pandas as pd
 from scipy import stats
-from sklearn.linear_model import Ridge
-from sklearn.model_selection import RepeatedKFold
-pd.set_option('display.width', 220, 'display.max_columns', 60)
-plt.rcParams.update({'figure.dpi': 110, 'axes.grid': True, 'grid.alpha': .3, 'font.size': 10})
-rng = np.random.default_rng(0)
-
-import os as _os
-BASE = '.' if _os.path.exists('old-proforma-combined-monthly.csv') else '..'
-m = pd.read_csv(f'{BASE}/old-proforma-combined-monthly.csv')
-s = pd.read_csv(f'{BASE}/old-proforma-combined.csv')
-print('monthly rows:', len(m), '| proformas:', s.source_file.nunique(),
-      '| matched:', s.match_status.str.startswith('matched').sum(),
-      '| suspect actuals excluded:', (s.actuals_suspect == True).sum())
-
-# the projection identity: vol = traffic x target x operating days
-d0 = s.dropna(subset=['traffic_count', 'first_year_target_score', 'vol_yearly_y1'])
-d0 = d0[(d0.traffic_count > 0) & (d0.first_year_target_score > 0)]
-days = d0.vol_yearly_y1 / (d0.traffic_count * d0.first_year_target_score)
-r_id = np.corrcoef(np.log(d0.traffic_count * d0.first_year_target_score), np.log(d0.vol_yearly_y1))[0, 1]
-print(f'projection identity check: log(traffic x y1 target) vs log(vol_yearly_y1) r={r_id:.3f}; '
-      f'implied operating days median={days.median():.0f} (IQR {days.quantile(.25):.0f}-{days.quantile(.75):.0f})')""")
-
-md("""**Insights**
-- The identity holds at r=0.997 with ~300 implied operating days: the projected volume is *literally*
-  `traffic x capture-target x days`. Nothing else enters — so any projection error is a traffic-count
-  error, a capture-target error, or the linear-in-traffic assumption itself (tested in §7).
-- Because target scores are built from the factor+demographic scores, "do the factors work?" and
-  "is the projection right?" are the same question asked at two grains.""")
-
-md("""## 1. Site-level analysis table
-
-Grain: one row per proforma (= one prospective site). From the clean (non-imputed) monthly
-actuals of the matched site we derive:
-
-- **`mature_wash`** — median wash-count of the last 12 clean months, **only accepted as "mature"
-  if the site is ≥24 months old** at its last observation (`mature_ok`). Without the age gate a
-  2023-24 opener's "last 12 months" is still ramp, which *overstates* over-projection when compared
-  against the proforma's mature (Y5) target.
-- **`y2_wash`** — median wash-count over operating months 12-23 (a uniform-age outcome for
-  cross-site factor comparisons; needs an observed open date and ≥6 months in the window).
-- **actual operating-year means** `mean_y1..y5` (+ observed-month counts `size_y1..y5`) aligned to
-  `match_operational_start`, for sites whose open date falls **inside** the panel window (month-precise:
-  `open_idx > 2020-01` and not before the site's first panel row — avoids the 2020 left-censor).
-- Choice labels are normalized (case/typo variants like `MUTIPLE IN 4 MILES`, `2.0` collapse).""")
-
-code("""def ym(x):
-    try:
-        mo, yr = str(x).split('-'); return int(yr) * 12 + int(mo)
-    except Exception:
-        return np.nan
-
-site = s[s.match_status.str.startswith('matched') & (s.actuals_suspect != True)].copy()
-site['open_idx'] = site.match_operational_start.map(ym)
-
-mm = m[m.year.notna() & (m.imputed == 0)].copy()          # clean months only
-mm = mm[mm.source_file.isin(site.source_file)]
-mm['cal_idx'] = mm.year.astype(int) * 12 + mm.month.astype(int)
-mm = mm.merge(site[['source_file', 'open_idx']], on='source_file')
-mm['mo_open'] = mm.cal_idx - mm.open_idx                   # 0 = opening month
-mm['op_year'] = mm.mo_open // 12 + 1
-mm['blended_asp'] = mm.revenue / mm.wash_count.replace(0, np.nan)
-
-last12 = (mm.sort_values(['source_file', 'cal_idx']).groupby('source_file')
-          .apply(lambda g: pd.Series({'mature_wash': g.tail(12).wash_count.median(),
-                                      'mature_rev': g.tail(12).revenue.median(),
-                                      'mature_asp': g.tail(12).blended_asp.median(),
-                                      'mature_n': len(g.tail(12)),
-                                      'mature_mid_year': g.tail(12).year.mean()}),
-                 include_groups=False))
-site = site.merge(last12, left_on='source_file', right_index=True, how='left')
-
-y2w = (mm[mm.mo_open.between(12, 23)].groupby('source_file').wash_count
-       .agg(y2_wash='median', y2_n='size'))
-site = site.merge(y2w, left_on='source_file', right_index=True, how='left')
-
-opy = (mm[mm.op_year.between(1, 5)].groupby(['source_file', 'op_year']).wash_count
-       .agg(['mean', 'size']).unstack())
-opy.columns = [f'{a}_y{int(b)}' for a, b in opy.columns]
-site = site.merge(opy, left_on='source_file', right_index=True, how='left')
-
-PANEL_START = 2020 * 12 + 1
-fc = mm.groupby('source_file').cal_idx.min(); lc = mm.groupby('source_file').cal_idx.max()
-site = site.merge(fc.rename('first_cal'), left_on='source_file', right_index=True, how='left')
-site = site.merge(lc.rename('last_cal'), left_on='source_file', right_index=True, how='left')
-site['open_observed'] = (site.open_idx > PANEL_START) & (site.open_idx >= site.first_cal - 1)
-site['age_mo'] = site.last_cal - site.open_idx + 1
-site['mature_ok'] = (site.age_mo >= 24) & (site.mature_n >= 6) & (site.mature_wash > 0)
-site['y2_ok'] = site.open_observed & (site.y2_n >= 6) & (site.y2_wash > 0)
-
-def norm_choice(v):
-    if pd.isna(v): return np.nan
-    return str(v).upper().strip().replace('MUTIPLE', 'MULTIPLE').replace('2.0', '2')
-for c in [c for c in site.columns if c.startswith('factor_') and c.endswith('_choice')]:
-    site[c + '_n'] = site[c].map(norm_choice)
-
-FS = [c for c in site.columns if c.startswith('factor_') and c.endswith('_score')]
-FS = [c for c in FS if site[c].std() > 1e-9]     # weekly_hours is constant -> dropped
-DEMO = ['cumulative_site_score', 'cumulative_demographic_score',
-        'demog_avg_household_size_value', 'demog_pct_pop_25_65_value',
-        'demog_pct_hh_income_35k_value', 'demog_base_price_carwash_value', 'traffic_count']
-
-print(f'analysable proformas (matched, non-suspect): {len(site)}')
-print(f'open date observed inside panel: {site.open_observed.sum()}')
-print(f'mature outcome usable (>=24mo old, >=6 clean months): {site.mature_ok.sum()}')
-print(f'uniform year-2 outcome usable: {site.y2_ok.sum()}')
-print(f'live factor scores: {len(FS)} (weekly_hours constant across all proformas -> no signal possible)')
-print('proforma types:', site.proforma_type.value_counts().to_dict())""")
-
-md("""**Insights**
-- 112 analysable sites, but each question gets its own honest denominator: 96 have an observed
-  (non-censored) open date, **70** qualify for the mature comparison, **78** for the uniform
-  year-2 outcome. Numbers below always state which n they use.
-- `weekly_hours` cannot be backtested at all — every proforma ticked "More Than 70 Hours". A factor
-  the template never varies carries zero information about site choice.
-- ~92% of matched proformas are Express Exterior — findings are effectively about the express
-  format; the few Flex/full-serve sites are checked as a robustness case in §3.""")
-
-md("""## 2. Assumption vs reality — projected vs actual volume, aligned by operating year
-
-Each proforma projects a *specific* volume per operating year (`vol_monthly_y1..y5`), so the fair
-comparison is **year-aligned**: actual operating-year-N monthly washes (from the real open date,
-≥10 observed months in that year) vs `vol_monthly_yN` — one panel per year. The sixth panel is the
-**mature** check: age-gated actual (≥24 months old) vs `vol_monthly_y5`, because Y5 *is* the
-template's mature target — that panel intentionally compares sites of mixed ages against the
-mature level, the five year panels don't. Hover any dot for the site.""")
-
-code("""import plotly.graph_objects as go
+import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
 pio.renderers.default = 'plotly_mimetype+notebook'
+rng = np.random.default_rng(0)
 
-panels = []
-for y in range(1, 6):
-    dd = site[site.open_observed & site[f'size_y{y}'].ge(10) & site[f'mean_y{y}'].gt(0)
-              ].dropna(subset=[f'vol_monthly_y{y}'])
-    panels.append((f'Y{y}', dd[f'vol_monthly_y{y}'], dd[f'mean_y{y}'], dd))
-dmat = site[site.mature_ok].dropna(subset=['vol_monthly_y5'])
-panels.append(('Mature (>=24mo) vs Y5 target', dmat.vol_monthly_y5, dmat.mature_wash, dmat))
+BASE = '.' if _os.path.exists('ensemble/results/ensemble_features.csv') else '..'
+E = pd.read_csv(f'{BASE}/ensemble/results/ensemble_features.csv')
+S = pd.read_csv(f'{BASE}/old-proforma-combined.csv')
+M5 = pd.read_csv(f'{BASE}/ensemble/results/model5_loso.csv')      # Model 5 leave-one-out forecasts
 
-titles = []
-for name, px, py, dd in panels:
-    titles.append(f'{name} — n={len(dd)}, act/proj med={(py / px).median():.2f}, '
-                  f'rho={stats.spearmanr(px, py)[0]:.2f}')
+# consistent colours
+C_PF, C_MODEL, C_M5, C_ACT = '#eb6834', '#2a78d6', '#1baf7a', '#6b6a63'   # proforma / v1.5 / Model 5 / actual
+C_SIG, C_NS = '#1baf7a', '#c2c0b6'                            # factor significant / not
 
-fig = make_subplots(rows=2, cols=3, subplot_titles=titles,
-                    horizontal_spacing=.07, vertical_spacing=.16)
-for k, (name, px, py, dd) in enumerate(panels):
-    r, c = k // 3 + 1, k % 3 + 1
-    cd = [[str(a), str(b), f'{v:.2f}'] for a, b, v in
-          zip(dd.match_client_name.fillna(''), dd.address.fillna(''), py / px)]
-    fig.add_trace(go.Scatter(
-        x=px, y=py, mode='markers', customdata=cd,
-        hovertemplate='<b>%{customdata[0]}</b><br>%{customdata[1]}<br>'
-                      'projected %{x:.0f}/mo - actual %{y:.0f}/mo (ratio %{customdata[2]})<extra></extra>',
-        marker=dict(size=7, color='#4C72B0', opacity=.75, line=dict(width=.5, color='black')),
-        showlegend=False), r, c)
-    lim = float(max(px.max(), py.max())) * 1.05
-    fig.add_trace(go.Scatter(x=[0, lim], y=[0, lim], mode='lines',
-                             line=dict(color='red', dash='dash', width=1),
-                             hoverinfo='skip', showlegend=False), r, c)
-    fig.update_xaxes(range=[0, lim], row=r, col=c,
-                     title_text='projected washes/mo' if r == 2 else None)
-    fig.update_yaxes(range=[0, lim], row=r, col=c,
-                     title_text='actual washes/mo' if c == 1 else None)
-fig.update_annotations(font_size=11)
-fig.update_layout(height=660, width=1140, template='plotly_white', font=dict(size=11),
-                  title='Projected vs actual monthly washes, per operating year (red dash = perfect forecast)',
-                  margin=dict(t=90))
-fig.show()
+# merge the full factor-score set (for §4) + Model 5 forecasts onto the aligned comparison table
+FAC = [c for c in S.columns if c.startswith('factor_') and c.endswith('_score')] + \\
+      ['cumulative_site_score', 'demog_avg_household_size_value', 'demog_pct_pop_25_65_value',
+       'demog_pct_hh_income_35k_value', 'demog_base_price_carwash_value']
+CHO = ['factor_pay_stations_choice', 'factor_free_vacuum_slots_choice', 'factor_type_of_site_choice']
+D = E.merge(S[['source_file'] + FAC + CHO], on='source_file', how='left').merge(M5, on='source_file', how='left')
 
-ratio = dmat.mature_wash / dmat.vol_monthly_y5
-print(f'mature (age-gated, n={len(dmat)}): actual/projected median {ratio.median():.2f} '
-      f'IQR [{ratio.quantile(.25):.2f}, {ratio.quantile(.75):.2f}] | '
-      f'over-projected {(ratio < 1).mean()*100:.0f}% | '
-      f'spearman {stats.spearmanr(dmat.vol_monthly_y5, dmat.mature_wash)[0]:.2f}')
-d_all = site[(site.mature_n >= 6) & (site.mature_wash > 0)].dropna(subset=['vol_monthly_y5'])
-print(f'[no age gate, n={len(d_all)}: median ratio {(d_all.mature_wash / d_all.vol_monthly_y5).median():.2f} '
-      f'- ramping sites drag it down; the gated number above is the honest one]')""")
+def mdape(a, p):  a, p = np.asarray(a,float), np.asarray(p,float); return float(np.median(np.abs(a-p)/a)*100)
+def within(a, p, b=.2): a, p = np.asarray(a,float), np.asarray(p,float); return float((np.abs(a/p-1)<=b).mean()*100)
+def rho(a, p):    return float(stats.spearmanr(p, a)[0])
+def ratio_med(a, p): a, p = np.asarray(a,float), np.asarray(p,float); return float(np.median(a/p))
+
+MATURE = D[D.mature_ok & D.mature_wash.gt(0)].copy()          # age-gated (>=24mo), n=70
+print(f'matched proforma sites: {len(D)} | mature (>=24mo) usable: {len(MATURE)} | '
+      f'open-date observed: {int(D.open_observed.sum())}')""")
 
 md("""**Insights**
-- **Year-aligned, the ramp years are only mildly hot at the median** (Y1 0.87 n=88, Y2 0.93 n=60)
-  but the over-projection deepens with age: Y3 0.85, Y4 0.85, Y5 0.82, and the mature panel lands
-  at **0.71 with 73% of 70 sites below the line** — the bias sits in the mature capture target,
-  not the ramp shape.
-- Rank signal is weak everywhere: within-year spearman runs **0.25 (Y1), 0.37 (Y2), 0.30 (Y3)**,
-  then dies where the sample thins (Y4 0.38 on n=21, p≈0.09; Y5 0.22 on n=12, ns). Even at its
-  best, the projection explains little of *which* site out-washes which.
-- The vertical scatter around the red line dwarfs the bias in every panel — sites projected
-  ~9-10k/mo realize anywhere from ~2k to ~15k (hover the outliers: they are real sites, not data
-  errors). A flat haircut fixes the median, not the underwriting risk.
-- Only the sixth panel mixes ages by design (mature actual vs the Y5 mature target); the five
-  year panels are the like-for-like view this section previously lacked.""")
+- The comparison universe is **112 matched sites** (every old proforma we could address-match to
+  a real operating site); the strict **mature** analysis uses the **70** that are ≥24 months old,
+  so a still-ramping site is never scored against a mature target.
+- Every number below is a like-for-like triple — same site, same operating year, all three of
+  {old proforma, our model, actual} present — so the two forecasters are judged on identical
+  ground, never on different site sets.
+- Caveat: our model reads neighbours' actuals from the full panel (some of it after these sites
+  opened), while the proforma was written ~18 months before opening — so our model's edge is an
+  upper bound on its true head-start advantage.""")
+
+md("""## 1. The three forecasters vs reality — at maturity
+
+Each dot is one mature site: its **forecast** monthly washes (x) against what it **actually** did
+(y). Left → right: old proforma, our location-only model (v1.5), and Model 5 (v1.5 + the site's
+pay-station / vacuum / site-type inputs). Dots on the grey line = perfect; a tighter cloud sitting
+*on* the line is a better forecaster. Hover any dot for the site.""")
+
+code("""dm = MATURE.dropna(subset=['pf_y5', 'plateau_loo', 'm5_mature']).copy()
+lim = float(max(dm.pf_y5.max(), dm.plateau_loo.max(), dm.m5_mature.max(), dm.mature_wash.max()) * 1.05)
+panels = [('pf_y5', C_PF, 'Proforma v1.0'), ('plateau_loo', C_MODEL, 'Model v1.5 (location only)'),
+          ('m5_mature', C_M5, 'Model 5 (＋ site factors)')]
+fig = make_subplots(rows=1, cols=3, horizontal_spacing=.055, subplot_titles=[
+    f'{nm}<br><span style="font-size:11px">MdAPE {mdape(dm.mature_wash, dm[c]):.0f}%'
+    f' · bias {ratio_med(dm.mature_wash, dm[c]):.2f}</span>' for c, _, nm in panels])
+for col, (xcol, colr, nm) in enumerate(panels, 1):
+    cd = np.stack([dm.source_file.str.slice(0, 40), (dm.mature_wash/dm[xcol]).round(2)], axis=1)
+    fig.add_trace(go.Scatter(x=dm[xcol], y=dm.mature_wash, mode='markers', customdata=cd,
+        marker=dict(size=6, color=colr, opacity=.75, line=dict(width=.5, color='white')),
+        hovertemplate='%{customdata[0]}<br>forecast %{x:.0f} · actual %{y:.0f} '
+        '(ratio %{customdata[1]})<extra></extra>', showlegend=False), 1, col)
+    fig.add_trace(go.Scatter(x=[0, lim], y=[0, lim], mode='lines', line=dict(color=C_ACT, dash='dash', width=1),
+        hoverinfo='skip', showlegend=False), 1, col)
+    fig.update_xaxes(range=[0, lim], title_text='forecast washes/mo', row=1, col=col)
+    fig.update_yaxes(range=[0, lim], title_text='actual washes/mo' if col == 1 else None, row=1, col=col)
+fig.update_layout(height=430, width=1050, template='plotly_white',
+                  title=f'Forecast vs actual mature monthly washes (n={len(dm)})', margin=dict(t=95))
+fig.show()
+for c, _, nm in panels:
+    print(f'{nm:32s} MdAPE {mdape(dm.mature_wash, dm[c]):4.0f}%   bias {ratio_med(dm.mature_wash, dm[c]):.2f}   '
+          f'within +-20% {within(dm.mature_wash, dm[c]):3.0f}%')""")
+
+md("""**Insights**
+- **Adding the site factors is the whole ballgame.** Mature error falls **58% (proforma) → 46%
+  (v1.5, location only) → 30% (Model 5)**, and the bias goes **0.71 → 0.73 → 1.00** — Model 5 is the
+  first forecaster that is both accurate *and* unbiased; its cloud actually sits on the line.
+- **This answers "how can a linear formula tie proper modelling?"** — it only ties the *location-only*
+  model (v1.5), because neither knows the site's pay stations / vacuums / type. Give the model those
+  three inputs (Model 5) and it wins outright: near-half the proforma's error.
+- v1.5 over-projects on *these* older matched sites (bias 0.73) — a cohort quirk, not a model flaw
+  (§7 shows it's unbiased on the full 862). Model 5's factor calibration corrects even that here.
+- Caveat: even Model 5 misses a typical site by ~30% (and v1.0/v1.5 by ~46–58%) — maturity volume
+  for a brand-new site is genuinely hard; none is a ±10% instrument (see §3, §6).""")
+
+md("""## 2. Accuracy by operating year — how close is the wash count?
+
+Aligned to each site's real open date (only years with ≥10 observed months). Left = **typical
+error** (MdAPE, lower is better); right = **hit-rate** (share of sites within ±20% of forecast,
+higher is better). Both are pure count-accuracy — is the predicted number right? Orange = proforma,
+blue = v1.5, green = Model 5.""")
 
 code("""rows = []
 for y in range(1, 6):
-    dd = site[site.open_observed & site.get(f'size_y{y}', pd.Series(dtype=float)).ge(10)
-              & site.get(f'mean_y{y}', pd.Series(dtype=float)).gt(0)].dropna(subset=[f'vol_monthly_y{y}'])
-    if len(dd) < 5: continue
-    rr = dd[f'mean_y{y}'] / dd[f'vol_monthly_y{y}']
-    rows.append({'op_year': f'Y{y}', 'n(>=10mo obs)': len(dd),
-                 'proj_median': dd[f'vol_monthly_y{y}'].median(),
-                 'actual_median': dd[f'mean_y{y}'].median(),
-                 'ratio_q25': rr.quantile(.25), 'ratio_median': rr.median(), 'ratio_q75': rr.quantile(.75),
-                 'over_projected_%': (rr < 1).mean() * 100,
-                 'MdAPE_%': ((dd[f'mean_y{y}'] - dd[f'vol_monthly_y{y}']).abs() / dd[f'mean_y{y}']).median() * 100,
-                 'spearman': stats.spearmanr(dd[f'vol_monthly_y{y}'], dd[f'mean_y{y}'])[0]})
-acc = pd.DataFrame(rows)
-print('Projection accuracy by operating year (observed opens, months aligned to real open date):')
-print(acc.round(2).to_string(index=False))
-
-# where does the miss come from? actual capture vs the assumed target
-d2 = site[site.mature_ok & site.traffic_count.gt(0)].copy()
-act_capture = d2.mature_wash * 12 / (d2.traffic_count * 300)
-print(f'\\ncapture rate (share of daily passing traffic washed, mature): '
-      f'actual median {act_capture.median()*100:.2f}% vs assumed mature target {d2.mature_target_score.median()*100:.2f}% '
-      f'-> ratio {(act_capture / d2.mature_target_score).median():.2f} (n={len(d2)})')
-
-d = site[site.mature_ok].dropna(subset=['vol_monthly_y5']).copy()
-d['cohort'] = np.where(d.match_operational_start.str[-4:].astype(int) <= 2021, 'opened 2020-21', 'opened 2022+')
-print('\\nmature actual/projected by open cohort:')
-print(d.groupby('cohort').apply(lambda g: pd.Series(
-    {'n': len(g), 'ratio_median': (g.mature_wash / g.vol_monthly_y5).median()}),
-    include_groups=False).round(2).to_string())""")
+    d = D[D.open_observed & D[f'nobs_y{y}'].ge(10) & D[f'act_y{y}'].gt(0)
+          & D[f'pf_y{y}'].gt(0) & D[f'cs_y{y}'].gt(0) & D[f'm5_y{y}'].gt(0)]
+    if len(d) < 8: continue
+    a = d[f'act_y{y}']
+    rows.append(dict(yr=f'Y{y}', n=len(d),
+        pf_e=mdape(a, d[f'pf_y{y}']), md_e=mdape(a, d[f'cs_y{y}']), m5_e=mdape(a, d[f'm5_y{y}']),
+        pf_w=within(a, d[f'pf_y{y}']), md_w=within(a, d[f'cs_y{y}']), m5_w=within(a, d[f'm5_y{y}']),
+        pf_r=rho(a, d[f'pf_y{y}']), md_r=rho(a, d[f'cs_y{y}']), m5_r=rho(a, d[f'm5_y{y}'])))
+A = pd.DataFrame(rows)
+xa = [f"{r.yr}<br><span style='font-size:10px;color:#999'>n={r.n}</span>" for r in A.itertuples()]
+fig = make_subplots(rows=1, cols=2, horizontal_spacing=.11,
+                    subplot_titles=('Typical error — MdAPE % (lower better)', 'Hit-rate — within ±20% (higher better)'))
+for nm, e, w, c in [('Proforma v1.0', 'pf_e', 'pf_w', C_PF), ('Model v1.5', 'md_e', 'md_w', C_MODEL),
+                    ('Model 5', 'm5_e', 'm5_w', C_M5)]:
+    fig.add_trace(go.Bar(x=xa, y=A[e], name=nm, marker_color=c, text=A[e].round(0), textposition='outside'), 1, 1)
+    fig.add_trace(go.Bar(x=xa, y=A[w], marker_color=c, showlegend=False, text=A[w].round(0), textposition='outside'), 1, 2)
+fig.update_layout(height=470, width=1000, template='plotly_white', barmode='group',
+                  title=dict(text='Forecast accuracy by operating year', y=0.97),
+                  legend=dict(orientation='h', yanchor='top', y=-0.16, xanchor='center', x=0.5), margin=dict(t=70, b=95))
+fig.update_yaxes(title_text='MdAPE %', row=1, col=1); fig.update_yaxes(title_text='within ±20% (%)', row=1, col=2)
+fig.show()
+print(A[['yr', 'n', 'pf_e', 'md_e', 'm5_e', 'pf_r', 'md_r', 'm5_r']].round(2).to_string(index=False))""")
 
 md("""**Insights**
-- **The ramp shape is roughly right; the mature level is set too high.** Year-aligned medians run
-  0.87 (Y1), 0.93 (Y2) then drift down 0.85 → 0.82 by Y5 with 60→75% of sites over-projected:
-  the template's error grows exactly where its capture target steps up to "mature".
-- The whole mature miss is in the **capture assumption**: actual mature capture is ~0.94% of daily
-  traffic vs the assumed ~1.43% — ratio 0.70, i.e. the same 30% the volume ratio shows. Traffic
-  counts aren't the (average) problem; the target-score calibration is.
-- MdAPE is 30-49% per operating year — even in Y1-Y2, where the *median bias* is small, individual
-  sites routinely miss by a third or more; the bias correction fixes the mean, not the spread.
-- 2020-21 openers backtest worse (0.61 vs 0.76) — consistent with COVID-era openings and with those
-  proformas being older template vintages; treat era as a confounder, not a conclusion.""")
+- **Model 5 is the most accurate forecast in almost every year** (MdAPE e.g. Y4 **19%** vs 31/32%,
+  Y5 25% vs 38/35%, Y1 41% vs 49/51%), and lifts the hit-rate too. Feeding the site's own
+  pay/vacuum/type turns the count from a coin-toss into the best guess available.
+- **Proforma v1.0 and v1.5 are ~tied on yearly error** (49/40/39 vs 51/42/36) — the honest reason:
+  a *location-only* model and an *expert-curated linear formula* both hit the same ~±40% ceiling of
+  early-year noise. Neither knows the site's hardware; Model 5 does, and that's the whole difference.
+- (Ranking check, for site *selection* rather than the count: Model 5 and v1.5 both order sites far
+  better than the proforma — Spearman ρ ≈ 0.55–0.60 vs 0.25–0.38 — printed above.)""")
 
-md("""## 3. Which inputs carry real signal?
+md("""## 3. Scorecard — the three forecasters side by side
 
-Spearman rank correlation of every live input against two outcomes — **log mature washes**
-(age-gated, n=70) and **log year-2 washes** (uniform age, n=78) — with **permutation p-values**
-(20k shuffles) and **BH-FDR q** across the 16 tested drivers. `partial_r` re-tests each driver
-after residualizing both sides on **log traffic** ("does it add signal *beyond* traffic?").""")
+Pooled over all site-years and at maturity, worst → best. **Model 5** is the shipped super
+ensemble — v1.5's plateau recalibrated with the site's pay-station / vacuum / type inputs.""")
 
-code("""def perm_spearman(x, y, n=20000):
-    ok = x.notna() & y.notna()
-    x, y = x[ok].to_numpy(), y[ok].to_numpy()
-    if len(x) < 10 or np.std(x) == 0: return np.nan, np.nan, len(x)
+code("""# pooled site-years, computed live on identical sites for all three forecasters
+py = []
+for y in range(1, 6):
+    d = D[D.open_observed & D[f'nobs_y{y}'].ge(10) & D[f'act_y{y}'].gt(0)
+          & D[f'pf_y{y}'].gt(0) & D[f'cs_y{y}'].gt(0) & D[f'm5_y{y}'].gt(0)]
+    py.append(d[[f'act_y{y}', f'pf_y{y}', f'cs_y{y}', f'm5_y{y}']]
+              .rename(columns={f'act_y{y}': 'a', f'pf_y{y}': 'pf', f'cs_y{y}': 'cs', f'm5_y{y}': 'm5'}))
+P = pd.concat(py, ignore_index=True)
+dm = MATURE.dropna(subset=['pf_y5', 'plateau_loo', 'm5_mature'])
+def scard(name, sy, mat):
+    return dict(forecaster=name,
+        site_yr_MdAPE=f'{mdape(P.a, sy):.0f}%', site_yr_within20=f'{within(P.a, sy):.0f}%',
+        mature_MdAPE=f'{mdape(dm.mature_wash, mat):.0f}%', mature_within20=f'{within(dm.mature_wash, mat):.0f}%',
+        mature_rho=f'{rho(dm.mature_wash, mat):.2f}', mature_bias=f'{ratio_med(dm.mature_wash, mat):.2f}')
+tbl = pd.DataFrame([
+    scard('Proforma v1.0', P.pf, dm.pf_y5),
+    scard('Model v1.5 (location only)', P.cs, dm.plateau_loo),
+    scard('Model 5 (＋ site factors)', P.m5, dm.m5_mature),
+])
+from IPython.display import display
+display(tbl)
+e_m5 = np.abs(np.log(P.a / P.m5)); e_pf = np.abs(np.log(P.a / P.pf))
+print(f'Model 5 beats the old proforma on {(e_m5 < e_pf).mean()*100:.0f}% of site-years '
+      f'(sign test p={stats.binomtest(int((e_m5 < e_pf).sum()), len(P), 0.5).pvalue:.4f})')""")
+
+md("""**Insights**
+- **Clean worst → best on mature error: Proforma v1.0 58% → Model v1.5 46% → Model 5 30%** — and
+  Model 5 is the only one that is also unbiased (bias 1.00 vs 0.71/0.73) and the only one that lifts
+  the within-±20% hit-rate meaningfully (≈39% vs ~21–24%).
+- **Model 5 wins the count on ~60%+ of site-years vs the proforma** (sign test printed) — the site
+  factors, modelled properly, turn a tie into a decisive win.
+- Caveat: Model 5's factor calibration is trained on these 70 mature sites (leave-one-out, so
+  honest, but small n) and the pay/vacuum/type inputs exist only where a proforma recorded them.
+  Even so, it lands only ~39% within ±20% — quote a range, and remember the ~30% ex-ante ceiling.""")
+
+md("""## 4. Which of the proforma's factors actually predict reality?
+
+The proforma scores ~10 site factors and weights them **roughly equally**. Do they all matter?
+For each factor we correlate its score with **actual** mature washes (Spearman), get a
+permutation p-value, and apply Benjamini–Hochberg FDR across all factors tested. **Green = real
+signal (survives FDR); grey = no significant signal.**""")
+
+code("""def perm_p(x, y, n=20000):
+    ok = x.notna() & y.notna(); x, y = x[ok].to_numpy(), y[ok].to_numpy()
+    if len(x) < 10 or np.std(x) == 0: return np.nan, np.nan
     xr, yr = stats.rankdata(x), stats.rankdata(y)
-    xr = (xr - xr.mean()) / xr.std(); yr = (yr - yr.mean()) / yr.std()
-    r0 = float(np.mean(xr * yr))
-    perm = np.array([np.mean(xr * rng.permutation(yr)) for _ in range(n)])
-    return r0, max((np.abs(perm) >= abs(r0)).mean(), 1 / n), len(x)
-
+    xr = (xr-xr.mean())/xr.std(); yr = (yr-yr.mean())/yr.std(); r0 = float(np.mean(xr*yr))
+    perm = np.array([np.mean(xr*rng.permutation(yr)) for _ in range(n)])
+    return r0, max((np.abs(perm) >= abs(r0)).mean(), 1/n)
 def bh(p):
-    p = np.asarray(p, float); q = np.full_like(p, np.nan); ok = ~np.isnan(p)
-    pv = p[ok]; n = len(pv); o = np.argsort(pv)
-    r = np.minimum.accumulate((pv[o] * n / (np.arange(n) + 1))[::-1])[::-1]
-    out = np.empty(n); out[o] = np.minimum(r, 1); q[ok] = out
-    return q
+    p = np.asarray(p, float); q = np.full_like(p, np.nan); m = ~np.isnan(p); pv = p[m]; k = len(pv)
+    o = np.argsort(pv); r = np.minimum.accumulate((pv[o]*k/(np.arange(k)+1))[::-1])[::-1]
+    out = np.empty(k); out[o] = np.minimum(r, 1); q[m] = out; return q
 
-results = {}
-for name, mask, col in [('mature', site.mature_ok, 'mature_wash'), ('year2', site.y2_ok, 'y2_wash')]:
-    sub = site[mask]; ylog = np.log(sub[col])
-    lt = np.log(sub.traffic_count.replace(0, np.nan))
-    res = []
-    for f in FS + DEMO:
-        r, p, n = perm_spearman(sub[f], ylog)
-        pr = np.nan
-        okp = sub[f].notna() & ylog.notna() & lt.notna()
-        if okp.sum() >= 10 and sub.loc[okp, f].std() > 0 and f != 'traffic_count':
-            ry = ylog[okp] - np.polyval(np.polyfit(lt[okp], ylog[okp], 1), lt[okp])
-            rf = sub.loc[okp, f] - np.polyval(np.polyfit(lt[okp], sub.loc[okp, f], 1), lt[okp])
-            pr = stats.spearmanr(rf, ry)[0]
-        res.append({'driver': f, 'spearman_r': r, 'perm_p': p, 'partial_r_ctrl_traffic': pr, 'n': n})
-    R = pd.DataFrame(res); R['fdr_q'] = bh(R.perm_p)
-    results[name] = R.sort_values('spearman_r', key=lambda v: v.abs(), ascending=False)
-
-print('--- outcome: log MATURE washes (age-gated) ---')
-print(results['mature'].round(3).to_string(index=False))
-print()
-print('--- outcome: log YEAR-2 washes (uniform age) ---')
-print(results['year2'].round(3).to_string(index=False))""")
-
-code("""R = results['mature'].set_index('driver').sort_values('spearman_r')
-fig, ax = plt.subplots(figsize=(9, 6.5))
-colors = ['#C44E52' if v < 0 else '#55A868' for v in R.spearman_r]
-ax.barh(R.index, R.spearman_r, color=colors, edgecolor='k', lw=.4)
-ax.scatter(R.partial_r_ctrl_traffic, range(len(R)), color='k', s=20, zorder=3,
-           label='partial r (traffic controlled)')
-for i, (idx, row) in enumerate(R.iterrows()):
-    if row.fdr_q < 0.05:
-        ax.text(row.spearman_r + np.sign(row.spearman_r) * .012, i, '*',
-                va='center', ha='left' if row.spearman_r >= 0 else 'right', fontsize=15)
-ax.axvline(0, color='k', lw=.8)
-ax.set(xlabel='Spearman r vs log mature washes   (* = survives BH-FDR q<0.05, n=70)',
-       title='Which proforma inputs actually track real wash volume?')
-ax.legend(loc='lower right'); plt.tight_layout(); plt.show()
-
-ex = site[site.mature_ok & site.proforma_type.str.contains('Express', na=False)]
-print('robustness (Express-only, n=%d):' % len(ex))
-for f in ['factor_pay_stations_score', 'factor_free_vacuum_slots_score', 'factor_type_of_site_score']:
-    r, p = stats.spearmanr(ex[f], np.log(ex.mature_wash))
-    print(f'  {f:34s} r={r:.2f} p={p:.4f}')
-sub = site[site.mature_ok]
-r_era, p_era = stats.spearmanr(sub.mature_mid_year, np.log(sub.mature_wash))
-print(f'era check: mature-window calendar year vs outcome r={r_era:.2f} p={p_era:.2f} '
-      '(factor signal is not a calendar-era artifact)')""")
+DRIVERS = [c for c in FAC if D[c].std() > 1e-9] + ['traffic_count']   # weekly_hours is constant -> excluded
+ylog = np.log(MATURE.mature_wash)
+res = [dict(driver=c, **dict(zip(['r', 'p'], perm_p(MATURE[c], ylog)))) for c in DRIVERS]
+R = pd.DataFrame(res); R['q'] = bh(R.p.values)
+R['name'] = (R.driver.str.replace('factor_', '').str.replace('_score', '')
+             .str.replace('demog_', '').str.replace('_value', '').str.replace('_', ' '))
+R = R.sort_values('r')
+fig = go.Figure(go.Bar(x=R.r, y=R.name, orientation='h',
+    marker_color=[C_SIG if q < .05 else C_NS for q in R.q],
+    text=[f"r={r:.2f}{'  ✓FDR' if q < .05 else ''}" for r, q in zip(R.r, R.q)], textposition='outside'))
+fig.update_layout(height=470, width=860, template='plotly_white',
+    title='Correlation of each proforma factor with ACTUAL mature washes (n=%d)' % len(MATURE),
+    xaxis_title='Spearman r  (green = survives FDR q<0.05)', margin=dict(l=170, t=60))
+fig.add_vline(x=0, line_width=1, line_color='#999')
+fig.show()
+print(R[R.q < .05][['name', 'r', 'q']].round(3).to_string(index=False))""")
 
 md("""**Insights**
-- **Four inputs survive FDR on the mature outcome — pay stations (r=0.41, q=0.005), free-vacuum
-  slots (0.34, q=0.025), type-of-site (0.33, q=0.025) and the composite site score (0.32,
-  q=0.028)** — and the first two replicate on the independent year-2 outcome (q=0.017/0.028).
-  This confirms the prior internal finding (proforma_db study: "only pay stations predicts") and
-  extends it: vacuums and corner/light siting are real too.
-- **Traffic count itself does NOT survive** (r≈0.18-0.21, q≈0.28-0.35) — remarkable given the
-  projection multiplies everything by it. The capacity factors keep partial r ≈ 0.30 after
-  controlling for traffic: they are not proxies for busier roads.
-- Demographics are dead weight in this sample (|r| ≤ 0.15, q ≥ 0.53 for all four), and
-  `nearest_competition` even points the *wrong* way (more competition ↔ slightly more washes —
-  co-location with retail gravity, not a moat).
-- Signal, not fluke: the starred factors are FDR-controlled, replicate across two outcome
-  definitions, hold Express-only (r 0.37-0.41), and the era check (r=0.10, p=0.41) rules out a
-  calendar confound. But note the *sign* of causality is untested — operators may build more pay
-  stations where they expect more volume.""")
+- **Exactly the three capacity/format factors survive FDR — pay stations (r=0.41), free vacuum
+  slots (0.34), type of site (0.33) — plus the composite score they drive (0.32).** Everything
+  else is grey: competition, visibility, accessibility, traffic-speed, area profile and all four
+  demographics show **no significant** correlation with real volume.
+- **Even the raw traffic count fails (r=0.21, not significant)** — striking, since the proforma
+  multiplies its whole forecast by traffic. What matters is the site's *throughput hardware*
+  (pay stations, vacuums) and *access* (corner + light), not the demographic profile the template
+  spends half its scorecard on.
+- So the proforma's equal weighting is wrong: **~half the factors are dead weight.** Caveat: n=70
+  and these are correlations — a well-run operator may both build more pay stations and drive more
+  volume; the factors screen sites, they don't prove causation.""")
 
-md("""## 4. Choice-level reality — what does each ticked box mean in washes/month?
+md("""## 5. The factors that matter — what each choice is worth
 
-Median mature washes per (normalized) choice level, cells with n≥5, with a permutation
-Kruskal-Wallis p per factor (does the choice split performance at all?).""")
+For the three that survived, the actual mature washes/month behind each ticked box. Monotone,
+large steps = a real lever.""")
 
-code("""sub = site[site.mature_ok].copy()
-def kw_perm(groups, n=5000):
-    obs = stats.kruskal(*groups)[0]
-    pool = np.concatenate(groups); sizes = [len(g) for g in groups]; cnt = 0
-    for _ in range(n):
-        pm = rng.permutation(pool); i = 0; gs = []
-        for szz in sizes: gs.append(pm[i:i + szz]); i += szz
-        if stats.kruskal(*gs)[0] >= obs: cnt += 1
-    return max(cnt / n, 1 / n)
-
-for c in ['factor_pay_stations_choice_n', 'factor_free_vacuum_slots_choice_n',
-          'factor_type_of_site_choice_n', 'factor_entrance_stack_up_choice_n',
-          'factor_nearest_competition_choice_n', 'factor_visibility_choice_n',
-          'factor_area_profile_choice_n', 'factor_traffic_speed_choice_n']:
-    g = sub.groupby(c).mature_wash.agg(['median', 'count'])
-    g = g[g['count'] >= 5].sort_values('median', ascending=False)
-    if len(g) < 2: continue
-    p = kw_perm([sub.loc[sub[c] == lev, 'mature_wash'].to_numpy() for lev in g.index])
-    print(f"{c.replace('factor_', '').replace('_choice_n', '').upper():24s} KW perm p={p:.3f}")
-    print(g.round(0).to_string(), end='\\n\\n')""")
-
-md("""**Insights**
-- **Capacity ladders are monotone and huge**: pay stations 1 → 2 → 3+ gives 3.3k → 6.1k → 9.4k
-  washes/mo (KW p≈0.02); vacuums <12 → 12-20 → >20 gives 3.6k → 6.3k → 9.1k (p≈0.01). Each step
-  up the ladder roughly +50%. (3+ pay stations is n=6 — direction is solid, the 9.4k magnitude is
-  an anecdote.)
-- **The traffic light is worth more than the corner**: corner+light 9.8k > inside-near-light 5.9k >
-  corner-no-light 4.8k > inside-no-light 3.3k (p≈0.03). "With light" beats "without" *within both*
-  lot types; the template scores corner-without-light above inside-near-light — the data says
-  that's backwards.
-- Entrance stack-up's low p (≈0.007) is **not trustworthy as a ladder**: it's non-monotone (deepest
-  stack "More than 20 vehicles" has the *lowest* median, 3.5k) and its top cell is the ambiguous
-  double-ticked "20-15 / Less than 10" extraction artifact (n=6). Read it as "something correlates
-  here", not "build deeper stacks".
-- Competition, visibility, area profile, traffic speed: p = 0.5-0.9 — the boxes get ticked, the
-  washes don't move. These four (plus constant weekly-hours) are ~half the scorecard doing ~nothing.""")
-
-md("""## 5. Combinations — do certain factor combos have outsized wash-counts, or is that fluke?
-
-All 2-factor combinations of the binarized levers (pay≥2, vacuums high, corner, light, stack high,
-multi-competitor-2mi) are searched for the biggest median lift vs the rest. Because we *searched*,
-significance is judged by **max-statistic permutation**: shuffle outcomes 3000x, rerun the *entire
-search* each time, and ask how often the best chance-combo beats the best real one.""")
-
-code("""sub = site[site.mature_ok].copy()
-sub['pay2p'] = sub.factor_pay_stations_choice_n.isin(['2', '3 OR MORE'])
-sub['vac_hi'] = sub.factor_free_vacuum_slots_choice_n.isin(['12 - 20 VEHICLES', 'MORE THAN 20 VEHICLES'])
-sub['corner'] = sub.factor_type_of_site_choice_n.str.contains('CORNER', na=False)
-sub['light'] = sub.factor_type_of_site_choice_n.str.contains('WITH LIGHT|NEAR LIGHT', na=False, regex=True)
-sub['stack_hi'] = sub.factor_entrance_stack_up_choice_n.isin(['20 - 15 VEHICLES', 'MORE THAN 20 VEHICLES'])
-sub['comp_multi2'] = sub.factor_nearest_competition_choice_n.eq('MULTIPLE IN 2 MILES')
-FLAGS = ['pay2p', 'vac_hi', 'corner', 'light', 'stack_hi', 'comp_multi2']
-yv = sub.mature_wash.to_numpy()
-
-pairs = []
-for i in range(len(FLAGS)):
-    for j in range(i + 1, len(FLAGS)):
-        mk = (sub[FLAGS[i]] & sub[FLAGS[j]]).to_numpy()
-        if mk.sum() >= 8 and (~mk).sum() >= 8:
-            pairs.append((f'{FLAGS[i]} & {FLAGS[j]}', mk,
-                          np.median(yv[mk]) - np.median(yv[~mk])))
-print('single levers first (median washes/mo in vs out):')
-for f in FLAGS:
-    mk = sub[f].to_numpy()
-    if mk.sum() >= 8 and (~mk).sum() >= 8:
-        print(f'  {f:12s} n={mk.sum():3d}  in={np.median(yv[mk]):6.0f}  out={np.median(yv[~mk]):6.0f}  '
-              f'lift={np.median(yv[mk]) - np.median(yv[~mk]):+6.0f}')
-print('\\ntop 2-factor combos by |median lift|:')
-for name, mk, lift in sorted(pairs, key=lambda t: -abs(t[2]))[:5]:
-    print(f'  {name:22s} n={mk.sum():3d}  in={np.median(yv[mk]):6.0f}  out={np.median(yv[~mk]):6.0f}  lift={lift:+6.0f}')
-
-obs_best = max(abs(t[2]) for t in pairs); masks = [t[1] for t in pairs]
-hits = 0; NP = 3000
-for _ in range(NP):
-    yp = rng.permutation(yv)
-    if max(abs(np.median(yp[mk]) - np.median(yp[~mk])) for mk in masks) >= obs_best: hits += 1
-print(f'\\nbest combo lift = {obs_best:.0f} washes/mo; max-statistic permutation p = {hits/NP:.3f} '
-      f'(chance of a lift this big somewhere in the same {len(pairs)}-combo search)')""")
+code("""def norm(v):
+    if pd.isna(v): return np.nan
+    return str(v).upper().strip().replace('MUTIPLE', 'MULTIPLE').replace('2.0', '2')
+LADDERS = [('factor_pay_stations_choice', 'Pay stations', ['1', '2', '3 OR MORE']),
+           ('factor_free_vacuum_slots_choice', 'Free vacuum slots',
+            ['LESS THAN 12 VEHICLES', '12 - 20 VEHICLES', 'MORE THAN 20 VEHICLES']),
+           ('factor_type_of_site_choice', 'Site type', ['INSIDE LOT NO LIGHT', 'CORNER LOT WITHOUT LIGHT',
+                                                        'INSIDE LOT NEAR LIGHT', 'CORNER LOT WITH LIGHT'])]
+fig = make_subplots(rows=1, cols=3, horizontal_spacing=.07, subplot_titles=[t for _, t, _ in LADDERS])
+for col, (cc, title, order) in enumerate(LADDERS, 1):
+    m = MATURE.assign(ch=MATURE[cc].map(norm))
+    g = m.groupby('ch').mature_wash.agg(['median', 'count'])
+    g = g.reindex([o for o in order if o in g.index])
+    g = g[g['count'] >= 3]
+    labs = [o.title().replace('Or', 'or').replace(' Vehicles', '').replace(' Lot', '<br>Lot') for o in g.index]
+    fig.add_trace(go.Bar(x=labs, y=g['median'], marker_color=C_SIG, showlegend=False,
+        text=[f'{v:,.0f}<br>(n={int(n)})' for v, n in zip(g['median'], g['count'])],
+        textposition='outside'), 1, col)
+    fig.update_xaxes(tickangle=-25, row=1, col=col)
+fig.update_yaxes(title_text='actual mature washes/mo', row=1, col=1)
+fig.update_layout(height=460, width=1020, template='plotly_white',
+                  title='What each ticked box is actually worth (median mature washes/mo)', margin=dict(t=90, b=90))
+fig.show()""")
 
 md("""**Insights**
-- The best combo (**pay≥2 & vacuums-high: 7.0k vs 3.3k washes/mo, +3.7k**) looks dramatic, but the
-  honest search-corrected verdict is **p≈0.10 — not proof of a special combination**. And the single
-  lever `vac_hi` alone already gives +3.6k: the combos add essentially nothing beyond their strongest
-  member. **Additive capacity main-effects, no detectable synergy at n=70.**
-- Practical read: "2+ pay stations AND high vacuum count" is a fine *screen* because each half is
-  independently real (§3), not because the pair is magic.
-- A competitor-density combo never rises above +0.7k — consistent with competition carrying no
-  signal on this sample.""")
+- **Every ladder climbs, and the steps are big.** Pay stations 1 → 2 → 3+ ≈ **3.3k → 6.1k → 9.4k**
+  washes/mo; vacuums <12 → 12–20 → >20 ≈ **3.6k → 6.3k → 9.1k**. Each rung is roughly +50% volume —
+  these are genuine capacity levers, not scorecard decoration.
+- **The traffic light beats the corner**: corner+light 9.8k > inside+light 5.9k > corner-no-light
+  4.8k > inside-no-light 3.3k — a signal within *both* lot types. The template ranks
+  corner-without-light above inside-near-light; the data says that's backwards.
+- Caveat: the top rungs (3+ pay stations, >20 vacuums) are small cells (n≈6) — the **direction** is
+  solid and monotone, but treat the exact top-end magnitude as indicative, not precise.""")
 
-md("""## 6. Weightage & honest predictive power
+md("""## 6. Bias vs spread — how *wide* is each forecaster?
 
-Left: the template's realized weight per factor (its mean |score| share of the cumulative site
-score) vs the data's univariate signal (|Spearman| vs mature washes, normalized to shares).
-Right: **out-of-sample** R² (5-fold x 40 repeats, ridge) — what the inputs can actually *predict*.""")
+The medians hide the spread. Each row below is the full **actual ÷ forecast** ratio for a
+forecaster: the **box is the middle 50% of sites**, the line inside is the median, whiskers reach
+the tails. Centred on the dashed 1.0 line = unbiased; a narrow box = precise.""")
 
-code("""assumed = site[FS].abs().mean(); assumed = assumed / assumed.sum()
-emp = results['mature'].set_index('driver').loc[FS, 'spearman_r'].abs()
-emp = emp / emp.sum()
-w = pd.DataFrame({'assumed_weight_share': assumed, 'empirical_signal_share': emp}).sort_values('assumed_weight_share')
-
-fig, ax = plt.subplots(1, 2, figsize=(13.5, 5.6))
-idx = np.arange(len(w))
-ax[0].barh(idx - .2, w.assumed_weight_share, height=.4, label='assumed (template weight)', color='#8172B3')
-ax[0].barh(idx + .2, w.empirical_signal_share, height=.4, label='empirical (|spearman| share)', color='#CCB974')
-ax[0].set_yticks(idx); ax[0].set_yticklabels([i.replace('factor_', '').replace('_score', '') for i in w.index])
-ax[0].set(xlabel='share', title='Template weight vs data signal, per factor'); ax[0].legend(fontsize=8)
-
-d = site[site.mature_ok].dropna(subset=FS + ['traffic_count', 'cumulative_site_score',
-                                             'cumulative_demographic_score', 'vol_monthly_y5'])
-d = d[d.traffic_count > 0]
-ylog = np.log(d.mature_wash).to_numpy()
-models = {
-    'traffic only': np.log(d[['traffic_count']]),
-    'site score only': d[['cumulative_site_score']],
-    'score + log traffic': pd.concat([d[['cumulative_site_score']], np.log(d[['traffic_count']])], axis=1),
-    'capacity trio': d[['factor_pay_stations_score', 'factor_free_vacuum_slots_score',
-                        'factor_entrance_stack_up_score']],
-    'all 9 factor scores': d[FS],
-    'proforma projection (log vol_y5)': np.log(d[['vol_monthly_y5']]),
-}
-cv = RepeatedKFold(n_splits=5, n_repeats=40, random_state=0)
-names, r2s = [], []
-for name, X in models.items():
-    Xv = X.to_numpy(); sc = []
-    for tr, te in cv.split(Xv):
-        mu, sd = Xv[tr].mean(0), Xv[tr].std(0) + 1e-12
-        mdl = Ridge(alpha=1.0).fit((Xv[tr] - mu) / sd, ylog[tr])
-        pred = mdl.predict((Xv[te] - mu) / sd)
-        sc.append(1 - ((ylog[te] - pred) ** 2).sum() / ((ylog[te] - ylog[tr].mean()) ** 2).sum())
-    names.append(name); r2s.append(np.mean(sc))
-    print(f'  {name:34s} oos R^2 = {np.mean(sc):+.3f}')
-ax[1].barh(names, r2s, color=['#55A868' if v > 0 else '#C44E52' for v in r2s], edgecolor='k', lw=.4)
-ax[1].axvline(0, color='k', lw=.8)
-ax[1].set(xlabel='out-of-sample R^2 (log mature washes)', title=f'What can the inputs predict? (n={len(d)})')
-plt.tight_layout(); plt.show()""")
+code('''dm = MATURE.dropna(subset=['pf_y5', 'plateau_loo', 'm5_mature']).copy()
+ratios = [('Proforma v1.0', dm.mature_wash / dm.pf_y5, C_PF),
+          ('Model v1.5', dm.mature_wash / dm.plateau_loo, C_MODEL),
+          ('Model 5', dm.mature_wash / dm.m5_mature, C_M5)]
+fig = go.Figure()
+for nm, r, c in ratios:                                   # order top->bottom = reverse of add order
+    fig.add_trace(go.Box(x=r.clip(upper=3.0), name=nm, marker_color=c, line_color=c,
+                         boxpoints='outliers', orientation='h'))
+fig.add_vline(x=1.0, line=dict(color=C_ACT, dash='dash'), annotation_text='perfect (unbiased)')
+fig.update_layout(height=360, width=880, template='plotly_white', showlegend=False,
+    title='Actual / forecast mature washes — bias & spread per forecaster (n=%d)' % len(dm),
+    xaxis_title='actual / forecast   (1.0 = perfect;  box = middle 50% of sites)', xaxis_range=[0, 3])
+fig.show()
+for nm, r, _ in ratios:
+    print(f'{nm:14s}: median {r.median():.2f}  IQR [{r.quantile(.25):.2f}, {r.quantile(.75):.2f}]  '
+          f'within +-20% {np.mean(np.abs(r-1)<=.2)*100:.0f}%  worst-tenth does {r.quantile(.1):.2f}x forecast')''')
 
 md("""**Insights**
-- **The template spreads weight nearly evenly; the data concentrates it.** Pay stations, vacuums and
-  type-of-site earn 2-3x their assumed share of the signal; competition, visibility, accessibility
-  and traffic-speed earn well under theirs.
-- **Nothing here is a usable point-forecaster**: the best model (site score + log traffic) reaches
-  oos R² ≈ 0.10; traffic alone ≈ 0.0; the proforma's own projection ≈ 0.03; and stuffing in all 9
-  factor scores *hurts* (negative oos R² — pure overfit at n=70). The inputs weakly *rank* sites,
-  they cannot *size* them.
-- This is the quantitative case for the current cold-start approach: site-selection inputs alone
-  cap out near R²≈0.1, so volume forecasting has to lean on comparable-site behaviour
-  (neighbours/cluster anchors), with these factors as secondary adjusters at most.
-- Composite beats its parts out-of-sample (score 0.065 vs capacity trio -0.09): with 70 sites, even
-  real univariate signal is too noisy to re-weight reliably — another reason to *re-calibrate* the
-  existing score rather than fit a new factor model on this sample.""")
+- **Model 5's box straddles the perfect line** (median 1.00) — the factor calibration removes the
+  ~0.72 over-projection that both v1.0 and v1.5 share on these older sites, and it lands the most
+  sites within ±20% (**39% vs ~21–24%**) with a better low tail (worst-tenth 0.50× vs 0.19×). It
+  trades a slightly fatter *high* tail (it over-corrects a few small sites) for being the only
+  unbiased forecaster.
+- **Even so, precision has a floor:** the raw forecasters land ~21–24% within ±20% and Model 5 ~39% —
+  none is a point instrument. That's the concrete answer to "the median looks fine, so is it
+  accurate?" — the *centre* can be right while any *single* site is still a wide bet, so quote a
+  range, don't promise a number.
+- The shared ~0.72 over-projection of v1.0/v1.5 here is a **cohort effect** — these matched sites are
+  older and weaker than average. §7 shows v1.5 is essentially unbiased on the full 862-site base.""")
 
-md("""## 7. Where does the projection error come from?
+md("""## 7. Reality check at scale — 862 sites, not 70
 
-Spearman of every input against **log(actual/projected)** mature volume (negative = over-projection),
-FDR-corrected. If the projection formula were well-calibrated, *nothing* would correlate.""")
+The comparison so far is on the 112 proforma-matched sites (older, weaker than average). Our model
+runs the same leave-one-out forecast on **every** eligible panel site (opened 2021–24, ≥24 months
+of data). No proforma exists for these, so it's a model-only check — but it answers "is v1.5's
+result a small-sample fluke?".""")
 
-code("""sub = site[site.mature_ok].dropna(subset=['vol_monthly_y5']).copy()
-sub['log_err'] = np.log(sub.mature_wash / sub.vol_monthly_y5)
-res = []
-for f in FS + DEMO:
-    r, p, n = perm_spearman(sub[f], sub.log_err)
-    res.append({'driver': f, 'spearman_r': r, 'perm_p': p, 'n': n})
-E = pd.DataFrame(res); E['fdr_q'] = bh(E.perm_p)
-print(E.sort_values('spearman_r', key=lambda v: v.abs(), ascending=False).round(3).head(8).to_string(index=False))
-print(f'median log_err = {sub.log_err.median():.2f} (= ratio {np.exp(sub.log_err.median()):.2f})')
-
-fig, ax = plt.subplots(figsize=(7, 4.6))
-ax.scatter(sub.traffic_count, sub.log_err, s=30, alpha=.65, edgecolor='k', lw=.3)
-b = np.polyfit(np.log(sub.traffic_count), sub.log_err, 1)
-xs = np.linspace(sub.traffic_count.min(), sub.traffic_count.max(), 60)
-ax.plot(xs, np.polyval(b, np.log(xs)), 'r-', lw=1.4)
-ax.axhline(0, color='k', lw=.8, ls='--')
-ax.set(xscale='log', xlabel='traffic_count (daily, log scale)',
-       ylabel='log(actual / projected)  [mature]',
-       title='Over-projection grows with traffic: the linear-in-traffic assumption fails')
-plt.tight_layout(); plt.show()""")
+code('''pr = json.load(open(f'{BASE}/ensemble/results/panel_results.json'))
+yrs = pd.DataFrame(pr['raw_years'])
+xa = [f"{r.yr}<br><span style='font-size:10px;color:#999'>n={int(r.n)}</span>" for r in yrs.itertuples()]
+fig = go.Figure(go.Bar(x=xa, y=yrs.MdAPE, marker_color=C_MODEL,
+    text=[f'{v:.0f}%<br>×{rr:.2f}' for v, rr in zip(yrs.MdAPE, yrs.ratio_med)], textposition='outside'))
+fig.update_layout(height=430, width=760, template='plotly_white',
+    title='Model v1.5 on 862 panel sites — MdAPE by operating year  (×n.nn = median bias)',
+    yaxis_title='MdAPE %', yaxis_range=[0, 44], margin=dict(t=60))
+fig.show()
+print(f"mature (n={pr['n']}): MdAPE {pr['raw_mature']['MdAPE']:.0f}%  bias {pr['raw_mature']['ratio']:.2f}  "
+      f"rho {pr['raw_mature']['rho']:.2f}  within +-20% {pr['raw_mature']['within20']:.0f}%")''')
 
 md("""**Insights**
-- **Traffic is the strongest error driver (r=-0.35, FDR q≈0.04): the busier the road, the more the
-  proforma over-projects.** Volume does not scale linearly with traffic — capture saturates (tunnel
-  throughput, membership catchment) — yet the formula multiplies straight through. A concave
-  traffic term (or a capture cap) would fix the *shape* of the bias, not just its level.
-- `cumulative_site_score` correlates *positively* with the error ratio (r≈0.30, q≈0.09): highly-scored
-  sites under-promise, low-scored sites over-promise — i.e. the score is directionally right but the
-  target-score mapping under-uses it while traffic over-drives the output.
-- Everything else washes out after FDR: the miss is not about demographics or any single checkbox —
-  it's the two moving parts the formula leans on hardest (traffic level, capture target).""")
+- **At scale v1.5 is unbiased and steady**: every operating year sits at **~28–34% MdAPE with a bias
+  of ≈1.0** (0.99–1.05), and mature bias is **0.99** — the ~0.72 over-projection in §6 was the
+  matched cohort, not the model.
+- **So the honest accuracy of our forecaster on a representative new site is ~32% typical error with
+  no directional bias.** That matches the published ceiling for brand-new-site forecasting (nobody
+  beats ~30% ex-ante) — the rest is information the world doesn't hold yet, which §8 shows the site
+  itself supplies once it opens.
+- Caveat: these 862 are survivors (built, ≥24 months reported); a site that failed fast or never
+  opened isn't here, so spread on an unscreened pipeline is a touch wider.""")
 
-md("""## 8. ASP & price reality check
+md("""## 8. It gets much better after opening
 
-The proforma sets menu prices; the panel reports realized blended ASP (revenue / washes over the
-mature window).""")
+Ex-ante is a range; the site's own numbers sharpen it fast. After opening we blend the model's
+prior with the site's first *k* observed months (de-ramped to a mature-equivalent level, with the
+blend shrunk so one noisy month can't whipsaw it). The curve is the mature-level error as those
+months arrive.""")
 
-code("""d = site[site.mature_ok].dropna(subset=['pkg_menu1_price', 'mature_asp'])
-d = d[(d.mature_asp > 0) & (d.mature_asp < 100)]
-fig, ax = plt.subplots(1, 2, figsize=(12, 4.6))
-ax[0].scatter(d.pkg_menu1_price, d.mature_asp, s=30, alpha=.6, edgecolor='k', lw=.3)
-lim = [0, max(d.pkg_menu1_price.max(), d.mature_asp.max()) * 1.05]
-ax[0].plot(lim, lim, 'r--', lw=1)
-ax[0].set(xlabel='proforma menu-1 price ($)', ylabel='actual blended ASP ($)',
-          title='Priced vs realized ASP', xlim=lim, ylim=lim)
-ax[1].hist(d.mature_asp - d.pkg_menu1_price, bins=20, color='#4C72B0', edgecolor='w')
-ax[1].axvline(0, color='r', ls='--')
-ax[1].set(xlabel='actual ASP - proforma menu-1 price ($)', ylabel='sites', title='ASP gap')
-plt.tight_layout(); plt.show()
-r, p = stats.spearmanr(d.pkg_menu1_price, d.mature_asp)
-print(f'median realized ASP: {d.mature_asp.median():.2f} | median menu-1 price: {d.pkg_menu1_price.median():.2f} '
-      f'| spearman(price, ASP)={r:.2f} (p={p:.3f}, n={len(d)})')""")
+code('''cur = pd.DataFrame(json.load(open(f'{BASE}/ensemble/results/postopen_curve.json'))['curve'])
+fig = go.Figure()
+fig.add_trace(go.Scatter(x=[0] + list(cur.k), y=[cur.prior_mdape.iloc[0]] + list(cur.post_mdape),
+    mode='lines+markers', line=dict(color=C_MODEL, width=3), marker=dict(size=9),
+    name='forecast (prior + observed months)'))
+fig.add_hline(y=float(cur.prior_mdape.mean()), line=dict(color=C_ACT, dash='dash'),
+    annotation_text='ex-ante prior — if you never re-forecast', annotation_position='top right')
+fig.update_layout(height=430, width=820, template='plotly_white', showlegend=False,
+    title='Mature-level error vs months of actuals observed (862 sites)',
+    xaxis_title='months of real operation observed', yaxis_title='MdAPE %', yaxis_range=[0, 38], margin=dict(t=60))
+fig.show()
+print(cur[['k', 'n', 'tau', 'post_mdape', 'post_w20']].round(0).to_string(index=False))''')
 
 md("""**Insights**
-- Realized blended ASP (median **$16.04**) runs ~60% above the menu-1 price (median **$10**) —
-  membership mix and upgrades dominate realized revenue per car, so the priced menu is a floor,
-  not a forecast. Volume, not price, is where proformas err optimistic.
-- The priced menu carries **no cross-site signal for realized ASP** (spearman -0.15, p=0.22, n=65):
-  what a site's menu says and what its cars actually pay are unrelated at this grain, because
-  blended ASP is a mix variable, not a price variable.
-- Caveat: blended ASP inherits the panel's known revenue-corruption modes on a minority of
-  operators; the (0,100) trim and mature-window median blunt but don't eliminate that.""")
+- **Six real months roughly halves the gap to perfect**: mature MdAPE falls from **~33% ex-ante to
+  ~25% at 6 months and ~20% by 12**, while the within-±20% hit-rate climbs **33% → 44% → 49%**. A
+  site's own ramp is worth more than any amount of pre-build modelling.
+- **Product rule:** forecast a *range* at pin-drop, then **re-forecast monthly after opening** — by
+  a site's first anniversary you're quoting a genuinely tight number, not a prior.
+- The blend is deliberately shrunk (it weights the prior like ~4–6 months of data, fitted
+  out-of-fold): at k=1 it barely moves off the prior, then tightens as evidence accumulates — so
+  the curve is smooth, not jumpy.""")
 
-md("""## 9. Findings
+md("""## Findings
 
-1. **Bias, quantified honestly.** Mature volume over-projected ~30% at the median (0.71, 73% of 70
-   sites), ramp years nearly unbiased (Y1 0.87, Y2 0.93) — the error is in the mature capture
-   target (assumed 1.43% of traffic vs realized 0.94%), and it concentrates on high-traffic sites
-   (linear-in-traffic fails; err vs traffic r=-0.35, q=0.04). MdAPE 30-49% per year regardless.
-2. **The factors are not random guesses — but only some of them.** Pay stations, free-vacuum slots,
-   type-of-site (traffic light > corner) and the composite score survive permutation + FDR and
-   replicate on a second outcome; competition, visibility, accessibility, traffic-speed, area
-   profile and all four demographics do not. Half the scorecard is dead weight on this sample.
-3. **Combos are additive, not magic** — best pair (pay≥2 & vac-high, +3.7k/mo) fails the
-   search-corrected permutation test (p≈0.10) and adds nothing beyond its strongest single lever.
-4. **Ranking ≠ sizing.** Everything the template knows, combined, predicts log mature volume at
-   oos R² ≈ 0.10; its own projection manages 0.03. Use the surviving factors as screens/adjusters;
-   size volume from comparable-site actuals.""")
-
-code("""print('=' * 66)
-print('BACKTEST SCORECARD'.center(66))
-print('=' * 66)
-d = site[site.mature_ok].dropna(subset=['vol_monthly_y5'])
-ratio = d.mature_wash / d.vol_monthly_y5
-print(f'proformas matched / analysed mature : {len(site)} / {len(d)}')
-print(f'median actual/projected (mature)    : {ratio.median():.2f}   (73% over-projected)')
-print(f'ramp years Y1/Y2 median ratio       : see section 2 table (~0.87 / 0.93)')
-print(f'assumed vs realized mature capture  : {d.mature_target_score.median()*100:.2f}% vs '
-      f'{(d.mature_wash*12/(d.traffic_count*300)).median()*100:.2f}% of daily traffic')
-Rm = results['mature']
-sig = Rm[Rm.fdr_q < .05]
-print('FDR-significant drivers of volume   : ' + ', '.join(
-    f"{r.driver.replace('factor_','').replace('_score','')}({r.spearman_r:.2f})" for r in sig.itertuples()))
-print(f'combo search (max-stat permutation) : best +3.7k washes/mo, p~0.10 -> no synergy proven')
-print(f'best out-of-sample R^2 from inputs  : ~0.10 (score+traffic) | projection alone ~0.03')
-print('=' * 66)""")
+1. **A linear formula only ties *location-only* modelling.** Per operating year, Proforma v1.0 and
+   Model v1.5 are tied at ~±40% error — because neither knows the site's hardware, so both hit the
+   early-year noise ceiling. It is not a fair fight for "proper modelling" until the model gets the
+   site's own inputs.
+2. **Model 5 breaks the tie decisively.** Feeding the three proven factors (pay stations, vacuums,
+   site type — from the proforma's own data) into the model cuts mature error to **30% vs v1.5's 46%
+   and the proforma's 58%**, makes it **unbiased** (bias 1.00), and wins the count on ~60%+ of
+   site-years. Proper modelling *does* win — once it uses the inputs that matter.
+3. **Only three factors matter.** Pay stations, free-vacuum slots and site type (corner + light)
+   survive FDR against real volume; competition, visibility, accessibility, traffic-speed, area
+   profile, all demographics — and even raw traffic count — do not. The proforma's equal weighting
+   spends half its scorecard on noise; Model 5 keeps only the signal.
+4. **Still not a point instrument.** Even Model 5 lands only ~39% of mature sites within ±20% (the
+   raw forecasters ~21–24%); at scale v1.5 is unbiased at **~32% typical error** — the published
+   ceiling for brand-new-site forecasting. Rank sites and quote a range, don't promise a number.
+5. **And it sharpens fast after opening.** Blending the prior with a site's own first 6 months cuts
+   mature error from ~33% to ~25% (to ~20% by 12 months). The workflow: score on capacity +
+   signalized access, forecast with Model 5, quote a range at pin-drop, then re-forecast monthly
+   once the site is live.""")
 
 nb['cells'] = cells
 out = os.path.join(os.path.dirname(__file__), '..', 'proforma_backtest.ipynb')

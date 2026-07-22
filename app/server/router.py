@@ -3,10 +3,12 @@
 out of the former monolithic routes.py; see schemas.py / service.py for the request models and the
 extracted helper logic respectively.
 
-Every pin-based forecast/market endpoint accepts `express_only` (default False). It restricts the
-local market, the cluster gate and the model's level anchor to Express Tunnel sites with >=30 months
-of history, mirroring the Streamlit "Express-only sites" toggle. The /insights/* endpoints do not
-take it -- they annotate, they do not model."""
+Every pin-based forecast/market endpoint accepts `express_only`. It restricts the local market, the
+cluster gate and the model's level anchor to Express Tunnel sites with >=30 months of history,
+mirroring the Streamlit "Express-only sites" toggle. Default: True on the Explore-markets (tab 1)
+endpoints -- market exploration is express-first -- and False on the Forecast (tab 2) endpoints.
+The /insights/* endpoints do not take it -- they annotate, they do not model -- but their prompts
+are scoped to the express/tunnel segment (see location_poc.py)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
@@ -128,14 +130,17 @@ def insights_location(req: LocationSummaryRequest):
 @router.post("/insights/competition")
 @cached("insights/competition")
 def insights_competition(req: CompetitionScaleRequest):
-    """Tab 1 — competitive landscape (LLM sizes the full competitive set vs the client's own portfolio). Returns
-    JSON `{summary}` — react-markdown that embeds the competitors table + saturation/positioning. 503 if no LLM
-    answers."""
+    """Tab 1 — competitive landscape, EXPRESS/TUNNEL washes only (LLM sizes the express competitive set vs the
+    client's own portfolio, anchored to the real nearby washes Google Places observes around the pin). Returns
+    JSON `{summary}` — react-markdown that embeds the express-competitors table + saturation/positioning. 503 if
+    no LLM answers."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
     known = service.known_site_names(lat, lon, req.radius_km, req.min_months, req.demo)
+    nearby = service.nearby_washes(lat, lon)
     try:
         result = _loc.competition_scale_analysis(lat, lon, known_sites=known, address=req.address,
-                                                 radius_km=req.radius_km, backend=req.backend)
+                                                 radius_km=req.radius_km, backend=req.backend,
+                                                 nearby_washes=nearby)
         return _loc.build_competition_response(result)
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")

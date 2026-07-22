@@ -597,6 +597,133 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
     _tj = traj.set_index("month")
     nbk = site[site.has_coords].copy(); nbk["d"] = haversine_km(lat, lon, nbk.lat.values, nbk.lon.values)
     nbk = nbk[(nbk.d <= radius) & (nbk.d > 1e-6)]
+    # ── 🌐 True market view (opt-in) — the "market total" lines sum SONNY'S CLIENT sites only, but the real
+    #    market has competitors the panel can't see. These controls (a) rescale the blue market lines to the FULL
+    #    competitive set — counted from the SAME cached Google-Places wash layer the 🛰️ Sitewise tab shows, or
+    #    estimated by the competition LLM (which returns an express-tunnel count for this radius) — and
+    #    (b) overlay demographic demand (projected population growth, vehicle base) from the Sitewise trade-area
+    #    CSV onto the 5-yr forecast. Both OFF by default → the chart stays the untouched panel view.
+    mkt_scale_k, mkt_pop_g = 1.0, 0.0
+    try:
+        from proforma.ui import site_visual_page as svp        # Sitewise helpers: cached Places fetch + trade-area CSV
+    except Exception:                                          # pragma: no cover — Sitewise deps missing
+        svp = None
+    with st.expander("🌐 True market view — competitors & demographics (beta)", expanded=False):
+        if svp is None:
+            st.info("Sitewise helpers unavailable — the Places / trade-area data can't be loaded here.")
+        else:
+            n_own = int(len(nbk))
+            c_comp, c_pop = st.columns(2)
+            use_comp = c_comp.toggle(
+                "Scale market to ALL competitors", value=False, key="mkt_use_comp",
+                help="The blue market lines sum Sonny's client sites only. Estimate the TOTAL washes competing in "
+                     "this radius (Google Places / AI) and scale the market history + forecast accordingly — "
+                     "assumes a typical competitor does similar volume to a typical client site. Turning this on "
+                     "triggers the same (cached, 1 h) Places fetch the 🛰️ Sitewise tab uses.")
+            use_pop = c_pop.toggle(
+                "Grow forecast with population (’25→’30 proj.)", value=False, key="mkt_use_pop",
+                help="Overlay the trade area's projected population growth on the 5-yr market forecast. The local "
+                     "wash trend already reflects the PAST; this adds the PROJECTED demographic drift on top.")
+            # ── competitive scaling: ONE small LLM call returns the multiplier for the blue line. The cached
+            #    Sitewise Places wash layer is fed to it as ground truth; the raw Places-count ratio is only the
+            #    fallback when no LLM backend is configured. No name heuristics. ──
+            if use_comp and n_own > 0:
+                _sk = svp.server_key()
+                places = svp.fetch_places(lat, lon, _sk) if _sk else {}
+                gw = list((places or {}).get("car_wash") or [])
+                # Google washes that are NOT a Sonny's site (>0.25 km from every panel site) — the unseen competitors
+                gw_new = [w for w in gw
+                          if not len(used)
+                          or float(haversine_km(w["lat"], w["lng"], used.lat.values, used.lon.values).min()) > 0.25]
+                _ring_mi = svp.FETCH_RADIUS_M / 1609.34
+                st.caption(f"🚿 Google Places (same layer as 🛰️ Sitewise, ≤{_ring_mi:.0f} mi): **{len(gw)}** washes "
+                           f"of all types, **{len(gw_new)}** not in Sonny's data · Sonny's clients in the "
+                           f"{radius} km market: **{n_own}** · the AI counts **express tunnels only**")
+                _seed = (lat, lon, express_only, n_own, "v2")  # pin / mode moved (or prompt version) → forget the old multiplier
+                if st.session_state.get("mkt_mult_seed") != _seed:
+                    st.session_state.mkt_mult_seed = _seed
+                    st.session_state.pop("mkt_mult_edit", None)
+                    st.session_state.pop("mkt_mult_ai", None)
+                try:
+                    import os as _os
+                    from app.pnl_analysis.insights.llm import insights_llm_ready as _llm_ready
+                    from app.pnl_analysis.insights.location_poc import market_scale_multiplier as _mult_llm
+                    _backend = _os.getenv("INSIGHTS_LLM_BACKEND", "azure").strip().lower()
+                    _ai_ok = bool(_llm_ready(_backend))
+                except Exception:                              # pragma: no cover — insights deps/keys missing
+                    _ai_ok = False
+                if _ai_ok and "mkt_mult_ai" not in st.session_state:
+                    _nearby = [{"name": w.get("name"), "distance_miles": round((w.get("m") or 0) / 1609.34, 1)}
+                               for w in gw]
+                    with st.spinner("🤖 Asking the competition model for the market multiplier…"):
+                        try:
+                            st.session_state.mkt_mult_ai = _mult_llm(
+                                lat, lon, n_client_sites=n_own, radius_km=radius,
+                                nearby_washes=_nearby, backend=_backend)
+                        except Exception as e:
+                            st.session_state.mkt_mult_ai = {"error": str(e)}
+                _ai = st.session_state.get("mkt_mult_ai") or {}
+                if _ai.get("multiplier"):
+                    _default = float(_ai["multiplier"])
+                    _tot = _ai.get("total") or {}
+                    st.markdown(f"**🤖 AI multiplier: ×{_default:.2f}** — ~{_tot.get('low', '?')}–"
+                                f"{_tot.get('high', '?')} express tunnels in the {radius} km radius vs "
+                                f"**{n_own}** in Sonny's data ({_ai.get('confidence', '?')} confidence).")
+                else:
+                    _default = (n_own + len(gw_new)) / n_own   # fallback: Places-count ratio (~5 mi, a lower bound)
+                    if _ai.get("error"):
+                        st.warning(f"AI call failed ({_ai['error']}) — falling back to the Places-count ratio.")
+                    elif not _ai_ok:
+                        st.caption("No insights LLM configured — using the Places-count ratio "
+                                   "(a lower bound: Places only sees ~5 mi).")
+                if "mkt_mult_edit" not in st.session_state:
+                    st.session_state.mkt_mult_edit = round(max(1.0, _default), 2)
+                mkt_scale_k = float(st.number_input(
+                    "Market multiplier — the blue market lines are scaled ×this", min_value=1.0, max_value=25.0,
+                    step=0.05, key="mkt_mult_edit",
+                    help="TOTAL express tunnels ÷ Sonny's sites in the radius. Set by the AI call "
+                         "(Places-count ratio when no LLM is configured); edit to override."))
+                st.caption(f"→ market history + forecast scaled **×{mkt_scale_k:.2f}**. "
+                           "The 🆕 entrant's own line is never scaled.")
+            elif use_comp:
+                st.info("No Sonny's sites within the radius — there is no panel market line to scale.")
+            # ── demographics: nearest trade-area record (same CSV as the Sitewise right panel) ──
+            _row = _dkm = None
+            try:
+                _row, _dkm = svp.nearest_site(svp.load_features(), lat, lon)
+            except Exception:                                  # pragma: no cover — CSV missing/unreadable
+                pass
+            if _row is not None:
+                _pop = _row.get("2025 Estimate"); _g30 = _row.get("Growth 2030-2025")
+                _veh = _row.get("Total Vehicles Available in the Market")
+                _pop = float(_pop) if pd.notna(_pop) else None
+                _g30 = float(_g30) if pd.notna(_g30) else None
+                _veh = float(_veh) if pd.notna(_veh) else None
+                _pen = None
+                if _veh and n_own:                             # market washes / vehicle / month (with the scale applied)
+                    _mv = (df[df.site_key.isin(nbk.site_key)].groupby("date")[["mem_wash_count", "ret_wash_count"]]
+                           .sum().sum(axis=1))
+                    if len(_mv):
+                        _pen = float(_mv.tail(12).mean()) * mkt_scale_k / _veh
+                d1, d2, d3, d4 = st.columns(4)
+                d1.metric("Population (2025)", f"{_pop:,.0f}" if _pop else "—")
+                d2.metric("Proj. growth ’25→’30", f"{_g30:+.1%}" if _g30 is not None else "—")
+                d3.metric("Vehicles in market", f"{_veh:,.0f}" if _veh else "—")
+                d4.metric("Washes / vehicle / mo", f"{_pen:.2f}" if _pen is not None else "—",
+                          help="Current market washes (last 12-mo avg, scale applied) ÷ vehicles in the trade "
+                               "area — a saturation gauge. >0.5 would mean every other vehicle washes monthly.")
+                if _dkm is not None and _dkm > 15:
+                    st.caption(f"⚠️ Nearest trade-area record is ~{_dkm:.0f} km from the pin — its demographics "
+                               "may not describe this exact spot.")
+                if use_pop:
+                    if _g30 is not None:
+                        mkt_pop_g = (1.0 + _g30) ** (1.0 / 5.0) - 1.0
+                        st.caption(f"→ forecast compounds an extra **{mkt_pop_g:+.2%}/yr** "
+                                   f"(projected population ’25→’30: {_g30:+.1%} over 5 yr).")
+                    else:
+                        st.caption("No projected-growth value for this trade area — population overlay inactive.")
+            elif use_pop:
+                st.info("Trade-area CSV unavailable — population overlay inactive.")
     fig = go.Figure()
     if len(nbk):
         keys = nbk.site_key.tolist()
@@ -615,6 +742,8 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         new_hi[open_off:open_off + _n] = _tj["total_hi"].reindex(range(H)).to_numpy()[:_n]
         idx = pd.date_range(comp.index.min(), today, freq="MS")
         hist_mem = comp["mem_wash_count"].reindex(idx); hist_ret = comp["ret_wash_count"].reindex(idx)
+        if mkt_scale_k != 1.0:                                                        # 🌐 full-market view: scale the PANEL
+            hist_mem = hist_mem * mkt_scale_k; hist_ret = hist_ret * mkt_scale_k      # history → the forecasts inherit it
         hist = hist_mem.add(hist_ret, fill_value=0)                                   # total = membership + retail
         hist_disp = hist.rolling(smooth, center=True, min_periods=1).mean() if (smooth and smooth > 1) else hist   # honor the smoothing slider
         base_mem = forecast_series(hist_mem, H, g=mem_g, seasonal=True)               # membership forecast (central trend + yearly seasonality)
@@ -623,16 +752,23 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         # data-based confidence band: re-forecast at the trend's lo/hi CI rates → a noisy market self-widens
         base_mem_lo = forecast_series(hist_mem, H, g=mem_lo, seasonal=True); base_mem_hi = forecast_series(hist_mem, H, g=mem_hi, seasonal=True)
         base_ret_lo = forecast_series(hist_ret, H, g=ret_lo, seasonal=True); base_ret_hi = forecast_series(hist_ret, H, g=ret_hi, seasonal=True)
+        if mkt_pop_g:                                                                 # 🌐 demographic drift: projected population
+            _demog = (1.0 + mkt_pop_g) ** (np.arange(1, H + 1) / 12.0)                # growth compounds over the 5 forecast years
+            base_mem, base_ret = base_mem * _demog, base_ret * _demog
+            base_mem_lo, base_mem_hi = base_mem_lo * _demog, base_mem_hi * _demog
+            base_ret_lo, base_ret_hi = base_ret_lo * _demog, base_ret_hi * _demog
+            base_fc = base_mem + base_ret
         # cannibalization hits RETAIL (LEARNED a·exp(-d/L) for this region), phased over the 1st year
         rec = (df[df.site_key.isin(keys)].sort_values("date").groupby("site_key").tail(12)
                .groupby("site_key").agg(ret=("ret_wash_count", "mean")).join(nbk.set_index("site_key").d))
         cp = cm.cannib_params(art, lat, lon)                                          # LEARNED a·exp(-d/L) for this region
-        cannib_full = float((cm._cannib_ret(rec.d.values, cp) * rec.ret.values).sum())
+        cannib_full = float((cm._cannib_ret(rec.d.values, cp) * rec.ret.values).sum()) * mkt_scale_k  # 🌐 unseen competitors lose retail too
         phase = np.clip((np.arange(H) - open_off + 1) / 12.0, 0.0, 1.0)              # cannibalization ramps from the OPENING month
         with_fc = np.clip(base_mem + np.clip(base_ret - cannib_full * phase, 0, None) + new_traj, 0, None)
         with_lo = np.clip(base_mem_lo + np.clip(base_ret_lo - cannib_full * phase, 0, None) + new_lo, 0, None)
         with_hi = np.clip(base_mem_hi + np.clip(base_ret_hi - cannib_full * phase, 0, None) + new_hi, 0, None)
         MKT = "#0a84ff"    # bright blue — one colour for the market total: solid history -> dotted forecast
+        _sfx = f" · full market ×{mkt_scale_k:.2f}" if mkt_scale_k != 1.0 else ""     # 🌐 label the scaled view honestly
         hist_s = rs_dates(hist_disp.dropna(), gmk)                                  # history summed into the chosen window
         _fc = lambda a: rs_dates(pd.Series(np.asarray(a, float), index=fdates), gmk)
         _ent = new_traj.astype(float).copy(); _ent[:open_off] = np.nan               # entrant line only from its opening month
@@ -642,16 +778,34 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
                                  y=[last] + list(whi.values) + list(wlo.values[::-1]) + [last],
                                  fill="toself", fillcolor="rgba(10,132,255,0.12)", line=dict(width=0),
                                  name="forecast band (trend CI)", hoverinfo="skip"))
-        fig.add_trace(go.Scatter(x=hist_s.index, y=hist_s.values, line=dict(color=MKT, width=3.2), name="market total — actual history"))
-        fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name="market total — forecast (with new site)"))
-        fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name="market without the new site"))
+        fig.add_trace(go.Scatter(x=hist_s.index, y=hist_s.values, line=dict(color=MKT, width=3.2), name=f"market total — actual history{_sfx}"))
+        fig.add_trace(go.Scatter(x=[last_x] + list(wfc.index), y=[last] + list(wfc.values), line=dict(color=MKT, width=3.2, dash="dot"), name=f"market total — forecast (with new site){_sfx}"))
+        fig.add_trace(go.Scatter(x=[last_x] + list(bfc.index), y=[last] + list(bfc.values), line=dict(color="#9aa6b2", width=1.6, dash="dot"), name=f"market without the new site{_sfx}"))
         fig.add_trace(go.Scatter(x=ntr.dropna().index, y=ntr.dropna().values, line=dict(color="#ff375f", width=3), name="🆕 new entrant — its own journey"))
         fig.add_vline(x=_open, line=dict(color="#c0392b", dash="dash", width=1.5))
         fig.add_annotation(x=_open, yref="paper", y=1.03, text="new site opens", showarrow=False, font=dict(color="#c0392b", size=11))
         fig.update_layout(height=480, template="plotly_white", hovermode="x unified", xaxis_title="date",
                           yaxis_title=f"market total washes / {GRAN_UNIT[gmk]}", margin=dict(l=10, r=10, t=30, b=10), legend=dict(orientation="h", y=-0.28))
         fig.update_xaxes(tickformat=gran_date_tickformat(gmk))
+        # ── mark the factors ON the plot (top-left badge): local trend always; 🌐 adjustments when active ──
+        _fac = [f"trend: mem {mem_g:+.1%}/yr · ret {ret_g:+.1%}/yr"]
+        if mkt_scale_k != 1.0:
+            _fac.append(f"🌐 express competitors ×{mkt_scale_k:.2f}")
+        if mkt_pop_g:
+            _fac.append(f"👥 population {mkt_pop_g:+.2%}/yr")
+        fig.add_annotation(xref="paper", yref="paper", x=0.01, y=0.98, align="left", showarrow=False,
+                           text="<br>".join(_fac), font=dict(size=10.5, color="#8a93a3"),
+                           bgcolor="rgba(128,128,128,0.10)", borderpad=4)
         st.plotly_chart(fig, width="stretch")
+        # brief read-out of every factor built into the lines above
+        _fbits = [f"local per-site trend (membership {mem_g:+.1%}/yr · retail {ret_g:+.1%}/yr)",
+                  "yearly seasonality", "entrant cannibalization a·e^(−d/L) on retail"]
+        if mkt_scale_k != 1.0:
+            _fbits.append(f"🌐 express-competitor scale ×{mkt_scale_k:.2f}")
+        if mkt_pop_g:
+            _fbits.append(f"👥 projected population growth {mkt_pop_g:+.2%}/yr")
+        st.caption("**Factors in this forecast:** " + " · ".join(_fbits) +
+                   ". The 🆕 entrant line is the model's own forecast — never scaled.")
     else:
         ntr = rs_dates(pd.Series(np.asarray(new_traj, float), index=fdates), gmk)
         fig.add_trace(go.Scatter(x=ntr.index, y=ntr.values, line=dict(color="#e6194B", width=3), name="🆕 new site"))

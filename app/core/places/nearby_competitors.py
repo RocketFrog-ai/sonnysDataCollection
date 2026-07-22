@@ -7,7 +7,7 @@ import logging
 import requests
 from typing import Optional, Any
 
-from app.core.places.search_nearby import find_nearby_places
+from app.core.places.search_nearby import find_nearby_places, find_places_text
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +15,22 @@ DEFAULT_RADIUS_MILES = 4.0
 PLACE_DETAILS_URL = "https://places.googleapis.com/v1/places/"
 DISTANCE_MATRIX_URL = "https://maps.googleapis.com/maps/api/distancematrix/json"
 METERS_PER_MILE = 1609.34
+_MAX_DM_DESTINATIONS = 25  # Distance Matrix hard limit per request — cap the merged place set
+
+# Keyword queries the express/tunnel-focused consumers pass as `keyword_queries`: Nearby Search can
+# only filter on the fixed "car_wash" type, so these Text Searches catch express washes the
+# nearest-20 cutoff (or an odd typing) missed. Off by default — each query is an extra Places call.
+EXPRESS_KEYWORD_QUERIES = ("express car wash", "car wash tunnel")
+
+# Name hints that mark a wash as LIKELY express/tunnel. A hint only: plenty of express tunnels
+# carry neither word (Mister, Zips, ...), so the tag guides the LLM's classification — it never
+# filters anything out here.
+EXPRESS_HINTS = ("express", "xpress", "tunnel")
+
+
+def _looks_express(*texts) -> bool:
+    blob = " ".join(str(t) for t in texts if t).lower()
+    return any(h in blob for h in EXPRESS_HINTS)
 
 
 def _route_distances(
@@ -86,13 +102,17 @@ def get_nearby_competitors(
     radius_miles: float = DEFAULT_RADIUS_MILES,
     fetch_place_details: bool = True,
     max_results: int = 20,
+    keyword_queries: Optional[tuple] = None,
 ) -> dict:
     """
     Nearby car washes (competitors) within radius_miles by driving distance.
-    Returns: name, distance_miles, rating, user_rating_count, address; when
-    fetch_place_details=True also primary_type_display_name (Place Details).
-    Does not return place_id or google_maps_uri to save cost; set
-    fetch_place_details=False to skip Place Details API calls entirely.
+    Returns: name, distance_miles, rating, user_rating_count, address, express_likely
+    (name/type mentions express/xpress/tunnel — a classification hint, nothing is filtered
+    by it); when fetch_place_details=True also primary_type_display_name (Place Details).
+    `keyword_queries` (e.g. EXPRESS_KEYWORD_QUERIES) adds one Text Search per query and
+    merges the unique hits in — catches express/tunnel washes the type-only nearby search
+    missed. Does not return google_maps_uri to save cost; set fetch_place_details=False
+    to skip Place Details API calls entirely.
     """
     if not api_key:
         return {"competitors": [], "count": 0}
@@ -112,15 +132,26 @@ def get_nearby_competitors(
             "get_nearby_competitors: find_nearby_places returned None (API error or no response) for (%s, %s)",
             latitude, longitude,
         )
-        return {"competitors": [], "count": 0}
-    if "places" not in results or not results["places"]:
+    places = list((results or {}).get("places") or [])
+
+    if keyword_queries:
+        seen_ids = {p.get("id") or p.get("name") for p in places}
+        for query in keyword_queries:
+            extra = find_places_text(api_key, query, latitude, longitude,
+                                     radius_miles=radius_miles, max_results=10)
+            for p in (extra or {}).get("places") or []:
+                pid = p.get("id") or p.get("name")
+                if pid and pid not in seen_ids:
+                    seen_ids.add(pid)
+                    places.append(p)
+        places = places[:_MAX_DM_DESTINATIONS]
+
+    if not places:
         logger.info(
             "get_nearby_competitors: no car_wash places in radius %.1f mi for (%s, %s); raw keys=%s",
             radius_miles, latitude, longitude, list(results.keys()) if results else [],
         )
         return {"competitors": [], "count": 0}
-
-    places = results["places"]
     logger.info(
         "get_nearby_competitors: Places API returned %d place(s) for (%s, %s); filtering by driving distance and type",
         len(places), latitude, longitude,
@@ -206,6 +237,7 @@ def get_nearby_competitors(
             "longitude": float(lon),
             "website": website_uri,
             "primary_type": primary_type_display_name or "Car wash",
+            "express_likely": _looks_express(name, primary_type_display_name, *place_types),
         }
 
         competitors.append(comp)

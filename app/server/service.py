@@ -65,6 +65,29 @@ def known_site_names(lat, lon, radius_km, min_months, demo):
     return [str(n) for n in nb.client_name.dropna().tolist()] if not nb.empty else []
 
 
+def nearby_washes(lat, lon, radius_miles: float = 11.0):
+    """Real nearby car washes from Google Places (any wash type), fed to the express-scoped competition read as
+    ground truth: name + driving distance + an express/tunnel name-keyword tag. The express keyword Text Searches
+    are on, so express washes the type-only nearby search missed still surface. Mirrors the Streamlit explore
+    panel's fetch. [] when GOOGLE_MAPS_API_KEY is unset or the fetch fails — the prompt then degrades to
+    knowledge-only, exactly as before."""
+    try:
+        from app.core.places.nearby_competitors import EXPRESS_KEYWORD_QUERIES, get_nearby_competitors
+        key = calib.GOOGLE_MAPS_API_KEY or ""
+        if not key:
+            return []
+        data = get_nearby_competitors(key, lat, lon, radius_miles=radius_miles,
+                                      fetch_place_details=False, max_results=20,
+                                      keyword_queries=EXPRESS_KEYWORD_QUERIES)
+        return [{"name": c.get("name"), "distance_miles": c.get("distance_miles"),
+                 "express_likely": bool(c.get("express_likely"))}
+                for c in (data.get("competitors") or []) if c.get("name")]
+    except Exception:  # a Places outage must never take the competition read down with it
+        logger.warning("nearby_washes: Places fetch failed; competition read continues without ground truth",
+                       exc_info=True)
+        return []
+
+
 def render_insights_summary(blocks) -> dict:
     """Post-process the grounded Key-Insights pipeline's per-group narrative blocks (Washes/Revenue/ASPs)
     into the single `{summary}` response: drop empty/neutral/error placeholders, keep only substantive
