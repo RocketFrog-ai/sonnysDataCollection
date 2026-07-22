@@ -177,17 +177,18 @@ class LocalCampaignsRequest(_PinRequest):
 class SiteFactorsInput(BaseModel):
     """The 10 site-selection factors from Rafal's proforma sheet — one categorical choice each,
     each option carrying a fixed 'site score' weight (app/pnl_analysis/modelling/bosch_forecast.py
-    SITE_FACTOR_WEIGHTS has the full weight table). Option keys are ordered best -> worst site."""
+    SITE_FACTOR_WEIGHTS has the full weight table). Field names and option values match the front
+    end's FACTORS config verbatim (snake_cased) -- these are literal wire values, not just labels."""
     area_profile: Literal["shopping", "business", "residential", "industrial"] = Field(..., description="Area profile around the site.")
-    nearest_competition: Literal["one_in_4mi", "multiple_in_4mi", "one_in_2mi", "multiple_in_2mi"] = Field(..., description="Nearest car-wash competitor(s).")
-    weekly_hours: Literal["more_than_70", "hours_65_70", "hours_60_64", "less_than_60"] = Field(..., description="Weekly hours of operation.")
-    type_of_site: Literal["corner_with_light", "corner_no_light", "inside_near_light", "inside_no_light"] = Field(..., description="Corner vs. inside lot, and light proximity.")
-    site_accessibility: Literal["easy_in_out", "easy_in_out_divided_hwy", "easy_one_way", "difficult"] = Field(..., description="Ease of entering/exiting the site.")
-    entrance_stack_up: Literal["more_than_20", "veh_20_15", "veh_14_10", "less_than_10"] = Field(..., description="Vehicle stack-up capacity at the entrance.")
-    free_vacuum_slots: Literal["more_than_20", "veh_12_20", "less_than_12", "coin_or_none"] = Field(..., description="Free vacuum slot capacity.")
-    pay_stations: Literal["three_or_more", "two", "one", "live_person"] = Field(..., description="Number of pay stations.")
-    visibility: Literal["more_than_500ft", "ft_400_500", "ft_300_400", "less_than_300ft"] = Field(..., description="Site visibility, both directions.")
-    traffic_speed: Literal["less_than_30mph", "mph_30_40", "mph_40_50", "more_than_50mph"] = Field(..., description="Posted traffic speed past the site.")
+    nearest_competition: Literal["one_in_4_miles", "multiple_in_4_miles", "one_in_2_miles", "multiple_in_2_miles"] = Field(..., description="Nearest car-wash competitor(s).")
+    weekly_hours_category: Literal["more_than_70", "65_to_70", "60_to_64", "less_than_60"] = Field(..., description="Weekly hours of operation.")
+    type_of_site: Literal["corner_lot_with_light", "corner_lot_without_light", "inside_lot_near_light", "inside_lot_no_light"] = Field(..., description="Corner vs. inside lot, and light proximity.")
+    site_accessibility: Literal["easy_in_easy_out", "easy_in_out_divided_highway", "easy_in_or_out_one_way", "difficult_in_and_out"] = Field(..., description="Ease of entering/exiting the site.")
+    entrance_stack_up_area: Literal["more_than_20_vehicles", "20_to_15_vehicles", "14_to_10_vehicles", "less_than_10_vehicles"] = Field(..., description="Vehicle stack-up capacity at the entrance.")
+    number_of_free_vacuum_slots: Literal["more_than_20", "12_to_20", "less_than_12", "coin_or_none"] = Field(..., description="Free vacuum slot capacity.")
+    number_of_pay_stations: Literal["3_or_more", "2", "1", "live_person"] = Field(..., description="Number of pay stations.")
+    visibility: Literal["more_than_500_ft", "400_to_500_ft", "300_to_400_ft", "less_than_300_ft"] = Field(..., description="Site visibility, both directions.")
+    traffic_speed: Literal["less_than_30_mph", "30_to_40_mph", "40_to_50_mph", "more_than_50_mph"] = Field(..., description="Posted traffic speed past the site.")
 
 
 class BoschForecastRequest(BaseModel):

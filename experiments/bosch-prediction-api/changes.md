@@ -1,7 +1,23 @@
 # Changes — Bosch Prediction API
 
 Implements the plan in [agent.md](agent.md). For the formula derivation, validation methodology,
-and full rationale, read agent.md §2 and §8 — this file is just the change log / file index.
+and full rationale, read agent.md §2, §8, §9 — this file is just the change log / file index.
+
+## Update: field/option names realigned to the real front-end contract
+
+`SiteFactorsInput` (schemas.py) and `SITE_FACTOR_WEIGHTS` (bosch_forecast.py) were rewritten to
+match Amit's actual `FACTORS` config verbatim (snake_cased) — the original draft used made-up
+shorthand strings (`one_in_4mi`, `veh_20_15`, …) that don't match the real UI's option values, which
+would have 422'd every real request. All 40 weights cross-checked identical to the draft (good
+confirmation the Excel-derived math was right); only the key *strings* changed. 4 of 10 top-level
+factor names also changed: `weekly_hours`→`weekly_hours_category`,
+`entrance_stack_up`→`entrance_stack_up_area`, `free_vacuum_slots`→`number_of_free_vacuum_slots`,
+`pay_stations`→`number_of_pay_stations`. Full before/after table in agent.md §9. Re-validated
+against the same real workbook (pure engine + live HTTP `TestClient`) post-rename — still exact.
+
+**Open**: whether the wire format is snake_case (kept, matching this repo's other schemas) or
+camelCase (matching `FactorConfig.name` literally) — needs confirming against Amit's actual request
+code before shipping.
 
 ## Files touched
 

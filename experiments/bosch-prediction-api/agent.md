@@ -172,7 +172,7 @@ Per Dhruv: build this as a new module in the same `app/pnl_analysis/` region as 
   with team; "Bosch" is Rafal's internal name, may not be what should ship in code/API naming).
   Pure function(s) implementing §2a–2e, no I/O beyond the request payload.
 
-## 4. Proposed request/response contract (draft — confirm with Amit)
+## 4. Proposed request/response contract (draft, later superseded — see §9 for the confirmed shipped contract)
 
 ```jsonc
 POST /pnl_analysis/bosch-forecast
@@ -304,3 +304,41 @@ divergence — flag to them before this ships broadly.
 be manual (Amit's form) vs. auto-filled from `site_factors.py`/council data; the exact
 yearly-vs-monthly decision; the "Bosch" naming; and the unexplained 300-constant / divisor-ramp
 semantics (replicated faithfully, still not explained by anyone on the call).
+
+## 9. Field/option naming — aligned to the real front-end contract (resolved)
+
+§4's draft used made-up shorthand key strings (`one_in_4mi`, `hours_65_70`, `veh_20_15`, …) since
+no front-end contract existed yet. Amit's actual `FACTORS` config (a `FactorConfig[]` array with
+`name`/`value`/`score` per factor/option) has since been shared. Cross-checked it against §2a's
+Excel-derived weight table: **every one of the 40 weights matches exactly** — good independent
+confirmation the Excel reverse-engineering was right.
+
+The **option value strings and 4 of the 10 top-level factor names did not match** the draft
+(they're literal wire values checked against `Literal[...]` types — a mismatch 422s any real
+request). `SITE_FACTOR_WEIGHTS` in `bosch_forecast.py` and `SiteFactorsInput` in `schemas.py` were
+updated to match Amit's config verbatim, snake_cased:
+
+| Old (draft) field | Now (matches front end) | Old option values (draft) | Now (matches front end) |
+|---|---|---|---|
+| `nearest_competition` | *(same)* | `one_in_4mi`, `multiple_in_4mi`, `one_in_2mi`, `multiple_in_2mi` | `one_in_4_miles`, `multiple_in_4_miles`, `one_in_2_miles`, `multiple_in_2_miles` |
+| `weekly_hours` | `weekly_hours_category` | `hours_65_70`, `hours_60_64` | `65_to_70`, `60_to_64` |
+| `type_of_site` | *(same)* | `corner_with_light`, `corner_no_light`, `inside_near_light`, `inside_no_light` | `corner_lot_with_light`, `corner_lot_without_light`, `inside_lot_near_light`, `inside_lot_no_light` |
+| `site_accessibility` | *(same)* | `easy_in_out`, `easy_in_out_divided_hwy`, `easy_one_way`, `difficult` | `easy_in_easy_out`, `easy_in_out_divided_highway`, `easy_in_or_out_one_way`, `difficult_in_and_out` |
+| `entrance_stack_up` | `entrance_stack_up_area` | `more_than_20`, `veh_20_15`, `veh_14_10`, `less_than_10` | `more_than_20_vehicles`, `20_to_15_vehicles`, `14_to_10_vehicles`, `less_than_10_vehicles` |
+| `free_vacuum_slots` | `number_of_free_vacuum_slots` | `more_than_20`, `veh_12_20`, `less_than_12` | `more_than_20`, `12_to_20`, `less_than_12` |
+| `pay_stations` | `number_of_pay_stations` | `three_or_more`, `two`, `one` | `3_or_more`, `2`, `1` |
+| `visibility` | *(same)* | `more_than_500ft`, `ft_400_500`, `ft_300_400`, `less_than_300ft` | `more_than_500_ft`, `400_to_500_ft`, `300_to_400_ft`, `less_than_300_ft` |
+| `traffic_speed` | *(same)* | `less_than_30mph`, `mph_30_40`, `mph_40_50`, `more_than_50mph` | `less_than_30_mph`, `30_to_40_mph`, `40_to_50_mph`, `more_than_50_mph` |
+| `area_profile`, `visibility`, `traffic_speed`, `type_of_site`, `site_accessibility`, `nearest_competition` | *(names unchanged — already matched)* | | |
+
+Re-validated after the rename: same real workbook (South Charleston, WV) through the pure engine
+AND through the live HTTP `TestClient` round-trip — both still match that file's Excel-computed
+Year 1-5 output exactly. Router/response shape is unaffected (`router.py` just calls
+`req.site_factors.model_dump()`, so it doesn't hardcode any of these field names).
+
+**Still unconfirmed**: whether the actual JSON the front end sends uses these snake_case field
+names as-is, or whether Amit's `FactorConfig.name` values (`areaProfile`, `weeklyHoursCategory`, …)
+get sent as camelCase and need a translation layer. This repo's other request schemas are all
+snake_case natively (no casing middleware observed), so snake_case was kept for consistency — but
+this should be confirmed against Amit's actual fetch/request code before this ships. If the wire
+format turns out to be camelCase, each field needs a pydantic `alias` (small change, not a redesign).

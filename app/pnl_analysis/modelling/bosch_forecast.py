@@ -33,38 +33,40 @@ from __future__ import annotations
 from typing import Dict
 
 # ─────────────────────── site-selection factors (§2a) ───────────────────────
-# option key -> site-score weight, one dict per factor. Order/labels match
-# experiments/old-proforma-analysis/code/extract_proformas.py's SITE_FACTORS list.
+# option key -> site-score weight, one dict per factor. Weights verified against the Excel formulas
+# (agent.md §2a); factor/option KEY STRINGS match the front end's FACTORS config verbatim (the
+# `name`/`value` fields, snake_cased) -- these are the literal wire values, not just labels, so they
+# must match exactly or every real request 422s.
 SITE_FACTOR_WEIGHTS: Dict[str, Dict[str, float]] = {
     "area_profile": {
         "shopping": 0.15, "business": 0.1, "residential": 0.05, "industrial": -0.25,
     },
     "nearest_competition": {
-        "one_in_4mi": 0.15, "multiple_in_4mi": 0.125, "one_in_2mi": 0.075, "multiple_in_2mi": -0.025,
+        "one_in_4_miles": 0.15, "multiple_in_4_miles": 0.125, "one_in_2_miles": 0.075, "multiple_in_2_miles": -0.025,
     },
-    "weekly_hours": {
-        "more_than_70": 0.15, "hours_65_70": 0.1, "hours_60_64": 0.025, "less_than_60": 0.0,
+    "weekly_hours_category": {
+        "more_than_70": 0.15, "65_to_70": 0.1, "60_to_64": 0.025, "less_than_60": 0.0,
     },
     "type_of_site": {
-        "corner_with_light": 0.15, "corner_no_light": 0.125, "inside_near_light": 0.075, "inside_no_light": 0.05,
+        "corner_lot_with_light": 0.15, "corner_lot_without_light": 0.125, "inside_lot_near_light": 0.075, "inside_lot_no_light": 0.05,
     },
     "site_accessibility": {
-        "easy_in_out": 0.15, "easy_in_out_divided_hwy": 0.1, "easy_one_way": 0.05, "difficult": 0.0,
+        "easy_in_easy_out": 0.15, "easy_in_out_divided_highway": 0.1, "easy_in_or_out_one_way": 0.05, "difficult_in_and_out": 0.0,
     },
-    "entrance_stack_up": {
-        "more_than_20": 0.15, "veh_20_15": 0.125, "veh_14_10": 0.075, "less_than_10": 0.05,
+    "entrance_stack_up_area": {
+        "more_than_20_vehicles": 0.15, "20_to_15_vehicles": 0.125, "14_to_10_vehicles": 0.075, "less_than_10_vehicles": 0.05,
     },
-    "free_vacuum_slots": {
-        "more_than_20": 0.15, "veh_12_20": 0.1, "less_than_12": 0.05, "coin_or_none": -0.25,
+    "number_of_free_vacuum_slots": {
+        "more_than_20": 0.15, "12_to_20": 0.1, "less_than_12": 0.05, "coin_or_none": -0.25,
     },
-    "pay_stations": {
-        "three_or_more": 0.15, "two": 0.1, "one": 0.05, "live_person": 0.0,
+    "number_of_pay_stations": {
+        "3_or_more": 0.15, "2": 0.1, "1": 0.05, "live_person": 0.0,
     },
     "visibility": {
-        "more_than_500ft": 0.15, "ft_400_500": 0.1, "ft_300_400": 0.05, "less_than_300ft": 0.0,
+        "more_than_500_ft": 0.15, "400_to_500_ft": 0.1, "300_to_400_ft": 0.05, "less_than_300_ft": 0.0,
     },
     "traffic_speed": {
-        "less_than_30mph": 0.15, "mph_30_40": 0.1, "mph_40_50": 0.05, "more_than_50mph": 0.0,
+        "less_than_30_mph": 0.15, "30_to_40_mph": 0.1, "40_to_50_mph": 0.05, "more_than_50_mph": 0.0,
     },
 }
 
