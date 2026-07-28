@@ -184,6 +184,9 @@ POLLINATE_SYSTEM_PROMPT = (
     "- Let (C) MODULATE the build verdict: high saturation / a large competitors-per-site multiple is a HEADWIND "
     "even when (A) and (B) look strong; low saturation is a TAILWIND / whitespace signal. (C) sets the competitive "
     "context the (B) numbers play out in, but it never overrides a fact from (B).\n"
+    "- When (C) gives a year-by-year competitive trajectory (2023, 2024, 2025), carry that DIRECTION OF TRAVEL into "
+    "the verdict — a trade area that added express tunnels each year is tightening (headwind building) even if today's "
+    "count still looks workable; a flat or thinning field is the opposite. Line it up against (B)'s recent demand trend.\n"
     "- NEVER invent numbers. Quote hard figures only from (B). Treat (A) and (C) as context/estimates, never as fact. "
     "If (A) asserts something the data can neither confirm nor deny, label it as an untested assumption.\n"
 )
@@ -335,6 +338,12 @@ COMPETITION_SYSTEM_PROMPT = (
     "area is for express washing. The headline measure is SATURATION / local market share: the client owns a known "
     "handful of sites; the express competitive set is some larger number; the ratio tells the client how many express "
     "rivals they face per site they run.\n\n"
+    "RECENT TRAJECTORY — do not read the market as a single frozen snapshot. From your knowledge of this metro, "
+    "characterise how the express-tunnel competitive landscape has EVOLVED over the last three years — 2023, 2024 and "
+    "2025 — one short read per year: roughly how many express tunnels were operating, which brands opened / expanded / "
+    "consolidated, and whether the trade area was tightening or still had whitespace that year. Make the direction of "
+    "travel explicit (getting more crowded, holding steady, or thinning out). Treat the 2025 figure as the current "
+    "state your saturation counts describe. Mark these as informed estimates, not precise history.\n\n"
     "SEGMENT SCOPE — the express/tunnel rule, be strict about it:\n"
     "- Everything you present — the named `competitors`, saturation, competitive intensity, pricing, headroom and the "
     "client's position — covers EXPRESS / CONVEYOR-TUNNEL car washes ONLY. Self-serve bays, in-bay automatics, hand "
@@ -414,7 +423,8 @@ def build_competition_messages(lat: float, lon: float, *, known_sites: Optional[
         "JSON with exactly these keys:\n"
         "{\n"
         '  "estimated_total_carwashes": {"low": int, "high": int},   // background context ONLY: every wash of any type (tunnels, in-bay, self-serve) — never presented, never a competitor source\n'
-        '  "estimated_express_tunnels": {"low": int, "high": int},   // express conveyor tunnels only (the client\'s segment) — total in the trade area, the client\'s own count included\n'
+        '  "estimated_express_tunnels": {"low": int, "high": int},   // express conveyor tunnels only (the client\'s segment) — total in the trade area, the client\'s own count included (this is the CURRENT / 2025 state)\n'
+        '  "trend_by_year": [ {"year": 2023, "express_tunnels": {"low": int, "high": int}, "note": str}, {"year": 2024, ...}, {"year": 2025, ...} ],  // how the EXPRESS-TUNNEL field evolved each year: approx count + a short note on openings/expansions/consolidation and whether it was tightening or still open that year. 2025 = current state, consistent with estimated_express_tunnels\n'
         '  "competitors": [ {"name": str, "type": "Express tunnel", "scale": str, "threat": str, "note": str} ],  // EXPRESS/TUNNEL rivals ONLY, type must be exactly "Express tunnel" — a self-serve, in-bay automatic, hand-wash, detailing, gas-station or auto-service wash must NOT appear in this list AT ALL, not even with type "Other" or a low threat. scale = "National"|"Regional"|"Local/Independent"; threat = "High"|"Medium"|"Low" to the client\n'
         '  "client_sites_recognized": [str],   // which of the CLIENT\'S OWN listed sites you recognize (names), [] if none\n'
         '  "client_position": str,             // 1-2 sentences: the client\'s competitive standing here vs these express rivals\n'
@@ -573,6 +583,15 @@ def _competition_summary_md(result: Dict[str, Any]) -> str:
             sat_bullets.append(f"- **{label}:** {data[key]}")
     out += (sat_bullets or ["- _No saturation estimate available._"]) + [""]
 
+    trend = [t for t in (data.get("trend_by_year") or []) if isinstance(t, dict) and t.get("year")]
+    if trend:
+        out.append("### Recent trajectory (2023 → 2025)")
+        out += ["| Year | Express tunnels | What changed |", "| --- | --- | --- |"]
+        for t in sorted(trend, key=lambda x: x.get("year", 0)):
+            out.append(f"| **{_md_cell(t.get('year'))}** | ~{_rng(t.get('express_tunnels'))} | "
+                       f"{_md_cell(t.get('note')) or '—'} |")
+        out.append("")
+
     rivals = [c for c in (data.get("competitors") or [])
               if isinstance(c, dict) and c.get("name") and not _non_express(c)]
     if rivals:
@@ -717,9 +736,12 @@ INDEPENDENT_RESEARCH_SYSTEM_PROMPT = (
 
 
 def build_independent_research_messages(lat: float, lon: float, radius_miles: float, *, address: Optional[str] = None,
-                                        web_sources: Optional[List[dict]] = None) -> List[dict]:
+                                        web_sources: Optional[List[dict]] = None,
+                                        nearby_washes: Optional[List[dict]] = None) -> List[dict]:
     """One blind, per-radius request: estimate the car-wash market metrics for this location within `radius_miles`,
-    from world knowledge only (plus optional web results). Strict JSON; null-with-reason when a metric can't be sized."""
+    from world knowledge only (plus optional web results and, when supplied, the REAL Google-Places washes observed
+    near the pin — those ground the total-market sizing and the per-wash performance trajectory). Strict JSON;
+    null-with-reason when a metric can't be sized."""
     addr = (address or "").strip() or "(not provided — infer the place from the coordinates)"
     km = radius_miles * 1.60934
     web_section = ""
@@ -728,6 +750,19 @@ def build_independent_research_messages(lat: float, lon: float, radius_miles: fl
             "\nFRESH WEB SEARCH RESULTS (retrieved just now for this location — treat as current ground truth and prefer "
             f"over static memory when they conflict):\n{_format_web_sources(web_sources)}\n"
         )
+    # real observed washes INSIDE this radius — ground truth for the market-level sizing + per-wash trajectory
+    obs = [w for w in (nearby_washes or [])
+           if isinstance(w.get("distance_miles"), (int, float)) and w["distance_miles"] <= radius_miles]
+    obs_section = ""
+    if obs:
+        obs_section = (
+            f"\nOBSERVED CAR WASHES within {radius_miles:g} miles via Google Places (GROUND TRUTH — real washes "
+            f"operating today, name + distance, any type; {len(obs)} found, nearest first):\n"
+            f"{_format_nearby_washes(obs)}\n"
+            "Anchor the MARKET-level sizing to this set: total_market_washes must plausibly aggregate these washes' "
+            "volumes plus any washes you know of beyond them, and nearby_wash_performance must cover exactly these "
+            "observed washes.\n"
+        )
     know_src = "your world knowledge and the web results below" if web_sources else "your world knowledge"
     user = (
         "INDEPENDENT CAR-WASH MARKET RESEARCH — JSON ONLY (NO internal/operator data supplied)\n\n"
@@ -735,7 +770,7 @@ def build_independent_research_messages(lat: float, lon: float, radius_miles: fl
         f"- Latitude, Longitude: {lat:.5f}, {lon:.5f}\n"
         f"- Approx address / description: {addr}\n"
         f"- Trade-area radius for THIS analysis: {radius_miles:g} miles (≈ {km:.1f} km)\n"
-        f"{web_section}\n"
+        f"{web_section}{obs_section}\n"
         f"From {know_src}, estimate the following for a NEW express-tunnel car wash at this location, considering the "
         f"{radius_miles:g}-mile trade area. Base every figure on what you actually know about this place. "
         "ESTIMATE, DON'T DECLINE: give a best-effort RANGE for every metric you can reasonably approximate (with an "
@@ -749,13 +784,15 @@ def build_independent_research_messages(lat: float, lon: float, radius_miles: fl
         "site's own wash volume or revenue: almost all express-wash customers come from within ~3–5 miles, so a 9-mile "
         "radius does not mean the one site washes 3x the cars it would at 3 miles. Keep the SITE-LEVEL metrics "
         "(wash counts, revenues, ASPs) essentially consistent across radii — do NOT scale them up with the radius; if "
-        "they barely change, say so in the basis. Only customer_demand / market_opportunity should grow with radius.\n"
+        "they barely change, say so in the basis. Only customer_demand / market_opportunity / total_market_washes "
+        "should grow with radius.\n"
         "Keep the numbers internally consistent: total washes = retail + membership washes; total revenue = retail + "
         "membership revenue; each revenue ≈ its wash count × its ASP.\n\n"
         "Return STRICT JSON with EXACTLY these keys, each an object {\"estimate\", \"unit\", \"confidence\", \"basis\"}:\n"
         "{\n"
         '  "market_opportunity":     {"estimate": str, "unit": "", "confidence": "High|Medium|Low", "basis": str},   // overall qualitative read; MAY grow with radius\n'
         '  "customer_demand":        {"estimate": str|null, "unit": "households / vehicles in radius", "confidence": "...", "basis": "..."},   // addressable MARKET size; grows with radius\n'
+        '  "total_market_washes":    {"estimate": str|null, "unit": "washes/month, ALL washes in radius combined", "confidence": "...", "basis": "..."},   // MARKET-level: monthly washes done by ALL car washes operating in this radius COMBINED (anchor to the observed washes when given; grows with radius)\n'
         '  "wash_volume":            {"estimate": str|null, "unit": "washes/month", "confidence": "...", "basis": "..."},   // the NEW SITE\'s OWN total washes/mo at maturity (capacity-bound; ~radius-independent)\n'
         '  "retail_wash_count":      {"estimate": str|null, "unit": "washes/month", "confidence": "...", "basis": "..."},   // of that total, the retail (pay-per-wash) portion\n'
         '  "membership_wash_count":  {"estimate": str|null, "unit": "washes/month", "confidence": "...", "basis": "..."},   // of that total, the unlimited-membership portion\n'
@@ -764,7 +801,8 @@ def build_independent_research_messages(lat: float, lon: float, radius_miles: fl
         '  "membership_revenue":     {"estimate": str|null, "unit": "$/month", "confidence": "...", "basis": "..."},   // membership portion of monthly revenue\n'
         '  "revenue_potential":      {"estimate": str|null, "unit": "$/year", "confidence": "...", "basis": "..."},   // the site\'s annual revenue potential / upside ceiling\n'
         '  "asp_retail":             {"estimate": str|null, "unit": "$/retail wash", "confidence": "...", "basis": "..."},   // typical retail average selling price per wash\n'
-        '  "asp_membership":         {"estimate": str|null, "unit": "$/membership wash", "confidence": "...", "basis": "..."}   // EFFECTIVE revenue per membership wash (monthly plan price ÷ washes/member/month)\n'
+        '  "asp_membership":         {"estimate": str|null, "unit": "$/membership wash", "confidence": "...", "basis": "..."},   // EFFECTIVE revenue per membership wash (monthly plan price ÷ washes/member/month)\n'
+        '  "nearby_wash_performance": [ {"name": str, "distance_miles": num, "washes_3yr_ago": str, "washes_2yr_ago": str, "washes_1yr_ago": str, "washes_now": str, "note": str} ]   // ONLY when observed washes were provided, one row per OBSERVED wash within this radius: its estimated washes/month NOW and 1 / 2 / 3 YEARS AGO (ranges; "not open" if it had not opened yet that year; "n/a" only if truly unsizeable). note = ONE short clause (brand maturity / new build ramping / decline — why the trajectory). [] when no washes were provided\n'
         "}\n"
         "Give ranges (e.g. \"8,000–12,000\") where appropriate. \"estimate\" must be null (not 0, not a guess) whenever "
         "you cannot responsibly size it from knowledge.\n"
@@ -780,6 +818,7 @@ def build_independent_research_messages(lat: float, lon: float, radius_miles: fl
 _INDEP_METRICS = [
     ("market_opportunity", "Market opportunity (overall read)"),
     ("customer_demand", "Nearby market size (households & vehicles)"),
+    ("total_market_washes", "Total MARKET washes per month (all washes in radius)"),
     ("wash_volume", "Total washes per month (new site)"),
     ("retail_wash_count", "Pay-per-wash washes per month"),
     ("membership_wash_count", "Member washes per month"),
@@ -865,18 +904,47 @@ def _independent_summary_md(results: List[Dict[str, Any]]) -> str:
                     rep_conf, rep_basis = (v.get("confidence") or "").strip(), b
         out.append(f"| **{label}** | " + " | ".join(cells) +
                    f" | {_md_cell(rep_conf) or '—'} | {_md_cell(_short(rep_basis, 110)) or '—'} |")
+
+    # per-wash performance trajectory — take the LARGEST radius that returned rows (covers the most washes),
+    # dedupe by name. Grounded on Google Places observations; the volumes are LLM estimates, labelled as such.
+    perf, seen = [], set()
+    for r in reversed(res):                                # largest radius first
+        for row in ((r.get("metrics") or {}).get("nearby_wash_performance") or []):
+            if isinstance(row, dict) and row.get("name") and str(row["name"]).strip().lower() not in seen:
+                seen.add(str(row["name"]).strip().lower())
+                perf.append(row)
+    if perf:
+        perf.sort(key=lambda w: w.get("distance_miles") if isinstance(w.get("distance_miles"), (int, float)) else 99)
+        out += [
+            "",
+            "### Nearby washes — estimated monthly volume, 3 years ago → now",
+            "",
+            "_Real washes observed via Google Places; the volumes are world-knowledge **estimates**, not measurements._",
+            "",
+            "| Wash | Distance | 3 yrs ago | 2 yrs ago | 1 yr ago | Now | Why |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+        ]
+        for w in perf[:15]:
+            d = w.get("distance_miles")
+            dist = f"{float(d):.1f} mi" if isinstance(d, (int, float)) else "—"
+            out.append(f"| **{_md_cell(w.get('name'))}** | {dist} | {_md_cell(w.get('washes_3yr_ago')) or '—'} | "
+                       f"{_md_cell(w.get('washes_2yr_ago')) or '—'} | {_md_cell(w.get('washes_1yr_ago')) or '—'} | "
+                       f"{_md_cell(w.get('washes_now')) or '—'} | {_md_cell(_short(str(w.get('note') or ''), 90)) or '—'} |")
     return "\n".join(out).strip()
 
 
 def independent_market_research(lat: float, lon: float, *, address: Optional[str] = None,
                                 radii_miles: Any = (3, 6, 9), backend: Optional[str] = None,
-                                max_tokens: int = 1500, temperature: float = 0.3,
-                                use_web_search: bool = False) -> Dict[str, Any]:
+                                max_tokens: int = 2600, temperature: float = 0.3,
+                                use_web_search: bool = False,
+                                nearby_washes: Optional[List[dict]] = None) -> Dict[str, Any]:
     """Can an external LLM size a NEW car-wash market from PUBLIC knowledge alone (no internal data)? Runs one blind
     LLM call PER radius (default 3/6/9 mi), each estimating the requested business metrics as strict JSON with a hard
     'say-null-if-you-cannot' rule. Radius calls run concurrently. When `use_web_search` is on and a provider is
-    configured, fresh web results for the location are fed in as citable ground truth. Raises LLMUnavailable if no
-    backend answers any radius."""
+    configured, fresh web results for the location are fed in as citable ground truth. When `nearby_washes`
+    (real Google-Places washes: name + distance_miles + express tag) are supplied, each radius call is grounded on
+    the washes inside that radius, unlocking the total-market wash sizing and the per-wash now-vs-1/2/3-years-ago
+    performance table. Raises LLMUnavailable if no backend answers any radius."""
     radii = [float(x) for x in (radii_miles or (3, 6, 9)) if _is_pos(x)][:6] or [3.0, 6.0, 9.0]
     sources: List[dict] = []
     place = (address or "").strip()
@@ -889,7 +957,8 @@ def independent_market_research(lat: float, lon: float, *, address: Optional[str
             sources = []
 
     def _one(r: float) -> Dict[str, Any]:
-        messages = build_independent_research_messages(lat, lon, r, address=address, web_sources=sources)
+        messages = build_independent_research_messages(lat, lon, r, address=address, web_sources=sources,
+                                                       nearby_washes=nearby_washes)
         text, used = llm_client.complete_cascade(messages, backend=backend, max_tokens=max_tokens,
                                                  temperature=temperature, json_mode=True)
         return {"radius_miles": r, "metrics": _parse_json_lax(text), "backend": used}

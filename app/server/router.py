@@ -22,6 +22,7 @@ from app.pnl_analysis.modelling import campaign as campaign_engine
 from app.pnl_analysis.modelling import bosch_forecast as bosch_engine
 from app.pnl_analysis.insights.graph import market_insights as _insights_pipeline
 from app.pnl_analysis.insights import location_poc as _loc
+from app.pnl_analysis.insights import llm_forecast as _llm_fc
 from app.pnl_analysis.insights import llm as _llm
 from app.server import service
 from app.server.schemas import (
@@ -33,6 +34,7 @@ from app.server.schemas import (
     CompetitionScaleRequest,
     PollinatedSummaryRequest,
     IndependentResearchRequest,
+    LlmForecastRequest,
     MarketForecastRequest,
     PinpointForecastRequest,
     PnlForecastRequest,
@@ -181,10 +183,41 @@ def insights_independent_research(req: IndependentResearchRequest):
     3/6/9 mi) and estimates the requested business metrics, returning null-with-reason for anything it can't
     responsibly estimate rather than fabricating. Returns JSON `{radii, summary, sources}`. 503 if no LLM answers."""
     lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
+    # Places ground truth (same fetch as /insights/competition) → total-market wash sizing + the per-wash
+    # now-vs-1/2/3-years-ago performance table; [] when no key, behaviour then identical to before.
+    _radii = [float(r) for r in (req.radii_miles or (3, 6, 9))]
+    nearby = service.nearby_washes(lat, lon, radius_miles=max(_radii))
     try:
         result = _loc.independent_market_research(lat, lon, address=req.address, radii_miles=req.radii_miles,
-                                                  backend=req.backend, use_web_search=req.use_web_search)
+                                                  backend=req.backend, use_web_search=req.use_web_search,
+                                                  nearby_washes=nearby)
         return _loc.build_independent_research_response(result)
+    except _llm.LLMUnavailable as e:
+        raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
+
+
+@router.post("/insights/llm-forecast")
+def insights_llm_forecast(req: LlmForecastRequest):
+    """Tab 2 — the 🤖 AI FALLBACK forecast for a pin with NO local Sonny's market (call this when
+    /pinpoint-forecast returns `data_found=false`). Runs the LLM-only 3-agent chain (llm_forecast.py):
+    web-grounded site factors (3/6 mi) → a 5-year washes/month forecast + a market-then-vs-now backdating →
+    adversarial review, anchored to the real Google-Places washes near the pin (~11 mi) and steered by any
+    confirmed site inputs. Returns {factors, years, backdated, membership_share_mature, reasoning, review,
+    web_sources, backend, caveat, …} — ESTIMATES, never a grounded modelled number. 503 if no LLM answers."""
+    from datetime import date
+    lat, lon = service.resolve_lat_lon(req.latitude, req.longitude, req.address)
+    nearby = service.nearby_washes(lat, lon)     # ~11 mi Places ground truth, same fetch as the Streamlit fallback
+    site_inputs = {k: v for k, v in {
+        "pay_stations": req.pay_stations, "free_vacuum_slots": req.vacuum_slots,
+        "lot_type": req.lot_type, "daily_traffic_count": req.traffic_count,
+        "score_sheet": (req.score_sheet or None),
+    }.items() if v}
+    try:
+        return _llm_fc.llm_pin_forecast(
+            lat, lon, nearby_washes=nearby, site_inputs=(site_inputs or None),
+            use_web_search=req.use_web_search, today_year=date.today().year,
+            address=req.address, backend=req.backend,
+        )
     except _llm.LLMUnavailable as e:
         raise HTTPException(status_code=503, detail=f"LLM unavailable: {e}")
 
@@ -321,7 +354,7 @@ def bosch_forecast(req: BoschForecastRequest):
     and monthly), ported from Rafal's proforma Excel formula. Deterministic, not the coldstart ML
     model. Not pin-driven -- every input is supplied directly on the request, so this skips
     @cached (that decorator assumes a lat/lon pin; this is a pure, cheap computation anyway). See
-    experiments/bosch-prediction-api/agent.md for the formula derivation."""
+    app/pnl_analysis/modelling/bosch_forecast.md for the formula derivation."""
     return bosch_engine.bosch_forecast(
         site_factors=req.site_factors.model_dump(),
         avg_household_size=req.avg_household_size,

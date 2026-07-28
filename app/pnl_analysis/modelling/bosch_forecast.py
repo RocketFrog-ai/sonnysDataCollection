@@ -5,7 +5,7 @@ experiments/old-proforma-analysis/old-proforma-data/), NOT a learned model. Give
 site-selection factors + 4 demographic components + a traffic-count input, it reproduces the
 sheet's Year 1-5 car-wash-volume estimate.
 
-Formula chain (see experiments/bosch-prediction-api/agent.md §2 for the cell-by-cell derivation):
+Formula chain (see bosch_forecast.md §2, alongside this file, for the cell-by-cell derivation):
   1. cumulative_site_score       = sum of the 10 chosen factor weights (SITE_FACTOR_WEIGHTS)
   2. cumulative_demographic_score = mean of the 4 demographic scores (each vs. a fixed target)
   3. first_year / second_year / mature target scores, from (1) and (2)

@@ -22418,6 +22418,7 @@
   "pinpoint_forecast": {
    "body": {
     "brand": null,
+    "data_found": true,
     "lat": 29.798555,
     "lon": -95.719688,
     "summary": {
@@ -22945,6 +22946,7 @@
   "pinpoint_forecast_override": {
    "body": {
     "brand": null,
+    "data_found": true,
     "lat": 29.798555,
     "lon": -95.719688,
     "summary": {

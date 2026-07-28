@@ -61,6 +61,87 @@ def render(df, site, pins, demo, express_only, radius, smooth):
         def _web_search_available() -> bool:
             return False
 
+    def _location_only_insights(lat, lon, radius_km, demo):
+        """Empty local market (no ≥30-mo sites in range) still gets the world-knowledge / Places reads —
+        Location Analysis, Competition Coverage and Independent Research need only the pin, not a local panel.
+        The grounded Key Insights and the KPI charts genuinely can't run here, so they're the only thing skipped."""
+        if demo or not _LOC_POC_OK:
+            return
+        backend = os.getenv("INSIGHTS_LLM_BACKEND", "azure").strip().lower()
+        if not insights_llm_ready(backend):
+            st.caption(f"⚠️ `{backend}` LLM endpoint unavailable — location insights can't be prepared right now.")
+            return
+        web_on = _web_search_available()
+
+        @st.cache_data(show_spinner=False, ttl=3600)
+        def _nearby(lat, lon, radius_miles=11):
+            try:
+                from app.core.places.nearby_competitors import EXPRESS_KEYWORD_QUERIES, get_nearby_competitors
+                from app.core import common as _calib
+                key = _calib.GOOGLE_MAPS_API_KEY or ""
+                if not key:
+                    return []
+                data = get_nearby_competitors(key, lat, lon, radius_miles=radius_miles, fetch_place_details=False,
+                                              max_results=20, keyword_queries=EXPRESS_KEYWORD_QUERIES)
+                return [{"name": c.get("name"), "distance_miles": c.get("distance_miles"),
+                         "express_likely": bool(c.get("express_likely"))}
+                        for c in (data.get("competitors") or []) if c.get("name")]
+            except Exception:
+                return []
+
+        @st.cache_data(show_spinner=False, ttl=3600)
+        def _loc(_sig, lat, lon, radius_km, backend, use_web):
+            return location_market_analysis(lat, lon, radius_km=radius_km, backend=backend, use_web_search=use_web)
+
+        @st.cache_data(show_spinner=False, ttl=3600)
+        def _comp(_sig, lat, lon, radius_km, backend, _nb):
+            return competition_scale_analysis(lat, lon, known_sites=[], radius_km=radius_km, backend=backend,
+                                              nearby_washes=list(_nb or []), nearby_radius_miles=11)
+
+        @st.cache_data(show_spinner=False, ttl=3600)
+        def _indep(_sig, lat, lon, radii, backend, use_web, _nb=None):
+            if not independent_market_research:
+                return None
+            return independent_market_research(lat, lon, radii_miles=list(radii), backend=backend,
+                                               use_web_search=use_web, nearby_washes=list(_nb or []))
+
+        sig = (round(lat, 5), round(lon, 5), int(radius_km))
+        st.divider()
+        st.subheader("🌐 Location insights — no local operating data needed")
+        st.caption("No nearby site has enough history to ground a data read, but these location-only views "
+                   "(world knowledge + Google Places) don't need one.")
+        with st.spinner("Preparing location · competition · independent-research reads…"):
+            nb = _nearby(lat, lon)
+            try:
+                loc_out = _loc(sig, lat, lon, radius_km, backend, web_on)
+            except Exception:
+                loc_out = None
+            try:
+                comp_out = _comp(sig, lat, lon, radius_km, backend, nb)
+            except Exception:
+                comp_out = None
+            try:
+                indep_out = _indep((sig, (3.0, 6.0, 9.0), web_on), lat, lon, (3.0, 6.0, 9.0), backend, web_on,
+                                   _nb=nb)
+            except Exception:
+                indep_out = None
+
+        def _md(s):
+            st.markdown((s or "").replace("$", "\\$"))           # escape $ so Streamlit/KaTeX doesn't eat it
+
+        if not (loc_out or comp_out or indep_out):
+            st.info("Location insights couldn't be prepared for this pin right now.")
+        if loc_out and loc_out.get("text"):
+            with st.container(border=True):
+                _md(loc_out["text"])
+        if comp_out and build_competition_response:
+            with st.container(border=True):
+                _md(build_competition_response(comp_out).get("summary"))
+        if indep_out and build_independent_research_response:
+            with st.container(border=True):
+                st.markdown("#### 🌐 Independent market research — external LLM knowledge only")
+                _md(build_independent_research_response(indep_out).get("summary"))
+
 
     st.title("PROFORMA DEMO")
     if express_only:
@@ -116,6 +197,7 @@ def render(df, site, pins, demo, express_only, radius, smooth):
             st.session_state.pin = (lc["lat"], lc["lng"]); st.rerun()
         st.caption((f"Dots = every express site" if express_only else "Dots = every site")
                    + f" with ≥{MIN_MONTHS} months of history — click anywhere on the map to move the pin there.")
+        _location_only_insights(plat, plon, radius, demo)        # world-knowledge / Places reads still work here
         st.stop()
     # cap clutter: always keep every entrant, fill the rest with the nearest incumbents
     keep = nb_full[nb_full.is_entrant]
@@ -297,10 +379,12 @@ def render(df, site, pins, demo, express_only, radius, smooth):
 
 
     @st.cache_data(show_spinner=False, ttl=3600)
-    def _independent_cached(_sig, lat, lon, radii_miles, backend, use_web):
+    def _independent_cached(_sig, lat, lon, radii_miles, backend, use_web, _nearby=None):
         """Independent EXTERNAL-LLM market research — sizes each radius (3/6/9 mi) from world knowledge only, NO internal
-        data. Cached per (location, radii, backend, web on/off). `use_web` grounds it on fresh web results."""
-        return independent_market_research(lat, lon, radii_miles=list(radii_miles), backend=backend, use_web_search=use_web)
+        data. Cached per (location, radii, backend, web on/off). `use_web` grounds it on fresh web results; `_nearby`
+        (real Google-Places washes) grounds the total-market sizing + per-wash now-vs-1/2/3-yrs-ago table."""
+        return independent_market_research(lat, lon, radii_miles=list(radii_miles), backend=backend,
+                                           use_web_search=use_web, nearby_washes=list(_nearby or []))
 
 
     MODE_KEY = "✨ Key Insights — grounded in this market's data"
@@ -371,7 +455,8 @@ def render(df, site, pins, demo, express_only, radius, smooth):
             return _compete_cached(_ckey, plat, plon, int(radius), _known_names, insights_backend, _nearby)
 
         def _prep_D():                                             # Independent research — external LLM only, per 3/6/9-mi radius
-            return _independent_cached(_ikey, plat, plon, _INDEP_RADII, insights_backend, _web_on)
+            _nearby = _nearby_washes_cached(plat, plon, 11)        # Places ground truth → total-market + per-wash trajectory
+            return _independent_cached(_ikey, plat, plon, _INDEP_RADII, insights_backend, _web_on, _nearby)
 
         _jobs = [(k, fn) for k, fn, go in (
             ("B", _prep_B, _INSIGHTS_OK and isig not in insights_store),

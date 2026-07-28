@@ -414,6 +414,210 @@ def _pnl_figure(rev_m, opex_m, capex_m, totexp_m, net_m, gran, *, title,
     return f
 
 
+# ─────────────── 🤖 AI fallback for pins OUTSIDE any cluster (no local market to ground on) ───────────────
+@st.cache_data(show_spinner=False, ttl=3600)
+def _places_near_pin(lat, lon, radius_miles=11):
+    """Real nearby washes (name + distance + express/tunnel tag) via Google Places — the ground truth the
+    LLM fallback agents are anchored to. [] when no key / fetch fails (agents then run un-anchored)."""
+    try:
+        from app.core.places.nearby_competitors import EXPRESS_KEYWORD_QUERIES, get_nearby_competitors
+        from app.core import common as _calib
+        key = _calib.GOOGLE_MAPS_API_KEY or ""
+        if not key:
+            return []
+        data = get_nearby_competitors(key, lat, lon, radius_miles=radius_miles, fetch_place_details=False,
+                                      max_results=20, keyword_queries=EXPRESS_KEYWORD_QUERIES)
+        return [{"name": c.get("name"), "distance_miles": c.get("distance_miles"),
+                 "express_likely": bool(c.get("express_likely"))}
+                for c in (data.get("competitors") or []) if c.get("name")]
+    except Exception:
+        return []
+
+
+def _md_esc(v) -> str:
+    return str(v if v is not None else "—").replace("\n", " ").replace("|", "\\|").strip() or "—"
+
+
+def _ai_fallback_forecast(lat, lon, sup, demo):
+    """The pin sits outside every cluster → the grounded forecast refuses. This is the clearly-labelled AI
+    fallback: an LLM-ONLY 3-agent chain sizes the location from world knowledge + live Google Places + fresh web
+    search — web-grounded site factors (3/6 mi) → a 5-year wash forecast PLUS a market-then-vs-now backdating (had
+    it opened 2023/24/25, what is it washing now) → adversarial review. No Model 5 / coldstart number is mixed in.
+    ESTIMATES for an unproven market — never mixed into a grounded modelled number (the insights/ rule)."""
+    if demo:                                                # the factor sheet reveals the city → hidden in client demo
+        return
+    try:
+        from app.pnl_analysis.insights.llm_forecast import FACTOR_KEYS, llm_pin_forecast
+        from app.pnl_analysis.insights.llm import insights_llm_ready
+        from app.pnl_analysis.insights import websearch
+    except Exception:                                       # pragma: no cover — insights package unavailable
+        return
+    import os
+    backend = os.getenv("INSIGHTS_LLM_BACKEND", "azure").strip().lower()
+    now_year = int(pd.Timestamp.now().year)
+    try:
+        _web_prov = websearch.active_provider()             # which web-search backend (if any) will ground the agents
+    except Exception:
+        _web_prov = None
+    st.divider()
+    st.subheader("🤖 AI fallback forecast — no Sonny's market near this pin")
+    st.caption("An **LLM-only** read for a pin with no local Sonny's market to ground on: a 3-agent chain sizes the "
+               "site from world knowledge + live Google Places"
+               + (" + **fresh web search**" if _web_prov else "")
+               + " (factor sheet → 5-year forecast → adversarial review). You get the LLM's best-guess monthly wash "
+               "volume **and its annual count**, plus — weighing how competition and demand have shifted — **what "
+               "this site would be washing today had it opened in 2023, 2024 or 2025**. **Approximate estimates, "
+               "NOT a grounded model forecast.**")
+    if not insights_llm_ready(backend):
+        st.info(f"`{backend}` LLM endpoint unavailable — the AI fallback can't run right now.")
+        return
+    # the operator's confirmed site characteristics — fed to the LLM agents so the forecast is conditioned on them
+    # (score-sheet keyed by human label, not internal name).
+    _score_readable = {_f["label"]: sup["factors"][_f["name"]]
+                       for _f in SCORE_SHEET_FACTORS if _f["name"] in (sup.get("factors") or {})}
+    site_inputs = {k: v for k, v in {"pay_stations": sup.get("pay"), "free_vacuum_slots": sup.get("vac"),
+                                     "lot_type": sup.get("lot"), "daily_traffic_count": sup.get("traffic"),
+                                     "score_sheet": _score_readable or None}.items() if v}
+    store = st.session_state.setdefault("llm_fallback_store", {})
+    # cache key includes the site inputs → changing a sidebar input regenerates (they now steer the LLM forecast)
+    sig = (round(lat, 5), round(lon, 5), tuple(sorted((k, str(v)) for k, v in site_inputs.items() if k != "score_sheet")),
+           tuple(sorted((_score_readable or {}).items())))
+    if sig not in store:
+        _has_inputs = bool(site_inputs)
+        _btn = ("✨ Generate AI forecast (using your site inputs)" if _has_inputs
+                else "✨ Generate AI forecast for this pin")
+        if not st.button(_btn, type="primary"):
+            if not _has_inputs:
+                st.caption("Tip: set the site inputs / score sheet in the sidebar — they'll steer the AI forecast.")
+            return
+        _steps = ("Agent 1 · web-grounded site factors (3/6 mi) → Agent 2 · 5-yr forecast + backdating → "
+                  "Agent 3 · adversarial review…")
+        with st.spinner(_steps):
+            try:
+                store[sig] = llm_pin_forecast(lat, lon, nearby_washes=_places_near_pin(lat, lon),
+                                              site_inputs=(site_inputs or None), use_web_search=bool(_web_prov),
+                                              today_year=now_year, backend=backend)
+            except Exception as e:
+                st.error(f"AI fallback failed: {e}")
+                return
+    out = store.get(sig)
+    if not out:
+        return
+    if site_inputs:
+        st.caption("✅ Your site inputs (pay stations, vacuums, lot, traffic, score sheet) steer the LLM agents.")
+
+    # ── the LLM factor sheet (Agent 1) — sitewise-style factors at 3 and 6 miles ──
+    f = out.get("factors") or {}
+    if f:
+        with st.container(border=True):
+            st.markdown("**📋 LLM factor sheet** — the sitewise-style factors the agents worked from")
+            rows = ["| Factor | 3 mi | 6 mi | Confidence |", "| --- | --- | --- | --- |"]
+            for k, label in FACTOR_KEYS:
+                v3 = ((f.get("radius_3mi") or {}).get(k) or {})
+                v6 = ((f.get("radius_6mi") or {}).get(k) or {})
+                conf = v3.get("confidence") or v6.get("confidence")
+                rows.append(f"| {label} | {_md_esc(v3.get('estimate'))} | {_md_esc(v6.get('estimate'))} "
+                            f"| {_md_esc(conf)} |")
+            st.markdown("\n".join(rows))
+            if f.get("site_summary"):
+                st.caption(str(f["site_summary"]))
+
+    # ── the LLM's own 5-year forecast (Agent 2) — no Model 5 / coldstart mixed in ──
+    yrs = out.get("years") or []
+    rows = [(r["year"], r["washes_per_month_lo"], r["washes_per_month_mid"], r["washes_per_month_hi"]) for r in yrs]
+    if rows:
+        # ── headline: first-year and mature run-rate, monthly AND annual (the LLM's best guess) ──
+        _y1 = rows[0]
+        _ymat = rows[2] if len(rows) >= 3 else rows[-1]        # the plateau the ramp reaches by ~operating year 3
+        _c1, _c2 = st.columns(2)
+        _c1.metric("First-year estimate", f"{_y1[2]:,.0f} /mo", f"≈{_y1[2] * 12:,.0f} washes/yr", delta_color="off")
+        _c2.metric(f"Mature estimate (~Yr {_ymat[0]}, plateau)", f"{_ymat[2]:,.0f} /mo",
+                   f"≈{_ymat[2] * 12:,.0f} washes/yr", delta_color="off")
+        st.caption("The LLM's best-guess monthly car-wash volume and its annualized (×12) count. **First-year** is "
+                   "the opening-year average while the site ramps; **mature** is the plateau by about operating year 3.")
+
+        with st.container(border=True):
+            st.markdown("**📈 LLM wash-volume forecast by operating year — monthly run-rate and annual count**")
+            tbl = ["| Operating year | Washes / month (lo – **mid** – hi) | Annual ≈/yr (mid) |",
+                   "| --- | --- | --- |"]
+            for y, lo, mid, hi in rows:
+                tbl.append(f"| Year {y} | {lo:,.0f} – **{mid:,.0f}** – {hi:,.0f} | ≈{mid * 12:,.0f} |")
+            st.markdown("\n".join(tbl))
+            x = [r[0] for r in rows]
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=x + x[::-1], y=[r[3] for r in rows] + [r[1] for r in rows][::-1],
+                                     fill="toself", fillcolor="rgba(59,125,216,0.15)", line=dict(width=0),
+                                     name="lo–hi band", hoverinfo="skip"))
+            fig.add_trace(go.Scatter(x=x, y=[r[2] for r in rows], name="best guess (mid)", mode="lines+markers",
+                                     line=dict(color="#3b7dd8", width=3),
+                                     hovertemplate="yr %{x} · %{y:,.0f}/mo<extra>LLM mid</extra>"))
+            fig.update_layout(height=360, template="plotly_white", hovermode="x unified",
+                              xaxis_title="operating year", yaxis_title="washes / month",
+                              margin=dict(l=10, r=10, t=20, b=10), legend=dict(orientation="h", y=-0.24))
+            st.plotly_chart(fig, use_container_width=True)
+            mem = out.get("membership_share_mature")
+            st.caption(("Mature membership share (LLM): **" + str(mem) + "** · " if mem else "")
+                       + "Ranges are the LLM's ~80% band; annual = monthly × 12. All figures are estimates.")
+
+    # ── ⏳ market-then-vs-now backdating (LLM): had it opened 2023/2024/2025, what is it washing NOW ──
+    bd = out.get("backdated") or []
+    if bd:
+        with st.container(border=True):
+            st.markdown(f"**⏳ Had it opened earlier — what this site would be washing TODAY ({now_year})**")
+            st.caption("The LLM re-reads the same site as if it had opened in each year — further along its ramp AND "
+                       "having entered a **less-contested** market back then — and estimates its **current** monthly "
+                       "volume, weighing how the express competition and demand stood that year versus now.")
+            bt = ["| If it had opened | Age now | Washes / month now (lo – **mid** – hi) | Annual ≈/yr | Competition then → now |",
+                  "| --- | --- | --- | --- | --- |"]
+            for r in bd:
+                oy = r.get("open_year")
+                age = r.get("operating_years_now") or 0
+                lo = r.get("washes_per_month_now_lo") or 0
+                mid = r.get("washes_per_month_now_mid") or 0
+                hi = r.get("washes_per_month_now_hi") or 0
+                comp = _md_esc(r.get("competition_then_vs_now"))
+                bt.append(f"| **{oy}** | ~{age} yr{'s' if age != 1 else ''} "
+                          f"| {lo:,.0f} – **{mid:,.0f}** – {hi:,.0f} | ≈{mid * 12:,.0f} | {comp} |")
+            st.markdown("\n".join(bt))
+            _rats = [f"- **{r.get('open_year')}:** {r.get('rationale')}" for r in bd if r.get("rationale")]
+            if _rats:
+                with st.expander("Why each backdated number — the LLM's reasoning"):
+                    st.markdown("\n".join(_rats))
+
+    # ── web sources the agents were grounded on (clickable) ──
+    _srcs = out.get("web_sources") or []
+    if _srcs:
+        with st.expander(f"🔗 Web sources the agents used ({len(_srcs)})"):
+            for _i, _s in enumerate(_srcs, 1):
+                _t = str(_s.get("title") or _s.get("url") or "source").strip()
+                _u = str(_s.get("url") or "").strip()
+                st.markdown(f"{_i}. [{_t}]({_u})" if _u else f"{_i}. {_t}")
+
+    rv = out.get("review") or {}
+    with st.expander("🔎 How the agents got here (reasoning → factors → forecast → backdating → review)"):
+        if out.get("place"):
+            st.markdown(f"- **Resolved location:** {out['place']}")
+        if out.get("reasoning"):
+            st.markdown(f"- **Forecaster's reasoning (Agent 2):** {out['reasoning']}")
+        st.markdown(f"- **Forecast basis (Agent 2):** {out.get('basis') or '—'}")
+        if out.get("annual_market_growth_pct"):
+            st.markdown(f"- **Trade-area demand growth (Agent 2):** {out['annual_market_growth_pct']} — the pace behind "
+                        "the market-then-vs-now backdating.")
+        _iss = "; ".join(str(i) for i in (rv.get("issues") or [])[:4])
+        st.markdown(f"- **Reviewer verdict (Agent 3):** {rv.get('verdict') or 'unavailable'}"
+                    + (f" — {_iss}" if _iss else "") + (f" · confidence {rv.get('confidence')}" if rv.get("confidence") else ""))
+        if out.get("review_reasoning"):
+            st.markdown(f"- **Reviewer's reasoning (Agent 3):** {out['review_reasoning']}")
+        st.json({"years": out.get("years"), "backdated": out.get("backdated"),
+                 "backdated_raw_from_llm": (out.get("forecast") or {}).get("backdated"),
+                 "membership_share_mature": out.get("membership_share_mature"),
+                 "annual_market_growth_pct": out.get("annual_market_growth_pct"),
+                 "traffic_estimate_daily": out.get("traffic_estimate_daily"), "backend": out.get("backend")})
+    if st.button("🔄 Regenerate AI forecast"):
+        store.pop(sig, None)
+        st.rerun()
+
+
 def drop_pin_ui(df, site, art, demo=False, express_only=False):
     st.title("📍 Pinpoint forecast")
     st.caption("Drop a pin inside a market for a grounded **5-year forecast of a new car-wash site** — "
@@ -542,6 +746,10 @@ def drop_pin_ui(df, site, art, demo=False, express_only=False):
         lc = (m or {}).get("last_clicked")
         if lc and (round(lc["lat"], 5), round(lc["lng"], 5)) != (round(lat, 5), round(lon, 5)):
             st.session_state.pin = (lc["lat"], lc["lng"]); st.rerun()
+        # no local market → the clearly-labelled LLM-only AI fallback (web-grounded factors + market-then-vs-now backdating)
+        _ai_fallback_forecast(lat, lon,
+                              dict(pay=sup_pay, vac=sup_vac, lot=sup_lot, traffic=sup_traffic,
+                                   open_year=sup_open_year, factors=sup_factors), demo)
         return
     # express mode: anchor the plateau level on express neighbours only (cluster ∩ matured ∩ express)
     anchor_keys = set(site.site_key) if express_only else None

@@ -121,6 +121,24 @@ class MarketForecastRequest(PinpointForecastRequest):
     radius_miles: Optional[Literal[3, 6, 12]] = Field(None, description="Distance filter for the market plot: only sites within this many miles of the pin feed the history sum, trends, forecast lines, cannibalization and the multiplier's site count. None (default) = the legacy 20 km market, response unchanged. When set, the response echoes radius_miles/radius_km/n_sites_in_market.")
 
 
+class LlmForecastRequest(_PinRequest):
+    """Tab 2 — the 🤖 AI FALLBACK forecast for a pin with NO local Sonny's market (i.e. when
+    /pinpoint-forecast returns `data_found=false`). An LLM-only 3-agent chain sizes the location from world
+    knowledge, the real Google-Places washes nearby, and — when enabled — fresh web search: web-grounded site
+    factors (3/6 mi) → a 5-year washes/month forecast + a market-then-vs-now backdating (had it opened
+    2023/24/25, what is it washing today) → adversarial review. The operator's confirmed site characteristics
+    (the Model-5 inputs + the proforma score sheet) steer the agents. ESTIMATES for an unproven market — never
+    a grounded modelled number; the UI must label them as such (the insights/ rule)."""
+    use_web_search: bool = Field(False, description="Ground every agent on fresh web results for this location (returns citable sources) when a search provider is configured. Falls back to knowledge + Places only if unavailable.")
+    backend: Optional[str] = Field(None, description="LLM backend: 'azure' | 'local'. None = INSIGHTS_LLM_BACKEND env (default azure).")
+    # ── operator's confirmed site characteristics — the agents CONDITION on these as ground truth (optional) ──
+    pay_stations: Optional[str] = Field(None, description="Confirmed pay-station count (e.g. '3 or more', '2', '1', 'live person'). Steers the forecaster's throughput/level.")
+    vacuum_slots: Optional[str] = Field(None, description="Confirmed free-vacuum-slot capacity (e.g. '12 - 20', 'more than 20').")
+    lot_type: Optional[str] = Field(None, description="Confirmed lot type (e.g. 'corner lot with light').")
+    traffic_count: Optional[float] = Field(None, ge=0, description="Measured daily traffic count (vehicles/day) at the site.")
+    score_sheet: Optional[Dict[str, str]] = Field(None, description="Proforma score-sheet picks as {human label: chosen option}, e.g. {'Visibility': 'more than 500 ft'}. Fed to the agents verbatim as confirmed site context.")
+
+
 class PnlForecastRequest(_PinRequest):
     """Tab 2 — the 💰 P&L chart: monthly revenue vs operating expense vs net, with an optional campaign overlay."""
     brand: Optional[str] = Field(None, description="Operator/brand client_id (see GET /pnl_analysis/brands).")
@@ -213,7 +231,7 @@ class SiteFactorsInput(BaseModel):
 
 class BoschForecastRequest(BaseModel):
     """The Bosch prediction — Rafal's proforma Excel formula ported to an API (see
-    experiments/bosch-prediction-api/agent.md): 10 site factors + 4 demographic components +
+    app/pnl_analysis/modelling/bosch_forecast.md): 10 site factors + 4 demographic components +
     a traffic-count input -> a Year 1-5 car-wash-volume estimate. Deterministic formula, NOT the
     coldstart ML model behind /pinpoint-forecast. Not pin-driven — every input is supplied
     directly (the front end may auto-fill some from /site-factors or the council dataset)."""

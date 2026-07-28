@@ -324,6 +324,24 @@ def compute_trajectory(lat: float, lon: float, brand: Optional[str] = None,
     return traj, info, trends
 
 
+# ─────────────────────────── forecast scope gate ───────────────────────────
+FORECAST_MARKET_RADIUS_KM = 20.0   # a dropped pin must sit within this of a clustered site to be forecastable
+
+
+def has_local_market(lat: float, lon: float, radius_km: float = FORECAST_MARKET_RADIUS_KM,
+                     express_only: bool = False) -> bool:
+    """True when the pin sits inside a real local market — at least one CLUSTERED site (cluster >= 0)
+    within `radius_km`. Mirrors the Streamlit drop-pin gate (_pinpoint_forecast.drop_pin_ui): outside
+    every cluster the cold-start "forecast" is only a region/national prior with no local grounding, so
+    the forecast endpoint refuses to predict and the caller falls back to the LLM estimate instead."""
+    _, site = D.load_panel(express_only)
+    cl = site[site.has_coords & (site.cluster >= 0)]
+    if not len(cl):
+        return False
+    d = haversine_km(lat, lon, cl.lat.values, cl.lon.values)
+    return bool((d <= radius_km).any())
+
+
 # ─────────────────────────── tab 2a: the new site's 5-year trajectory ───────────────────────────
 def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_override: Optional[float],
                       mem_growth_pct: float, ret_growth_pct: float, horizon_months: int,
@@ -340,7 +358,20 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
     Model 5 — see compute_trajectory; the summary then gains model/level provenance + the itemised
     `factor_adjustment`. The whole-market history+forecast plot is a SEPARATE endpoint — see
     `market_forecast`.
+
+    Out-of-scope pins: if there is no clustered Sonny's site within the local-market radius, the pin has
+    no local market to ground on — the cold-start level would be only a region/national prior. Rather than
+    return an ungrounded number the endpoint REFUSES: it returns `{data_found: false, reason}` and no
+    forecast. The caller should fall back to POST /pnl_analysis/insights/llm-forecast for an LLM estimate.
+    A forecastable pin returns `data_found: true` alongside the usual summary + trajectory.
     """
+    if not has_local_market(lat, lon, express_only=express_only):
+        return {
+            "lat": lat, "lon": lon, "brand": brand, "data_found": False,
+            "reason": (f"No clustered Sonny's site within {FORECAST_MARKET_RADIUS_KM:g} km of this pin — no local "
+                       "market to ground a forecast on. Call POST /pnl_analysis/insights/llm-forecast for an "
+                       "LLM-only estimate of the likely wash-count range."),
+        }
     traj, info, trends = compute_trajectory(lat, lon, brand, plateau_override,
                                             mem_growth_pct, ret_growth_pct, horizon_months,
                                             express_only=express_only,
@@ -366,7 +397,7 @@ def pinpoint_forecast(lat: float, lon: float, brand: Optional[str], plateau_over
             "factor_adjustment": info.get("factor_adjustment"),  # itemised score-sheet multiplier, or None
         })
     return {
-        "lat": lat, "lon": lon, "brand": brand,
+        "lat": lat, "lon": lon, "brand": brand, "data_found": True,
         "summary": summary,
         "trajectory": {
             "months": [int(m) for m in g.index],
