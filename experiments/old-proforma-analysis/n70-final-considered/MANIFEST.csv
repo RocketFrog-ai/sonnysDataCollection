@@ -1,0 +1,71 @@
+source_file,match_client_name,match_state,actual_mature_wash_mo,model5_forecast_mo,n_neighbours_20km,grounding,actuals_suspect
+Car Wash Cafe_ SONNY'S Express Proforma_069f2000004sKgFAAU.xlsx,Wash & Wax Pros,FL,1572.0,3055.0,25,grounded,False
+Express Exterior Proforma_0695w0000097nchAAA.xlsx,Big Peach Tallahassee,FL,2924.0,3466.0,5,grounded,False
+Flexserve_proforma_ Sonny's (3-mile market)_0695w00000CDfUdAAL.xlsx,True Clean,CO,10178.0,5678.0,3,grounded,False
+Flexserve_proforma_ Sonny's_0695w0000097P7VAAU.xlsx,Prestige Auto Spa,FL,848.0,8710.0,8,grounded,False
+Flexserve_proforma_ Sonny's_069f2000005RkTVAA0.xlsx,"Texas Star Wash, LLC",TX,501.0,5001.0,14,grounded,False
+Sonny's Express Exterior Proforma (modified traffic)_0695w00000HHR0tAAH.xlsx,Seaford Car Wash,NY,3348.0,1253.0,6,grounded,False
+Sonny's Express Exterior Proforma (traffic volume)_0695w000009kd1pAAA.xlsx,Hercules/Elite Care Auto,OH,6142.0,5741.0,5,grounded,False
+"Sonny's Express Exterior Proforma - 1309 West Chester Pike, West Chester, PA 19382_0695w00000WqSN5AAN.xlsx",West Chester Car Wash,PA,3852.0,4743.0,3,grounded,False
+"Sonny's Express Exterior Proforma - 8909 Six Forks Rd Raleigh, NC, NC 27615_069Uc00000DMO5vIAH.xlsx",American Pride Six Forks,NC,17049.0,7792.0,10,grounded,False
+"Sonny's Express Exterior Proforma 14537 Sherman Way, Los Angeles_0695w00000QAXd4AAH.xlsx",Van Nuys,CA,18770.0,13861.0,9,grounded,False
+"Sonny's Express Exterior Proforma 1623 S Poinciana Blvd. Kissimmee, FL 34758_0695w00000WO90ZAAT.xlsx",Avatar,FL,13121.0,12729.0,10,grounded,False
+"Sonny's Express Exterior Proforma 2416 Dempster St., Evanston_0695w00000SjPaGAAV.xlsx",Evanston Car Wash,IL,3304.0,3098.0,4,grounded,False
+"Sonny's Express Exterior Proforma 3893 McCoy Rd, Orlando, FL 32812 (traffic volume)_0695w00000WO8AHAA1.xlsx",Floris Car Wash,FL,9846.0,9924.0,23,grounded,False
+"Sonny's Express Exterior Proforma 45430 Schenherr Rd., Shelby Twp._0695w00000Q9YSoAAN.xlsx",ROBIN AUTO WASH,MI,2166.0,2423.0,5,grounded,False
+"Sonny's Express Exterior Proforma 5001 Collin McKinney Pkwy., McKinney, TX_0695w00000U9kNNAAZ.xlsx",Oasis Auto Spa,TX,5632.0,9266.0,14,grounded,False
+"Sonny's Express Exterior Proforma 510 E Broadway, Louisville, KY_0695w00000U7IlyAAF.xlsx",Classie Express Wash,KY,3804.0,4143.0,7,grounded,False
+"Sonny's Express Exterior Proforma 7326 Reseda Blvd., Reseda_0695w00000QAYyrAAH.xlsx",Reseda,CA,16732.0,12340.0,8,grounded,False
+"Sonny's Express Exterior Proforma 9520 Cullen Blvd., Houston_0695w00000Sho0XAAR.xlsx",Cadillac Express Cullen,TX,7788.0,10097.0,15,grounded,False
+Sonny's Express Exterior Proforma_0695w0000097obzAAA.xlsx,H2GLO CAR WASH,VA,2776.0,3840.0,3,grounded,False
+Sonny's Express Exterior Proforma_0695w0000097tEHAAY.xlsx,Big Dan's Bradenton 14th St,FL,18425.0,7510.0,7,grounded,False
+Sonny's Express Exterior Proforma_0695w0000097wpaAAA.xlsx,Cadillac Express Little York,TX,11070.0,12184.0,15,grounded,False
+Sonny's Express Exterior Proforma_0695w000009mphMAAQ.xlsx,Tampa,FL,7976.0,10086.0,18,grounded,False
+Sonny's Express Exterior Proforma_0695w00000AAVe5AAH.xlsx,Big Dan's Bradenton 301,FL,14962.0,8409.0,7,grounded,False
+Sonny's Express Exterior Proforma_0695w00000AP7usAAD.xlsx,Cedar Place,CO,3284.0,4019.0,9,grounded,False
+Sonny's Express Exterior Proforma_0695w00000CFRZEAA5.xlsx,Dix Hill Car Wash,NY,2276.0,1487.0,5,grounded,False
+Sonny's Express Exterior Proforma_0695w00000D8SHiAAN.xlsx,Suds Deluxe Tomball,TX,7312.0,8711.0,19,grounded,False
+Sonny's Express Exterior Proforma_0695w00000DyF6PAAV.xlsx,Aqua Shine Greenville,SC,4180.0,8119.0,14,grounded,False
+Sonny's Express Exterior Proforma_0695w00000DzJq4AAF.xlsx,Rock N Roll Stuart,FL,2229.0,6923.0,7,grounded,False
+Sonny's Express Exterior Proforma_0695w00000FT0KlAAL.xlsx,Super Scrub Car Wash,CA,3500.0,4207.0,4,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NQGu9AAH.xlsx,Blue Rhino Car Wash,GA,7164.0,7175.0,11,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NRHDmAAP.xlsx,Ford CarWash,MI,11452.0,4149.0,5,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NRsyVAAT.xlsx,Baymeadows,FL,5832.0,6016.0,37,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NRw9rAAD.xlsx,Dunn,FL,11265.0,17911.0,12,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NS2LnAAL.xlsx,Atlantic Blvd,FL,5116.0,7381.0,28,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NTSyBAAX.xlsx,Jones,NV,6284.0,9825.0,20,grounded,False
+Sonny's Express Exterior Proforma_0695w00000NTTWNAA5.xlsx,U-DRIVE,NV,7006.0,9027.0,21,grounded,False
+Sonny's Express Exterior Proforma_069f2000005bE4vAAE.xlsx,Brookhurst Express Car Wash,CA,7362.0,6424.0,14,grounded,False
+Sonny's Express Exterior Proforma_069f2000007PSrqAAG.xlsx,Clean Wave Express Carwash,CA,14486.0,5952.0,16,grounded,False
+Sonny's Express Exterior Proforma_069f2000008KdYrAAK.xlsx,Hero CarWash,TX,3324.0,6530.0,12,grounded,False
+Sonny's Express Exterior Proforma_069f200000960PmAAI.xlsx,Soapy Shark Okeechobee,FL,7751.0,5484.0,9,grounded,False
+Sonny's Express Exterior Proforma (As is)_0695w00000AAGRMAA5.xlsx,Waterworks Express Car Wash,WI,3480.0,1141.0,0,isolated,False
+Sonny's Express Exterior Proforma (Market share)_069f2000008N6nuAAC.xlsx,Mr. D Cranston,WI,454.0,5730.0,0,isolated,False
+Sonny's Express Exterior Proforma (with vacs)_0695w00000JbgLSAAZ.xlsx,The Washery,PA,5770.0,4242.0,0,isolated,False
+"Sonny's Express Exterior Proforma 1245 Fremont St., Fenley_0695w00000QAl3eAAD.xlsx",Lickety Split Express,NV,9962.0,5382.0,0,isolated,False
+"Sonny's Express Exterior Proforma 13020 US-1, Sebastian_0695w00000RVGPpAAP.xlsx",Pelican Car Wash,FL,6673.0,6139.0,0,isolated,False
+Sonny's Express Exterior Proforma Update_0695w00000HJAnSAAX.xlsx,Magic City Car Wash,ND,6332.0,4289.0,0,isolated,False
+Sonny's Express Exterior Proforma_0695w00000AA9l6AAD.xlsx,JJ Express Car Wash,AZ,4556.0,5196.0,0,isolated,False
+Sonny's Express Exterior Proforma_0695w00000HGlE6AAL.xlsx,Splash Car Wash,CA,41.0,6522.0,0,isolated,False
+Sonny's Express Exterior Proforma_0695w00000M3aHzAAJ.xlsx,Thoroughbred Seymour,IN,8620.0,6066.0,0,isolated,False
+Sonny's Express Exterior Proforma_0695w00000NQsShAAL.xlsx,Thoroughbred Campbellsville,KY,3570.0,5940.0,0,isolated,False
+Sonny's Express Exterior Proforma_0695w00000OuG88AAF.xlsx,Havasu Express Car Wash,AZ,5533.0,4802.0,0,isolated,False
+Sonny's Express Exterior Proforma_069f2000005RXyRAAW.xlsx,Magic Belle,OH,6697.0,6150.0,0,isolated,False
+Sonny's Express Exterior Proforma_069f2000005ZqijAAC.xlsx,Raceway Elgin,IL,4533.0,4737.0,0,isolated,False
+Sonny's Express Exterior Proforma_069f2000005bnKZAAY.xlsx,Mr D Car Wash,WI,3008.0,2910.0,0,isolated,False
+KPI Sonny's Express Exterior Proforma_0695w00000ShakXAAR.xlsx,The Auto Spa @ Main Street,OK,3680.0,3421.0,2,thin,False
+SONNY'S Flex Proforma_069f2000007O43iAAC.xls,Virginia Car Wash Co.,VA,2896.0,4662.0,2,thin,False
+Sonny's Express Exterior Proforma  (vehicle market)_0695w00000IU9N0AAL.xlsx,Aladdin Car Wash,TX,2449.0,4177.0,1,thin,False
+Sonny's Express Exterior Proforma 172 Freemans Bridge Rd Scotia_0695w00000QBiivAAD.xlsx,RAINDANCER OF GLENVILLE,NY,1843.0,4253.0,1,thin,False
+"Sonny's Express Exterior Proforma 3111 Teays Valley Rd., Hurricane_0695w00000Q8kRHAAZ.xlsx",Thoroughbred Hurricane,WV,5370.0,5888.0,2,thin,False
+"Sonny's Express Exterior Proforma 3972 Teays Valley Rd., Hurricane_0695w00000Q8nOVAAZ.xlsx",Thoroughbred Teays,WV,6974.0,6556.0,2,thin,False
+Sonny's Express Exterior Proforma_0695w0000097m9tAAA.xlsx,Extreme Express,CA,20066.0,8985.0,2,thin,False
+Sonny's Express Exterior Proforma_0695w000009mpupAAA.xlsx,OBXpress,NC,3259.0,3561.0,1,thin,False
+Sonny's Express Exterior Proforma_0695w00000A9eDQAAZ.xlsx,Heroes Express Salisbury,NC,18178.0,7058.0,1,thin,False
+Sonny's Express Exterior Proforma_0695w00000EPxlQAAT.xlsx,Stevens Creek Xpress,CA,24086.0,9461.0,2,thin,False
+Sonny's Express Exterior Proforma_0695w00000EwmfXAAR.xlsx,Buff It #2,OK,4832.0,3730.0,2,thin,False
+Sonny's Express Exterior Proforma_0695w00000FIVssAAH.xlsx,Varsity Carwash  Duff,IA,9407.0,6422.0,1,thin,False
+Sonny's Express Exterior Proforma_0695w00000M2PM8AAN.xlsx,Jupiter Galaxy Car Wash,FL,622.0,7835.0,2,thin,False
+Sonny's Express Exterior Proforma_0695w00000ShakSAAR.xlsx,The Auto Spa @ University,OK,9766.0,3979.0,2,thin,False
+Sonny's Express Exterior Proforma_069f2000005RKKcAAO.xlsx,Varsity Carwash Lincoln,IA,6490.0,6279.0,1,thin,False
+Sonny's Express Exterior Proforma_069f2000005aZWaAAM.xlsx,Glacier Express King Ave,MT,6108.0,5304.0,2,thin,False
