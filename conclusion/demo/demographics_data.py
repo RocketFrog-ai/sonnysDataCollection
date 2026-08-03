@@ -289,6 +289,40 @@ def quintiles(feature: str, target: str = "Total washes") -> pd.DataFrame:
     return out
 
 
+def quintile_curves(target: str = "Total washes") -> pd.DataFrame:
+    """Every measure's quintile curve at once, on one comparable scale.
+
+    One row per (measure, fifth). `ratio` is that fifth's median volume divided by the lowest
+    fifth's, so a measure that does nothing traces a flat line at 1.0 regardless of how big its
+    sites happen to be. That is what lets 31 measures and the membership contrast share an axis —
+    the alternative, a dropdown showing one measure at a time, hides the fact that they are *all*
+    flat, which is the actual finding.
+    """
+    rows = []
+    for label in list(FEATURES) + [f"__own__{k}" for k in OWN_FACTS]:
+        own = label.startswith("__own__")
+        name = label[len("__own__"):] if own else label
+        q = own_fact_quintiles(name, target) if own else quintiles(name, target)
+        base = q.median_washes.iloc[0]
+        for b, v, n in zip(q.bucket, q.median_washes, q.sites):
+            rows.append(dict(measure=name, family="The site itself" if own else FEATURES[name][1],
+                             is_market=not own, bucket=str(b), median=float(v),
+                             ratio=float(v / base), sites=int(n)))
+    out = pd.DataFrame(rows)
+    spread = (out.groupby("measure")
+                 .apply(lambda g: g.ratio.iloc[-1], include_groups=False).rename("spread"))
+    out = out.merge(spread, on="measure")
+    mk = out[out.is_market].drop_duplicates("measure")
+    out.attrs.update(
+        n_market=int(mk.measure.nunique()),
+        widest_market=str(mk.loc[(mk.spread - 1).abs().idxmax(), "measure"]),
+        widest_spread=float(mk.loc[(mk.spread - 1).abs().idxmax(), "spread"]),
+        median_spread=float(mk.spread.median()),
+        within_10pct=int(((mk.spread - 1).abs() <= .10).sum()),
+        members=float(out[out.measure == "Membership customers"].spread.iloc[0]))
+    return out
+
+
 def own_fact_quintiles(factor: str = "Membership customers",
                        target: str = "Total washes") -> pd.DataFrame:
     """`quintiles()` for one of the site's own trading facts — the contrast exhibit.

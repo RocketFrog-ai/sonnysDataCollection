@@ -38,7 +38,6 @@ st.set_page_config(page_title="Proforma Hypothesis Testing (final)", page_icon="
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ui  # noqa: E402
 import section_campaign  # noqa: E402
-import section_competition  # noqa: E402
 import section_demographics  # noqa: E402
 import section_general  # noqa: E402
 import section_proforma  # noqa: E402
@@ -58,9 +57,14 @@ SECTIONS = [
      "a counterfactual?", section_campaign.render),
     ("④ Demographics", "Does the market a site sits in explain how much it washes?",
      section_demographics.render),
-    ("⑤ Competition", "Somebody opens nearby. What happens to the neighbour, and to the new site?",
-     section_competition.render),
 ]
+
+# ⑤ Competition is HIDDEN, not deleted. `section_competition.py` and `competition_data.py` are
+# untouched and still work. To put it back, restore the import above and this entry:
+#
+#     import section_competition
+#     ("⑤ Competition", "Somebody opens nearby. What happens to the neighbour, and to the new "
+#      "site?", section_competition.render),
 
 with st.sidebar:
     st.markdown("## Proforma Hypothesis Testing (final)")

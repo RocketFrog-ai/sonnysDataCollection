@@ -4,7 +4,9 @@ Section — Demographics. Does the market a site sits in explain how much it was
 Vertical scroll, same as the other sections. The order is the order of the argument:
 
   1  the estate on a map, with any feature laid over it — the visual version of the question
-  2  pick a feature, see volume by fifths — the exhibit that needs no statistics
+  2  every measure's quintile curve on ONE axis — the exhibit that needs no statistics. It is a
+     single static plot on purpose: any one measure shown alone through a dropdown looks like it
+     might be doing something, and the finding is that they are all flat together.
   3  every feature ranked, three ways (raw, within state, within operator)
   4  give a model all 31 features at once and score it on markets it has never seen
   5  so what *does* explain volume
@@ -18,7 +20,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import demographics_data as dd
-from ui import (CRITICAL, GOOD, GRID, MUTED, S1, S2, S3, SERIOUS, SURFACE, WARNING,
+from ui import (CRITICAL, GOOD, GRID, INK2, MUTED, S1, S2, S3, SERIOUS, SURFACE, WARNING,
                 callout, html_table, style)
 
 
@@ -55,6 +57,11 @@ def _states() -> pd.DataFrame:
 @st.cache_data(show_spinner=False)
 def _state_link() -> pd.DataFrame:
     return dd.state_feature_link()
+
+
+@st.cache_data(show_spinner=False)
+def _curves() -> pd.DataFrame:
+    return dd.quintile_curves()
 
 
 def _k(v: float) -> str:
@@ -161,7 +168,7 @@ def render() -> None:
             A correlation of ±1.00 would mean the two maps are the same map; 0.00 means knowing
             one tells you nothing about the other.
         The strongest market measure of all {len(sl)} across states is
-            <b>{strongest.feature.lower()}</b> at {strongest.rho:+.2f} — and even that does not
+            <b>{strongest.feature.lower()}</b> at {strongest.rho:+.2f}, and even that does not
             clear the bar for significance (p = {strongest.p:.2f}).
         The one thing that <i>does</i> separate busy states from quiet ones is not a market
             measure at all: it is <b>membership share</b>
@@ -173,59 +180,71 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("2 · Sort the sites by any market measure")
-    st.markdown("Pick a measure. Every site is sorted on it and split into five equal groups — the "
-                "lowest fifth through the highest fifth. The bars are what those groups actually "
-                "washed in 2025. **A real driver makes the bars climb.**")
+    st.header("2 · All 31 measures, one picture")
+    st.markdown("Take a measure — say population. Sort all 1,263 sites on it, cut them into five "
+                "equal groups from the lowest fifth to the highest, and see what each group washed. "
+                "**A real driver makes that line climb.** Here is that line for every one of the 31 "
+                "measures at once, each starting from its own lowest fifth so they can share an "
+                "axis.")
 
-    c1, c2 = st.columns([2, 1])
-    with c1:
-        qf = st.selectbox("Market measure", list(dd.FEATURES), key="dem_qfeat")
-    with c2:
-        qt = st.selectbox("Wash type", list(dd.TARGETS), key="dem_qtarget")
-
-    q = dd.quintiles(qf, qt)
-    qown = dd.own_fact_quintiles("Membership customers", qt)
+    qc = _curves()
+    mk = qc[qc.is_market]
+    order = ["Lowest fifth", "2nd", "Middle", "4th", "Highest fifth"]
 
     fq = go.Figure()
-    fq.add_bar(x=q.bucket, y=q.median_washes, name=qf,
-               marker=dict(color=S2, line=dict(width=2, color=SURFACE)),
-               customdata=np.stack([q.sites, q.feature_lo, q.feature_hi, q.p25, q.p75], axis=-1),
-               hovertemplate="<b>%{x}</b> on " + qf.lower() + "<br>"
-                             "median: <b>%{y:,.0f} washes</b><br>"
-                             "middle half of the group: %{customdata[3]:,.0f} – %{customdata[4]:,.0f}"
-                             "<br>range of this group: %{customdata[1]:,.0f} – %{customdata[2]:,.0f}"
-                             "<br><span style='opacity:.7'>%{customdata[0]:.0f} sites</span>"
-                             "<extra></extra>")
-    # The contrast series, on the identical axis: sort the same sites on the one input that is not
-    # a market measure at all — how many members the site has. Nobody has to rescale in their head.
-    fq.add_bar(x=qown.bucket, y=qown.median_washes, name="For contrast: membership customers",
-               marker=dict(color=S1, line=dict(width=2, color=SURFACE)), opacity=.55,
-               hovertemplate="<b>%{x}</b> on membership customers<br>"
-                             "median: <b>%{y:,.0f} washes</b><extra></extra>")
-    st.plotly_chart(style(fq, height=400, barmode="group",
-                          yaxis_title=f"{qt} in 2025 (median site)",
-                          xaxis=dict(type="category", title=""), margin=dict(t=86),
+    fq.add_hline(y=1, line=dict(color=MUTED, width=1.5, dash="dot"))
+    for name, g in mk.groupby("measure", sort=False):
+        g = g.set_index("bucket").reindex(order).reset_index()
+        fq.add_scatter(x=g.bucket, y=g.ratio, mode="lines", name=name, legendgroup="market",
+                       showlegend=False, line=dict(color=S2, width=1.4), opacity=.42,
+                       hovertemplate=f"<b>{name}</b><br>%{{x}}: <b>%{{y:.2f}}×</b> the lowest "
+                                     f"fifth<extra></extra>")
+    # One dummy trace so the 31 faint lines get a single legend entry instead of 31.
+    fq.add_scatter(x=[None], y=[None], mode="lines", name="Each market measure (31)",
+                   line=dict(color=S2, width=1.8), opacity=.6)
+
+    mem = qc[qc.measure == "Membership customers"].set_index("bucket").reindex(order).reset_index()
+    fq.add_scatter(x=mem.bucket, y=mem.ratio, mode="lines+markers",
+                   name="How many members the site has (not a market measure)",
+                   line=dict(color=S1, width=3.5),
+                   marker=dict(size=11, line=dict(width=2, color=SURFACE)),
+                   customdata=np.stack([mem["median"]], axis=-1),
+                   hovertemplate="<b>Members</b><br>%{x}: <b>%{y:.2f}×</b> the lowest fifth"
+                                 "<br>%{customdata[0]:,.0f} washes<extra></extra>")
+    fq.add_annotation(x="Highest fifth", y=qc.attrs["members"], xanchor="right", yshift=-24,
+                      text=f"<b>{qc.attrs['members']:.1f}×</b>", showarrow=False,
+                      font=dict(size=15, color=S1))
+    fq.add_annotation(x="Highest fifth", y=qc.attrs["widest_spread"], xanchor="right", yshift=16,
+                      text="every market measure lands here", showarrow=False,
+                      font=dict(size=12, color=INK2))
+    st.plotly_chart(style(fq, height=470,
+                          yaxis_title="Washes vs the lowest fifth on that measure",
+                          yaxis=dict(tickvals=[1, 2, 3, 4, 5],
+                                     ticktext=["same", "2×", "3×", "4×", "5×"],
+                                     range=[0, qc.attrs["members"] * 1.12]),
+                          xaxis=dict(type="category", title="", showgrid=False),
+                          margin=dict(l=80, r=30, t=86, b=45),
                           legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
 
-    sp, mono = q.attrs["spread"], q.attrs["monotonic"]
-    tone = GOOD if abs(np.log(sp)) > .35 else (WARNING if abs(np.log(sp)) > .18 else CRITICAL)
-    verdict = ("a real lever" if abs(np.log(sp)) > .35 else
-               "a nudge at best" if abs(np.log(sp)) > .18 else "flat — not a lever")
-    callout(f"Highest fifth vs lowest fifth: {sp:.2f}× — {verdict}", f"""
-        Sites in the highest fifth on <b>{qf.lower()}</b> washed a median of
-            <b>{q.median_washes.iloc[-1]:,.0f}</b> in 2025; sites in the lowest fifth washed
-            <b>{q.median_washes.iloc[0]:,.0f}</b>. That is a ratio of <b>{sp:.2f}×</b>, and the
-            five bars {'climb in order' if mono else 'do <b>not</b> climb in order'} —
-            {'consistent with a real effect' if mono else 'so even the small gap that is there is not a clean trend'}.
-        For scale, the gap between our busiest and quietest sites is <b>{h['spread']:.1f}×</b>.
-            A measure that moves the median by {sp:.2f}× cannot account for it.
-        The blue bars are {int(qown.sites.sum()):,} sites sorted on the one input that is
-            not a market measure at all — how many members the site has. Top fifth vs bottom
-            fifth: <b>{qown.attrs['spread']:.1f}×</b>, climbing at
-            {'every single step' if qown.attrs['monotonic'] else 'almost every step'}. That is the
-            shape a real driver makes.
-    """, accent=tone)
+    callout("One picture, one finding", f"""
+        <b>All {qc.attrs['n_market']} market measures are the flat bundle at the bottom.</b> Sort
+            the sites on any of them and the busiest fifth washes about the same as the quietest:
+            the median measure moves volume by <b>{qc.attrs['median_spread']:.2f}×</b>, and
+            {qc.attrs['within_10pct']} of {qc.attrs['n_market']} move it by less than 10% in either
+            direction. The widest one in the whole set is
+            <b>{qc.attrs['widest_market'].lower()}</b> at just
+            <b>{qc.attrs['widest_spread']:.2f}×</b>.
+        <b>The single blue line is what a real driver looks like.</b> Sort the same 1,263 sites on
+            how many members they have and the top fifth washes <b>{qc.attrs['members']:.1f}×</b>
+            the bottom fifth, climbing at every step. Nothing about the neighbourhood does that.
+        <b>Put it against the gap we are trying to explain.</b> Our busiest sites do
+            <b>{h['spread']:.1f}×</b> what our quietest do. A measure that moves the median by
+            {qc.attrs['median_spread']:.2f}× cannot account for a {h['spread']:.1f}× gap — not
+            individually, and (section 4) not collectively either.
+        <b>Why lines and not a dropdown.</b> Any one of these measures shown on its own looks like
+            it might be doing something. The finding is that they are <i>all</i> flat, and that
+            only shows up when you put them on one axis.
+    """, accent=CRITICAL)
 
     # =============================================================================================
     st.divider()
@@ -276,11 +295,11 @@ def render() -> None:
             at <b>{best.rho:+.3f}</b>. On a scale where 1.00 is a perfect relationship that is
             close to nothing: the measure accounts for roughly <b>{best.rho**2*100:.1f}%</b> of
             the differences between sites.
-        <b>{nsmall} of 31</b> measures come in under ±0.10 — detectable on 1,263 sites only
+        <b>{nsmall} of 31</b> measures come in under ±0.10, detectable on 1,263 sites only
             because 1,263 is a large number, and useless for choosing between two real locations.
         The third column is the decisive one. It asks: <i>within one operator's own portfolio,
             does this measure pick out which of their sites does better?</i> The answer is
-            essentially no for every measure — the values collapse toward zero and several flip
+            essentially no for every measure. The values collapse toward zero and several flip
             sign. A measure that flips sign once you control for who runs the site was never
             measuring the market; it was measuring which kind of operator builds where.
         The q-value is corrected for the fact that 31 measures were tested at once.
@@ -326,20 +345,20 @@ def render() -> None:
     worst = oos.r2.min()
     callout("What this says", f"""
         Every bar is at or below zero. A model given all 31 market measures forecasts a new site's
-            volume <b>no better than simply quoting the median of the whole estate</b> — and the
+            volume <b>no better than simply quoting the median of the whole estate</b>, and the
             flexible model does slightly worse than that ({worst:+.3f}), which is what happens
             when a model finds patterns in the training markets that do not exist in new ones.
         In plain terms: the typical forecast is out by
             <b>{oos.query("target=='Total washes'").mdape.min():.0f}%</b> on total washes, and
             that error is what you get with <i>or without</i> the demographics. The trade-area
             score is not adding information.
-        Retail washes are the market's best case — a retail wash really is a stranger driving in —
+        Retail washes are the market's best case (a retail wash really is a stranger driving in)
             and even there the model lands at
             {oos.query("target=='Retail washes'").r2.max():+.3f}.
         This is not a claim that markets are irrelevant to a car wash. It is a claim that
             <i>these measures, at this resolution, cannot rank two candidate sites</i>. Every site
             here was chosen by someone who already believed in these measures, which compresses
-            the range — but that is exactly the range a new site is picked from.
+            the range, but that is exactly the range a new site is picked from.
     """, accent=CRITICAL)
 
     # =============================================================================================
@@ -370,19 +389,19 @@ def render() -> None:
     nb = _neighbours()
     bestnb = nb.loc[nb.r2.idxmax()]
     callout("The ranking", f"""
-        <b>Who operates the site explains {ops.r2:.0%}</b> of the differences — by a wide margin
+        <b>Who operates the site explains {ops.r2:.0%}</b> of the differences, by a wide margin
             the biggest single factor, and it is measured fairly: each site is predicted from that
             operator's <i>other</i> sites, never from itself, across the {ops.detail}.
         Geography carries a little: the median of a site's ten nearest neighbours explains
             <b>{bestnb.r2:.1%}</b> (those neighbours sit a median of {bestnb.median_km:.0f} km
-            away). Small, but real and positive, which the demographics are not — the ground knows
+            away). Small, but real and positive, which the demographics are not. The ground knows
             something the census file does not.
         All 31 demographic measures together explain <b>nothing</b>. They rank below knowing which
             of four regions the site is in.
         The practical read: a forecast for a new site is better anchored on <b>how comparable
             nearby sites actually trade</b> and on <b>who will run it</b> than on a trade-area
             score.
-        Caveat on operator: it partly captures things an operator brings that are not skill —
+        Caveat on operator: it partly captures things an operator brings that are not skill:
             brand, pricing, tunnel spec, how long the sites have been open. It is not
             {ops.r2:.0%} of pure management quality.
     """, accent=GOOD)
@@ -428,13 +447,13 @@ def render() -> None:
     lo, hi = ranked.iloc[-1], ranked.iloc[0]
     callout("Reading the states", f"""
         The typical <b>{hi.state}</b> site washed <b>{hi.median_washes:,.0f}</b> in 2025; the
-            typical <b>{lo.state}</b> site washed <b>{lo.median_washes:,.0f}</b> — a
+            typical <b>{lo.state}</b> site washed <b>{lo.median_washes:,.0f}</b>, a
             <b>{hi.median_washes/lo.median_washes:.1f}×</b> gap between the best and worst of the
             {len(ranked)} states we hold enough sites in to rank.
         That gap does <b>not</b> follow population: across these {len(ranked)} states, median
             trade-area population and median volume correlate at
-            <b>{_state_link().query("feature == 'Population in the trade area'").rho.iloc[0]:+.2f}</b>
-            — no relationship at all. {hi.state} sites sit in trade areas of
+            <b>{_state_link().query("feature == 'Population in the trade area'").rho.iloc[0]:+.2f}</b>,
+            which is no relationship at all. {hi.state} sites sit in trade areas of
             {hi.median_pop:,.0f} people; {lo.state} sites sit in trade areas of
             {lo.median_pop:,.0f}.
         It follows membership. {hi.state} runs at {hi.median_mem_share:.0%} membership,

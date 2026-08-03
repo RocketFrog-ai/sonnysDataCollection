@@ -192,16 +192,16 @@ def _two_body(pairs: pd.DataFrame, metric: str, window: int, h: dict, noun: str)
                 if not prof_far.empty else float("nan"))
     callout("What this shows", f"""
       <b>The line is flat until the day they open.</b> For the year before the opening the
-        neighbour sits at <b>{pre_flat:.0f}</b> against its own past — nothing is drifting, which
+        neighbour sits at <b>{pre_flat:.0f}</b> against its own past. Nothing is drifting, which
         is what makes the step at month 0 readable as the opening rather than as a trend that was
         already running.
       <b>Then a close neighbour steps down about {drop:.0f}%</b> and stays there. It is a level
         change, not a dip: there is no recovery inside the following year.
-      <b>A neighbour {far_cut:.0f}–{radius:.0f} miles away gives up {far_drop:.0f}%</b> — the two
+      <b>A neighbour {far_cut:.0f}–{radius:.0f} miles away gives up {far_drop:.0f}%</b>. The two
         lines separate only after the opening, never before.
       <b>The new site is not simply taking that volume.</b> Within its first {window} months it is
         already doing <b>{ent_share:.0f}%</b> of what the neighbour used to do, against the
-        neighbour's <b>{drop:.0f}%</b> loss — most of what it washes is traffic that was not going
+        neighbour's <b>{drop:.0f}%</b> loss. Most of what it washes is traffic that was not going
         to the neighbour.
     """)
 
@@ -252,7 +252,7 @@ def _two_body(pairs: pd.DataFrame, metric: str, window: int, h: dict, noun: str)
         miles.
       <b>Raw before/after would have told you the wrong thing.</b> Untouched sites *grew*
         <b>{h['ctrl']:+.1f}%</b> over the same months, so the raw <b>{h['raw']:+.1f}%</b>
-        understates the hit — the neighbour did not just fall, it failed to grow with everyone
+        understates the hit. The neighbour did not just fall, it failed to grow with everyone
         else.
       <b>It is not universal.</b> Even inside a mile, <b>{1 - b0.share_down:.0%}</b> of neighbours
         still come out ahead. "A wash opened near us" is not on its own a forecast.
@@ -290,17 +290,17 @@ def _two_body(pairs: pd.DataFrame, metric: str, window: int, h: dict, noun: str)
     mem = split[split.key == "membership"].iloc[0]
     callout("What this shows — the comfortable version of this does not survive", f"""
       <b>Raw, it looks like the members stay.</b> Retail washes at a close neighbour fall
-        <b>{ret.raw:+.1f}%</b> while membership washes move <b>{mem.raw:+.1f}%</b> — which reads as
+        <b>{ret.raw:+.1f}%</b> while membership washes move <b>{mem.raw:+.1f}%</b>, which reads as
         "the drive-ups leave and the subscribers are locked in".
       <b>They were supposed to grow.</b> Over the same months, untouched sites put on
         <b>{mem.ctrl:+.1f}%</b> of membership washes against <b>{ret.ctrl:+.1f}%</b> of retail.
         Membership is a growing category everywhere; standing still in it is not standing still.
-      <b>Against that, the membership book is hit almost as hard</b> — <b>{mem.did:+.1f}%</b> versus
+      <b>Against that, the membership book is hit almost as hard</b>: <b>{mem.did:+.1f}%</b> versus
         retail's <b>{ret.did:+.1f}%</b>. The moat is mostly an artefact of comparing a growing line
         to its own past.
       <b>What it changes.</b> A defence plan that protects retail and assumes the subscriber base
         holds is reading the raw column. The membership loss shows up as <em>growth that did not
-        happen</em> — no month ever looks bad, and a year later the base is materially smaller than
+        happen</em>. No month ever looks bad, and a year later the base is materially smaller than
         the untouched comparison.
     """, S2)
 
@@ -331,11 +331,11 @@ def _two_body(pairs: pd.DataFrame, metric: str, window: int, h: dict, noun: str)
       <b>Two sites together nearly always wash more cars than one did.</b> Adding the entrant's
         volume to the neighbour's, the pair is up a median <b>{h['combined']:+.0f}%</b> on what the
         neighbour alone was doing.
-      <b>Pure cannibalisation — the neighbour loses and the pair does not grow — is
+      <b>Pure cannibalisation, where the neighbour loses and the pair does not grow, is
         {pure:.0%} of cases.</b> The common outcome is
         <b>{exp:.0%} market expansion</b> and <b>{both:.0%} both at once</b>: the neighbour gives
         something up and the market still ends bigger.
-      <b>Which is the honest version of "it grows the market".</b> It does — but the growth lands
+      <b>Which is the honest version of "it grows the market".</b> It does, but the growth lands
         in the new site's till, and inside three miles some of it is billed to the neighbour.
     """, S3)
 
@@ -412,11 +412,11 @@ def _three_body(pairs: pd.DataFrame, metric: str, radius: float, window: int, mi
     callout("What this shows — and it argues against the chart above it", f"""
       <b>Inside a single market, being the closer site does not make it worse.</b> The nearer
         neighbour comes out <b>{th['gap']:+.1f} pp</b> from the further one, and it is the worse
-        of the two in <b>{th['share_near_worse']:.0%}</b> of events — a coin flip. Restricting to
+        of the two in <b>{th['share_near_worse']:.0%}</b> of events, a coin flip. Restricting to
         the {th['n_close']} events where the nearest is under {th['close_mi']:.0f} miles does not
         change it: <b>{th['close_gap']:+.1f} pp</b>.
-      <b>Both of them get hit.</b> In those close events the further neighbour — a median
-        {th['close_far_mi']:.1f} miles away — is down <b>{th['close_far']:+.1f}%</b>, almost
+      <b>Both of them get hit.</b> In those close events the further neighbour, a median
+        {th['close_far_mi']:.1f} miles away, is down <b>{th['close_far']:+.1f}%</b>, almost
         exactly what the nearer one loses.
       <b>So the two-body distance gradient is partly about markets, not about metres.</b> Openings
         that land within a mile of somebody tend to land in dense, contested markets; those
@@ -461,7 +461,7 @@ def _three_body(pairs: pd.DataFrame, metric: str, radius: float, window: int, mi
             consistent order.
           <b>Read that as a ceiling on what this dataset can settle</b>, not as "saturation is
             free". Only {int(sat.incumbents.iloc[-1])} neighbours are in the busiest bucket, and a
-            market that attracts four openings at once was probably growing to begin with — the
+            market that attracts four openings at once was probably growing to begin with. The
             thing that would separate those is a control for market growth we do not have.
         """, S2)
 
@@ -523,10 +523,10 @@ def _entrant(pairs: pd.DataFrame, metric: str, window: int, noun: str) -> None:
         callout("What this shows", f"""
           <b>The competition costs the new site more than it costs the neighbour.</b> An entrant
             with nobody inside three miles opens at <b>{_fmt(a_open, metric)}</b> {noun} a month;
-            one with two or more opens at <b>{_fmt(c_open, metric)}</b> — about
+            one with two or more opens at <b>{_fmt(c_open, metric)}</b>, about
             <b>{(1 - c_open / a_open):.0%} less</b>. The neighbour, on the previous tab, gives up
             single digits.
-          <b>And it does not catch up.</b> By months 12–24 the gap is still there —
+          <b>And it does not catch up.</b> By months 12–24 the gap is still there:
             <b>{_fmt(a_mat, metric)}</b> against <b>{_fmt(c_mat, metric)}</b>. Whatever the
             crowded market costs, it costs at the settled level, not just during the ramp.
           <b>Hold this loosely.</b> Only <b>{n_crowd}</b> entrants have two or more neighbours that
@@ -534,7 +534,7 @@ def _entrant(pairs: pd.DataFrame, metric: str, window: int, noun: str) -> None:
             operator who builds into a busy market may be picking a different kind of site to begin
             with. The direction is consistent; the size is on thin numbers.
           <b>The asymmetry is the decision-relevant part.</b> The question a pin should ask is not
-            "how much will I hurt the neighbour" — it is a few percent. It is "how much smaller is
+            "how much will I hurt the neighbour", which is a few percent. It is "how much smaller is
             this site than the same building somewhere emptier".
         """, S3)
 
@@ -769,7 +769,7 @@ matched at the tightest level.
         are living through the same calendar months in the same region.
       <b>Sites that were never really trading, and sites that stopped.</b> A neighbour must have
         been washing <b>{int(pairs.attrs.get('min_pre_volume', 500))} cars a month</b> before the
-        opening, and must not go dark afterwards — <b>two or more months under 5%</b> of its own
+        opening, and must not go dark afterwards. <b>Two or more months under 5%</b> of its own
         past means it closed or stopped reporting, which several verified offenders did (the series
         hits a literal zero and stays). That test is on the raw months, not on the window average,
         so a neighbour that genuinely halved is kept.
@@ -778,10 +778,10 @@ matched at the tightest level.
         a placeholder row doing one wash a month gets paired with an incumbent that happened to
         close, and reads as a −79% effect caused by nothing.
         <b>{pairs.attrs.get('n_skipped_entrants', 0)}</b> openings are excluded on it. All the
-        exclusions together move the headline by about 0.2 pp — the finding does not live in the
+        exclusions together move the headline by about 0.2 pp. The finding does not live in the
         tail.
       <b>Operator handoffs.</b> A wash that changes hands reappears under a new
-        <code>client_id</code>, and the old key dies the same month — a 100% "collapse" caused by an
+        <code>client_id</code>, and the old key dies the same month, a 100% "collapse" caused by an
         entrant thirty feet away. Pairs closer than <b>0.2 miles</b> are dropped.
       <b>Left-censored dates.</b> <code>operational_start</code> equals the site's first month in
         the panel for every site, so the 348 sites stamped 2020-01 are "open by then", not "opened
@@ -796,7 +796,7 @@ matched at the tightest level.
         neighbour would have done, and the effect here is if anything too small.
       <b>The three-body null is not a proof of no proximity effect.</b> It says that inside a
         single market, being under two miles away rather than four does not measurably change the
-        outcome — on {n_close} close events, which is enough to rule out a large gap and not enough
+        outcome, on {n_close} close events, which is enough to rule out a large gap and not enough
         to rule out a small one.
       <b>The entrant-side numbers rest on thin cells.</b> Only a few dozen entrants open with two
         or more neighbours inside three miles and have matured enough to score.

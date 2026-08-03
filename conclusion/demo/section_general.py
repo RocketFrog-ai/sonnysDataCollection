@@ -89,7 +89,7 @@ def render() -> None:
     sh = rc.set_index("operating_year").share_of_final
     callout("What this shows", f"""
       <b>How fast does a new wash fill up?</b> In its first year it does <b>{sh.get(1):.0%}</b> of
-        the business it will eventually do. By its second year it is at <b>{sh.get(2):.0%}</b> —
+        the business it will eventually do. By its second year it is at <b>{sh.get(2):.0%}</b>,
         essentially all of it.
       <b>And then it stops.</b> The later years sit within a few points of year 2. The growth is one
         jump in the first twelve months, not a five-year climb.
@@ -114,8 +114,8 @@ def render() -> None:
         answer: hide the later years, predict, then check. From <b>one year</b> of trading the
         long-run number lands within <b>{v1.mdape_ramp:.0f}%</b>.
       <b>By year {vlast.from_operating_year:.0f} it is within
-        {vlast.mdape_ramp:.0f}%</b> — most of what there is to learn about a site is known by the
-        end of its second year.
+        {vlast.mdape_ramp:.0f}%</b>. Most of what there is to learn about a site is known by
+        the end of its second year.
       <b>Why that matters.</b> A site can be given a defensible long-run number after its first full
         year, instead of carrying a five-year projection nobody has tested.
     """, S3)
@@ -195,16 +195,16 @@ def render() -> None:
     callout("What this shows", f"""
       <b>Where we have the most sites is not where sites are busiest.</b>
         <b>{mh['most_sites_state']}</b> has by far the most ({mh['most_sites_n']}), but a typical
-        site there does <b>{mh['most_sites_median']:,.0f}</b> washes a year — about the same as
+        site there does <b>{mh['most_sites_median']:,.0f}</b> washes a year, about the same as
         everywhere else. <b>{mh['busiest_state']}</b> tops the per-site ranking on just
         {mh['busiest_state_n']} sites.
       <b>A wash is a wash almost anywhere.</b> Across the {mh['n_ranked']} states with enough sites
         to judge, the typical site runs from <b>{mh['quietest_state_site']:,.0f}</b> to
-        <b>{mh['busiest_state_site']:,.0f}</b> a year — a spread of only about
+        <b>{mh['busiest_state_site']:,.0f}</b> a year, a spread of only about
         <b>{mh['spread']:.1f}×</b> between the best state and the worst.
       <b>The real variation is between sites, not between states.</b> Across the whole estate the
         middle half of sites run <b>{mh['p25_site']:,.0f}</b> to <b>{mh['p75_site']:,.0f}</b> a
-        year — a wider gap inside a single state than between states. Which state you build in
+        year, a wider gap inside a single state than between states. Which state you build in
         matters far less than which site you pick.
     """, S3)
 
@@ -263,13 +263,13 @@ def render() -> None:
       <b>The business flipped.</b> In {mxh['first_year']}, <b>{mxh['first_share']:.0%}</b> of washes
         were sold on a plan; by {mxh['last_year']} it is <b>{mxh['last_share']:.0%}</b>. Drive-up
         went from the majority of the business to the minority of it.
-      <b>But half of that move is not conversion — it is arithmetic.</b> Hold the sites fixed and
+      <b>But half of that move is not conversion. It is arithmetic.</b> Hold the sites fixed and
         the same {mxh['n_same_sites']} washes go from <b>{mxh['first_same']:.0%}</b> to only
         <b>{mxh['last_same']:.0%}</b>. The remaining <b>{comp*100:.0f} points</b> is the panel
         filling up with newer sites that were membership-led from the day they opened.
       <b>Which is the more useful number depends on the question.</b> For "what does our estate look
         like today", the pooled line. For "what happens to a site we already own", the same-site
-        line — an existing wash converts its book at roughly
+        line. An existing wash converts its book at roughly
         <b>{(mxh['last_same'] - mxh['first_same']) / (mxh['last_year'] - mxh['first_year']) * 100:.1f}
         points a year</b>, not the {(mxh['last_share'] - mxh['first_share']) * 100 / (mxh['last_year'] - mxh['first_year']):.1f} the pooled line implies.
     """, S3)
@@ -317,14 +317,14 @@ def render() -> None:
 
     callout("What this shows", f"""
       <b>Every state moved the same way.</b> The five biggest risers and the five smallest are in
-        the table above and there is no state that meaningfully went backwards — the largest fall
+        the table above and there is no state that meaningfully went backwards. The largest fall
         across {mxh['n_states']} states is <b>{mxh['faller_change']*100:+.0f} points</b>
         ({mxh['faller']}), against <b>{mxh['riser_change']*100:+.0f}</b> at the top
         ({mxh['riser']}).
       <b>The spread between states is wide and it is not geography.</b> Latest year,
         <b>{mxh['top_state']}</b> sits at <b>{mxh['top_share']:.0%}</b> and
         <b>{mxh['bottom_state']}</b> at <b>{mxh['bottom_share']:.0%}</b>. Neighbouring states sit
-        many points apart, which a regional customer preference would not do — it tracks which
+        many points apart, which a regional customer preference would not do. It tracks which
         operators happen to hold sites there (§④: the operator explains 39% of volume, the trade
         area none).
       <b>Read the pale rows as an opportunity, carefully.</b> A low-membership state is either a

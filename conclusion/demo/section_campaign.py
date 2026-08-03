@@ -152,6 +152,15 @@ def _sub(fig, rows: int, height: int, x_title: str, **kw):
     for ann in fig.layout.annotations:                       # subplot titles
         ann.font.update(color=INK, size=12.5)
         ann.update(x=0, xanchor="left")
+
+    # A subplot title is an annotation pinned to the top of its row's domain, and the loop above
+    # also pins it to x=0 — which is exactly where a horizontal legend starts. Any caller passing
+    # a legend at y≈1.05 therefore lands it on top of the row-1 title. Give the legend its own band
+    # above the titles here rather than trusting each call site to guess a y that clears them.
+    leg = fig.layout.legend
+    if fig.layout.showlegend and leg.orientation == "h" and (leg.y or 0) > 1:
+        leg.update(y=1.115, yanchor="bottom")
+        fig.layout.margin.t = max(fig.layout.margin.t or 60, 108)
     return fig
 
 
@@ -237,7 +246,7 @@ def render() -> None:
     callout("What this shows", f"""
       <b>Reading.</b> On {n_events} events the picture is the one the business tells itself:
         spend jumps, revenue follows, membership ASP falls at the spike month
-        (<b>{(_win['ASP_mem_norm'].median() - 1) * 100:+.0f}%</b> over months +1..+3 — the discount),
+        (<b>{(_win['ASP_mem_norm'].median() - 1) * 100:+.0f}%</b> over months +1..+3, the discount),
         member washes rise <b>{st_['median_focal_mem_wash_pct_change']:+.0f}%</b> and retail washes
         fall <b>{st_['median_focal_ret_wash_pct_change']:+.0f}%</b>. Revenue over months +1..+3 sits
         <b>{st_['median_focal_revenue_pct_change']:+.0f}%</b> above baseline.
@@ -323,7 +332,7 @@ def render() -> None:
         {st_['pct_nbr_sites_revenue_decline']:.0f}% of neighbours are worse off in revenue terms,
         and the volume the promoter gains looks like volume somebody else lost.
       <b>Caveat.</b> <b>{top['focal_sites']:.0f} of the {P['state_mix'].focal_sites.sum():.0f}
-        promoting sites with a neighbour are in {top['focal_state']}</b> — one dense cluster
+        promoting sites with a neighbour are in {top['focal_state']}</b>: one dense cluster
         carries the result. And the median per-event share gain is
         <b>{st_['share_gain_pp']:+.1f} pp</b>, i.e. about zero: the shift is concentrated in a few
         markets, not general. Section 4.4 tests the stealing claim against sites 100 km away that
@@ -341,19 +350,18 @@ def render() -> None:
                         "p25": "${:,.0f}", "Median spend": "${:,.0f}", "p75": "${:,.0f}"},
                index_label="Campaign length")
 
-    bucket = st.radio("Campaign length", ["1 month", "2 months", "3+ months"],
-                      horizontal=True, index=0)
+    bucket = st.radio("Campaign length", ["1 month", "2 months"], horizontal=True, index=0)
     sub = P["snapshot"][P["snapshot"].bucket == bucket]
     n_camps = int((camps.duration_bucket == bucket).sum())
-    camp_months = {"1 month": [0], "2 months": [0, 1], "3+ months": [0, 1, 2]}[bucket]
+    camp_months = {"1 month": [0], "2 months": [0, 1]}[bucket]
 
     if len(sub):
         agg = sub.groupby("mfs")[["opex", "revenue", "profit", "mem_purchases"]].median().reset_index()
         # Dollars and headcounts do not share a y-axis. Two stacked panels on one x instead.
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.10,
                             row_heights=[0.66, 0.34],
-                            subplot_titles=["Money — median across campaigns",
-                                            "New membership sign-ups — median across campaigns"])
+                            subplot_titles=["Money: median across campaigns",
+                                            "New membership sign-ups: median across campaigns"])
         for col, name, color in [("opex", "OPEX", S2), ("revenue", "Revenue", S1),
                                  ("profit", "Profit (revenue − OPEX)", S3)]:
             fig.add_bar(x=agg["mfs"], y=agg[col], name=name, marker=dict(color=color),
@@ -389,7 +397,7 @@ def render() -> None:
             of extra spend, against a revenue line that is visibly higher afterwards.
           <b>Caveat.</b> "Afterwards" is doing the work. Nothing here holds the site's own growth
             constant, and three-quarters of these campaigns are run by sites less than two years
-            old. Sign-ups and dollars are plotted separately on purpose — they are not the same
+            old. Sign-ups and dollars are plotted separately on purpose. They are not the same
             unit and must not share an axis.
         """, WARNING)
 
@@ -432,16 +440,25 @@ def render() -> None:
                               showlegend=False, margin=dict(l=55, r=25, t=20, b=45)),
                         width="stretch")
 
+    direction = ("slightly <i>hiding</i> a bit of the lift, not creating it"
+                 if ds["seasonality_pp"] < 0 else "adding a sliver to the lift")
     callout("What this shows", f"""
-      <b>Reading.</b> The calendar swing is real but modest — <b>{ds['swing_hi']:+.0f}%</b> in the
-        strongest month to <b>{ds['swing_lo']:+.0f}%</b> in the weakest, about
-        <b>{ds['peak_to_trough']:.0f} pp</b> peak to trough — and campaign start dates are spread
-        across all twelve months rather than bunched ahead of the strong ones (right).
-      <b>So-what.</b> Deseasonalising revenue and recomputing the identical naive lift moves it
-        from <b>{ds['raw']:+.1f}%</b> to <b>{ds['deseasonalised']:+.1f}%</b>. Seasonality accounts
-        for <b>{ds['seasonality_pp']:+.1f} pp</b> of the headline — essentially none of it.
-      <b>Watch.</b> This closes one objection and opens a bigger one: if seasonality is not
-        inflating the number, something else is.
+      <b>The worry.</b> Car washes are busier in some months than others. If campaigns happen to get
+        launched just before the busy months, the "lift" is really just the calendar, and we would
+        be paying for something the weather was going to deliver anyway.
+      <b>Some months really are better (left).</b> The best month runs
+        <b>{ds['swing_hi']:+.0f}%</b> against a site's own yearly average and the worst runs
+        <b>{ds['swing_lo']:+.0f}%</b> — about <b>{ds['peak_to_trough']:.0f} points</b> from top to
+        bottom. Real, but not enormous.
+      <b>Campaigns are not timed to them (right).</b> Launches are scattered across all twelve
+        months rather than piling up ahead of the good ones. Nobody is gaming the calendar.
+      <b>And the maths agrees.</b> Strip the seasonal pattern out of revenue, redo the exact same
+        calculation, and the lift goes from <b>{ds['raw']:+.1f}%</b> to
+        <b>{ds['deseasonalised']:+.1f}%</b> — a shift of <b>{abs(ds['seasonality_pp']):.1f} points</b>,
+        which is nothing. If anything the seasons were {direction}.
+      <b>What this means.</b> Seasonality is <b>not</b> the explanation. That is one objection dead —
+        but the lift still looks too big to be real, so something else is inflating it. The next
+        chart goes looking for it.
     """, GOOD)
 
     st.subheader("4.2 · Against sites that ran no campaign")
@@ -493,22 +510,31 @@ def render() -> None:
     det = cf.detrended(panel)
     pre_row = rep.iloc[0]
     passes = not bool(pre_row["Significant"])
+    verdict = ("includes zero. So that gap is within noise and the comparison holds up: the "
+               "placebo <b>passes</b>" if passes else
+               "does <b>not</b> include zero. The two groups were already diverging before "
+               "anything happened, so the comparison is broken: the placebo <b>FAILS</b>")
+    cost = ("Every campaign is in here, including the ones at brand-new sites — which is exactly "
+            "why the pre-campaign gap is wide open. Push the slider right and it closes" if not cut
+            else f"This holds only because every campaign at a site younger than {cut} months was "
+                 "thrown away. Move the slider back to <i>any age</i> and the pre-campaign gap "
+                 "opens up")
     callout("What this shows", f"""
-      <b>Reading.</b> At this cutoff the pre-campaign months — where a clean design must read zero
-        — show a gap of <b>{pre_row['Counterfactual']:+.1f}%</b>
-        [{pre_row['CI low']:+.1f}, {pre_row['CI high']:+.1f}], which
-        {'does not exclude zero: the placebo <b>passes</b>' if passes
-         else '<b>excludes zero: the placebo FAILS</b>'}. The estimated effect over months +1..+3 is
-        <b>{rep.iloc[1]['Counterfactual']:+.1f}%</b>
-        [{rep.iloc[1]['CI low']:+.1f}, {rep.iloc[1]['CI high']:+.1f}] on
-        {int(rep.iloc[1]['Events'])} events.
-      <b>So-what.</b> Netting the pre-existing divergence out event by event leaves
-        <b>{det['detrended']:+.1f}%</b> [{det['lo']:+.1f}, {det['hi']:+.1f}] — the gap at +1..+3
-        ({det['post']:+.1f}%) minus the gap already present before anything happened
-        ({det['pre']:+.1f}%).
-      <b>Caveat.</b> Move the slider to <i>any age</i> and the pre-campaign gap opens up. That is
-        the whole finding: the lift the earlier sections report is mostly a divergence that had
-        already started.
+      <b>The check first.</b> Before the campaign ran, the two groups should look the same — any gap
+        there is a flaw in the comparison, not an effect. They differ by
+        <b>{pre_row['Counterfactual']:+.1f}%</b>, and the range around that is
+        [{pre_row['CI low']:+.1f}, {pre_row['CI high']:+.1f}], which {verdict}.
+      <b>What the campaign appears to do.</b> Over the three months after launch, campaign sites run
+        <b>{rep.iloc[1]['Counterfactual']:+.1f}%</b> ahead of sites that ran nothing
+        [{rep.iloc[1]['CI low']:+.1f}, {rep.iloc[1]['CI high']:+.1f}]. That rests on just
+        {int(rep.iloc[1]['Events'])} campaigns, which is why the range is wide.
+      <b>The number to quote.</b> Take that {det['post']:+.1f}% and subtract the {det['pre']:+.1f}%
+        head start the campaign sites already had before launch, campaign by campaign, and what is
+        left is <b>{det['detrended']:+.1f}%</b> [{det['lo']:+.1f}, {det['hi']:+.1f}]. That is the
+        part you can actually credit to the campaign.
+      <b>Why the slider matters.</b> {cost}. New sites grow on their own, campaigns get run at new
+        sites, and that growth gets credited to the campaign. The headline lift in the earlier
+        sections is mostly that.
     """, GOOD if passes else CRITICAL)
 
     # =============================================================================================

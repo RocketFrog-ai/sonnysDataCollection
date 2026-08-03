@@ -555,29 +555,199 @@ def selection_path(d: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def traffic_bands(d: pd.DataFrame, q: int = 4) -> pd.DataFrame:
-    """Sites grouped by how busy the road is: washes won, and share of the traffic captured.
+# =================================================================================================
+# traffic — the one input the old proforma actually leans on
+# =================================================================================================
+# The old sheet turns a traffic count into a wash count by assuming a **capture rate**: some fixed
+# share of the cars going past stop in. That single assumption is most of the projection, so it is
+# worth testing directly rather than through a bucketed chart.
+#
+# A warning about the obvious chart. Grouping sites by traffic and plotting the median capture rate
+# looks like evidence and is not: capture = washes / traffic, so if washes barely move while traffic
+# triples, the capture rate MUST fall by roughly a third. That chart cannot come out any other way,
+# and it says nothing about whether a busy road is worth paying for. The honest statistic is the
+# **elasticity** — regress log(washes) on log(traffic). A slope of 1 means capture is constant (the
+# sheet's assumption). A slope of 0 means the road contributes nothing. Everything below is built on
+# that number and on the per-site comparison of assumed vs achieved capture, neither of which is
+# forced by arithmetic.
 
-    Capture rate = daily washes / vehicles a day. It is the number that decides whether a busier
-    road is worth paying for, and it is the one the raw wash figure hides.
+SPEED_MPH = {"LESS THAN 30 MPH": 25, "30 - 40 MPH": 35, "LESS THAN 40 MPH": 35,
+             "40 - 50 MPH": 45, "LESS THAN 50  MPH": 45, "MORE THAN 50 MPH": 55}
+SPEED_BANDS = ["Under 30 mph", "30–40 mph", "40–50 mph", "Over 50 mph"]
+SPEED_LABEL = {25: "Under 30 mph", 35: "30–40 mph", 45: "40–50 mph", 55: "Over 50 mph"}
+
+
+def traffic_frame(d: pd.DataFrame) -> pd.DataFrame:
+    """One row per site: the road, what the sheet projected off it, and what actually happened.
+
+    `pf_capture` is the capture rate the proforma implicitly assumed (its own year-5 daily volume
+    divided by the traffic count it was handed). `capture` is what the site achieved.
     """
-    s = d[(d.actual_mature_wash > 0) & d[TRAFFIC_KEY].notna()].copy()
+    s = d[(d.actual_mature_wash > 0) & d[TRAFFIC_KEY].notna()
+          & d.proforma_y5_daily.notna()].copy()
     s["daily_washes"] = s.actual_mature_wash * 12 / 365
+    s["pf_daily"] = s.proforma_y5_daily
     s["capture"] = s.daily_washes / s[TRAFFIC_KEY]
+    s["pf_capture"] = s.pf_daily / s[TRAFFIC_KEY]
+    s["capture_vs_assumed"] = s.capture / s.pf_capture
+    s["overshoot"] = s.pf_daily / s.daily_washes
+    s["mph"] = s.factor_traffic_speed_choice.str.upper().str.strip().map(SPEED_MPH)
+    s["speed_band"] = s.mph.map(SPEED_LABEL)
+    s["site"] = s.client_name.astype(str) + " · " + s.state.astype(str)
+    return s.reset_index(drop=True)
+
+
+def _elasticity(x: np.ndarray, y: np.ndarray, boot: int = 4000) -> dict:
+    """Slope of log(y) on log(x), with a bootstrap interval and tests against 0 and 1."""
+    lx, ly = np.log(x), np.log(y)
+    b, a = np.polyfit(lx, ly, 1)
+    n = len(lx)
+    se = np.sqrt(np.sum((ly - (a + b * lx)) ** 2) / (n - 2) / np.sum((lx - lx.mean()) ** 2))
+    rng = np.random.default_rng(0)
+    bs = [np.polyfit(lx[i], ly[i], 1)[0]
+          for i in (rng.integers(0, n, n) for _ in range(boot))]
+    lo, hi = np.percentile(bs, [2.5, 97.5])
+    t0, t1 = b / se, (b - 1) / se
+    return dict(b=float(b), a=float(a), lo=float(lo), hi=float(hi), n=int(n),
+                r2=float(np.corrcoef(lx, ly)[0, 1] ** 2),
+                p_vs_zero=float(2 * (1 - stats.t.cdf(abs(t0), n - 2))),
+                p_vs_one=float(2 * (1 - stats.t.cdf(abs(t1), n - 2))),
+                double=float(2 ** b - 1), double_lo=float(2 ** lo - 1),
+                double_hi=float(2 ** hi - 1))
+
+
+def traffic_elasticity(d: pd.DataFrame) -> pd.DataFrame:
+    """How hard each forecast leans on the road, on one comparable scale.
+
+    Elasticity 1.00 = "washes are proportional to traffic" — the old sheet's premise. The row that
+    matters is `Actual`: whatever it says is what a road is really worth.
+    """
+    s = traffic_frame(d)
+    rows = []
+    for label, col in [("The old proforma projected", "pf_daily"),
+                       ("What actually happened", "daily_washes"),
+                       ("Model 5 projected", "model5_mature"),
+                       ("Cold-start model projected", "coldstart_v15_y5")]:
+        y = s[col].astype(float).values
+        ok = np.isfinite(y) & (y > 0)
+        e = _elasticity(s[TRAFFIC_KEY].values[ok], y[ok])
+        rho, p = stats.spearmanr(s[TRAFFIC_KEY].values[ok], y[ok])
+        rows.append(dict(who=label, rho=float(rho), p=float(p), **e))
+    out = pd.DataFrame(rows)
+    out.attrs["actual"] = out[out.who == "What actually happened"].iloc[0].to_dict()
+    out.attrs["proforma"] = out[out.who == "The old proforma projected"].iloc[0].to_dict()
+    return out
+
+
+def traffic_variance(d: pd.DataFrame) -> pd.DataFrame:
+    """Share of the variation each forecast — and reality — takes from the road.
+
+    Fitted (not held-out) R² on purpose: the question is not "does traffic forecast well" but
+    "how much of this sheet IS traffic", which is a description of the sheet, not a prediction.
+    """
+    s = traffic_frame(d)
+    X = np.column_stack([np.log(s[TRAFFIC_KEY]), s.cumulative_site_score,
+                         s.cumulative_demographic_score])
+    ok = np.isfinite(X).all(axis=1)
+    rows = []
+    for label, col in [("The old proforma's own projection", "pf_daily"),
+                       ("What the sites actually did", "daily_washes")]:
+        y = np.log(s[col].astype(float).values)
+        m = ok & np.isfinite(y)
+
+        def r2(cols):
+            A = np.column_stack([np.ones(m.sum()), X[m][:, cols]])
+            beta, *_ = np.linalg.lstsq(A, y[m], rcond=None)
+            resid = y[m] - A @ beta
+            return 1 - resid @ resid / np.sum((y[m] - y[m].mean()) ** 2)
+
+        rows.append(dict(what=label, traffic_only=r2([0]), scores_only=r2([1, 2]),
+                         together=r2([0, 1, 2]), unique_to_traffic=r2([0, 1, 2]) - r2([1, 2]),
+                         n=int(m.sum())))
+    return pd.DataFrame(rows)
+
+
+def traffic_capture(d: pd.DataFrame) -> pd.DataFrame:
+    """Assumed vs achieved capture rate, side by side."""
+    s = traffic_frame(d)
+    rows = []
+    for label, col in [("What the proforma assumed", "pf_capture"),
+                       ("What the site achieved", "capture")]:
+        v = s[col]
+        rows.append(dict(which=label, median=float(v.median()), p10=float(v.quantile(.1)),
+                         p90=float(v.quantile(.9)), lo=float(v.min()), hi=float(v.max()),
+                         spread=float(v.quantile(.9) / v.quantile(.1))))
+    out = pd.DataFrame(rows)
+    out.attrs.update(n=int(len(s)), beat=int((s.capture > s.pf_capture).sum()),
+                     median_ratio=float(s.capture_vs_assumed.median()))
+    return out
+
+
+def traffic_overshoot(d: pd.DataFrame, q: int = 4) -> pd.DataFrame:
+    """Does the proforma miss by more on busier roads? The quartile table that answers it.
+
+    This one is NOT the tautology: over-projection is proforma ÷ actual, and both sides are free to
+    move. If the capture assumption held, this column would be flat.
+    """
+    s = traffic_frame(d)
     s["band"] = pd.qcut(s[TRAFFIC_KEY], q, labels=False)
     g = (s.groupby("band", observed=True)
            .agg(sites=(TRAFFIC_KEY, "size"), lo=(TRAFFIC_KEY, "min"), hi=(TRAFFIC_KEY, "max"),
                 median_traffic=(TRAFFIC_KEY, "median"),
-                median_washes=("actual_mature_wash", "median"),
-                capture=("capture", "median"))
+                median_projected=("proforma_y5_monthly", "median"),
+                median_actual=("actual_mature_wash", "median"),
+                overshoot=("overshoot", "median"), capture=("capture", "median"))
            .reset_index())
     g["label"] = [f"{r.lo:,.0f}–{r.hi:,.0f}" for r in g.itertuples()]
-    rho, p = stats.spearmanr(s[TRAFFIC_KEY], s.actual_mature_wash)
+    rho, p = stats.spearmanr(s[TRAFFIC_KEY], s.overshoot)
     g.attrs.update(rho=float(rho), p=float(p), n=int(len(s)),
                    traffic_ratio=float(g.median_traffic.iloc[-1] / g.median_traffic.iloc[0]),
-                   wash_ratio=float(g.median_washes.iloc[-1] / g.median_washes.iloc[0]),
-                   capture_ratio=float(g.capture.iloc[0] / g.capture.iloc[-1]))
+                   wash_ratio=float(g.median_actual.iloc[-1] / g.median_actual.iloc[0]),
+                   projected_ratio=float(g.median_projected.iloc[-1] / g.median_projected.iloc[0]))
     return g
+
+
+def traffic_speed(d: pd.DataFrame) -> pd.DataFrame:
+    """How fast the road runs, against what the sites did — and what the sheet scores it.
+
+    The sheet rewards a slow road (0.15 points under 30 mph, 0.00 over 50). Whether the outcomes
+    agree is the question; `traffic_speed_test` runs it controlling for traffic, because slow roads
+    are also quiet roads here and the raw comparison cannot separate the two.
+    """
+    s = traffic_frame(d)
+    s = s[s.speed_band.notna()]
+    g = (s.groupby("speed_band", observed=True)
+           .agg(sites=("daily_washes", "size"),
+                median_washes=("actual_mature_wash", "median"),
+                p25=("actual_mature_wash", lambda v: v.quantile(.25)),
+                p75=("actual_mature_wash", lambda v: v.quantile(.75)),
+                median_traffic=(TRAFFIC_KEY, "median"), capture=("capture", "median"),
+                score=("factor_traffic_speed_score", "mean"))
+           .reindex(SPEED_BANDS).dropna(subset=["sites"]).reset_index())
+    return g
+
+
+def traffic_speed_test(d: pd.DataFrame) -> dict:
+    """Speed's effect on volume once traffic is held constant, plus the raw group test."""
+    s = traffic_frame(d)
+    s = s[s.speed_band.notna()]
+    X = np.column_stack([np.ones(len(s)), np.log(s[TRAFFIC_KEY]), s.mph.astype(float)])
+    y = np.log(s.daily_washes.values)
+    beta, *_ = np.linalg.lstsq(X, y, rcond=None)
+    resid = y - X @ beta
+    n, k = len(y), 2
+    s2 = resid @ resid / (n - k - 1)
+    se = np.sqrt(np.diag(s2 * np.linalg.inv(X.T @ X)))
+    t = beta[2] / se[2]
+    groups = [v.actual_mature_wash.values for _, v in s.groupby("speed_band") if len(v) >= 3]
+    kw = stats.kruskal(*groups) if len(groups) >= 2 else (np.nan, np.nan)
+    rho, prho = stats.spearmanr(s.factor_traffic_speed_score, s.actual_mature_wash)
+    return dict(n=int(n), mph_beta=float(beta[2]), mph_se=float(se[2]),
+                mph_p=float(2 * (1 - stats.t.cdf(abs(t), n - k - 1))),
+                per_10mph=float(np.exp(beta[2] * 10) - 1),
+                traffic_beta=float(beta[1]),
+                kruskal_p=float(kw[1]), score_rho=float(rho), score_p=float(prho),
+                bands=int(s.speed_band.nunique()))
 
 
 def factor_correlations(d: pd.DataFrame, keys=("pay_stations", "free_vacuum_slots",

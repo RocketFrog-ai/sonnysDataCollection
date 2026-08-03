@@ -82,6 +82,29 @@ that column understates length by ~2.5%. We recover the metres and convert prope
 You cannot fix this with a haircut: the proforma is off-centre **and** 2.5× wider than the model, so
 a flat correction that fixes the median still leaves the p90 site 3× over.
 
+### Traffic — where that error actually comes from
+
+The old sheet is, arithmetically, **one multiplication**: traffic count × a near-fixed capture rate.
+
+| | |
+|---|---|
+| Share of the proforma's own projection explained by traffic alone | **90%** (98% unique to traffic once the scores are in); the nine scored boxes + the whole demographic block explain **0.9%** |
+| Share of **actual** volume explained by traffic alone | **2.2%**; rho **+0.22, p = 0.07** — not significant |
+| Elasticity of washes to traffic — proforma | **0.95** → doubling traffic buys **+93%** |
+| Elasticity — **actual** | **0.25** [95% CI −0.14, +0.65] → doubling buys **+19%**. Slope = 1 rejected (**p = 0.0005**); slope = 0 **not** rejected (p = 0.23) |
+| Elasticity — Model 5 / cold-start | 0.33 / 0.15 — both far closer to reality than the sheet |
+| Capture rate assumed vs achieved | assumed **1.17%** median, p90÷p10 = **1.4×**; achieved **0.79%** median, p90÷p10 = **8.2×**. Only **19 of 68** sites beat their own assumption; median site hit **73%** of it |
+| Over-projection by traffic quartile | **0.93× → 1.42× → 1.61× → 2.03×** (rho +0.37, p = 0.0022). On a quiet road the sheet is right; on a busy one it projects double |
+| Traffic **speed** | nothing. Kruskal across 4 bands **p = 0.38**; the sheet's speed points correlate **+0.06 (p = 0.61)** with volume. Holding traffic constant, +10 mph is worth −19% but **p = 0.20**. Directionally agrees with the sheet, statistically indistinguishable from noise on 68 sites |
+
+**The 58% headline error has an address**: it is concentrated on busy roads and caused by the fixed
+capture assumption. The slope has to change, not the level — cutting every projection by a third
+would start under-projecting the quiet sites, which are already at 0.93×.
+
+**A chart deliberately not shown.** Bucketing sites by traffic and plotting the median capture rate
+is circular — capture is washes ÷ traffic, so it must fall as traffic rises whether or not anything
+real is happening. The elasticity, and the per-site assumed-vs-achieved comparison, replace it.
+
 **The two sections deliberately do not share data.** Each reads exactly one file and they are never
 merged — the 11 sites that appear in both carry tunnel lengths that disagree by up to 7 m, so any
 join would silently pick a winner.
@@ -152,7 +175,7 @@ gate means every annual total is a real sum — no site looks small for having o
 | Measures under ±0.10 | **30 of 31** |
 | Within one operator's own portfolio | every measure collapses toward zero; several **flip sign** |
 | Model given all 31 measures, scored on **unseen states** | **R² = −0.02 to −0.09** — no better than quoting the estate median, on either a boosted tree or a ridge |
-| Highest vs lowest fifth on population | **1.13×**, and not monotonic |
+| Highest vs lowest fifth, **median across all 31 measures** | **1.10×**; 15 of 31 move volume under 10% either way; the widest in the set (mass merchants nearby) is **1.25×** |
 | Highest vs lowest fifth on **membership customers** | **4.7×**, monotonic every step |
 | Who operates the site | **39%** of the differences (leave-one-out, 82 operators with 3+ sites) |
 | Median of the 10 nearest neighbours | **5.2%** — small, but positive, which demographics are not |

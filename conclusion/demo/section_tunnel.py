@@ -183,10 +183,10 @@ def render() -> None:
         <b>{fit['slope']:,.0f} more washes a year</b>.
       <b>But length is not what makes a site busy.</b> It accounts for only
         <b>{fit['r2']*100:.0f}%</b> of the difference between sites. Two washes with the same length
-        of tunnel often do several times more or less business than each other — so something else
-        is deciding it.
+        of tunnel often do several times more or less business than each other, so something
+        else is deciding it.
       <b>Look at the last column of the table.</b> Longer tunnels get more cars, but they also get
-        more capacity, and at much the same rate — so the share of the tunnel actually used barely
+        more capacity, and at much the same rate, so the share of the tunnel actually used barely
         changes from the shortest band to the longest. <b>Extra length buys spare room, not extra
         customers.</b>
     """, S2)
@@ -317,7 +317,7 @@ def render() -> None:
     med_b = piv.loc["Median daily peak", last]
     callout("What this shows", f"""
       <b>What the dashed line means.</b> A site sitting on it is using every bit of its tunnel.
-        <b>Every single dot is below it</b> — no site, at any age, has ever filled the tunnel it
+        <b>Every single dot is below it.</b> No site, at any age, has ever filled the tunnel it
         was built with.
       <b>Do older sites use more of theirs?</b> Yes, but only up to a point. On a busy day a
         <b>{first}</b> site uses <b>{p90_a:.0%}</b> of its tunnel; a <b>{last}</b> site uses
@@ -373,11 +373,11 @@ def render() -> None:
 
     callout("What this shows", f"""
       <b>How many sites are clearly too big?</b> <b>{h['n_overbuilt']} of {h['n_sites']}</b> never
-        get past half their tunnel — and that is measured on their <i>best day ever</i>, not an
+        get past half their tunnel, and that is measured on their <i>best day ever</i>, not an
         average one.
       <b>How much tunnel is going spare?</b> A typical one of them has
         <b>{h['median_excess_ft']:.0f} ft ({h['median_excess_ft']/td.FT_PER_M:.0f} m)</b> it has
-        never needed — <b>{h['median_excess_share']*100:.0f}% of the whole tunnel</b>.
+        never needed: <b>{h['median_excess_share']*100:.0f}% of the whole tunnel</b>.
       <b>Why that matters.</b> Every car that has ever turned up at these sites would have fitted
         through a much shorter tunnel. These are the builds worth re-reading before the next site
         is signed off on the same template.
