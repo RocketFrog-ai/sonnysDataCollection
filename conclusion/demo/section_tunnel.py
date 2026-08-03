@@ -51,16 +51,6 @@ def _traj(site_key: str) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def _ramp_curve() -> pd.DataFrame:
-    return td.ramp_curve()
-
-
-@st.cache_data(show_spinner=False)
-def _ramp_validation() -> pd.DataFrame:
-    return td.ramp_validation()
-
-
-@st.cache_data(show_spinner=False)
 def _cohort_peaks() -> pd.DataFrame:
     return td.cohort_peaks()
 
@@ -71,13 +61,8 @@ def _cohort_util() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def _ramp_curve() -> pd.DataFrame:
-    return td.ramp_curve()
-
-
-@st.cache_data(show_spinner=False)
-def _ramp_validation() -> pd.DataFrame:
-    return td.ramp_validation()
+def _site_util(site_key: str) -> pd.DataFrame:
+    return td.site_utilisation(site_key)
 
 
 @st.cache_data(show_spinner=False)
@@ -96,68 +81,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("1 · How a car wash ramps up")
-    rc = _ramp_curve()
-    anchor = rc.attrs["anchor_year"]
-    st.caption(f"Median washes by operating year, on the **{rc.attrs['sites']} sites** with at "
-               f"least {anchor} complete operating years. Measured on the full monthly panel "
-               "(`historical_data_5yrs_monthly.csv`), where each site's real opening date lets "
-               "operating years be cut exactly — a year counts only if all 12 months are present. "
-               "Shaded band is the middle half of sites.")
-
-    figr = go.Figure()
-    figr.add_scatter(x=list(rc.operating_year) + list(rc.operating_year[::-1]),
-                     y=list(rc.p75) + list(rc.p25[::-1]), fill="toself",
-                     fillcolor="rgba(57,135,229,0.15)", line=dict(width=0),
-                     hoverinfo="skip", name="middle half of sites")
-    figr.add_scatter(x=rc.operating_year, y=rc["median"], mode="lines+markers", name="median site",
-                     line=dict(color=S1, width=3),
-                     marker=dict(size=11, line=dict(width=2, color=SURFACE)),
-                     customdata=np.stack([rc.sites, rc.share_of_final], axis=-1),
-                     hovertemplate="Operating year %{x}<br><b>%{y:,.0f} washes</b><br>"
-                                   f"= %{{customdata[1]:.0%}} of its year-{anchor} volume<br>"
-                                   "<span style='opacity:.7'>%{customdata[0]:.0f} sites"
-                                   "</span><extra></extra>")
-    st.plotly_chart(style(figr, height=420, xaxis_title="Operating year",
-                          yaxis_title="Washes per year", xaxis=dict(dtick=1),
-                          legend=dict(orientation="h", y=1.02, x=0)), width="stretch")
-
-    sh = rc.set_index("operating_year").share_of_final
-    callout("What this shows", f"""
-      <b>How fast does a new wash fill up?</b> In its first year it does
-        <b>{sh.get(1):.0%}</b> of the business it will eventually do. By its second year it is
-        already at <b>{sh.get(2):.0%}</b> — essentially all of it.
-      <b>And then it stops.</b> Years 3 and 4 are within a few points of year 2. The growth is one
-        jump in the first twelve months, not a five-year climb.
-      <b>Why that matters.</b> You do not have to wait five years to know what a site is worth. Its
-        second full year is already telling you.
-    """)
-
-    rv = _ramp_validation()
-    st.markdown(f"**How reliable is that?** Every one of these {rc.attrs['sites']} sites, with its "
-                f"year-{anchor} volume predicted from each earlier year and checked against what "
-                "actually happened.")
-    vt = rv[["from_operating_year", "sites", "mdape_naive", "mdape_ramp", "bias"]].copy()
-    vt.columns = ["From operating year", "Sites", "Error if you assume no growth",
-                  "Error using the ramp", "Bias"]
-    vt.index = range(1, len(vt) + 1)
-    html_table(vt, fmt={"Error if you assume no growth": "{:,.1f}%",
-                        "Error using the ramp": "{:,.1f}%", "Bias": "{:,.2f}×"})
-    v1 = rv[rv.from_operating_year == 1].iloc[0]
-    v3 = rv[rv.from_operating_year == 3].iloc[0]
-    callout("What this shows", f"""
-      <b>Can we trust a call made this early?</b> We tested it on sites where we already know the
-        answer: hide the later years, guess, then check. Using the growth curve above, <b>one
-        year</b> of trading gets within <b>{v1.mdape_ramp:.0f}%</b> of the real long-run number.
-      <b>Compared with just reading year 1 as-is.</b> That leaves you <b>{v1.mdape_naive:.0f}%</b>
-        out — because a first-year site has not finished growing, so you under-count it.
-      <b>Why that matters.</b> After one full year you can put a number on a site you can defend.
-        Waiting until year 3 only improves it to <b>{v3.mdape_ramp:.0f}%</b>.
-    """, S3)
-
-    # =============================================================================================
-    st.divider()
-    st.header("2 · Explore any site")
+    st.header("1 · Explore any site")
     st.caption("Pick a site to see its actual trajectory. Sites with five or more years of trading "
                "are listed first.")
 
@@ -213,7 +137,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("3 · Does a longer tunnel deliver more washes?")
+    st.header("2 · Does a longer tunnel deliver more washes?")
     st.caption("How many washes a site does once mature, against the tunnel it was built with. "
                "Colour shows how much real trading history is behind each point.")
 
@@ -269,7 +193,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("4 · How much of the tunnel do we use — and does it close with age?")
+    st.header("3 · How much of the tunnel do we use — and does it close with age?")
     st.caption("Peak demand against tunnel length. The dashed line is the sizing rule: a site "
                "sitting on it is using its tunnel fully. Sites are grouped by how long they have "
                "been trading, and each site's peak scaled to how busy that year was. This is the "
@@ -277,9 +201,19 @@ def render() -> None:
                "analysis set — the young sites are the comparison.")
 
     cp = _cohort_peaks()
-    show = st.multiselect("Peak levels to plot", td.PEAK_ORDER,
-                          default=["Median daily peak", "p90 daily peak", "Highest daily peak"],
-                          key="peak_levels")
+    lcol, scol = st.columns([2, 1])
+    with lcol:
+        show = st.multiselect("Peak levels to plot", td.PEAK_ORDER,
+                              default=["Median daily peak", "p90 daily peak", "Highest daily peak"],
+                              key="peak_levels")
+    with scol:
+        # A site appears once in every facet it is old enough for, as a different dot each time.
+        # Picking one links those dots together — the facets on their own cannot show a path.
+        site_labels = (cp[["site_key", "site"]].drop_duplicates()
+                         .sort_values("site").set_index("site").site_key.to_dict())
+        picked_site = st.selectbox("Follow one site", ["— none —"] + list(site_labels),
+                                   index=0, key="tunnel_site_pick")
+    pick_key = site_labels.get(picked_site)
     # One hue, stepped by peak level. The ramp runs the opposite way per theme so the most
     # important series (the highest peak) is always the most prominent against the surface —
     # a dark navy step is nearly invisible on the dark chart background.
@@ -303,6 +237,7 @@ def render() -> None:
                 c = td.PEAK_BASIS[lvl]
                 fig.add_scatter(x=g.tunnel_ft, y=g[c], mode="markers", name=lvl,
                                 marker=dict(size=8, color=shade[lvl],
+                                            opacity=0.28 if pick_key else 1.0,
                                             line=dict(width=1, color=SURFACE)),
                                 customdata=np.stack([g.site, g[c] / g.tunnel_ft], axis=-1),
                                 hovertemplate="<b>%{customdata[0]}</b><br>"
@@ -310,6 +245,21 @@ def render() -> None:
                                               "Tunnel %{x:.0f} ft<br>"
                                               "→ uses %{customdata[1]:.0%} of it<extra></extra>",
                                 showlegend=(coh == present[0]))
+            if pick_key:
+                # The chosen site drawn on top at full strength, ringed so it reads against the
+                # dimmed field without needing a colour of its own.
+                sel = g[g.site_key == pick_key]
+                for lvl in show:
+                    c = td.PEAK_BASIS[lvl]
+                    fig.add_scatter(x=sel.tunnel_ft, y=sel[c], mode="markers", showlegend=False,
+                                    marker=dict(size=15, color=shade[lvl], symbol="circle",
+                                                line=dict(width=2.5, color=INK)),
+                                    customdata=np.stack([sel.site, sel[c] / sel.tunnel_ft],
+                                                        axis=-1),
+                                    hovertemplate="<b>%{customdata[0]}</b><br>"
+                                                  + lvl + ": %{y:.0f} cars<br>"
+                                                  "Tunnel %{x:.0f} ft<br>"
+                                                  "→ uses %{customdata[1]:.0%}<extra></extra>")
             st.plotly_chart(style(fig, height=370,
                                   title=dict(text=f"{coh} (n={g.site_key.nunique()})",
                                              font=dict(size=13)),
@@ -318,6 +268,43 @@ def render() -> None:
                                   margin=dict(l=48, r=12, t=104, b=45),
                                   legend=dict(orientation="h", y=1.30, x=0, font=dict(size=9))),
                             width="stretch")
+
+    if pick_key:
+        su = _site_util(pick_key)
+        if su.empty:
+            st.info("That site has no usable trading year in this chart.")
+        else:
+            st.markdown(f"**{picked_site} — its own path through the chart**")
+            figs = go.Figure()
+            for lvl in show:
+                gg = su[su.peak_level == lvl].sort_values("opyear")
+                figs.add_scatter(x=gg.opyear, y=gg.share, mode="lines+markers", name=lvl,
+                                 line=dict(color=shade[lvl], width=3),
+                                 marker=dict(size=11, line=dict(width=2, color=SURFACE)),
+                                 customdata=np.stack([gg.cars, gg.washes_rate], axis=-1),
+                                 hovertemplate=f"<b>{lvl}</b> — operating year %{{x}}<br>"
+                                               "Uses <b>%{y:.0%}</b> of the tunnel<br>"
+                                               "%{customdata[0]:.0f} cars in the peak hour<br>"
+                                               "<span style='opacity:.7'>%{customdata[1]:,.0f} "
+                                               "washes that year</span><extra></extra>")
+            figs.add_hline(y=1.0, line=dict(color=STATUS["Overbuilt"], width=1.5, dash="dash"))
+            figs.add_annotation(x=float(su.opyear.max()), y=1.0, yshift=10, xanchor="right",
+                                text="tunnel full", showarrow=False,
+                                font=dict(color=STATUS["Overbuilt"], size=11))
+            st.plotly_chart(style(figs, height=340, xaxis_title="Operating year",
+                                  yaxis_title="Share of the tunnel used",
+                                  yaxis=dict(tickformat=".0%", range=[0, 1.08]),
+                                  xaxis=dict(dtick=1),
+                                  legend=dict(orientation="h", y=1.02, x=0)), width="stretch")
+            best = su[su.peak_level == (show[-1] if show else td.DEFAULT_BASIS)]
+            if not best.empty:
+                st.caption(f"**{picked_site}** has a **{su.attrs['tunnel_ft']:.0f} ft** tunnel and "
+                           f"{su.opyear.nunique()} usable trading years here. On its "
+                           f"{(show[-1] if show else td.DEFAULT_BASIS).lower()} it went from "
+                           f"**{best.share.iloc[0]:.0%}** of that tunnel in year "
+                           f"{int(best.opyear.iloc[0])} to **{best.share.iloc[-1]:.0%}** in year "
+                           f"{int(best.opyear.iloc[-1])}. The year-by-year peak is the site's own "
+                           "peak scaled by how busy that year was — see the method note above.")
 
     piv = (_cohort_util().pivot(index="peak_level", columns="cohort", values="median_share")
            .reindex([l for l in td.PEAK_ORDER]))
@@ -342,27 +329,40 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("5 · Where the spare tunnel is")
-    st.caption("For the sites furthest from their rating: the length their own highest recorded day calls "
-               "for, against the length that was built.")
+    st.header("4 · Where the spare tunnel is")
+    st.caption("Every site, sorted by how much tunnel it has never needed. The blue part is the "
+               "length its own busiest day actually calls for; the red part is what is left over.")
 
-    over = d[d.verdict == "Overbuilt"].nlargest(15, "excess_ft")
-    labels = [f"{i}. {str(r.site)[:26]}" for i, r in enumerate(over.itertuples(), 1)]
+    scope = st.radio("Show", ["Only the ones with spare tunnel", "All sites"],
+                     horizontal=True, index=0, key="spare_scope")
+    v = d if scope == "All sites" else d[d.excess_ft > 0]
+    v = v.sort_values("excess_ft", ascending=False)
+
+    labels = [f"{str(r.site)[:30]}" for r in v.itertuples()]
     fige = go.Figure()
-    fige.add_bar(y=labels, x=over.required_ft, orientation="h", name="length its busiest day needs",
-                 marker=dict(color=S1, line=dict(width=1.5, color=SURFACE)),
-                 hovertemplate="%{y}<br>Its highest day needs <b>%{x:.0f} ft</b><extra></extra>")
-    fige.add_bar(y=labels, x=over.excess_ft, orientation="h", name="spare length",
-                 marker=dict(color=STATUS["Overbuilt"], line=dict(width=1.5, color=SURFACE)),
-                 customdata=np.stack([over.excess_share, over.tunnel_ft], axis=-1),
-                 hovertemplate="%{y}<br>Built %{customdata[1]:.0f} ft → <b>%{x:.0f} ft spare</b>"
-                               "<br>= %{customdata[0]:.0%} of the tunnel<extra></extra>")
-    st.plotly_chart(style(fige, height=560, barmode="stack", xaxis_title="Tunnel length (ft)",
-                          yaxis=dict(autorange="reversed", showgrid=False),
-                          # a horizontal bar chart puts its first bar hard against the top of the
-                          # plot, so the legend needs its own band rather than sitting just above it
+    fige.add_bar(y=labels, x=v.required_ft, orientation="h", name="length its busiest day needs",
+                 marker=dict(color=S1, line=dict(width=0.6, color=SURFACE)),
+                 customdata=np.stack([v["where"], v.peak_cars_per_hour], axis=-1),
+                 hovertemplate="<b>%{y}</b> · %{customdata[0]}<br>Its busiest day pushed "
+                               "%{customdata[1]:.0f} cars/hr → needs <b>%{x:.0f} ft</b>"
+                               "<extra></extra>")
+    fige.add_bar(y=labels, x=v.excess_ft, orientation="h", name="spare length",
+                 marker=dict(color=STATUS["Overbuilt"], line=dict(width=0.6, color=SURFACE)),
+                 customdata=np.stack([v.excess_share, v.tunnel_ft], axis=-1),
+                 hovertemplate="<b>%{y}</b><br>Built %{customdata[1]:.0f} ft → "
+                               "<b>%{x:.0f} ft spare</b><br>= %{customdata[0]:.0%} of the tunnel"
+                               "<extra></extra>")
+    # one compact row per site so the whole estate fits in a single readable view
+    st.plotly_chart(style(fige, height=max(320, 40 + 19 * len(v)), barmode="stack",
+                          xaxis_title="Tunnel length (ft)",
+                          yaxis=dict(autorange="reversed", showgrid=False,
+                                     tickfont=dict(size=10)),
                           margin=dict(l=60, r=25, t=86, b=50),
-                          legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
+                          legend=dict(orientation="h", y=1.02 + 26 / max(len(v), 1) / 10, x=0)),
+                    width="stretch")
+    st.caption(f"Showing **{len(v)}** of {len(d)} sites."
+               + ("" if scope == "All sites" else
+                  "  Switch to *All sites* to include the ones already running close to capacity."))
 
     m1, m2, m3 = st.columns(3)
     m1.metric("Sites under half their rating", f"{h['n_overbuilt']}",
@@ -385,7 +385,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("6 · All the data")
+    st.header("5 · All the data")
     st.caption("Filter, sort and download. Everything the charts above are drawn from.")
 
     f1, f2, f3 = st.columns([1.2, 1, 1])

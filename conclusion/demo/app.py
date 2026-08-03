@@ -32,12 +32,15 @@ import streamlit as st
 # any DataFrame is built. The proper fix is an environment pin — see each section's method tab.
 pd.set_option("mode.string_storage", "python")
 
-st.set_page_config(page_title="Conclusions — proforma evidence pack", page_icon="🚗",
+st.set_page_config(page_title="Proforma Hypothesis Testing (final)", page_icon="🚗",
                    layout="wide")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ui  # noqa: E402
 import section_campaign  # noqa: E402
+import section_competition  # noqa: E402
+import section_demographics  # noqa: E402
+import section_general  # noqa: E402
 import section_proforma  # noqa: E402
 import section_tunnel  # noqa: E402
 
@@ -45,16 +48,22 @@ ui.inject_css()
 
 # Adding a section = one more entry here.
 SECTIONS = [
+    ("⓪ General", "How a wash ramps up, and where the business actually is.",
+     section_general.render),
     ("① Tunnel length", "Is the tunnel we build bigger than the volume needs?",
      section_tunnel.render),
     ("② Proforma backtest", "When the proforma projected a wash count, how close did it land?",
      section_proforma.render),
     ("③ Campaign causality", "Promotions look powerful against a site's own past. Do they survive "
      "a counterfactual?", section_campaign.render),
+    ("④ Demographics", "Does the market a site sits in explain how much it washes?",
+     section_demographics.render),
+    ("⑤ Competition", "Somebody opens nearby. What happens to the neighbour, and to the new site?",
+     section_competition.render),
 ]
 
 with st.sidebar:
-    st.markdown("## Conclusions")
+    st.markdown("## Proforma Hypothesis Testing (final)")
     picked = st.radio("Section", [s[0] for s in SECTIONS], label_visibility="collapsed")
     st.caption({s[0]: s[1] for s in SECTIONS}[picked])
     st.markdown("---")

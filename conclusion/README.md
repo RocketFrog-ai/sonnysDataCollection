@@ -9,18 +9,23 @@ conclusion/
   demo/section_tunnel.py   ① Streamlit rendering
   demo/section_proforma.py ② Streamlit rendering
   demo/section_campaign.py ③ Streamlit rendering
+  demo/section_demographics.py ④ Streamlit rendering
+  demo/section_competition.py  ⑤ Streamlit rendering
   demo/tunnel_data.py      ① the maths — Streamlit-free
   demo/proforma_data.py    ② the maths — Streamlit-free
   demo/campaign_data.py    ③ the maths — Streamlit-free
+  demo/demographics_data.py    ④ the maths — Streamlit-free
+  demo/competition_data.py     ⑤ the maths — Streamlit-free
   notebook/conclusions.ipynb    sections ① ②, static plots + written insights
   notebook/book_v4_revolt.ipynb section ③'s working notebook — the source `campaign_data.py`
                                 was ported from
-  data/                    section ① inputs
+  data/                    section ① ⑤ inputs
 ```
 
 The app and the notebook import the **same** analysis modules, so they cannot report different
-numbers. Adding section ④ is: one `*_data.py`, one `section_*.py`, one line in `app.py`'s `SECTIONS`,
-and one block appended to the notebook.
+numbers. Adding a section is: one `*_data.py`, one `section_*.py`, one line in `app.py`'s `SECTIONS`,
+and one block appended to the notebook. (The notebook currently carries ① and ②; ③, ④ and ⑤ are
+app-only so far.)
 
 ## Run it
 
@@ -127,6 +132,111 @@ settle it is **staggered rollouts** — one operator promoting at some sites but
 same market and month.
 
 **Section ③ shares no data with ① or ②.** It reads its own single file, as they do.
+
+---
+
+## Section ④ — Demographics: does the market explain the wash?
+
+The premise every site-selection proforma rests on — score the trade area, and the score tells you
+what the wash will do — tested against **1,263 sites that traded all twelve months of 2025**, in 54
+states, on **31 market measures** each.
+
+Cohort: `historical_data_5yrs_monthly.csv` joined to `historical_data_sitewise.csv` on
+**`client_id_1 + site_id`** (the number-first client id is the correct key; the name-first column in
+the same file matches more rows only because the monthly panel carries both styles). The twelve-month
+gate means every annual total is a real sum — no site looks small for having opened in August.
+
+| | |
+|---|---|
+| Strongest of 31 measures vs total washes | **+0.11** (population growth) — explains **1.3%** of the differences between sites |
+| Measures under ±0.10 | **30 of 31** |
+| Within one operator's own portfolio | every measure collapses toward zero; several **flip sign** |
+| Model given all 31 measures, scored on **unseen states** | **R² = −0.02 to −0.09** — no better than quoting the estate median, on either a boosted tree or a ridge |
+| Highest vs lowest fifth on population | **1.13×**, and not monotonic |
+| Highest vs lowest fifth on **membership customers** | **4.7×**, monotonic every step |
+| Who operates the site | **39%** of the differences (leave-one-out, 82 operators with 3+ sites) |
+| Median of the 10 nearest neighbours | **5.2%** — small, but positive, which demographics are not |
+| Across the 30 rankable states, population vs volume | **+0.00**; membership share vs volume **+0.41** (p = 0.026) |
+
+**The modelling read-through:** anchor a new-site forecast on **how comparable nearby sites actually
+trade** and on **who will run it**, not on a trade-area score. This is not a claim that markets are
+irrelevant to a car wash — it is a claim that these measures, at this resolution, cannot rank two
+candidate sites. Every site in the panel was already chosen by someone who believed in these
+measures, which compresses the range; that is also exactly the range a new site is picked from.
+
+Zero-population and zero-traffic cells (14 and 19 sites) are read as **missing**, not as real
+deserts — they are failed geocodes, and would otherwise anchor the bottom of every ranking.
+
+**Section ④ shares no data with ①, ② or ③.**
+
+---
+
+## Section ⑤ — Competition: somebody opens nearby. What happens?
+
+One input file, `conclusion/data/historical_data_5yrs_monthly.csv` — the monthly wash panel, 2,103
+sites, Jan 2020 → Jun 2026, each with `operational_start`, coordinates and state. The unit is an
+**event**: a site opens, and every already-trading site within the radius is a neighbour exposed to
+it. **751 openings → 2,239 (entrant, neighbour) pairs**, against the archive's single-nearest-
+neighbour run (`archive/hypothesis-testing/interaction_outputs_nochem_v2/`, 85 pairs, no
+counterfactual).
+
+**Every number is measured against a counterfactual**, because §③ is the cautionary tale in this
+same pack: the same before/after change is computed for every *untouched* site — no opening within
+the radius anywhere in the window — and the neighbour is scored against the median of untouched
+sites in its own census region, **age bracket** and calendar months. 99% of pairs match at that
+tightest level.
+
+| | |
+|---|---|
+| Typical neighbour, raw before/after | **−1.6%** washes |
+| Untouched sites over the same months | **+3.2%** |
+| **Neighbour vs the counterfactual** | **−3.2%**; **60%** of neighbours lose |
+| Within 1 mile / 1–2 mi / 2–3 mi / 3–5 mi / 5–10 mi | **−9.4% · −8.5% · −3.6% · −2.9% · −3.0%** |
+| Shape of it | a **level step at month 0**, flat for the 12 months before, no recovery in the 12 after |
+| The pair together (neighbour + entrant) | **+59%** on what the neighbour alone was doing |
+| Pure cannibalisation (neighbour loses, pair does not grow) | **9%** of pairs; market expansion **57%** |
+
+**Two-body distance is not within-market distance.** 465 openings land on two qualifying neighbours
+at once, which holds the market, the calendar and the entrant fixed and varies only *which one is
+closer*. The nearer neighbour comes out **+0.2 pp** from the further one and is the worse of the two
+in **49%** of events — a coin flip; restricting to the 85 events where the nearest is under two
+miles does not change it (**+0.1 pp**), and there the further neighbour, a median 4.3 miles away, is
+down **−8.1%** — as much as the nearer one. So the two-body gradient is substantially *which markets
+get built into*, not *how many metres away*. The exposure is the market, and every site in it is
+exposed.
+
+**The membership moat does not survive the counterfactual.** Raw, retail washes at a close
+neighbour fall **−9.5%** and membership washes only **−1.0%**. But untouched sites *grew* membership
+**+5.0%** over the same months against **−1.6%** retail — so against the counterfactual the
+membership book is down **−6.0%** to retail's **−7.9%**. It is hit almost as hard; the loss just
+arrives as growth that never happened.
+
+**The new site pays more than the neighbour does.** An entrant with nobody inside three miles opens
+at **4,971** washes a month; one with two or more opens at **3,176** — about **36% less** — and the
+gap is still there at months 12–24 (**7,671** vs **5,717**, −25%). The neighbour gives up single
+digits. On 42 crowded entrants of which 18 have matured, so the direction is the finding and the
+size is not.
+
+Four exclusions, each removing a way to manufacture a fake effect, together worth ~0.2 pp on the
+headline: pairs under **0.2 mi** (operator handoffs — the same wash under a new `client_id`),
+neighbours under **500 washes/month** (stubs; a few site-months are negative), neighbours with **two
+or more months under 5%** of their own past (they closed — the series hits a literal zero and stays,
+verified by eye), and entrants under **250 washes/month** (openings that never opened; 153 excluded).
+
+`operational_start` equals the site's first panel month for **every** site, so the 348 sites stamped
+2020-01 are "open by then", not "opened then" — they are used as neighbours, never as entrants.
+
+The **case explorer** tab puts all 2,239 pairs in front of the reviewer individually: filter by
+state, distance, outcome; then both sites' actual monthly wash counts with the opening month and
+both windows marked, the relative geometry with 1/3/5/10-mile rings, and both addresses, coordinates
+and opening dates. There is no basemap on purpose — at two miles apart, a country-scale Scattergeo
+is a blank field with two dots, and this app has no tile layer. It defaults to the **closest** pair,
+not the biggest loss: the extreme tail is where sites that were quietly winding down anyway live,
+and no filter separates a gradual slide to near zero from competition without also deleting the
+finding. A single case is not an attribution.
+
+**Section ⑤ shares no data with ②, ③ or ④** — it reads the same monthly panel as ⓪, which is the
+panel, not a section-specific extract.
 
 ---
 

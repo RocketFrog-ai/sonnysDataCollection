@@ -357,6 +357,33 @@ def cohort_peaks() -> pd.DataFrame:
     return g[g.cohort.notna()].reset_index(drop=True)
 
 
+def site_utilisation(site_key: str,
+                     cars_per_hour_per_ft: float = CARS_PER_HOUR_PER_FT) -> pd.DataFrame:
+    """One site's own path through the capacity chart — a row per operating year, per peak level.
+
+    Same arithmetic as `cohort_utilisation`, not aggregated: this is what a single dot in the
+    cohort facets does as it ages, which the facets themselves cannot show because a site appears
+    once in each of them as a different dot.
+    """
+    c = cohort_peaks()
+    g = c[c.site_key == site_key].sort_values("opyear")
+    rows = []
+    for label, col in PEAK_BASIS.items():
+        for r in g.itertuples():
+            cap = getattr(r, "tunnel_ft") * cars_per_hour_per_ft
+            rows.append(dict(peak_level=label, opyear=int(r.opyear), cohort=str(r.cohort),
+                             cars=float(getattr(r, col)), tunnel_ft=float(r.tunnel_ft),
+                             share=float(getattr(r, col) / cap) if cap > 0 else np.nan,
+                             washes_rate=float(r.rate)))
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        out.attrs["site"] = str(g.site.iloc[0]) if len(g) else site_key
+        # `g["where"]`, never `g.where` — that attribute is DataFrame.where, the method.
+        out.attrs["where"] = str(g["where"].iloc[0]) if "where" in g.columns and len(g) else ""
+        out.attrs["tunnel_ft"] = float(g.tunnel_ft.iloc[0]) if len(g) else np.nan
+    return out
+
+
 def cohort_utilisation(cars_per_hour_per_ft: float = CARS_PER_HOUR_PER_FT) -> pd.DataFrame:
     """Share of the tunnel used at each peak level, by maturity cohort."""
     c = cohort_peaks()

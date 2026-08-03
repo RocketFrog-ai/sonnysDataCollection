@@ -39,6 +39,16 @@ def _impact() -> pd.DataFrame:
     return pf.factor_impact(_load())
 
 
+@st.cache_data(show_spinner=False)
+def _selection() -> pd.DataFrame:
+    return pf.selection_path(_load())
+
+
+@st.cache_data(show_spinner=False)
+def _traffic() -> pd.DataFrame:
+    return pf.traffic_bands(_load())
+
+
 def render() -> None:
     d = _load()
     h = pf.headline(d)
@@ -56,37 +66,70 @@ def render() -> None:
     st.caption("One dot per site. The dashed line is a perfect projection — anything above it was "
                "over-projected.")
 
-    a, p = d.actual_mature_wash, d.proforma_y5
-    over = p > a
-    lim = [0, float(max(a.max(), p.max())) * 1.05]
+    # Maturity is the underwriting question ("was the investment case right"); the year views are
+    # the trajectory question ("was the shape right"), each year judged against the projection made
+    # FOR that year rather than against a five-year-out promise.
+    views = ["At maturity"] + [f"Year {y}" for y in range(1, 6)]
+    view = st.radio("Compare on", views, index=0, horizontal=True, key="pf_year_view")
+    year = None if view == "At maturity" else int(view.split()[-1])
+    pp = pf.projection_pairs(d, year)
+    st_ = pp.attrs
+
+    lim = [0, float(max(pp.actual.max(), pp.projected.max())) * 1.05]
     fig = go.Figure()
     fig.add_scatter(x=lim, y=lim, mode="lines", name="perfect projection",
                     line=dict(color=INK2, width=2, dash="dash"), hoverinfo="skip")
-    for mask, name, col in [(over, "Over-projected", BAD), (~over, "Under-projected", S1)]:
-        g = d[mask]
-        ratio = (g.proforma_y5 / g.actual_mature_wash)
-        fig.add_scatter(x=g.actual_mature_wash, y=g.proforma_y5, mode="markers", name=name,
+    for mask, name, col in [(pp.over, "Over-projected", BAD), (~pp.over, "Under-projected", S1)]:
+        g = pp[mask]
+        fig.add_scatter(x=g.actual, y=g.projected, mode="markers", name=name,
                         marker=dict(size=11, color=col, line=dict(width=1.6, color=SURFACE)),
                         customdata=np.stack([g.client_name.fillna("—"), g.state.fillna("—"),
-                                             ratio, g.open_year], axis=-1),
+                                             g.ratio, g.open_year], axis=-1),
                         hovertemplate="<b>%{customdata[0]}</b> · %{customdata[1]} · opened "
                                       "%{customdata[3]:.0f}<br>"
                                       "Proforma said: <b>%{y:,.0f}</b> washes/mo<br>"
                                       "Actually delivered: <b>%{x:,.0f}</b> washes/mo<br>"
                                       "→ <b>%{customdata[2]:.1f}× the real volume</b><extra></extra>")
-    st.plotly_chart(style(fig, height=520, xaxis_title="Washes the site actually does (per month)",
+    st.plotly_chart(style(fig, height=520,
+                          xaxis_title=f"Washes the site actually does — {st_['label'].lower()}"
+                                      " (per month)",
                           yaxis_title="Washes the proforma promised (per month)",
                           xaxis=dict(range=lim, constrain="domain"),
                           yaxis=dict(range=lim, scaleanchor="x", constrain="domain"),
                           margin=dict(l=60, r=25, t=72, b=50),
                           legend=dict(orientation="h", y=1.06, x=0)), width="stretch")
+    st.caption(f"**{st_['label']}** — {st_['sub']}. **{st_['n']} sites**"
+               + (f"; {st_['n_dropped']} left out for not having all 12 months observed in year "
+                  f"{year}." if year else "."))
 
+    # Every year on one row, so the reviewer can see whether the miss is a level or a drift without
+    # clicking through the five views.
+    rows = []
+    for y in [None] + list(range(1, 6)):
+        s = pf.projection_pairs(d, y).attrs
+        rows.append({"Compared on": s["label"], "Sites": s["n"], "Typical miss": s["mdape"],
+                     "Runs at": s["bias"], "Over-projected": s["over_share"],
+                     "Worst tenth": s["p90"], "Within ±25%": s["within_25"]})
+    yt = pd.DataFrame(rows)
+    yt.index = range(1, len(yt) + 1)
+    html_table(yt, fmt={"Sites": "{:,.0f}", "Typical miss": "{:.0f}%", "Runs at": "{:.2f}×",
+                        "Over-projected": "{:.0%}", "Worst tenth": "{:.1f}×",
+                        "Within ±25%": "{:.0%}"})
+
+    y1, y5 = pf.projection_pairs(d, 1).attrs, pf.projection_pairs(d, 5).attrs
     callout("What this shows", f"""
       <b>How to read this.</b> Each dot is one car wash. The dashed line is where the promise came
         true. Above the line = the site washed <i>fewer</i> cars than the proforma said it would.
-      <b>Most sites are above the line.</b> <b>{h['proforma_over_share']*100:.0f}%</b> of them. The
-        typical proforma promised <b>{h['proforma_bias']:.2f}×</b> what the site really does, and
-        one site in ten was promised <b>{h['proforma_p90']:.1f}× or more</b>.
+      <b>On the view you have selected — {st_['label'].lower()} — {st_['over_share']*100:.0f}% of
+        sites are above the line.</b> The typical proforma promised
+        <b>{st_['bias']:.2f}×</b> what the site really does, and one site in ten was promised
+        <b>{st_['p90']:.1f}× or more</b>.
+      <b>It is not a slow start being misread.</b> Aligning each year against its own projection,
+        the proforma is over by <b>{y1['bias']:.2f}×</b> in year 1 and by <b>{y5['bias']:.2f}×</b>
+        by year 5 — it <i>widens</i> as the site fills up, on {y5['n']} sites old enough to check.
+        The ramp it projected is not the ramp sites actually run: a real wash is at ~98% of its
+        eventual volume by year 2 (§⓪), so a projection that keeps climbing to year 5 keeps walking
+        away from the site.
       <b>Why that matters.</b> If the misses were random, half would sit above the line and half
         below. They do not — they nearly all lean the same way. That means roughly three sites in
         four were approved on a number that never arrived, and the worst were out by several times
@@ -115,11 +158,25 @@ def render() -> None:
     site_key = labels[picked]
     row = v[v.site_key == site_key].iloc[0]
 
-    unit = st.radio("Show washes as", ["Per month", "Per day", "Per open hour"],
-                    horizontal=True, index=0)
+    ucol, hcol = st.columns([1.4, 1])
+    with ucol:
+        unit = st.radio("Show washes as", ["Per month", "Per day", "Per open hour"],
+                        horizontal=True, index=0)
+    default_hours = pf.site_volume_views(d, site_key).attrs.get("proforma_hours", float("nan"))
+    default_hours = float(default_hours) if np.isfinite(default_hours) else 12.0
+    with hcol:
+        # Keyed on the site, so switching site resets the slider to that site's own proforma
+        # figure instead of carrying the last site's assumption across.
+        open_hours = st.slider("Open hours a day", 6.0, 24.0, value=round(default_hours, 1),
+                               step=0.5, key=f"hours_{site_key}",
+                               help="The proforma's own assumption for this site, and adjustable. "
+                                    "Drives the per-hour view AND the per-hour metric below, which "
+                                    "is shown whichever view is selected. "
+                                    "The tunnel sizing rule is cars *per hour*, so this number "
+                                    "moves the recommended length directly.")
     suffix = {"Per month": "", "Per day": "_daily", "Per open hour": "_hourly"}[unit]
     fmt = ",.0f" if unit == "Per month" else ",.1f"
-    t_ = pf.site_volume_views(d, site_key)
+    t_ = pf.site_volume_views(d, site_key, open_hours)
     hours = t_.attrs.get("open_hours_per_day", float("nan"))
 
     figt = go.Figure()
@@ -141,17 +198,35 @@ def render() -> None:
                           yaxis_title=f"Washes {unit.lower()}", xaxis=dict(dtick=1),
                           legend=dict(orientation="h", y=1.02, x=0)), width="stretch")
     if unit != "Per month" and np.isfinite(hours):
-        st.caption(f"Converted at 365 days a year and **{hours:.0f} open hours a day** — this "
-                   "site's own trading hours from its proforma.")
+        src = (f"**{hours:.1f} open hours a day** — moved off the proforma's "
+               f"{t_.attrs['proforma_hours']:.1f}" if t_.attrs.get("hours_overridden")
+               else f"**{hours:.1f} open hours a day** — this site's figure from its proforma")
+        st.caption(f"Converted at 365 days a year and {src}. Worth knowing that the proformas "
+                   "assume **12 hours for 62 of the 63 sites** that carry the field, so this is a "
+                   "house assumption rather than a measurement of the site — which is why the "
+                   "slider is here.")
 
-    k1, k2, k3, k4 = st.columns(4)
+    # Per hour at maturity, on the hours currently set — the figure the tunnel is sized against,
+    # and the one the proforma's own capacity rule consumes.
+    act_hourly = row.actual_mature_wash * 12 / 365 / hours if hours and np.isfinite(hours) else np.nan
+    pro_hourly = row.proforma_y5 * 12 / 365 / hours if hours and np.isfinite(hours) else np.nan
+
+    k1, k2, k3, k4, k5 = st.columns(5)
     k1.metric("Actually washes", f"{row.actual_mature_wash:,.0f}", "per month at maturity",
               delta_color="off")
-    k2.metric("Proforma promised", f"{row.proforma_y5:,.0f}", f"{row.ratio:.1f}× what it does",
+    k2.metric("Actually washes / hour", f"{act_hourly:,.1f}" if np.isfinite(act_hourly) else "—",
+              f"average open hour · {hours:.1f} h/day" if np.isfinite(hours) else "no hours on file",
               delta_color="off")
-    k3.metric("Model 5", f"{row.model5_mature:,.0f}",
+    k3.metric("Proforma promised", f"{row.proforma_y5:,.0f}", f"{row.ratio:.1f}× what it does",
+              delta_color="off")
+    k4.metric("Model 5", f"{row.model5_mature:,.0f}",
               f"{row.model5_mature/row.actual_mature_wash:.1f}× what it does", delta_color="off")
-    k4.metric("Opened", f"{row.open_year:.0f}", row.proforma_type, delta_color="off")
+    k5.metric("Opened", f"{row.open_year:.0f}", row.proforma_type, delta_color="off")
+    if np.isfinite(act_hourly):
+        st.caption(f"**{act_hourly:,.1f} cars an average open hour** against the proforma's "
+                   f"**{pro_hourly:,.1f}**. That is the *average* hour — the peak hour is what "
+                   "sizes a tunnel, and §① shows the busiest hour ever recorded at a site runs "
+                   "well above its average one while still never filling the tunnel.")
 
     tun = pf.site_tunnel(d, site_key)
     left, right = st.columns([1, 1])
@@ -292,7 +367,9 @@ def render() -> None:
                "model, just the sites grouped by what they were built with.")
 
     imp = _impact()
-    fkeys = [r.key for r in imp.itertuples()]
+    # traffic count is in `imp` but not in this picker: it is a measured count, not a scored level,
+    # so it has no "levels" to group by. It gets its own chart below.
+    fkeys = [r.key for r in imp.itertuples() if r.key != pf.TRAFFIC_KEY]
     flabels = {r.key: r.factor for r in imp.itertuples()}
     chosen = st.selectbox("Feature", fkeys, format_func=lambda k: flabels[k], index=0)
 
@@ -351,53 +428,172 @@ def render() -> None:
                 "usually also have more pay stations and more vacuum slots — so part of any gap "
                 "here belongs to those, not to the feature you picked.")
 
-    st.markdown("#### But these features come as a package")
+    # ---- traffic count ---------------------------------------------------------------------------
+    st.markdown("#### Does a busier road bring more washes?")
+    st.markdown("Traffic count is the one proforma input that is a **measured number** rather than a "
+                "scored level — vehicles a day past the door, on every one of these proformas. It is "
+                "also the input people most expect to drive volume, so it is worth its own chart. "
+                "The 68 sites are split into four equal groups, quietest road to busiest.")
+
+    tb = _traffic()
+    figt = go.Figure()
+    figt.add_bar(x=tb.label, y=tb.median_washes, name="washes a month",
+                 marker=dict(color=S1, line=dict(width=2, color=SURFACE)),
+                 text=[f"{v:,.0f}" for v in tb.median_washes], textposition="outside",
+                 textfont=dict(color=INK, size=13),
+                 customdata=np.stack([tb.sites, tb.median_traffic, tb.capture], axis=-1),
+                 hovertemplate="Road carries <b>%{x}</b> vehicles a day<br>"
+                               "Typical site washes <b>%{y:,.0f}</b> a month<br>"
+                               "Catches <b>%{customdata[2]:.2%}</b> of the cars that pass<br>"
+                               "<span style='opacity:.7'>%{customdata[0]:.0f} sites</span>"
+                               "<extra></extra>")
+    figt.add_scatter(x=tb.label, y=tb.capture, name="share of passing cars caught", yaxis="y2",
+                     mode="lines+markers", line=dict(color=S2, width=3),
+                     marker=dict(size=11, line=dict(width=2, color=SURFACE)),
+                     hovertemplate="<b>%{y:.2%}</b> of passing cars caught<extra></extra>")
+    st.plotly_chart(style(
+        figt, height=430, xaxis_title="Vehicles a day past the site",
+        yaxis_title="Washes a month (typical site)",
+        yaxis=dict(range=[0, tb.median_washes.max() * 1.28]),
+        yaxis2=dict(overlaying="y", side="right", tickformat=".1%", showgrid=False,
+                    title=dict(text="Share of passing cars caught"),
+                    tickfont=dict(color=MUTED), range=[0, tb.capture.max() * 1.35]),
+        xaxis=dict(showgrid=False, type="category"),
+        margin=dict(l=60, r=70, t=86, b=50),
+        legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
+
+    callout("What this shows", f"""
+      <b>Yes, but far less than you would think.</b> Going from the quietest quarter of roads to the
+        busiest, traffic rises <b>{tb.attrs['traffic_ratio']:.1f}×</b>
+        ({tb.median_traffic.iloc[0]:,.0f} to {tb.median_traffic.iloc[-1]:,.0f} cars a day) — but the
+        typical site only washes <b>{tb.attrs['wash_ratio']:.1f}×</b> more
+        ({tb.median_washes.iloc[0]:,.0f} to {tb.median_washes.iloc[-1]:,.0f} a month).
+      <b>The catch rate falls as the road gets busier.</b> A site on a quiet road washes
+        <b>{tb.capture.iloc[0]:.2%}</b> of the cars going past. On the busiest roads that drops to
+        <b>{tb.capture.iloc[-1]:.2%}</b> — <b>{tb.attrs['capture_ratio']:.1f}× worse</b>. Roughly:
+        triple the traffic and you get about half again as many washes, not triple.
+      <b>What it means in money.</b> A site is not a net thrown across a road. Paying a premium for
+        a 45,000-car road over a 25,000-car one buys about <b>5%</b> more washes on this evidence —
+        so it is worth it only if the premium is small.
+      <b>Worth knowing.</b> The direction is right and consistent across all four groups, but the
+        link is loose: on its own, traffic count would put a site's forecast out by more than simply
+        assuming it does what the average site does.
+    """, S3)
+
+    # ---- which features carry real information ---------------------------------------------------
+    st.markdown("#### Which of these ten actually predict anything?")
     st.markdown(
-        "Bigger sites tend to have more of everything, so you cannot simply add these up. The chart "
-        "below separates the two questions: **how much a feature looks worth on its own**, and "
-        "**how much it is still worth once every other feature is accounted for**.")
+        "Every feature above looks like it does *something* when you draw a line through the sites "
+        "you already have. The real test is different: **hide one site, fit the line on the other "
+        f"{imp.attrs['n'] - 1}, then try to predict the site you hid** — and repeat for all "
+        f"{imp.attrs['n']}. Grey is how good a feature looks; blue is how good it actually is.")
 
     figi = go.Figure()
-    figi.add_bar(y=imp.factor, x=imp.raw_effect, orientation="h", name="on its own",
+    figi.add_bar(y=imp.factor, x=imp.r2_fitted, orientation="h",
+                 name="how good it looks on the sites we already have",
                  marker=dict(color=MUTED, line=dict(width=1.5, color=SURFACE)),
-                 hovertemplate="<b>%{y}</b><br>One step better = <b>%{x:+.0%}</b> more washes"
-                               "<br><span style='opacity:.7'>looking at this feature alone</span>"
-                               "<extra></extra>")
-    figi.add_bar(y=imp.factor, x=imp.controlled, orientation="h",
-                 name="once everything else is accounted for",
-                 marker=dict(color=S1, line=dict(width=1.5, color=SURFACE)),
-                 hovertemplate="<b>%{y}</b><br>One step better = <b>%{x:+.0%}</b> more washes"
-                               "<br><span style='opacity:.7'>with all other features held equal"
-                               "</span><extra></extra>")
+                 hovertemplate="<b>%{y}</b><br>Appears to explain <b>%{x:.0%}</b> of the gap "
+                               "between sites<br><span style='opacity:.7'>measured on the same "
+                               "sites the line was drawn through</span><extra></extra>")
+    figi.add_bar(y=imp.factor, x=imp.loo_real, orientation="h",
+                 name="how good it is on a site it has never seen",
+                 marker=dict(color=[S1 if v > 0 else BAD for v in imp.loo_real],
+                             line=dict(width=1.5, color=SURFACE)),
+                 customdata=np.stack([imp.raw_effect, imp.step_label], axis=-1),
+                 hovertemplate="<b>%{y}</b><br>Really explains <b>%{x:.0%}</b> of the gap between "
+                               "sites<br><span style='opacity:.7'>%{customdata[1]} = "
+                               "%{customdata[0]:+.0%} washes</span><extra></extra>")
     figi.add_vline(x=0, line=dict(color=INK2, width=1.5))
-    st.plotly_chart(style(figi, height=500, barmode="group",
-                          xaxis_title="Extra washes from building one level better",
-                          xaxis=dict(tickformat="+.0%"),
+    st.plotly_chart(style(figi, height=520, barmode="group",
+                          xaxis_title="Share of the gap between sites the feature explains",
+                          xaxis=dict(tickformat=".0%"),
                           yaxis=dict(autorange="reversed", showgrid=False),
                           # the legend needs its own band above the plot, otherwise it lands on
                           # top of the first pair of bars
                           margin=dict(l=60, r=25, t=86, b=50),
                           legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
 
-    top = imp.iloc[0]
-    corr = pf.factor_correlations(d)
-    pay_vac = corr.iloc[0, 1]
+    win = imp[imp.loo_real > 0]
+    lose = imp[imp.loo_real <= 0]
+    # the failing list is generated, never typed: it moves if the data does
+    lose_names = ", ".join(lose.factor.str.lower().iloc[:-1]) + " and " + lose.factor.str.lower(
+    ).iloc[-1]
+    lose_scored = int((~lose.key.eq(pf.TRAFFIC_KEY)).sum())
     callout("What this shows", f"""
-      <b>Why two bars?</b> Grey is what a feature looks worth <i>on its own</i>. Blue is what it is
-        still worth once you account for everything else the site has. Bigger sites tend to have
-        more of everything, so the grey bar always flatters.
-      <b>What actually holds up.</b> <b>{top.factor}</b> is the strongest: one level better and a
-        site washes about <b>{top.raw_effect:.0%} more</b> on its own — and still
-        <b>{top.controlled:.0%} more</b> after everything else is taken into account. Only pay
-        stations and vacuum slots pass both tests.
-      <b>What does not.</b> Where the grey bar is long but the blue one is short — area profile,
-        entrance stack-up, site accessibility — the feature was never doing the work. Those sites
-        simply also had more pay stations and vacuums. And because pay stations and vacuums come
-        together on the same sites, you cannot add their two gains up either.
-      <b>The bigger point.</b> All nine features together explain only about
-        <b>{imp.attrs['full_r2']:.0%}</b> of why one site is busier than another. The other
-        <b>{1-imp.attrs['full_r2']:.0%}</b> is the market and the operator — nothing on the build
-        sheet reaches it.
+      <b>Read the blue bar, not the grey one.</b> Grey is the number a spreadsheet gives you: draw a
+        line through the sites you already have and see how well it fits. It always looks like
+        something. Blue is the same feature asked to call a site it has never seen.
+      <b>Only {imp.attrs['n_survive']} of the {len(imp)} survive:</b>
+        <b>{', '.join(win.factor.str.lower())}</b>. {win.iloc[0].factor} is the best of them — a
+        site one level better washes about <b>{win.iloc[0].raw_effect:.0%} more</b>, and that holds
+        up on sites the line never saw.
+      <b>The other {len(lose)} score below zero</b>, which is worse than it sounds. Below zero means
+        that if you had used that feature to forecast a new site, you would have been further out
+        than if you had simply said "it will do what the average site does". {lose_names.capitalize()}
+        all land there — they look like they matter only because busier sites happen to score well
+        on everything at once.
+      <b>Why that matters for a build decision.</b> Of the nine boxes on the scoring sheet,
+        {lose_scored} are carrying no forecasting weight — and neither is the traffic count. Arguing
+        over them
+        in an investment committee is arguing over noise. The three that move the number are all
+        about the site's own capacity — how many cars it can take at once, and what kind of site it
+        is.
+    """, S3)
+
+    # ---- how many features are worth keeping -----------------------------------------------------
+    sp = _selection()
+    st.markdown("#### So how many features should the model use?")
+    st.markdown(
+        "Start with nothing, then add features one at a time — always whichever one helps most next. "
+        "Grey is how good the set looks on the sites it was built from; blue is how well it calls a "
+        "site it has never seen.")
+
+    figs = go.Figure()
+    figs.add_scatter(x=sp.step, y=sp.r2_fitted, mode="lines+markers",
+                     name="how good it looks", line=dict(color=MUTED, width=2.5, dash="dot"),
+                     marker=dict(size=8, line=dict(width=1.5, color=SURFACE)),
+                     customdata=sp.added,
+                     hovertemplate="%{x} features<br>Looks like <b>%{y:.0%}</b> explained"
+                                   "<extra></extra>")
+    figs.add_scatter(x=sp.step, y=sp.loo_real, mode="lines+markers",
+                     name="how good it really is", line=dict(color=S1, width=3),
+                     marker=dict(size=11, line=dict(width=2, color=SURFACE)),
+                     customdata=sp.added,
+                     hovertemplate="%{x} features — just added <b>%{customdata}</b><br>"
+                                   "Really explains <b>%{y:.0%}</b><extra></extra>")
+    figs.add_hline(y=0, line=dict(color=INK2, width=1.5))
+    figs.add_vline(x=sp.attrs["best_step"], line=dict(color=S2, width=1.5, dash="dash"))
+    figs.add_annotation(x=sp.attrs["best_step"], y=sp.attrs["best_loo"], yshift=26,
+                        text=f"<b>best at {sp.attrs['best_step']} features</b>", showarrow=False,
+                        font=dict(color=S2, size=12))
+    st.plotly_chart(style(
+        figs, height=430, xaxis_title="Number of features in the model",
+        yaxis_title="Share of the gap between sites explained",
+        xaxis=dict(dtick=1, tickmode="array", tickvals=list(sp.step),
+                   ticktext=[f"{i}<br><span style='font-size:10px'>+{a}</span>"
+                             for i, a in zip(sp.step, sp.added)]),
+        yaxis=dict(tickformat=".0%"),
+        margin=dict(l=60, r=25, t=86, b=90),
+        legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
+
+    callout("What this shows", f"""
+      <b>More features do not mean a better forecast.</b> The grey line only ever climbs — by the
+        time all ten are in, it claims to explain <b>{sp.attrs['end_fitted']:.0%}</b> of the gap
+        between sites. The blue line — the honest one — peaks at
+        <b>{sp.attrs['best_step']} features</b> and then falls all the way to
+        <b>{sp.attrs['worst_loo']:.0%}</b>. Using all ten is worse than using none.
+      <b>What is going on.</b> With {sp.attrs['n']} sites and ten scores, the extra features are not
+        learning anything about car washes; they are memorising these particular {sp.attrs['n']}
+        sites. It fits beautifully and predicts nothing.
+      <b>This is why the model carries only a handful.</b> Model 5 uses three of these —
+        <b>{', '.join(sp.attrs['model5_labels']).lower()}</b> — alongside the location. Those three
+        alone reach <b>{sp.attrs['model5_loo']:.0%}</b>, which is
+        <b>{sp.attrs['model5_share']:.0%}</b> of the best any combination of all ten can manage —
+        so the other six scored boxes, plus the traffic count, buy essentially nothing.
+      <b>The size of the prize.</b> Even at its best, the whole build sheet explains about
+        <b>{sp.attrs['best_loo']:.0%}</b> of why one site is busier than another. The other
+        <b>{1 - sp.attrs['best_loo']:.0%}</b> is the market and the operator — which is exactly where
+        the location model earns its keep.
     """, S3)
 
     # =============================================================================================

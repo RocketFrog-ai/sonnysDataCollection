@@ -147,6 +147,51 @@ def by_year(d: pd.DataFrame, full_years_only: bool = True) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def projection_pairs(d: pd.DataFrame, year: int | None = None, full_years_only: bool = True,
+                     forecaster: str = "proforma") -> pd.DataFrame:
+    """One row per site: what was projected **for a given operating year** vs what it actually did.
+
+    `year=None` is the maturity comparison — the proforma's year-5 number against the site's settled
+    volume, which is the number the site was underwritten on. `year=1..5` aligns the two on the same
+    operating year instead, so year 1 is judged against the projection *for year 1* rather than
+    against a five-year-out promise. The two answer different questions: maturity asks "was the
+    investment case right", year-by-year asks "was the trajectory right".
+
+    `full_years_only` keeps sites with all 12 months observed in that year. A part-year is
+    rate-extrapolated from as little as one month, and against a projection that is noise.
+
+    Summary statistics come back on `.attrs` so the caller never re-derives them from the frame.
+    """
+    tmpl, mature_col = {k: (t, m) for k, _, t, m, _ in FORECASTERS}[forecaster]
+    if year is None:
+        a, p = d.actual_mature_wash, d[mature_col]
+        label, sub = "At maturity", "the site's settled volume vs the year-5 projection"
+    else:
+        a, p = d[f"actual_y{year}"], d[tmpl.format(y=year)]
+        label = f"Operating year {year}"
+        sub = f"what the site washed in year {year} vs what was projected for year {year}"
+
+    m = _mask(p, a)
+    if year is not None and full_years_only:
+        m &= d[f"actual_nobs_y{year}"] >= 12
+
+    out = d.loc[m, ["site_key", "client_name", "state", "open_year", "proforma_type"]].copy()
+    out["actual"], out["projected"] = a[m], p[m]
+    out["ratio"] = out.projected / out.actual
+    out["over"] = out.ratio > 1
+
+    r = out.ratio
+    out.attrs.update(
+        label=label, sub=sub, year=year, n=int(len(out)),
+        n_dropped=int((_mask(p, a)).sum() - len(out)),
+        mdape=mdape(p[m], a[m]), bias=float(r.median()) if len(r) else np.nan,
+        over_share=float(out.over.mean()) if len(out) else np.nan,
+        p90=float(r.quantile(.90)) if len(r) else np.nan,
+        p10=float(r.quantile(.10)) if len(r) else np.nan,
+        within_25=float((np.abs(r - 1) <= 0.25).mean()) if len(r) else np.nan)
+    return out
+
+
 def head_to_head(d: pd.DataFrame, a_col: str = "model5_mature",
                  b_col: str = "proforma_y5") -> dict:
     """Paired test on the same sites: how often is `a` closer than `b`, and is that luck?"""
@@ -315,6 +360,68 @@ IMPACT_FACTORS = ["pay_stations", "free_vacuum_slots", "type_of_site", "entrance
                   "site_accessibility"]
 SCORE_STEP = 0.05   # the proforma's scores move in 0.05 increments
 
+# `traffic_count` — vehicles a day past the site — is the one proforma input that is a real measured
+# quantity rather than a 0–0.15 scored level, so it sits outside FACTOR_COLS in the file. It belongs
+# in the feature analysis all the same: it is on every proforma, present for all 70 sites, and it is
+# the input people most expect to drive volume. It is modelled in logs (a 5k→10k road is the same
+# kind of step as 25k→50k) and reported on its own scale.
+TRAFFIC_KEY = "traffic_count"
+FEATURE_LABEL = {**FACTOR_LABEL, TRAFFIC_KEY: "Traffic count"}
+
+# The three build-sheet features Model 5 actually carries (`m5in_pay`, `m5in_vac`, `m5in_tos`).
+# Everything else it uses is location, not build sheet.
+MODEL5_FEATURES = ["pay_stations", "free_vacuum_slots", "type_of_site"]
+
+
+def feature_frame(d: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray, list[str]]:
+    """The full candidate feature set — nine scored factors plus measured traffic count.
+
+    Returns `(X, y, keys)` with y = log(mature washes) and X **rank-transformed**, then standardised.
+    Ranking is not cosmetic, for two reasons:
+
+      • the proforma's score weights (0.05 / 0.075 / 0.125 / 0.15) are chosen weights, not measured
+        quantities — only their ORDER carries information, so a rank is the honest reading;
+      • one site scores −0.25 on free vacuum slots ("Coin or None"), a single-site level sitting five
+        standard deviations below every other site. On the raw scale that one row has enough leverage
+        to drag vacuum slots from the third-best feature to the worst. Ranking removes the leverage
+        without removing the site.
+
+    Traffic count is ranked on the same footing, so a 30,000-vehicle road and a 0.05 score notch land
+    on one comparable axis.
+    """
+    s = d[d.actual_mature_wash > 0].copy()
+    keys, cols = [], {}
+    for f in IMPACT_FACTORS:
+        c = f"factor_{f}_score"
+        if c in s.columns and s[c].nunique() > 1:
+            keys.append(f)
+            cols[f] = s[c].astype(float)
+    if TRAFFIC_KEY in s.columns and s[TRAFFIC_KEY].notna().all():
+        keys.append(TRAFFIC_KEY)
+        cols[TRAFFIC_KEY] = s[TRAFFIC_KEY].astype(float)
+    raw = pd.DataFrame(cols)[keys]
+    X = raw.rank(pct=True)
+    X = (X - X.mean()) / X.std()
+    X.attrs["raw"] = raw
+    return X, np.log(s.actual_mature_wash.values), keys
+
+
+def _loo_r2(X: pd.DataFrame, y: np.ndarray, keys: list[str]) -> float:
+    """Leave-one-site-out R^2 — how well the features predict a site the fit never saw.
+
+    This is the number that matters. In-sample R^2 only ever rises as you add features, so on 68
+    sites it will happily reward nine correlated predictors for memorising noise; the leave-one-out
+    figure goes NEGATIVE when that happens, which is exactly the signal we want to show.
+    """
+    from sklearn.linear_model import LinearRegression
+    from sklearn.model_selection import LeaveOneOut, cross_val_predict
+
+    if not keys:
+        return 0.0
+    Z = X[keys].values
+    p = cross_val_predict(LinearRegression(), Z, y, cv=LeaveOneOut())
+    return float(1 - ((y - p) ** 2).sum() / ((y - y.mean()) ** 2).sum())
+
 
 def factor_levels(d: pd.DataFrame, factor: str, min_n: int = 3) -> pd.DataFrame:
     """Median washes at each score level of one factor — the raw, unmodelled evidence.
@@ -369,39 +476,108 @@ def factor_monotonic(d: pd.DataFrame, factor: str, min_n: int = 3) -> bool:
 
 
 def factor_impact(d: pd.DataFrame) -> pd.DataFrame:
-    """How much each factor is worth, before and after controlling for the others.
+    """Per feature, how good it LOOKS versus how good it actually IS.
 
-    The proforma's factors move together — a bigger site tends to have more pay stations AND more
-    vacuum slots — so a raw correlation double-counts what they share. Two numbers are reported:
+    One feature at a time, two numbers, both on the same scale — share of the site-to-site spread in
+    mature washes that the feature accounts for:
 
-      • `raw_effect`   — the change in washes per one 0.05 score step, factor on its own;
-      • `controlled`   — the same step, with all nine factors in the model at once;
-      • `unique_r2`    — the share of variance ONLY this factor explains, over and above the other
-                         eight. This is the honest "what is it worth by itself" measure.
+      • `r2_fitted` — measured on the same 68 sites the line was drawn through. This is what a
+                      spreadsheet correlation shows you, and it can only ever look good.
+      • `loo_real`  — the same feature, but every site is predicted by a line fitted **without that
+                      site**. A feature carrying no real information scores BELOW ZERO here: using
+                      it leaves you worse off than just quoting the estate average.
+
+    The gap between the two is exactly the amount of flattery in the first number. `raw_effect`
+    (washes per one step better) is carried for the hover.
     """
     from sklearn.linear_model import LinearRegression
 
-    s = d[d.actual_mature_wash > 0].copy()
-    y = np.log(s.actual_mature_wash)
-    cols = [f"factor_{f}_score" for f in IMPACT_FACTORS if f"factor_{f}_score" in s.columns]
-    X = s[cols]
-    full = LinearRegression().fit(X, y)
-    full_r2 = full.score(X, y)
+    X, y, keys = feature_frame(d)
+    raw = X.attrs["raw"]
 
     rows = []
-    for f, c, b in zip(IMPACT_FACTORS, cols, full.coef_):
-        b_raw = LinearRegression().fit(s[[c]], y).coef_[0]
-        wo = X.drop(columns=[c])
+    for f in keys:
+        fitted = LinearRegression().fit(X[[f]], y)
+        # per-step effect back on the feature's OWN scale: a 0.05 score notch, or a 25% busier road
+        if f == TRAFFIC_KEY:
+            b = LinearRegression().fit(np.log(raw[[f]]), y).coef_[0] * np.log(1.25)
+        else:
+            b = LinearRegression().fit(raw[[f]], y).coef_[0] * SCORE_STEP
+        rho, p = stats.spearmanr(raw[f], y)
         rows.append(dict(
-            factor=FACTOR_LABEL.get(f, f), key=f,
-            raw_effect=float(np.exp(b_raw * SCORE_STEP) - 1),
-            controlled=float(np.exp(b * SCORE_STEP) - 1),
-            unique_r2=float(full_r2 - LinearRegression().fit(wo, y).score(wo, y)),
-            monotonic=factor_monotonic(d, f)))
-    out = pd.DataFrame(rows).sort_values("unique_r2", ascending=False).reset_index(drop=True)
-    out.attrs["full_r2"] = float(full_r2)
-    out.attrs["n"] = int(len(s))
+            factor=FEATURE_LABEL.get(f, f), key=f,
+            r2_fitted=float(fitted.score(X[[f]], y)),
+            loo_real=_loo_r2(X, y, [f]),
+            raw_effect=float(np.exp(b) - 1),
+            step_label="a 25% busier road" if f == TRAFFIC_KEY else "one level better",
+            rho=float(rho), p=float(p),
+            in_model5=f in MODEL5_FEATURES))
+    out = pd.DataFrame(rows).sort_values("loo_real", ascending=False).reset_index(drop=True)
+    out.attrs["fitted_all"] = float(LinearRegression().fit(X, y).score(X, y))
+    out.attrs["loo_all"] = _loo_r2(X, y, keys)
+    out.attrs["n_survive"] = int((out.loo_real > 0).sum())
+    out.attrs["n"] = int(len(y))
     return out
+
+
+def selection_path(d: pd.DataFrame) -> pd.DataFrame:
+    """Add features one at a time, best first, scoring each set on sites it never saw.
+
+    Answers the only question that matters for a build sheet: **how many of these are worth
+    keeping?** At each step the feature that most improves the leave-one-site-out score is added, so
+    the curve is the best case for every set size — if it turns down, no other ordering saves it.
+
+    Columns: `step`, `added`, `loo_real` (tested on sites the fit never saw), `r2_fitted` (what it
+    looks like if you never check).
+    """
+    from sklearn.linear_model import LinearRegression
+
+    X, y, keys = feature_frame(d)
+    chosen, rest, rows = [], list(keys), []
+    while rest:
+        best = max(rest, key=lambda k: _loo_r2(X, y, chosen + [k]))
+        chosen.append(best)
+        rest.remove(best)
+        rows.append(dict(step=len(chosen), added=FEATURE_LABEL.get(best, best), key=best,
+                         loo_real=_loo_r2(X, y, chosen),
+                         r2_fitted=float(LinearRegression().fit(X[chosen], y).score(X[chosen], y))))
+    out = pd.DataFrame(rows)
+    m5 = [k for k in MODEL5_FEATURES if k in keys]
+    out.attrs.update(
+        n=int(len(y)),
+        best_step=int(out.loc[out.loo_real.idxmax(), "step"]),
+        best_loo=float(out.loo_real.max()),
+        worst_loo=float(out.loo_real.iloc[-1]),
+        end_fitted=float(out.r2_fitted.iloc[-1]),
+        model5_loo=_loo_r2(X, y, m5),
+        model5_labels=[FEATURE_LABEL.get(k, k) for k in m5])
+    out.attrs["model5_share"] = out.attrs["model5_loo"] / out.attrs["best_loo"]
+    return out
+
+
+def traffic_bands(d: pd.DataFrame, q: int = 4) -> pd.DataFrame:
+    """Sites grouped by how busy the road is: washes won, and share of the traffic captured.
+
+    Capture rate = daily washes / vehicles a day. It is the number that decides whether a busier
+    road is worth paying for, and it is the one the raw wash figure hides.
+    """
+    s = d[(d.actual_mature_wash > 0) & d[TRAFFIC_KEY].notna()].copy()
+    s["daily_washes"] = s.actual_mature_wash * 12 / 365
+    s["capture"] = s.daily_washes / s[TRAFFIC_KEY]
+    s["band"] = pd.qcut(s[TRAFFIC_KEY], q, labels=False)
+    g = (s.groupby("band", observed=True)
+           .agg(sites=(TRAFFIC_KEY, "size"), lo=(TRAFFIC_KEY, "min"), hi=(TRAFFIC_KEY, "max"),
+                median_traffic=(TRAFFIC_KEY, "median"),
+                median_washes=("actual_mature_wash", "median"),
+                capture=("capture", "median"))
+           .reset_index())
+    g["label"] = [f"{r.lo:,.0f}–{r.hi:,.0f}" for r in g.itertuples()]
+    rho, p = stats.spearmanr(s[TRAFFIC_KEY], s.actual_mature_wash)
+    g.attrs.update(rho=float(rho), p=float(p), n=int(len(s)),
+                   traffic_ratio=float(g.median_traffic.iloc[-1] / g.median_traffic.iloc[0]),
+                   wash_ratio=float(g.median_washes.iloc[-1] / g.median_washes.iloc[0]),
+                   capture_ratio=float(g.capture.iloc[0] / g.capture.iloc[-1]))
+    return g
 
 
 def factor_correlations(d: pd.DataFrame, keys=("pay_stations", "free_vacuum_slots",
@@ -417,17 +593,29 @@ def factor_correlations(d: pd.DataFrame, keys=("pay_stations", "free_vacuum_slot
 # =================================================================================================
 # one site, everything about it
 # =================================================================================================
-def site_volume_views(d: pd.DataFrame, site_key: str) -> pd.DataFrame:
-    """Year 1-5 actual washes for one site, expressed per month, per day and per open hour."""
+def site_volume_views(d: pd.DataFrame, site_key: str,
+                      open_hours: float | None = None) -> pd.DataFrame:
+    """Year 1-5 actual washes for one site, expressed per month, per day and per open hour.
+
+    `open_hours` overrides the site's own `avg_daily_wash_hours`. The per-hour view is the one that
+    the tunnel is actually sized against — the sizing rule is *cars per hour*, so how many hours a
+    day the site is assumed to trade moves the recommended tunnel directly, and the proforma's own
+    figure is an assumption made before the site opened rather than a measurement. Both are carried
+    on `.attrs` so the caller can say which one is on screen.
+    """
     t = site_trajectory(d, site_key)
     if t.empty:
         return t
     r = d[d.site_key == site_key].iloc[0]
-    hours = r.get("avg_daily_wash_hours", np.nan)
+    proforma_hours = r.get("avg_daily_wash_hours", np.nan)
+    hours = open_hours if open_hours else proforma_hours
     for col in ("actual", "proforma", "model5"):
         t[f"{col}_daily"] = t[col] * 12 / 365
         t[f"{col}_hourly"] = t[f"{col}_daily"] / hours if hours and hours > 0 else np.nan
     t.attrs["open_hours_per_day"] = float(hours) if pd.notna(hours) else np.nan
+    t.attrs["proforma_hours"] = float(proforma_hours) if pd.notna(proforma_hours) else np.nan
+    t.attrs["hours_overridden"] = bool(open_hours and pd.notna(proforma_hours)
+                                       and abs(open_hours - proforma_hours) > 1e-9)
     return t
 
 
