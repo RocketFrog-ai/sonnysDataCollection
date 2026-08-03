@@ -82,13 +82,15 @@ def render() -> None:
                           legend=dict(orientation="h", y=1.06, x=0)), width="stretch")
 
     callout("What this shows", f"""
-      <b>Reading.</b> <b>{h['proforma_over_share']*100:.0f}% of the dots sit above the line</b> —
-        those sites washed fewer cars than promised. The typical proforma promised
-        <b>{h['proforma_bias']:.2f}× what the site actually delivers</b>, and one site in ten was
-        promised <b>{h['proforma_p90']:.1f}× or more</b>.
-      <b>So-what.</b> This is a consistent lean in one direction, not random scatter. Roughly three
-        sites in four were signed off on a number that never arrived, and the worst cases were out
-        by several times over — not by a few percent.
+      <b>How to read this.</b> Each dot is one car wash. The dashed line is where the promise came
+        true. Above the line = the site washed <i>fewer</i> cars than the proforma said it would.
+      <b>Most sites are above the line.</b> <b>{h['proforma_over_share']*100:.0f}%</b> of them. The
+        typical proforma promised <b>{h['proforma_bias']:.2f}×</b> what the site really does, and
+        one site in ten was promised <b>{h['proforma_p90']:.1f}× or more</b>.
+      <b>Why that matters.</b> If the misses were random, half would sit above the line and half
+        below. They do not — they nearly all lean the same way. That means roughly three sites in
+        four were approved on a number that never arrived, and the worst were out by several times
+        over, not by a few percent.
     """, BAD)
 
     # =============================================================================================
@@ -155,25 +157,19 @@ def render() -> None:
     left, right = st.columns([1, 1])
     with left:
         st.markdown("**The tunnel: recommended vs built**")
-        if np.isfinite(tun.get("actual_m", float("nan"))):
-            figtl = go.Figure(go.Bar(
-                x=[tun["recommended_m"], tun["actual_m"]],
-                y=["Formula recommends", "Actually built"], orientation="h",
-                marker=dict(color=[S2, S1], line=dict(width=2, color=SURFACE)),
-                text=[f"{tun['recommended_m']:.0f} m", f"{tun['actual_m']:.0f} m"],
-                textposition="outside", textfont=dict(color=INK, size=13),
-                hovertemplate="%{y}: <b>%{x:.0f} m</b><extra></extra>"))
-            st.plotly_chart(style(figtl, height=250, xaxis_title="Tunnel length (m)",
-                                  xaxis=dict(range=[0, max(tun["recommended_m"],
-                                                           tun["actual_m"]) * 1.3]),
-                                  yaxis=dict(showgrid=False)), width="stretch")
-            gap = tun["gap_m"]
-            word = "longer than" if gap > 0 else "shorter than"
-            st.markdown(f"Built **{abs(gap):.0f} m {word}** the formula asked for. The formula's "
-                        f"{tun['recommended_m']:.0f} m comes straight from the proforma's year-5 "
-                        f"peak of **{tun['recommended_ft']:.0f} cars an hour** — one foot per car.")
+        if np.isfinite(tun.get("actual_ft", float("nan"))):
+            g1, g2, g3 = st.columns(3)
+            g1.metric("Proforma year-5 peak", f"{tun['recommended_ft']:.0f}", "cars per hour",
+                      delta_color="off")
+            g2.metric("→ Tunnel recommended", f"{tun['recommended_ft']:.0f} ft",
+                      f"{tun['recommended_m']:.0f} m", delta_color="off")
+            gap_ft = tun["actual_ft"] - tun["recommended_ft"]
+            word = "longer" if gap_ft > 0 else "shorter"
+            g3.metric("Actually built", f"{tun['actual_ft']:.0f} ft",
+                      f"{abs(gap_ft):.0f} ft {word}", delta_color="off")
         else:
             st.info("No measured tunnel length on file for this site.")
+
     with right:
         st.markdown("**What it was built with**")
         prof = pf.site_profile(d, site_key)
@@ -212,11 +208,13 @@ def render() -> None:
     p_y5 = float(by[(by.key == "proforma") & (by.year == 5)].mdape.iloc[0])
     m_y5 = float(by[(by.key == "model5") & (by.year == 5)].mdape.iloc[0])
     callout("What this shows", f"""
-      <b>Reading.</b> The proforma does not get better with time — it is out by {p_y1:.0f}% in
-        year 1 and <b>{p_y5:.0f}% by year 5</b>. Model 5 goes the other way, closing to
-        {m_y5:.0f}%.
-      <b>So-what.</b> The proforma is at its <b>least accurate in years 4 and 5</b> — the years the
-        loan is being repaid on, and the whole reason the projection is made.
+      <b>Does the projection get more accurate as the site settles down?</b> No. The proforma is
+        out by <b>{p_y1:.0f}%</b> in year 1 and <b>{p_y5:.0f}% by year 5</b> — it gets slightly
+        worse, not better.
+      <b>Model 5 goes the other way</b>, tightening to <b>{m_y5:.0f}%</b> by year 5 as the site's
+        own trading history builds up.
+      <b>Why that matters.</b> Years 4 and 5 are the years the loan is being repaid on — the whole
+        reason the projection is made. That is exactly where the proforma is least reliable.
     """, BAD)
 
     # =============================================================================================
@@ -261,14 +259,30 @@ def render() -> None:
     html_table(tbl, fmt={"Median error": "{:,.1f}%", "Bias": "{:,.2f}×", "Over-projected": "{:.0%}",
                          "Within ±25%": "{:.0%}", "p90 ratio": "{:,.2f}×"})
 
+    ex = d.assign(r=d.proforma_y5 / d.actual_mature_wash)
+    ex = ex[ex.client_name.str.contains("Glacier Express", na=False)]
+    over_pf = float((d.proforma_y5 / d.actual_mature_wash > 1).mean())
+    over_m5 = float((d.model5_mature / d.actual_mature_wash > 1).mean())
+    sc_i = sc.set_index("key")
+    closed = ((sc_i.loc["proforma", "mdape"] - sc_i.loc["coldstart", "mdape"]) /
+              (sc_i.loc["proforma", "mdape"] - sc_i.loc["model5", "mdape"]))
     callout("What this shows", f"""
-      <b>Reading.</b> A typical proforma is out by <b>{h['proforma_mdape']:.0f}%</b> and leans
-        high ({h['proforma_bias']:.2f}× actual). Model 5 is out by <b>{h['model5_mdape']:.0f}%</b>
-        and does not lean either way ({h['model5_bias']:.2f}×). It gets closer on
-        <b>{h2h['wins']} of {h2h['n']} sites</b>, and it has never seen the site it is predicting.
-      <b>So-what.</b> The location-only model sits in between, which tells us where the value is:
-        <b>about half the improvement comes from the location alone</b>, before anything about the
-        build is taken into account.
+      <b>How far off is a typical projection?</b> The proforma misses by about
+        <b>{h['proforma_mdape']:.0f}%</b>. Model 5 misses by about <b>{h['model5_mdape']:.0f}%</b> —
+        roughly half the error, on the same sites.
+      <b>And the misses go a different way.</b> The proforma is too high on
+        <b>{over_pf:.0%}</b> of sites, so its errors pile up on one side and the whole plan reads
+        rich. Model 5 is too high on <b>{over_m5:.0%}</b> and too low on the rest, so its misses
+        cancel out across a portfolio instead of adding up.
+      <b>An example.</b> Glacier Express King Ave (MT) washes
+        <b>{ex.actual_mature_wash.iloc[0]:,.0f}</b> a month. The proforma promised
+        <b>{ex.proforma_y5.iloc[0]:,.0f}</b> — 70% too many. Model 5 said
+        <b>{ex.model5_mature.iloc[0]:,.0f}</b>, within 13%. It had never seen this site: it was
+        predicted by a model built without it, so this is a fair test rather than a fitted one.
+      <b>Where does the improvement come from?</b> The middle bar knows only <i>where</i> the site
+        is — nothing about pay stations, vacuums or the building. It already recovers
+        <b>{closed:.0%}</b> of the gap. Location is most of the answer; the build sheet adds the
+        rest.
     """, GOOD)
 
     # =============================================================================================
@@ -369,18 +383,21 @@ def render() -> None:
     corr = pf.factor_correlations(d)
     pay_vac = corr.iloc[0, 1]
     callout("What this shows", f"""
-      <b>Reading.</b> <b>{top.factor}</b> is the strongest single feature: built one level better,
-        a site washes about <b>{top.raw_effect:.0%} more</b> on its own, and still
-        <b>{top.controlled:.0%} more</b> once every other feature is held equal. Only pay stations
-        and vacuum slots survive both tests — a real trend across their levels <i>and</i> a real
-        effect after everything else is accounted for.
-      <b>So-what.</b> Where the grey bar is long and the blue one is short — area profile, entrance
-        stack-up, site accessibility — the feature was never doing the work. Those sites simply also
-        had more pay stations and more vacuum slots. Pay stations and vacuums themselves move
-        together at {pay_vac:.2f}, so their gains do not stack either.
-      <b>So-what.</b> All nine features together explain about <b>{imp.attrs['full_r2']:.0%}</b> of
-        why one site washes more than another. The other {1-imp.attrs['full_r2']:.0%} is market and
-        operator — nothing on the build sheet reaches it.
+      <b>Why two bars?</b> Grey is what a feature looks worth <i>on its own</i>. Blue is what it is
+        still worth once you account for everything else the site has. Bigger sites tend to have
+        more of everything, so the grey bar always flatters.
+      <b>What actually holds up.</b> <b>{top.factor}</b> is the strongest: one level better and a
+        site washes about <b>{top.raw_effect:.0%} more</b> on its own — and still
+        <b>{top.controlled:.0%} more</b> after everything else is taken into account. Only pay
+        stations and vacuum slots pass both tests.
+      <b>What does not.</b> Where the grey bar is long but the blue one is short — area profile,
+        entrance stack-up, site accessibility — the feature was never doing the work. Those sites
+        simply also had more pay stations and vacuums. And because pay stations and vacuums come
+        together on the same sites, you cannot add their two gains up either.
+      <b>The bigger point.</b> All nine features together explain only about
+        <b>{imp.attrs['full_r2']:.0%}</b> of why one site is busier than another. The other
+        <b>{1-imp.attrs['full_r2']:.0%}</b> is the market and the operator — nothing on the build
+        sheet reaches it.
     """, S3)
 
     # =============================================================================================
@@ -440,57 +457,18 @@ def render() -> None:
                           xaxis=dict(range=[0, 1.15]), yaxis=dict(showgrid=False)),
                     width="stretch")
 
-    st.markdown("#### The same picture as section ①, but with the *promised* peak")
-    st.caption("Each dot is a site: the peak the proforma projected against the tunnel that got "
-               "built. The dashed line is the sizing rule — a dot on it means the promised peak "
-               "exactly fills the tunnel.")
-
-    tc = pf.tunnel_cohorts(d)
-    lim2 = [0, float(max(tc.actual_ft.max(), tc.year5_max_hourly.max())) * 1.06]
-    COH = {"Year 3": S3, "Year 4+": S1}
-    figc = go.Figure()
-    figc.add_scatter(x=lim2, y=lim2, mode="lines", name="promised peak fills the tunnel",
-                     line=dict(color=BAD, width=1.8, dash="dash"), hoverinfo="skip")
-    for coh, colr in COH.items():
-        g = tc[tc.cohort == coh]
-        if g.empty:
-            continue
-        figc.add_scatter(x=g.actual_ft, y=g.year5_max_hourly, mode="markers",
-                         name=f"{coh} ({len(g)} sites)",
-                         marker=dict(size=10, color=colr, line=dict(width=1.4, color=SURFACE)),
-                         customdata=np.stack([g.client_name.fillna("—"), g.share_used], axis=-1),
-                         hovertemplate="<b>%{customdata[0]}</b><br>"
-                                       "Tunnel built: %{x:.0f} ft<br>"
-                                       "Peak the proforma promised: <b>%{y:.0f} cars</b><br>"
-                                       "→ the promise fills %{customdata[1]:.0%} of the tunnel"
-                                       "<extra></extra>")
-    st.plotly_chart(style(figc, height=470, xaxis_title="Tunnel actually built (ft)",
-                          yaxis_title="Peak the proforma projected (cars)",
-                          xaxis=dict(range=lim2, constrain="domain"),
-                          yaxis=dict(range=lim2, scaleanchor="x", constrain="domain"),
-                          margin=dict(l=60, r=25, t=86, b=50),
-                          legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
-
-    sh_all = tc.share_used.median()
     callout("What this shows", f"""
-      <b>Reading.</b> On paper the tunnels are right-sized — the promised peak fills a median
-        <b>{sh_all:.0%}</b> of the tunnel that got built, so the dots sit close to the line.
-      <b>So-what.</b> Put this beside section ①, where the <i>measured</i> peak fills far less of
-        the same tunnels. The tunnel was sized correctly <b>for a level of demand that never
-        arrived</b> — the sizing rule was applied faithfully to a number that was too high.
-    """, BAD)
-
-    callout("What this shows", f"""
-      <b>Reading.</b> The recommended length is really <b>the wash-volume promise wearing a
-        different label</b>. It moves almost perfectly in step with the proforma's own volume number
-        (<b>{row_vol.rho:.3f}</b> out of 1.00) but barely relates to the tunnel that actually got
-        built (<b>{row_len.rho:.2f}</b>), missing it by <b>{ts['mae']:.0f} m</b> on tunnels of
-        20–61 m.
-      <b>So-what.</b> Two problems stack up. Because the recommendation is just the volume promise
-        rescaled, it carries the same lean — an over-promised site gets an over-long
-        recommendation. And the build then ignores it anyway:
-        <b>{ts['built_longer_share']*100:.0f}% of sites end up longer</b> than recommended, a
-        typical {ts['median_actual']:.0f} m built against {ts['median_formula']:.0f} m advised.
+      <b>Where the recommended length comes from.</b> It is the proforma's own wash promise,
+        converted into feet. Nothing else goes into it.
+      <b>You can see that in the two bars.</b> The recommendation moves almost perfectly in step
+        with the wash promise (<b>{row_vol.rho:.3f}</b> out of a possible 1.00) but hardly relates
+        at all to the tunnel that actually got built (<b>{row_len.rho:.2f}</b>) — it is typically
+        <b>{ts['mae']:.0f} m</b> away from it, on tunnels that are only 20–61 m long.
+      <b>So two things go wrong at once.</b> Because the recommendation is just the wash promise in
+        different units, an over-promised site automatically gets an over-long recommendation. And
+        then the build ignores it anyway — <b>{ts['built_longer_share']*100:.0f}% of sites end up
+        longer</b> than recommended, typically {ts['median_actual']:.0f} m built where
+        {ts['median_formula']:.0f} m was advised.
     """, BAD)
 
     # =============================================================================================
