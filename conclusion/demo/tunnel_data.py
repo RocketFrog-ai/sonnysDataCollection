@@ -384,3 +384,78 @@ def peak_context() -> dict:
     med = float(days.median())
     return dict(median_days=med, p90_days=med * 0.10, median_day_count=med * 0.50,
                 min_days=float(days.min()), max_days=float(days.max()))
+
+
+# =================================================================================================
+# The maturity ramp, measured on the wide monthly panel
+# =================================================================================================
+# `tunnel_length_with_wash.csv` carries only 27 sites with a complete first five years, which is too
+# thin to read a ramp from. `historical_data_5yrs_monthly.csv` carries 2,103 sites with a real
+# `operational_start` and monthly washes, so operating years can be cut exactly rather than
+# approximated from calendar columns. It is used ONLY for the shape of the ramp — it is never joined
+# to the tunnel sites, which stay on their own file.
+RAMP_PANEL = REPO / "conclusion" / "data" / "historical_data_5yrs_monthly.csv"
+RAMP_MIN_YEARS = 4     # a site must have this many COMPLETE operating years to count
+
+
+def ramp_panel_years() -> pd.DataFrame:
+    """One row per site × complete operating year, from the wide monthly panel.
+
+    A year counts only if all 12 of its months are present, so nothing is scaled or extrapolated.
+    """
+    d = pd.read_csv(RAMP_PANEL, low_memory=False)
+    d["site_key"] = d.client_id.astype(str) + "___" + d.site_id.astype(str)
+    d["washes"] = d.mem_wash_count.fillna(0) + d.ret_wash_count.fillna(0)
+    d["opened"] = pd.to_datetime(d.operational_start, format="mixed", errors="coerce")
+    d["date"] = pd.to_datetime(dict(year=d.year, month=d.month, day=1))
+    g = d[(d.washes > 0) & d.opened.notna()].copy()
+    g["op_month"] = ((g.date.dt.year - g.opened.dt.year) * 12
+                     + (g.date.dt.month - g.opened.dt.month))
+    g = g[g.op_month >= 0]
+    g["opyear"] = g.op_month // 12 + 1
+    out = (g.groupby(["site_key", "opyear"])
+             .agg(months=("washes", "size"), washes=("washes", "sum"),
+                  opened=("opened", "first"))
+             .reset_index())
+    return out[out.months >= 12]
+
+
+def ramp_curve(min_years: int = RAMP_MIN_YEARS) -> pd.DataFrame:
+    """Median washes by operating year, on sites with `min_years` complete years.
+
+    `share_of_final` is the median of each site's OWN ratio to its `min_years` year — a within-site
+    statistic, so it is not distorted by big and small sites entering at different points.
+    """
+    y = ramp_panel_years()
+    wide = y.pivot(index="site_key", columns="opyear", values="washes")
+    cols = [c for c in range(1, min_years + 1) if c in wide.columns]
+    bal = wide[cols].dropna()
+    ratios = bal.div(bal[cols[-1]], axis=0)
+    rows = []
+    for c in cols:
+        rows.append(dict(operating_year=c, sites=int(len(bal)),
+                         median=float(bal[c].median()),
+                         p25=float(bal[c].quantile(.25)), p75=float(bal[c].quantile(.75)),
+                         share_of_final=float(ratios[c].median())))
+    out = pd.DataFrame(rows)
+    out.attrs["anchor_year"] = cols[-1]
+    out.attrs["sites"] = int(len(bal))
+    return out
+
+
+def ramp_validation(min_years: int = RAMP_MIN_YEARS) -> pd.DataFrame:
+    """Holdout on the wide panel: predict the final year from each earlier one."""
+    y = ramp_panel_years()
+    wide = y.pivot(index="site_key", columns="opyear", values="washes")
+    cols = [c for c in range(1, min_years + 1) if c in wide.columns]
+    bal = wide[cols].dropna()
+    target, ratios = bal[cols[-1]], bal.div(bal[cols[-1]], axis=0)
+    rows = []
+    for c in cols[:-1]:
+        factor = ratios[c].median()
+        naive, ramped = bal[c], bal[c] / factor
+        rows.append(dict(from_operating_year=c, sites=int(len(bal)), factor=float(factor),
+                         mdape_naive=float(np.median((naive - target).abs() / target) * 100),
+                         mdape_ramp=float(np.median((ramped - target).abs() / target) * 100),
+                         bias=float(np.median(ramped / target))))
+    return pd.DataFrame(rows)

@@ -51,6 +51,16 @@ def _traj(site_key: str) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def _ramp_curve() -> pd.DataFrame:
+    return td.ramp_curve()
+
+
+@st.cache_data(show_spinner=False)
+def _ramp_validation() -> pd.DataFrame:
+    return td.ramp_validation()
+
+
+@st.cache_data(show_spinner=False)
 def _cohort_peaks() -> pd.DataFrame:
     return td.cohort_peaks()
 
@@ -58,6 +68,21 @@ def _cohort_peaks() -> pd.DataFrame:
 @st.cache_data(show_spinner=False)
 def _cohort_util() -> pd.DataFrame:
     return td.cohort_utilisation()
+
+
+@st.cache_data(show_spinner=False)
+def _ramp_curve() -> pd.DataFrame:
+    return td.ramp_curve()
+
+
+@st.cache_data(show_spinner=False)
+def _ramp_validation() -> pd.DataFrame:
+    return td.ramp_validation()
+
+
+@st.cache_data(show_spinner=False)
+def _peak_ctx() -> dict:
+    return td.peak_context()
 
 
 def render() -> None:
@@ -72,57 +97,62 @@ def render() -> None:
     # =============================================================================================
     st.divider()
     st.header("1 · How a car wash ramps up")
-    st.caption(f"Median annualised wash rate by operating year, on the "
-               f"{int(_cohort().sites.iloc[0])} sites observed in every one of their first five "
-               "years. Shaded band is the middle half of those sites.")
+    rc = _ramp_curve()
+    anchor = rc.attrs["anchor_year"]
+    st.caption(f"Median washes by operating year, on the **{rc.attrs['sites']} sites** with at "
+               f"least {anchor} complete operating years. Measured on the full monthly panel "
+               "(`historical_data_5yrs_monthly.csv`), where each site's real opening date lets "
+               "operating years be cut exactly — a year counts only if all 12 months are present. "
+               "Shaded band is the middle half of sites.")
 
-    cc = _cohort()
     figr = go.Figure()
-    figr.add_scatter(x=list(cc.operating_year) + list(cc.operating_year[::-1]),
-                     y=list(cc.p75) + list(cc.p25[::-1]), fill="toself",
+    figr.add_scatter(x=list(rc.operating_year) + list(rc.operating_year[::-1]),
+                     y=list(rc.p75) + list(rc.p25[::-1]), fill="toself",
                      fillcolor="rgba(57,135,229,0.15)", line=dict(width=0),
                      hoverinfo="skip", name="middle half of sites")
-    figr.add_scatter(x=cc.operating_year, y=cc["median"], mode="lines+markers", name="median site",
+    figr.add_scatter(x=rc.operating_year, y=rc["median"], mode="lines+markers", name="median site",
                      line=dict(color=S1, width=3),
-                     marker=dict(size=10, line=dict(width=2, color=SURFACE)),
-                     customdata=np.stack([cc.sites, cc.share_of_year5], axis=-1),
-                     hovertemplate="Operating year %{x}<br><b>%{y:,.0f} washes/yr</b><br>"
-                                   "= %{customdata[1]:.0%} of its year-5 volume<br>"
+                     marker=dict(size=11, line=dict(width=2, color=SURFACE)),
+                     customdata=np.stack([rc.sites, rc.share_of_final], axis=-1),
+                     hovertemplate="Operating year %{x}<br><b>%{y:,.0f} washes</b><br>"
+                                   f"= %{{customdata[1]:.0%}} of its year-{anchor} volume<br>"
                                    "<span style='opacity:.7'>%{customdata[0]:.0f} sites"
                                    "</span><extra></extra>")
     st.plotly_chart(style(figr, height=420, xaxis_title="Operating year",
                           yaxis_title="Washes per year", xaxis=dict(dtick=1),
                           legend=dict(orientation="h", y=1.02, x=0)), width="stretch")
 
-    v = _validation()
-    y1 = v[v.from_operating_year == 1].iloc[0]
-    y3 = v[v.from_operating_year == 3].iloc[0]
-    sh = cc.set_index("operating_year").share_of_year5
+    sh = rc.set_index("operating_year").share_of_final
     callout("What this shows", f"""
-      <b>Reading.</b> A new site washes <b>{sh.get(1, float("nan")):.0%} of its eventual volume in
-        its first year</b>, gets to <b>{sh.get(2, float("nan")):.0%} in year 2</b>, and then stops
-        growing.
-      <b>So-what.</b> Sites do not climb for five years — they arrive almost fully formed in year 2.
-        That means <b>a site can be judged on real trading after two years</b> instead of waiting
-        out the projection.
+      <b>How fast does a new wash fill up?</b> In its first year it does
+        <b>{sh.get(1):.0%}</b> of the business it will eventually do. By its second year it is
+        already at <b>{sh.get(2):.0%}</b> — essentially all of it.
+      <b>And then it stops.</b> Years 3 and 4 are within a few points of year 2. The growth is one
+        jump in the first twelve months, not a five-year climb.
+      <b>Why that matters.</b> You do not have to wait five years to know what a site is worth. Its
+        second full year is already telling you.
     """)
 
-    st.markdown("**How reliable is the year-5 call?** Every site that reached year 5, predicted "
-                "from each earlier year and checked against what actually happened.")
-    vt = v.copy()
+    rv = _ramp_validation()
+    st.markdown(f"**How reliable is that?** Every one of these {rc.attrs['sites']} sites, with its "
+                f"year-{anchor} volume predicted from each earlier year and checked against what "
+                "actually happened.")
+    vt = rv[["from_operating_year", "sites", "mdape_naive", "mdape_ramp", "bias"]].copy()
     vt.columns = ["From operating year", "Sites", "Error if you assume no growth",
                   "Error using the ramp", "Bias"]
     vt.index = range(1, len(vt) + 1)
     html_table(vt, fmt={"Error if you assume no growth": "{:,.1f}%",
                         "Error using the ramp": "{:,.1f}%", "Bias": "{:,.2f}×"})
+    v1 = rv[rv.from_operating_year == 1].iloc[0]
+    v3 = rv[rv.from_operating_year == 3].iloc[0]
     callout("What this shows", f"""
-      <b>Reading.</b> Knowing that growth curve, one year of real trading is enough to call year 5
-        to within <b>{y1.mdape_ramp:.0f}%</b>. Taking the first year at face value instead leaves
-        you <b>{y1.mdape_naive:.0f}%</b> out. After three years the answer is within
-        <b>{y3.mdape_ramp:.0f}%</b>.
-      <b>So-what.</b> We can put a reliable long-run number on a site <b>after its first year</b> —
-        roughly twice as accurate as reading that first year straight — so young sites do not have
-        to sit outside the plan.
+      <b>Can we trust a call made this early?</b> We tested it on sites where we already know the
+        answer: hide the later years, guess, then check. Using the growth curve above, <b>one
+        year</b> of trading gets within <b>{v1.mdape_ramp:.0f}%</b> of the real long-run number.
+      <b>Compared with just reading year 1 as-is.</b> That leaves you <b>{v1.mdape_naive:.0f}%</b>
+        out — because a first-year site has not finished growing, so you under-count it.
+      <b>Why that matters.</b> After one full year you can put a number on a site you can defend.
+        Waiting until year 3 only improves it to <b>{v3.mdape_ramp:.0f}%</b>.
     """, S3)
 
     # =============================================================================================
@@ -225,13 +255,16 @@ def render() -> None:
                index_label="Length band")
 
     callout("What this shows", f"""
-      <b>Reading.</b> Longer tunnels do wash more — about <b>{fit['slope']:,.0f} extra washes a
-        year per foot</b> — but tunnel length accounts for only <b>{fit['r2']*100:.0f}%</b> of why
-        one site is busier than another. Two sites with the same tunnel routinely differ several
-        times over.
-      <b>So-what.</b> The table underneath shows why. As tunnels get longer they attract more cars
-        <i>and</i> gain more capacity at much the same rate, so <b>the share of the tunnel actually
-        used hardly moves</b>. Extra length buys spare capacity, not extra business.
+      <b>Does a longer tunnel bring more business?</b> A little. Each extra foot comes with about
+        <b>{fit['slope']:,.0f} more washes a year</b>.
+      <b>But length is not what makes a site busy.</b> It accounts for only
+        <b>{fit['r2']*100:.0f}%</b> of the difference between sites. Two washes with the same length
+        of tunnel often do several times more or less business than each other — so something else
+        is deciding it.
+      <b>Look at the last column of the table.</b> Longer tunnels get more cars, but they also get
+        more capacity, and at much the same rate — so the share of the tunnel actually used barely
+        changes from the shortest band to the longest. <b>Extra length buys spare room, not extra
+        customers.</b>
     """, S2)
 
     # =============================================================================================
@@ -296,13 +329,15 @@ def render() -> None:
     hi_b = piv.loc["Highest daily peak", last]
     med_b = piv.loc["Median daily peak", last]
     callout("What this shows", f"""
-      <b>Reading.</b> Every point sits below the line, in every cohort. On a busy (p90) day a
-        <b>{first}</b> site uses <b>{p90_a:.0%}</b> of its tunnel and a <b>{last}</b> site uses
-        <b>{p90_b:.0%}</b>. On an ordinary day the {last} group uses <b>{med_b:.0%}</b>, and even on
-        its single highest recorded day it reaches <b>{hi_b:.0%}</b>.
-      <b>So-what.</b> Age closes some of the gap and then stops — the curve flattens after year 3,
-        exactly where §1 showed volume stops growing. The spare capacity is not a start-up problem
-        that trades its way out; it is still there in the oldest sites.
+      <b>What the dashed line means.</b> A site sitting on it is using every bit of its tunnel.
+        <b>Every single dot is below it</b> — no site, at any age, has ever filled the tunnel it
+        was built with.
+      <b>Do older sites use more of theirs?</b> Yes, but only up to a point. On a busy day a
+        <b>{first}</b> site uses <b>{p90_a:.0%}</b> of its tunnel; a <b>{last}</b> site uses
+        <b>{p90_b:.0%}</b>. On an ordinary day the older group is still only at <b>{med_b:.0%}</b>,
+        and on its best day ever it reaches <b>{hi_b:.0%}</b>.
+      <b>Why that matters.</b> This is not a start-up problem that fixes itself once a site finds
+        its feet. The spare capacity is still sitting there in the oldest washes we have.
     """, STATUS["Overbuilt"])
 
     # =============================================================================================
@@ -337,13 +372,15 @@ def render() -> None:
     m3.metric("Spare share of the tunnel", f"{h['median_excess_share']*100:.0f}%")
 
     callout("What this shows", f"""
-      <b>Reading.</b> <b>{h['n_overbuilt']} of {h['n_sites']}</b> sites never get past half their
-        tunnel — not on an average day, but on their single highest recorded day. A typical one of
-        them carries <b>{h['median_excess_ft']:.0f} ft
-        ({h['median_excess_ft']/td.FT_PER_M:.0f} m) it has never needed —
-        {h['median_excess_share']*100:.0f}% of the tunnel</b>.
-      <b>So-what.</b> These are the builds to look at before the next site is signed off the same way.
-        The cars that turned up would have fitted through a much shorter tunnel.
+      <b>How many sites are clearly too big?</b> <b>{h['n_overbuilt']} of {h['n_sites']}</b> never
+        get past half their tunnel — and that is measured on their <i>best day ever</i>, not an
+        average one.
+      <b>How much tunnel is going spare?</b> A typical one of them has
+        <b>{h['median_excess_ft']:.0f} ft ({h['median_excess_ft']/td.FT_PER_M:.0f} m)</b> it has
+        never needed — <b>{h['median_excess_share']*100:.0f}% of the whole tunnel</b>.
+      <b>Why that matters.</b> Every car that has ever turned up at these sites would have fitted
+        through a much shorter tunnel. These are the builds worth re-reading before the next site
+        is signed off on the same template.
     """, STATUS["Overbuilt"])
 
     # =============================================================================================

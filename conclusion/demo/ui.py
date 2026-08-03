@@ -135,20 +135,24 @@ def html_table(df: pd.DataFrame, fmt: dict[str, str] | None = None,
 
 
 def callout(title: str, body_md: str, accent: str = S1) -> None:
-    """Insight box. Each bullet starts with a bolded lead-in (`<b>Reading.</b>`, …); everything up
-    to the next one is folded into that bullet, so the source can wrap at any column."""
-    LEADS = ("<b>Reading", "<b>So-what", "<b>Caveat", "<b>Why", "<b>Watch")
+    """Insight box: one bullet per point, wrapped freely in the source.
+
+    Bullets are split on INDENTATION, not on a list of known opening phrases. A line sitting at the
+    block's outermost indent starts a new bullet; anything indented further is a continuation of it.
+    That means a bullet can open with any wording — an earlier version keyed off a fixed set of
+    lead-ins ("Reading", "So-what") and silently merged every bullet that opened differently.
+    """
+    raw = [ln for ln in body_md.strip("\n").split("\n") if ln.strip()]
+    if not raw:
+        return
+    base = min(len(ln) - len(ln.lstrip()) for ln in raw)
     bullets: list[str] = []
-    for line in body_md.strip().split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        # only a known lead-in opens a bullet; a wrapped line that merely happens to start with
-        # <b> is a continuation, not a new point
-        if line.startswith(LEADS) or not bullets:
-            bullets.append(line)
+    for ln in raw:
+        indent = len(ln) - len(ln.lstrip())
+        if indent <= base or not bullets:
+            bullets.append(ln.strip())
         else:
-            bullets[-1] += " " + line
+            bullets[-1] += " " + ln.strip()
     items = "".join(f"<li>{b}</li>" for b in bullets)
     st.markdown(f"<div class='callout' style='border-left-color:{accent}'>"
                 f"<h4>{title}</h4><ul style='margin:0;padding-left:1.1rem'>{items}</ul></div>",
