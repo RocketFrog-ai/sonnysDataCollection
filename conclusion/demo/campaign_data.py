@@ -686,8 +686,7 @@ def pct(x):
 
 WINDOWS = [("pre-trend −3..−1 (placebo: should be ~0)", range(-3, 0)),
            ("effect +1..+3", range(1, 4)),
-           ("effect +4..+6", range(4, 7)),
-           ("effect +7..+12", range(7, 13))]
+           ("effect +4..+6", range(4, 7))]
 
 METRIC_WINDOWS = [("pre-trend −3..−1 (placebo)", range(-3, 0)),
                   ("effect +1..+3", range(1, 4)),

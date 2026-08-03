@@ -44,6 +44,10 @@ FOCAL_METRICS = [
     ("ret_wash_count_norm", "Wash count — retail", S2),
 ]
 
+# Shown by default in "1 · What a promotion looks like from the inside"; the rest are opt-in via
+# the multiselect.
+DEFAULT_FOCAL_METRICS = ["Revenue", "OPEX", "Wash count — membership", "Wash count — retail"]
+
 SPILLOVER_PANELS = [
     ("ret_wash_count_norm", "Retail wash count"),
     ("total_income_norm", "Revenue"),
@@ -206,7 +210,7 @@ def render() -> None:
                "band = the middle half of them.")
 
     picked = st.multiselect("Metrics", [m[1] for m in FOCAL_METRICS],
-                            default=[m[1] for m in FOCAL_METRICS])
+                            default=DEFAULT_FOCAL_METRICS)
     metrics = [m for m in FOCAL_METRICS if m[1] in picked]
     n_events = P["events"].groupby(["site_key", "spike_date"]).ngroups
 
@@ -506,196 +510,6 @@ def render() -> None:
         the whole finding: the lift the earlier sections report is mostly a divergence that had
         already started.
     """, GOOD if passes else CRITICAL)
-
-    st.subheader("4.3 · Robustness — does the estimate survive its own placebo tests?")
-
-    sweep = P["sweep"]
-    ticks = [("any age" if r.min_age == 0 else f"{int(r.min_age)}+ mo") + f"<br>n={int(r.n_events)}"
-             for r in sweep.itertuples()]
-    fig = go.Figure()
-    for col, lo, hi, name, color, dash in [
-            ("pre_trend", "pre_lo", "pre_hi", "Pre-campaign gap (contamination — should be 0)",
-             S2, None),
-            ("effect", "eff_lo", "eff_hi", "Campaign effect, months +1..+3", S1, None)]:
-        fig.add_scatter(x=ticks, y=sweep[col], name=name, mode="lines+markers",
-                        line=dict(color=color, width=2),
-                        marker=dict(size=9, color=color, line=dict(width=2, color=SURFACE)),
-                        error_y=dict(type="data", symmetric=False,
-                                     array=sweep[hi] - sweep[col], arrayminus=sweep[col] - sweep[lo],
-                                     color=color, thickness=1.4, width=5),
-                        hovertemplate=f"<b>{name}</b><br>%{{x}}: %{{y:+.1f}}%<extra></extra>")
-    fig.add_scatter(x=ticks, y=sweep["detrended"], name="Effect net of the pre-campaign gap",
-                    mode="lines+markers", line=dict(color=S4, width=2, dash="dash"),
-                    marker=dict(size=8, color=S4, line=dict(width=2, color=SURFACE)),
-                    hovertemplate="<b>Detrended</b><br>%{x}: %{y:+.1f}%<extra></extra>")
-    fig.add_hline(y=0, line=dict(color=MUTED, width=1))
-    if (sweep.placebo_passes).any():
-        ix = int(np.flatnonzero(sweep.placebo_passes.values)[0])
-        fig.add_vrect(x0=ix - 0.5, x1=len(ticks) - 0.5, fillcolor=_rgba(GOOD, 0.10),
-                      line_width=0, layer="below")
-        fig.add_annotation(x=ix, y=1, yref="paper", yshift=-4, xanchor="left",
-                           text="placebo passes from here on", showarrow=False,
-                           font=dict(size=11, color=GOOD))
-    st.plotly_chart(style(fig, height=470, xaxis_title="Minimum site age at campaign start",
-                          yaxis_title="% vs matched control sites", yaxis=dict(ticksuffix="%"),
-                          legend=dict(orientation="h", y=-0.26, x=0),
-                          margin=dict(l=70, r=30, t=30, b=110)), width="stretch")
-
-    sw = sweep.copy()
-    sw["Sites"] = ["any age" if a == 0 else f"{int(a)}+ months" for a in sw.min_age]
-    sw["Placebo"] = np.where(sw.placebo_passes, "● passes", "▲ fails")
-    html_table(sw.set_index("Sites")[["campaigns", "n_events", "pre_trend", "Placebo", "effect",
-                                      "detrended"]]
-               .rename(columns={"campaigns": "Campaigns", "n_events": "Events",
-                                "pre_trend": "Pre-campaign gap", "effect": "Effect +1..+3",
-                                "detrended": "Detrended"}),
-               fmt={"Campaigns": "{:.0f}", "Events": "{:.0f}", "Pre-campaign gap": "{:+,.1f}%",
-                    "Effect +1..+3": "{:+,.1f}%", "Detrended": "{:+,.1f}%"},
-               index_label="Sites kept")
-
-    rob_rows = []
-    plac = P["placebo"]
-    if len(plac):
-        fake = plac[plac.Window.str.startswith("FAKE")].iloc[0]
-        rob_rows.append({"Check": "Placebo in time — campaign date moved back 9 months",
-                         "Expected": "≈ 0%", "Found": fake["Counterfactual"],
-                         "CI low": fake["CI low"], "CI high": fake["CI high"],
-                         "Verdict": "▲ FAILS" if fake["Significant"] else "● passes"})
-    for name, rp in P["robust"].items():
-        if not len(rp):
-            continue
-        eff = rp[rp.Window.str.startswith("effect +1")].iloc[0]
-        pre = rp.iloc[0]
-        rob_rows.append({"Check": name, "Expected": "similar to +1..+3 above",
-                         "Found": eff["Counterfactual"], "CI low": eff["CI low"],
-                         "CI high": eff["CI high"],
-                         "Verdict": "▲ pre-trend" if pre["Significant"] else "● clean"})
-    html_table(pd.DataFrame(rob_rows).set_index("Check"),
-               fmt={"Found": "{:+,.1f}%", "CI low": "{:+,.1f}%", "CI high": "{:+,.1f}%"},
-               index_label="Check")
-
-    callout("What this shows", f"""
-      <b>Reading.</b> The pre-campaign gap falls monotonically as the age bar rises and the sample
-        drains with it. <b>{P['cutoff']} months is the operating cutoff</b> — the lowest bar whose
-        placebo passes. And the placebo-in-time fails outright: moving the campaign date back nine
-        months, to a period when nothing happened, still produces a "lift" of
-        <b>{rob_rows[0]['Found']:+.1f}%</b> if any campaigns are included at all.
-      <b>Why.</b> If the contamination came from the calendar or from the market, filtering on
-        <i>site age</i> would not touch it. It drains away exactly as young sites are excluded, so
-        the bias is the <b>opening ramp</b>: operators run campaigns at sites that are already
-        climbing, and a pre/post baseline hands the campaign credit for the climb.
-      <b>Caveat.</b> The trigger itself is inferred. Re-detecting campaigns on fixed expenses with
-        COGS excluded finds {P['n_alt_events']} events instead of {len(camps)} and gives a similar
-        answer — but within-site correlation between COGS and revenue is
-        <b>{P['cogs_corr']:.2f}</b>, so a merely busy month can still look like a campaign.
-    """, CRITICAL)
-
-    st.subheader("4.4 · What actually moves, once the counterfactual is subtracted")
-
-    LABEL = {"total_washes": "Total washes", "ret_wash_count": "Retail washes",
-             "mem_wash_count": "Membership washes",
-             "mem_purchase_count": "New membership sign-ups"}
-    rows = []
-    for m, pnl in P["metric_panels"].items():
-        rp = cf.report(pnl, cd.METRIC_WINDOWS)
-        if not len(rp):
-            continue
-        r = rp[rp.Window.str.startswith("effect +1")].iloc[0]
-        rows.append({"Metric": LABEL[m], "Naive": r["Naive"], "Counterfactual": r["Counterfactual"],
-                     "CI low": r["CI low"], "CI high": r["CI high"], "Events": r["Events"],
-                     "Verdict": "● real" if r["Significant"] else "▲ no effect"})
-    html_table(pd.DataFrame(rows).set_index("Metric"),
-               fmt={"Naive": "{:+,.1f}%", "Counterfactual": "{:+,.1f}%", "CI low": "{:+,.1f}%",
-                    "CI high": "{:+,.1f}%", "Events": "{:.0f}"}, index_label="Months +1 to +3")
-
-    nf = P["near_far"].set_index("metric").rename(
-        index={"ret_wash_count": "Retail washes", "total_income": "Revenue"})
-    nf_show = nf[["near", "near_n", "far", "far_n", "proximity"]].rename(
-        columns={"near": "Neighbours (≤20 km)", "near_n": "Pairs",
-                 "far": "Far sites (≥100 km)", "far_n": "Pairs ", "proximity": "Due to proximity"})
-    st.markdown("**The stealing claim, given a control group.** Sites 100 km away cannot possibly "
-                "be cannibalised, so whatever they do over the same months is the market, "
-                "not the campaign.")
-    html_table(nf_show, fmt={"Neighbours (≤20 km)": "{:+,.1f}%", "Pairs": "{:.0f}",
-                             "Far sites (≥100 km)": "{:+,.1f}%", "Pairs ": "{:.0f}",
-                             "Due to proximity": "{:+,.1f}%"},
-               index_label="Months +1 to +3")
-
-    roi = P["roi"]
-    r1, r2, r3 = st.columns(3)
-    r1.metric("Revenue per $1 spent — naive", f"{roi.naive_roi.median():.1f}×")
-    r2.metric("Revenue per $1 spent — counterfactual", f"{roi.did_roi.median():.1f}×",
-              delta=f"{roi.did_roi.median() - roi.naive_roi.median():+.1f}×")
-    r3.metric("Campaigns still negative", f"{(roi.did_incr < 0).mean() * 100:.0f}%")
-
-    mp = rows[-1] if rows else {}
-    ret_row = next((r for r in rows if r["Metric"] == "Retail washes"), {})
-    callout("What this shows", f"""
-      <b>Reading.</b> The conversion story does not survive. New membership sign-ups — the
-        mechanism the whole section-1 chain rests on — come in at
-        <b>{mp.get('Counterfactual', float('nan')):+.1f}%</b>
-        [{mp.get('CI low', float('nan')):+.1f}, {mp.get('CI high', float('nan')):+.1f}]:
-        <b>no effect</b>, against a naive <b>{mp.get('Naive', float('nan')):+.1f}%</b>. Retail
-        washes flip sign entirely — naive <b>{ret_row.get('Naive', float('nan')):+.1f}%</b> but
-        <b>{ret_row.get('Counterfactual', float('nan')):+.1f}%</b> against controls, because retail
-        volume was falling market-wide anyway.
-      <b>So-what.</b> The observed pattern is not "retail customers convert to members". It is a
-        site growing on both sides while the retail market shrinks around it. Likewise the
-        cannibalization number: neighbours lose
-        <b>{nf.loc['Retail washes', 'near']:+.1f}%</b> of retail washes, but unstealable far sites
-        lose <b>{nf.loc['Retail washes', 'far']:+.1f}%</b> over the same months — only
-        <b>{nf.loc['Retail washes', 'proximity']:+.1f}%</b> is attributable to proximity, on
-        {int(nf.loc['Retail washes', 'near_n'])} neighbour pairs.
-      <b>Watch.</b> ROI moves <i>up</i>, from {roi.naive_roi.median():.1f}× to
-        {roi.did_roi.median():.1f}× per dollar, because control sites drift down while campaign
-        sites do not. That is not reassurance — the same pre-trend that inflates the effect
-        inflates this ratio. The honest reading is that campaign ROI is not being measured cleanly
-        in either direction.
-    """, CRITICAL)
-
-    # =============================================================================================
-    st.divider()
-    st.header("5 · Why the ramp contaminates everything above")
-    st.caption("Every site re-indexed to months since its own first reporting month, so a site "
-               "that opened in April and one that opened in October are directly comparable. "
-               "This is the growth a pre/post baseline mistakes for a campaign.")
-
-    ramp = P["ramp"]
-    fig = make_subplots(rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.07,
-                        subplot_titles=[p[1] for p in RAMP_PANELS])
-    for i, (col, label, fmt, is_pct) in enumerate(RAMP_PANELS, start=1):
-        src = ramp[ramp.has_neighbors] if is_pct else ramp
-        agg = cd.event_curve(src, col, group="age_months")
-        if is_pct:
-            for c in ["median", "q25", "q75"]:
-                agg[c] = agg[c] * 100
-        _band(fig, agg["age_months"], agg["q25"], agg["q75"], S1, row=i, col=1)
-        _line(fig, agg["age_months"], agg["median"], S1, label, row=i, col=1, show_legend=False,
-              hovertemplate=f"month %{{x}}<br><b>%{{y:{fmt}}}</b>"
-                            f"{'%' if is_pct else ''}<extra></extra>")
-        fig.update_yaxes(title_text="%" if is_pct else ("$" if col == "opex" else "washes"),
-                         ticksuffix="%" if is_pct else "",
-                         tickprefix="$" if col == "opex" else "", row=i, col=1)
-    _sub(fig, 3, 760, "Months since the site's first reported month", showlegend=False,
-         hovermode="x unified", margin=dict(l=75, r=30, t=45, b=55))
-    st.plotly_chart(fig, width="stretch")
-
-    m6 = ramp[ramp.age_months == 6]["market_share"].dropna()
-    m18 = ramp[ramp.age_months == 18]["market_share"].dropna()
-    r6 = ramp[ramp.age_months == 6]["revenue"].median()
-    r18 = ramp[ramp.age_months == 18]["revenue"].median()
-    callout("What this shows", f"""
-      <b>Reading.</b> Across {ramp.site_key.nunique()} sites, revenue climbs from a median
-        <b>${r6:,.0f}</b> a month at month 6 to <b>${r18:,.0f}</b> at month 18, and a site's share
-        of its own 20 km market moves from <b>{m6.median() * 100:.1f}%</b> to
-        <b>{m18.median() * 100:.1f}%</b> over the same span — without any campaign being required.
-      <b>So-what.</b> This is the confound in one picture. Most campaigns in this data are run by
-        sites inside this window, so a pre/post baseline is comparing a site to a younger version
-        of itself and calling the difference a campaign effect.
-      <b>Caveat.</b> "Month 1" is the first month the site appears in this panel, which is opening
-        for all but {cf.censored_sites()} of {len(cf.sites)} sites — for those few the curve starts
-        mid-life and understates the ramp.
-    """, SERIOUS)
 
     # =============================================================================================
     st.divider()
