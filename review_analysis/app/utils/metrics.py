@@ -212,7 +212,8 @@ def monthly_series(df: pd.DataFrame, months: int = 8) -> pd.DataFrame:
 ROLLUP_COLUMNS = [
     "n_reviews", "avg_rating", "google_rating", "google_review_count", "coverage_pct",
     "positive", "neutral", "negative", "no_text", "n_scored", "pct_positive",
-    "pct_negative", "net_sentiment", "avg_score", "pct_response", "n_1_2_star", "last_review",
+    "pct_negative", "net_sentiment", "avg_score", "pct_response", "n_awaiting",
+    "n_1_2_star", "last_review",
 ]
 
 
@@ -255,6 +256,7 @@ def _row_stats(grp: pd.DataFrame) -> dict:
         "net_sentiment": sent["net_sentiment"],
         "avg_score": sent["avg_score"],
         "pct_response": float(grp[OWNER_RESPONSE_TEXT_COL].notna().mean() * 100),
+        "n_awaiting": int(grp[OWNER_RESPONSE_TEXT_COL].isna().sum()),
         "n_1_2_star": int((ratings <= 2).sum()),
         "last_review": grp[DATE_COL].max(),
     }

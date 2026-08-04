@@ -28,6 +28,7 @@ if str(_ROOT) not in sys.path:
 import pandas as pd
 import streamlit as st
 
+from app.utils import ai as AI
 from app.utils import reviews_ui as RU
 from app.utils import theme as T
 from app.utils.data_loader import SITE_COL, get_kpis
@@ -53,7 +54,8 @@ RATING_MINI_COLORS = {5: T.MINT, 4: T.CREAM, 3: T.YELLOW, 2: T.PURPLE, 1: T.CORA
 
 def drill_to(page: str = DETAIL_PAGE, *, sort: str | None = None, asc: bool = False,
              open_site: str | None = None, open_period: str | None = None,
-             review_sort: str | None = None, review_filter: str | None = None) -> None:
+             review_sort: str | None = None, review_filter: str | None = None,
+             chart: str | None = None, focus: str | None = None) -> None:
     """Open a drill-down already set up to answer the tile's question.
 
     Every tile lands somewhere specific rather than dumping the reader on a
@@ -65,17 +67,29 @@ def drill_to(page: str = DETAIL_PAGE, *, sort: str | None = None, asc: bool = Fa
     st.session_state["detail_period"] = period_choice
     st.session_state["ins_period"] = period_choice
 
+    # The lens is page-level, not per-site: arriving from "Negative Reviews"
+    # has to keep showing negative reviews when the reader opens a different
+    # location, not revert to everything. clear_branch_state() drops controls
+    # left over from an earlier visit, which would otherwise win.
+    RU.clear_branch_state()
+    st.session_state[RU.DEFAULT_FILTER_KEY] = review_filter or "All"
+    if review_sort:
+        st.session_state[RU.DEFAULT_SORT_KEY] = review_sort
+    else:
+        st.session_state.pop(RU.DEFAULT_SORT_KEY, None)
+
+    # The drill-down shows only the columns this tile is about (see
+    # FOCUS_VIEWS on the breakdown page) rather than all nine metrics.
+    st.session_state["rv_focus"] = focus
+
+    if chart:
+        st.session_state["chart_metric"] = chart
+
     if page == DETAIL_PAGE:
         if sort:
             st.session_state["table_sort_col"] = sort
             st.session_state["table_sort_asc"] = asc
         st.session_state["open_site"] = open_site
-        if open_site:
-            k = RU.safe_key(open_site)
-            if review_sort:
-                st.session_state[f"sort_{k}"] = review_sort
-            if review_filter:
-                st.session_state[f"filt_{k}"] = review_filter
     else:
         if sort:
             st.session_state["ins_sort_col"] = sort
@@ -312,24 +326,48 @@ latest_period = str(cur[MONTH_COL].max()) if not cur.empty else None
 best_site = str(best["site"]) if best is not None else None
 worst_site = str(worst["site"]) if worst is not None else None
 
+# Each tile carries its own lens: the reviews you land on are the ones the
+# tile was counting, wherever you expand next.
 DESTINATIONS = {
-    "reviews": (dict(page=INSIGHTS_PAGE, sort="n_reviews", open_period=latest_period),
+    "reviews": (dict(page=INSIGHTS_PAGE, sort="n_reviews", open_period=latest_period,
+                     review_sort="Most recent"),
                 "Open this period in Insights"),
-    "rating": (dict(sort="avg_rating"), "Rank locations by rating"),
-    "sentiment": (dict(sort="net_sentiment"), "Rank locations by net sentiment"),
-    "positive": (dict(sort="positive"), "Rank locations by positive reviews"),
+    # Ratings are a comparison between locations, not a reading list -- this
+    # one opens the per-location rating chart with no reviews expanded.
+    "rating": (dict(sort="avg_rating", chart="Avg rating by location"),
+               "Compare average rating across locations"),
+    "sentiment": (dict(sort="net_sentiment", asc=True, review_sort=MOST_NEGATIVE),
+                  "Rank locations by net sentiment, worst reviews first"),
+    "positive": (dict(sort="positive", review_filter="Positive", review_sort=MOST_POSITIVE),
+                 "Read the positive reviews"),
     "negative": (dict(sort="negative", open_site=worst_site, review_filter="Negative",
                       review_sort=MOST_NEGATIVE),
                  "Read the negative reviews, worst site first"),
-    "response": (dict(sort="pct_response", asc=True), "Locations with the slowest replies first"),
-    "volume": (dict(page=INSIGHTS_PAGE, sort="label", open_period=latest_period),
+    "response": (dict(sort="pct_response", asc=True, review_filter="Awaiting owner reply",
+                      review_sort="Most recent"),
+                 "Read the reviews still waiting on a reply"),
+    "volume": (dict(page=INSIGHTS_PAGE, sort="label", open_period=latest_period,
+                    review_sort="Most recent"),
                "Open the month-by-month table"),
-    "best": (dict(sort="net_sentiment", open_site=best_site, review_sort=MOST_POSITIVE),
-             f"Read {best_site}'s reviews" if best_site else "Open the site breakdown"),
+    "best": (dict(sort="net_sentiment", open_site=best_site, review_filter="Positive",
+                  review_sort=MOST_POSITIVE),
+             f"Read {best_site}'s positive reviews" if best_site else "Open the site breakdown"),
     "worst": (dict(sort="net_sentiment", asc=True, open_site=worst_site,
                    review_filter="Negative", review_sort=MOST_NEGATIVE),
               f"Read {worst_site}'s negative reviews" if worst_site else "Open the site breakdown"),
 }
+
+def tile_ai(tile_key: str, target: dict):
+    """AI-insights popover for one tile, over the reviews that tile counted."""
+    lens = target.get("review_filter") or "All"
+    scope = RU.apply_filter(cur, lens)
+    site = target.get("open_site")
+    if site and tile_key in {"best", "worst"}:
+        scope = scope[scope[SITE_COL] == site]
+    label = (f"{window_label} · {site or f'{len(chosen_sites)} location(s)'}"
+             + (f" · {lens.lower()} reviews only" if lens != "All" else ""))
+    AI.insight_button(f"tile_{tile_key}", scope, label, tile_key, button_label="✨ AI")
+
 
 for row_start in range(0, len(TILES), 3):
     cols = st.columns(3, gap="medium")
@@ -340,14 +378,8 @@ for row_start in range(0, len(TILES), 3):
                 tile["key"],
                 T.kpi_card_html(tile["title"], tile["value"], tile["delta"],
                                 tile["chart"], tile["subs"]),
-                on_click=(lambda t=target: drill_to(**t)),
+                on_click=(lambda t=target, k=tile["key"]: drill_to(focus=k, **t)),
                 help_text=tip,
+                footer=(lambda k=tile["key"], t=target: tile_ai(k, t)),
             )
     st.write("")
-
-st.markdown(
-    '<div class="q-note" style="margin-top:6px;">Sentiment is VADER compound score on review '
-    'text; rating-only reviews are excluded from sentiment shares. Every tile is clickable — it '
-    'opens the drill-down that explains it, already sorted and filtered.</div>',
-    unsafe_allow_html=True,
-)

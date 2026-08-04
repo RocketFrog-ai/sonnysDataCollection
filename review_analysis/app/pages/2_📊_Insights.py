@@ -25,6 +25,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+from app.utils import ai as AI
 from app.utils import reviews_ui as RU
 from app.utils import theme as T
 from app.utils.data_loader import SITE_COL
@@ -145,10 +146,15 @@ with T.panel_start("inschart"):
             legend=dict(orientation="h", yanchor="top", y=-0.12, xanchor="left", x=0.02,
                         font=dict(color=T.INK_SOFT, size=13)),
         )
-        # A one- or two-period window would otherwise render as a couple of
-        # enormous bars, since Plotly divides the plot area between categories.
-        if len(x) < 5:
-            fig.update_traces(selector=dict(type="bar"), width=0.18)
+        # A short window would otherwise render as a couple of enormous blocks:
+        # Plotly splits the axis between however many categories exist, and bar
+        # `width` is in those axis units, so narrowing the bars alone does
+        # nothing. Widen the axis to a notional six slots and centre the real
+        # ones in it.
+        if len(x) < 6:
+            pad = (6 - len(x)) / 2
+            fig.update_traces(selector=dict(type="bar"), width=0.3)
+            fig.update_xaxes(range=[-0.5 - pad, len(x) - 0.5 + pad])
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
 st.write("")
@@ -189,11 +195,20 @@ def row_values(row, name: str, indent: int = 0):
 
 
 with T.panel_start("instable"):
-    st.markdown('<div class="q-panel-title">Reviews By Period</div>', unsafe_allow_html=True)
-    st.markdown('<div class="q-note" style="margin-bottom:8px;">Click a column to sort. Expand a '
-                'period to see its locations, then a location to read its reviews.</div>',
-                unsafe_allow_html=True)
+    head_l, head_r = st.columns([6, 1.6])
+    with head_l:
+        st.markdown('<div class="q-panel-title">Reviews By Period</div>', unsafe_allow_html=True)
+        st.markdown('<div class="q-note" style="margin-bottom:8px;">Click a column to sort. Expand '
+                    'a period to see its locations, then a location to read its reviews.</div>',
+                    unsafe_allow_html=True)
+    with head_r:
+        ins_lens = st.session_state.get(RU.DEFAULT_FILTER_KEY, "All")
+        AI.insight_button("insights", RU.apply_filter(cur, ins_lens),
+                          f"{window_label} · {len(chosen)} location(s)"
+                          + (f" · {ins_lens.lower()} reviews only" if ins_lens != "All" else ""),
+                          st.session_state.get("rv_focus"))
 
+    RU.review_controls(bool(st.session_state.get("ins_open_site")))
     RU.sort_header(COLUMNS, "ins_sort_col", "ins_sort_asc")
 
     sort_col = st.session_state["ins_sort_col"]

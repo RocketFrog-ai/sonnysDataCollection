@@ -217,6 +217,12 @@ _STRIP_COLS = [
 # same reviewer posting twice on the same day.
 _NATURAL_KEY_COLS = [SITE_COL, REVIEWER_NAME_COL, DATE_COL, RATING_COL, TEXT_COL]
 
+# Date-blind key for the cross-scrape pass (see _dedupe_cross_scrape): the two
+# own_crawler pipelines stamped the same review with different days, so the
+# date has to be left out of the comparison for those copies to be caught.
+_CROSS_SCRAPE_KEY = [SITE_COL, REVIEWER_NAME_COL, RATING_COL]
+_RATING_ONLY_WINDOW_DAYS = 7
+
 
 # ---------------------------------------------------------------------------
 # Cleaning helpers
@@ -294,7 +300,44 @@ def _dedupe(df: pd.DataFrame) -> pd.DataFrame:
     df = df.sort_values(by=REVIEW_ID_COL, key=lambda s: s.isna(), kind="stable")
     df = df.drop_duplicates(subset=_NATURAL_KEY_COLS, keep="first")
 
+    df = _dedupe_cross_scrape(df)
+
     return df.sort_index().reset_index(drop=True)
+
+
+def _dedupe_cross_scrape(df: pd.DataFrame) -> pd.DataFrame:
+    """Third pass: one review captured by two scrapes on *different days*.
+
+    The natural key includes `reviewDate`, so it only catches copies that share
+    a timestamp. The own_crawler_api and own_crawler_crawler pipelines ran a day
+    apart and stamped their own dates, so 124 rows survived it as visible
+    duplicates -- the same reviewer, site, rating and word-for-word text
+    rendering twice in the review list.
+
+    Two rules, because the evidence differs:
+
+    - **With text:** identical (site, reviewer, rating, text) is the same
+      review, whatever the dates say. Google allows one review per person per
+      place, and word-for-word repetition of a paragraph by the same named
+      reviewer at the same site is not a coincidence.
+    - **Rating-only:** there is no text to match on, so this only collapses
+      copies within a week of each other (38 of the 43 candidates are 0-3 days
+      apart -- scrape overlap). Pairs months apart are left alone rather than
+      guessed at.
+    """
+    text = df[TEXT_COL].fillna("").str.strip().str.lower()
+    has_text = text.str.len() > 0
+    drop = pd.Series(False, index=df.index)
+
+    keyed = df.loc[has_text, _CROSS_SCRAPE_KEY].assign(_text=text[has_text])
+    drop.loc[has_text] = keyed.duplicated(keep="first")
+
+    rating_only = df.loc[~has_text, [*_CROSS_SCRAPE_KEY, DATE_COL]].sort_values(DATE_COL)
+    prev_date = rating_only.groupby(_CROSS_SCRAPE_KEY, observed=True)[DATE_COL].shift(1)
+    within_window = (rating_only[DATE_COL] - prev_date).dt.days.le(_RATING_ONLY_WINDOW_DAYS)
+    drop.loc[within_window.fillna(False)[lambda s: s].index] = True
+
+    return df.loc[~drop]
 
 
 # ---------------------------------------------------------------------------

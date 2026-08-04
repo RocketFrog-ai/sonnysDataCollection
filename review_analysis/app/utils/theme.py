@@ -98,11 +98,6 @@ def _css() -> str:
   .q-logo-text {{ font-size: 25px; font-weight: 700; color: {INK}; letter-spacing: -.02em; }}
   .q-logo-text span {{ color: {ACCENT}; }}
   .q-topbar-right {{ margin-left: auto; display: flex; align-items: center; gap: 20px; }}
-  .q-avatar {{
-      width: 34px; height: 34px; border-radius: 50%; background: {ACCENT};
-      color: #fff; font-size: 13px; font-weight: 600;
-      display: flex; align-items: center; justify-content: center;
-  }}
 
   /* --- fixed left icon rail --- */
   .q-rail {{
@@ -144,9 +139,8 @@ def _css() -> str:
   .qcard-head {{ display: flex; align-items: flex-start; }}
   .qcard-title {{
       font-size: 19px; font-weight: 600; color: {INK}; line-height: 1.2;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 78%;
   }}
-  .qcard-kebab {{ margin-left: auto; color: #9aa3b5; font-size: 17px; line-height: 1; letter-spacing: 1px; }}
   .qcard-delta {{ font-size: 14px; color: {MUTED}; margin-top: 7px; }}
   .qcard-delta b {{ font-weight: 600; }}
   .qcard-body {{ display: flex; align-items: flex-end; flex: 1; gap: 10px; margin-top: 6px; }}
@@ -172,7 +166,9 @@ def _css() -> str:
      to be stretched -- otherwise the click target is a ~56x40 patch in the
      card's top-left corner and the tile only "works" if you happen to hit it. */
   div[class*="st-key-qtile_"] {{ position: relative; }}
-  div[class*="st-key-qhit_"] {{ position: absolute; inset: 0; z-index: 3; }}
+  /* covers the card only -- the AI button sits below it and must stay clickable */
+  div[class*="st-key-qhit_"] {{ position: absolute; top: 0; left: 0; right: 0;
+                                height: 236px; z-index: 3; }}
   div[class*="st-key-qhit_"] > div,
   div[class*="st-key-qhit_"] .stElementContainer,
   div[class*="st-key-qhit_"] .stTooltipHoverTarget,
@@ -191,7 +187,6 @@ def _css() -> str:
       transform: translateY(-1px);
   }}
   .qcard {{ transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease; }}
-  div[class*="st-key-qtile_"]:hover .qcard-kebab {{ color: {ACCENT}; }}
   div[class*="st-key-qtile_"]:hover .qcard-title::after {{
       content: " →"; color: {ACCENT}; font-weight: 600;
   }}
@@ -278,6 +273,32 @@ def _css() -> str:
   }}
   .q-review-owner b {{ color: {INK}; }}
 
+  /* --- per-tile AI action + generated answer --- */
+  /* Sits inside the card, top-right (where the kebab used to be). z-index 4
+     puts it above the full-card click overlay, so pressing it opens the
+     popover instead of navigating. */
+  div[class*="st-key-qai_"] {{
+      position: absolute; top: 12px; right: 14px; z-index: 4; width: auto !important;
+  }}
+  div[class*="st-key-qai_"] button {{
+      background: transparent; border: none; color: #9aa3b5; font-size: 13px;
+      min-height: 0; padding: 2px 4px; border-radius: 7px;
+  }}
+  div[class*="st-key-qai_"] button p {{ font-size: 13px; margin: 0; }}
+  div[class*="st-key-qai_"] button:hover {{ background: #eef3fc; color: {ACCENT}; }}
+  div[class*="st-key-qtile_"]:hover div[class*="st-key-qai_"] button {{ color: {ACCENT}; }}
+  div[class*="st-key-qaibox_"] {{
+      background: #f4f8ff; border: 1px solid #dbe6fb; border-radius: 10px;
+      padding: 14px 18px 6px; margin: 4px 0 2px;
+  }}
+  div[class*="st-key-qaibox_"] p,
+  div[class*="st-key-qaibox_"] li {{
+      font-size: 14.5px; color: {INK_SOFT}; line-height: 1.6; margin-bottom: 6px;
+  }}
+  div[class*="st-key-qaibox_"] ul {{ margin: 0 0 4px; padding-left: 20px; }}
+  div[class*="st-key-qaibox_"] li::marker {{ color: {ACCENT}; }}
+  div[class*="st-key-qaibox_"] strong {{ color: {INK}; font-weight: 600; }}
+
   /* --- generic bits --- */
   .q-note {{ font-size: 13px; color: {MUTED}; }}
   .q-pill-label {{ font-size: 13px; color: {MUTED}; margin-bottom: 4px; }}
@@ -317,7 +338,7 @@ def _rail_html() -> str:
     return f'<div class="q-rail">{"".join(items)}<div class="q-rail-spacer"></div></div>'
 
 
-def _topbar_html(initials: str = "SS") -> str:
+def _topbar_html() -> str:
     brand_head, brand_tail = BRAND.split(" ", 1)
     return f"""
 <div class="q-topbar">
@@ -330,7 +351,6 @@ def _topbar_html(initials: str = "SS") -> str:
          stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-8 8H7l-4 3V12a8 8 0 018-8h2a8 8 0 018 8z"/></svg>
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#6b7488" stroke-width="1.6"
          stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 10-12 0c0 7-3 8-3 8h18s-3-1-3-8M13.7 21a2 2 0 01-3.4 0"/></svg>
-    <div class="q-avatar">{initials}</div>
   </div>
 </div>
 """
@@ -452,7 +472,7 @@ def kpi_card_html(title: str, value: str, delta: str = "", chart: str = "",
     )
     return f"""
 <div class="qcard">
-  <div class="qcard-head"><div class="qcard-title">{title}</div><div class="qcard-kebab">⋮</div></div>
+  <div class="qcard-head"><div class="qcard-title">{title}</div></div>
   {delta}
   <div class="qcard-body">
     <div class="qcard-left">
@@ -466,14 +486,21 @@ def kpi_card_html(title: str, value: str, delta: str = "", chart: str = "",
 
 
 def clickable_card(key: str, html: str, on_click: Callable[[], None] | None = None,
-                   help_text: str = "Open drill-down") -> None:
-    """Render a KPI card with an invisible full-bleed button on top of it."""
+                   help_text: str = "Open drill-down",
+                   footer: Callable[[], None] | None = None) -> None:
+    """Render a KPI card with an invisible full-bleed button on top of it.
+
+    `footer` draws below the card (the AI-insights action). It sits outside
+    the click overlay on purpose, so pressing it does not also navigate.
+    """
     with st.container(key=f"qtile_{key}"):
         st.markdown(html, unsafe_allow_html=True)
         if on_click is not None:
             with st.container(key=f"qhit_{key}"):
                 if st.button("Open", key=f"qbtn_{key}", help=help_text):
                     on_click()
+        if footer is not None:
+            footer()
 
 
 def panel_start(key: str):

@@ -27,13 +27,54 @@ from app.utils.metrics import LABEL_COL, REVIEW_SORTS, SCORE_COL, sort_reviews
 
 PAGE_SIZE = 15
 
-SENTIMENT_FILTERS = {
+# Which reviews to show. Sentiment labels plus two non-sentiment lenses the
+# dashboard tiles need to be able to hand over (a 1-2 star tile and a
+# "still awaiting a reply" tile can't be expressed as a VADER label).
+REVIEW_FILTERS = {
     "All": None,
-    "Positive": "positive",
-    "Neutral": "neutral",
-    "Negative": "negative",
-    "Rating-only (no text)": "no_text",
+    "Positive": ("label", "positive"),
+    "Neutral": ("label", "neutral"),
+    "Negative": ("label", "negative"),
+    "Rating-only (no text)": ("label", "no_text"),
+    "1–2 star": ("rating_low", None),
+    "Awaiting owner reply": ("no_response", None),
 }
+
+# Session keys holding the lens a tile handed over. They seed every branch's
+# controls, so expanding a *different* site keeps the same lens instead of
+# silently reverting to "All" -- which made a click on "Negative Reviews" show
+# positive reviews as soon as you opened another location.
+DEFAULT_FILTER_KEY = "rv_default_filter"
+DEFAULT_SORT_KEY = "rv_default_sort"
+SEARCH_KEY = "rv_search"
+
+
+def apply_filter(df: pd.DataFrame, choice: str) -> pd.DataFrame:
+    """Restrict a review frame to one lens from REVIEW_FILTERS."""
+    rule = REVIEW_FILTERS.get(choice)
+    if rule is None:
+        return df
+    kind, value = rule
+    if kind == "label":
+        return df[df[LABEL_COL] == value]
+    if kind == "rating_low":
+        return df[pd.to_numeric(df[RATING_COL], errors="coerce") <= 2]
+    if kind == "no_response":
+        return df[df[OWNER_RESPONSE_TEXT_COL].isna()]
+    return df
+
+
+def clear_branch_state() -> None:
+    """Reset per-branch state (the "show more" counters) for a new lens.
+
+    A reader arriving with a fresh lens should start at the first page of
+    results, not wherever an earlier visit had paged to.
+    """
+    for key in [k for k in st.session_state
+                if k.startswith(("filt_", "n_shown_"))
+                or (k.startswith("sort_") and not k.startswith("sortbtn_"))]:
+        del st.session_state[key]
+
 
 _CHIPS = {
     "positive": ("Positive", T.POS_COLOR),
@@ -46,6 +87,31 @@ _CHIPS = {
 def safe_key(text: str) -> str:
     """Widget-key-safe slug (Streamlit keys must not collide across rows)."""
     return re.sub(r"[^0-9A-Za-z]+", "_", str(text)).strip("_")
+
+
+def review_controls(is_open: bool) -> None:
+    """The one and only sort / search / filter row, above the table.
+
+    Rendered once per page instead of once per expanded row: repeating it
+    under every location restated a filter the reader had already chosen (from
+    a tile, or here) every time they opened another site. The widgets write
+    straight to the same session keys a dashboard tile hands its lens over in,
+    so a tile click pre-selects them and changing them here applies to every
+    branch opened afterwards.
+
+    Only drawn when something is actually expanded — controls for a review
+    list that isn't on screen are noise.
+    """
+    if not is_open:
+        return
+
+    c1, c2, c3 = st.columns([2.6, 2.6, 2.2])
+    with c1:
+        st.selectbox("Sort reviews by", options=list(REVIEW_SORTS), key=DEFAULT_SORT_KEY)
+    with c2:
+        st.text_input("Search text", key=SEARCH_KEY, placeholder="e.g. wait, staff, vacuum")
+    with c3:
+        st.selectbox("Show", options=list(REVIEW_FILTERS), key=DEFAULT_FILTER_KEY)
 
 
 def cell(value, kind: str = "num", indent: int = 0) -> str:
@@ -100,34 +166,31 @@ def table_row(row_key: str, values, widths, is_open: bool, on_toggle,
 
 
 def render_reviews(scope_key: str, reviews: pd.DataFrame, caption: str = "") -> None:
-    """Sort/search/filter controls plus the review cards for one branch."""
+    """The review cards for one expanded branch.
+
+    Takes its sort/search/filter from the page-level controls (see
+    `review_controls`) rather than rendering its own copy of them.
+    """
     key = safe_key(scope_key)
     if caption:
         st.markdown(f'<div class="q-note" style="margin:6px 0 10px;">{caption}</div>',
                     unsafe_allow_html=True)
 
-    c1, c2, c3 = st.columns([2.4, 2.4, 2.2])
-    with c1:
-        sort_choice = st.selectbox("Sort reviews by", options=list(REVIEW_SORTS),
-                                   index=0, key=f"sort_{key}")
-    with c2:
-        keyword = st.text_input("Search text", key=f"kw_{key}",
-                                placeholder="e.g. wait, staff, vacuum")
-    with c3:
-        which = st.selectbox("Sentiment", options=list(SENTIMENT_FILTERS), key=f"filt_{key}")
+    sort_choice = st.session_state.get(DEFAULT_SORT_KEY, list(REVIEW_SORTS)[0])
+    which = st.session_state.get(DEFAULT_FILTER_KEY, "All")
+    keyword = st.session_state.get(SEARCH_KEY, "") or ""
 
     view = reviews
     if keyword.strip():
         view = view[view[TEXT_COL].fillna("").str.contains(keyword.strip(), case=False, na=False)]
-    wanted = SENTIMENT_FILTERS[which]
-    if wanted:
-        view = view[view[LABEL_COL] == wanted]
+    view = apply_filter(view, which)
     view = sort_reviews(view, sort_choice)
 
     shown = st.session_state.get(f"n_shown_{key}", PAGE_SIZE)
+    lens = "" if which == "All" else f" · {which.lower()} only"
     st.markdown(
         f'<div class="q-note" style="margin:2px 0 10px;">{len(view):,} of {len(reviews):,} '
-        f'reviews · sorted by {sort_choice.lower()}</div>', unsafe_allow_html=True)
+        f'reviews{lens} · sorted by {sort_choice.lower()}</div>', unsafe_allow_html=True)
 
     cards = []
     for _, r in view.head(shown).iterrows():

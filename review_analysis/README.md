@@ -1,7 +1,7 @@
 # Review Analysis
 
 A local Streamlit app for exploring customer reviews from `data/final_reviews.csv`
-(6,208 reviews across 25 physical locations of a single car-wash chain — "location" means the
+(6,087 reviews across 25 physical locations of a single car-wash chain — "location" means the
 `site` column, not `businessName`, which is constant; see `docs/dataset_schema.md`).
 
 The UI is built to match the product dashboard: fixed top bar and left icon rail, an
@@ -58,14 +58,47 @@ months immediately before the current one. The tab strip switches between the th
 **Every tile is a click target across its whole surface**, and each opens the view that
 explains it — already sorted and filtered, with the dashboard's period carried across:
 
-| Tile | Opens |
-|---|---|
-| New Reviews · Review Volume Trend | Insights, latest period expanded |
-| Average Rating | Site Breakdown, ranked by rating |
-| Review Sentiment · Positive Reviews | Site Breakdown, ranked by that metric |
-| Negative Reviews · Needs Attention | Site Breakdown, worst site open, reviews filtered to negative and sorted most-negative-first |
-| Owner Response Rate | Site Breakdown, slowest repliers first |
-| Best Sentiment Location | Site Breakdown, that site open, most positive first |
+| Tile | Opens | Review lens |
+|---|---|---|
+| New Reviews · Review Volume Trend | Insights, latest period expanded | all, most recent |
+| Average Rating | Site Breakdown's **average-rating-by-location chart** | no reviews opened |
+| Review Sentiment | Site Breakdown, worst net sentiment first | all, most negative |
+| Positive Reviews · Best Sentiment Location | Site Breakdown (that site open) | **positive**, most positive |
+| Negative Reviews · Needs Attention | Site Breakdown, worst site open | **negative**, most negative |
+| Owner Response Rate | Site Breakdown, slowest repliers first | **awaiting owner reply**, most recent |
+
+The lens is page-level, not per-site: open any *other* location from a negative-reviews drill-down
+and you still see only its negative reviews. The single **Sort / Search / Show** row above the
+table carries it and is where you change it.
+
+The drill-down also **shows only the columns that tile is about** — the negative tile's table is
+Location / Negative (#) / Negative % / Reviews (#), not all nine metrics — and hides locations
+with none of what you asked for (4 of 25 locations have a negative review this month, so it lists
+4 rows).
+
+## AI insights
+
+Every tile carries a **✨ AI insights** popover, and each drill-down table has one in its header.
+It asks gpt-4o (Azure OpenAI) a question about *exactly the reviews that tile counted* — the
+negative tile opens with "What are the main concerns customers raise in these negative reviews?",
+and the question is editable. Nothing is sent until you press **Generate**; answers are cached for
+an hour per selection.
+
+The model only ever reads review text and is instructed to name recurring themes, say how many of
+the shown reviews mention each, and quote a short phrase as evidence. **It never produces a
+number on the page** — every figure still comes from `metrics.py`, so a wrong summary can't
+corrupt a metric.
+
+Credentials live in `.streamlit/secrets.toml`, which is **gitignored**:
+
+```toml
+azure_openai_api_key = "..."
+azure_openai_endpoint = "https://<resource>.openai.azure.com"
+azure_openai_deployment = "gpt-4o"
+```
+
+`AZURE_OPENAI_API_KEY` etc. work as environment variables too. Without a key the popover says so
+and the rest of the app is unaffected.
 
 ### `app/pages/2_📊_Insights.py` — period drill-down
 The three-level view. A chart card (**Monthly / Quarterly / Yearly** selector) over grouped
@@ -92,7 +125,7 @@ month's totals are exactly what its locations add up to.
   - **Sort by** — sentiment score most positive, sentiment score most negative, most recent,
     oldest, rating highest, rating lowest;
   - **Search text** — substring match on review text;
-  - **Sentiment** — all / positive / neutral / negative / rating-only.
+  - **Show** — all / positive / neutral / negative / rating-only / 1–2 star / awaiting owner reply.
 
   Reviews render 15 at a time with a "Show more" button, each carrying its stars, date,
   sentiment chip, compound score, text, and the owner's reply.
@@ -118,12 +151,14 @@ denominator so it can't be divided by the wrong number.
 ```
 review_analysis/
 ├── .streamlit/config.toml               # pins the light theme
+├── .streamlit/secrets.toml              # Azure OpenAI key (gitignored)
 ├── app/
 │   ├── Home.py                          # entrypoint — dashboard tiles
 │   ├── pages/
 │   │   ├── 1_📍_Location_Detail.py     # site table -> reviews
 │   │   └── 2_📊_Insights.py            # period -> site -> reviews
 │   └── utils/
+│       ├── ai.py                       # Azure OpenAI summaries of a review selection
 │       ├── data_loader.py              # CSV load/clean/filter/KPIs (the only CSV reader)
 │       ├── metrics.py                  # row stats, period/site rollups, review sorts
 │       ├── reviews_ui.py               # shared table rows + expanded review list

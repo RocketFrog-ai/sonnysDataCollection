@@ -14,7 +14,7 @@ All numbers below were produced by loading the actual file with
 
 `wc -l data/final_reviews.csv` reports **7,897** lines. The actual row count,
 confirmed by both pandas' C and Python CSV parsers with zero bad-line
-warnings, is **6,209** (6,208 after dedup — see §4). The discrepancy is
+warnings, is **6,209** (6,087 after dedup — see §4). The discrepancy is
 because `reviewText` and `ownerResponseText` contain embedded newlines
 inside quoted CSV fields (multi-paragraph reviews), which is valid CSV but
 inflates a raw newline count. Never use `wc -l` as a row-count proxy for
@@ -167,8 +167,17 @@ that's a legitimate aggregation on top of `site`, not evidence that
   reviewId duplicates among non-null reviewId rows only; (2) drop natural-key
   duplicates (site, reviewerName, reviewDate, rating, reviewText),
   preferring to keep the row that has a non-null `reviewId` when a
-  collision occurs. Net effect on this dataset: 6,209 → **6,208** rows (one
-  row removed).
+  collision occurs; (3) **cross-scrape duplicates** (added 2026-08-04 after
+  the app rendered visibly repeated reviews): the natural key includes
+  `reviewDate`, so it only catches copies sharing a timestamp, and the
+  own_crawler_api / own_crawler_crawler runs stamped the same reviews a day
+  apart. Pass (3) is date-blind for rows **with text** — identical (site,
+  reviewerName, rating, reviewText) is one review, since Google permits one
+  review per person per place — and for **rating-only** rows collapses
+  (site, reviewerName, rating) only within a 7-day window (38 of the 43
+  candidate pairs are 0–3 days apart; the 5 pairs months apart are left
+  alone rather than guessed at). Net effect: 6,209 → **6,087** rows
+  (1 + 81 + 40 removed).
 
 ## 5. Date parsing details
 

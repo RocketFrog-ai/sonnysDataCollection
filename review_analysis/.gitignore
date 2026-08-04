@@ -1,0 +1,5 @@
+# Credentials: secrets.toml holds a live Azure OpenAI key.
+.streamlit/secrets.toml
+.venv/
+__pycache__/
+*.pyc
