@@ -102,6 +102,18 @@ Full pass — module behaves as intended on real data.
 
 ## Future implementation plan (deferred — NOT implemented here)
 
+**Since shipped** (this section's "out of scope" list predates the UI
+rebuild — two of its items now exist):
+
+- `sentiment_score()` / `add_sentiment_scores()` expose VADER's raw compound
+  score, not just the three-way label. The review list sorts on it, which the
+  label cannot do: it is what ranks "furious" above "mildly annoyed".
+- Owner-response rate and the per-site sentiment leaderboard are computed in
+  `app/utils/metrics.py` (`period_metrics`, `site_table`) and shown as
+  dashboard tiles / breakdown columns.
+- Keyword extraction and star-vs-sentiment disagreement flagging are still
+  unbuilt.
+
 Out of scope for this module per requirements; noted for whoever picks
 these up later:
 

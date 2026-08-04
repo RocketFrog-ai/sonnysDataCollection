@@ -1,0 +1,16 @@
+# Pins the light theme. Without this, Streamlit follows the viewer's OS/browser
+# color-scheme preference and renders the dashboard dark, which fights every
+# color in app/utils/theme.py (white cards, light-blue canvas, dark ink).
+[theme]
+base = "light"
+primaryColor = "#2f6fed"
+backgroundColor = "#eaeef7"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#2b3648"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

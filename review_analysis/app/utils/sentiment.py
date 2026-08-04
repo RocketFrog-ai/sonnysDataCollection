@@ -79,6 +79,55 @@ def classify_sentiment(text: str) -> str:
     return "neutral"
 
 
+def sentiment_score(text: str) -> float | None:
+    """Return VADER's raw compound score for a single review, or None.
+
+    The compound score is a continuous [-1, +1] intensity, which is what the
+    review list sorts on ("most positive" / "most negative" first) — the
+    three-way label from `classify_sentiment` is far too coarse to order by.
+    Returns None (not 0.0) for missing/empty text, so rating-only reviews
+    sort to the end instead of masquerading as genuinely neutral prose.
+    """
+    if text is None or (isinstance(text, float) and pd.isna(text)):
+        return None
+    text = str(text).strip()
+    if not text:
+        return None
+    return float(get_analyzer().polarity_scores(text)["compound"])
+
+
+def label_from_score(score: float | None) -> str:
+    """Bucket an already-computed compound score with the standard thresholds."""
+    if score is None or pd.isna(score):
+        return NO_TEXT_LABEL
+    if score >= POSITIVE_THRESHOLD:
+        return "positive"
+    if score <= NEGATIVE_THRESHOLD:
+        return "negative"
+    return "neutral"
+
+
+def add_sentiment_scores(
+    df: pd.DataFrame,
+    text_col: str = "reviewText",
+    score_col: str = "sentiment_score",
+    label_col: str = "sentiment",
+) -> pd.DataFrame:
+    """Return a copy of df with both the compound score and its label.
+
+    One VADER pass produces both columns (scoring then bucketing), instead of
+    `add_sentiment_column` + a second pass for the score.
+    """
+    if text_col not in df.columns:
+        raise KeyError(f"'{text_col}' not found in dataframe columns: {list(df.columns)}")
+
+    out = df.copy()
+    scores = out[text_col].map(sentiment_score)
+    out[score_col] = pd.to_numeric(scores, errors="coerce")
+    out[label_col] = [label_from_score(s) for s in scores]
+    return out
+
+
 def add_sentiment_column(
     df: pd.DataFrame,
     text_col: str = "reviewText",

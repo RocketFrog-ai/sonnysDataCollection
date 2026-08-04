@@ -106,6 +106,22 @@ except Exception:  # pragma: no cover - keep module usable without streamlit
 
 
 # ---------------------------------------------------------------------------
+# Keep text columns on object dtype (pandas >= 3 defaults to Arrow-backed
+# strings). This is not a style preference: with Arrow strings, the hash
+# kernels behind groupby/value_counts run inside libarrow, and on macOS/arm64
+# libarrow's mimalloc allocator segfaults (SIGSEGV in mi_thread_init) when it
+# is first touched from one of Streamlit's script-runner worker threads --
+# which is every rerun of this app. Object dtype keeps that work in NumPy and
+# matches the dtypes the rest of this module was written against. Wrapped in
+# a try/except so it is a no-op on pandas versions without the option.
+# ---------------------------------------------------------------------------
+try:
+    pd.set_option("future.infer_string", False)
+except Exception:  # pragma: no cover - option absent on older pandas
+    pass
+
+
+# ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
 
@@ -236,9 +252,18 @@ def _coerce_types(df: pd.DataFrame) -> pd.DataFrame:
         df[IS_LOCAL_GUIDE_COL] = df[IS_LOCAL_GUIDE_COL].map(
             {"true": True, "True": True, "false": False, "False": False}
         ).astype("boolean")
-    for col in (REVIEWER_REVIEW_COUNT_COL, LIKES_COL):
+    for col in (REVIEWER_REVIEW_COUNT_COL, LIKES_COL, BUSINESS_REVIEW_COUNT_COL):
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce").astype("Int64")
+    # businessAvgRating is Google's own aggregate rating for the site. It was
+    # documented as str->float but never actually coerced, so it stayed an
+    # object column and any arithmetic on it (e.g. a review-count-weighted
+    # chain rating) either raised or silently produced garbage. Float64
+    # (nullable) because it is null for the 5 own_crawler sites.
+    if BUSINESS_AVG_RATING_COL in df.columns:
+        df[BUSINESS_AVG_RATING_COL] = pd.to_numeric(
+            df[BUSINESS_AVG_RATING_COL], errors="coerce"
+        ).astype("Float64")
     return df
 
 
@@ -365,17 +390,56 @@ def filter_data(
 
 
 def get_kpis(df: pd.DataFrame) -> dict:
-    """Summary numbers for landing-page tiles."""
+    """Summary numbers for landing-page tiles.
+
+    Two different "average rating" numbers are returned on purpose, because
+    the naive one is misleading and was previously the only one shown:
+
+    - `avg_rating` — the mean over the scraped review rows in `df`. This is a
+      *sample* mean and it silently weights each site by how many of its
+      reviews we happened to scrape, not by how many it actually has. Rome
+      contributes 912 rows, Muscle Shoals 17; Academy's 105 scraped reviews
+      average a suspicious 5.00 against no Google baseline at all.
+    - `avg_rating_weighted` — Google's own per-site rating weighted by
+      Google's own per-site review count, i.e. the chain's real customer
+      rating across every review that exists, not just the ones in this file.
+      Available for the 20 sites that carry `businessAvgRating` (the 5
+      own_crawler sites have none — see docs/dataset_schema.md §3).
+
+    `avg_rating_display` is the one to put on a tile: the weighted figure
+    when it can be computed, else the sample mean.
+    """
     n = len(df)
     if n == 0:
         return {
             "total_reviews": 0, "avg_rating": None, "total_sites": 0,
             "pct_5_star": None, "pct_with_owner_response": None,
-            "total_cities": 0,
+            "total_cities": 0, "avg_rating_weighted": None,
+            "avg_rating_display": None, "google_review_total": 0,
+            "coverage_pct": None, "sites_without_google_rating": 0,
         }
+
+    sample_avg = float(df[RATING_COL].mean())
+
+    per_site = df.groupby(SITE_COL, as_index=False).agg(
+        g_rating=(BUSINESS_AVG_RATING_COL, "first"),
+        g_count=(BUSINESS_REVIEW_COUNT_COL, "first"),
+    )
+    rated = per_site.dropna(subset=["g_rating", "g_count"])
+    if not rated.empty and float(rated["g_count"].sum()) > 0:
+        weighted = float((rated["g_rating"] * rated["g_count"]).sum() / rated["g_count"].sum())
+        google_total = int(rated["g_count"].sum())
+    else:
+        weighted, google_total = None, 0
+
     return {
         "total_reviews": n,
-        "avg_rating": float(df[RATING_COL].mean()),
+        "avg_rating": sample_avg,
+        "avg_rating_weighted": weighted,
+        "avg_rating_display": weighted if weighted is not None else sample_avg,
+        "google_review_total": google_total,
+        "coverage_pct": (float(n / google_total * 100) if google_total else None),
+        "sites_without_google_rating": int(len(per_site) - len(rated)),
         "total_sites": int(df[SITE_COL].nunique()),
         "pct_5_star": float((df[RATING_COL] == 5).mean() * 100),
         "pct_with_owner_response": float(df[OWNER_RESPONSE_TEXT_COL].notna().mean() * 100),
@@ -388,13 +452,24 @@ def get_locations(df: pd.DataFrame) -> pd.DataFrame:
 
     Columns: site, address, city, state, postalCode, placeId, category,
     review_count, avg_rating, pct_5_star, pct_with_owner_response,
-    first_review_date, last_review_date.
+    first_review_date, last_review_date, google_avg_rating,
+    google_review_count, coverage_pct, avg_rating_display, n_1_2_star.
+
+    Rating columns, and which to display (same trap as get_kpis):
+    `avg_rating` is the mean of the *scraped* rows only, so it is a sample
+    mean whose reliability tracks `coverage_pct` (scraped rows / Google's own
+    review count). `google_avg_rating` is Google's published site rating over
+    every review the site has. `avg_rating_display` prefers Google's figure
+    and falls back to the sample mean for the 5 sites Google data is missing
+    for.
     """
     if df.empty:
         return pd.DataFrame(columns=[
             SITE_COL, ADDRESS_COL, CITY_COL, STATE_COL, POSTAL_COL, PLACE_ID_COL,
             CATEGORY_COL, "review_count", "avg_rating", "pct_5_star",
             "pct_with_owner_response", "first_review_date", "last_review_date",
+            "google_avg_rating", "google_review_count", "coverage_pct",
+            "avg_rating_display", "n_1_2_star",
         ])
 
     grouped = df.groupby(SITE_COL, as_index=False).agg(
@@ -407,6 +482,9 @@ def get_locations(df: pd.DataFrame) -> pd.DataFrame:
         review_count=(RATING_COL, "count"),
         avg_rating=(RATING_COL, "mean"),
         pct_5_star=(RATING_COL, lambda s: (s == 5).mean() * 100),
+        n_1_2_star=(RATING_COL, lambda s: int((s <= 2).sum())),
+        google_avg_rating=(BUSINESS_AVG_RATING_COL, "first"),
+        google_review_count=(BUSINESS_REVIEW_COUNT_COL, "first"),
         first_review_date=(DATE_COL, "min"),
         last_review_date=(DATE_COL, "max"),
     )
@@ -416,6 +494,14 @@ def get_locations(df: pd.DataFrame) -> pd.DataFrame:
         .rename("pct_with_owner_response")
     )
     grouped = grouped.merge(resp_rate, left_on=SITE_COL, right_index=True)
+
+    g_count = pd.to_numeric(grouped["google_review_count"], errors="coerce")
+    grouped["coverage_pct"] = (grouped["review_count"] / g_count * 100).where(g_count > 0)
+    g_rating = pd.to_numeric(grouped["google_avg_rating"], errors="coerce")
+    grouped["avg_rating_display"] = g_rating.fillna(
+        pd.to_numeric(grouped["avg_rating"], errors="coerce")
+    ).astype(float)
+
     return grouped.sort_values("review_count", ascending=False).reset_index(drop=True)
 
 

@@ -1,8 +1,18 @@
 # Architecture — Review Analysis Streamlit MVP
 
-Owner: Agent 1 (Project Architect). This is the contract the other six agents'
-deliverables must fit into. A human does final integration — nothing here
-assumes agents merge each other's code directly.
+> **Status: historical.** This is the original build contract, kept for the
+> reasoning behind the data decisions (§0 especially). It no longer describes
+> the shipped file layout: the app was rebuilt around the product dashboard UI,
+> the entrypoint is `app/Home.py`, there is one drill-down page rather than
+> separate Trends/Drilldown pages, and `app/utils/` gained `theme.py`
+> (visual shell) and `metrics.py` (tile/table math). **`README.md` is the
+> current description.** Two claims in §0 were also superseded by
+> `dataset_schema.md`: the "124 duplicate reviewId values" are a null-key
+> artefact, not duplicates, and rating-only reviews must NOT be folded into
+> neutral sentiment.
+>
+> Owner: Agent 1 (Project Architect). This was the contract the other six
+> agents' deliverables had to fit into.
 
 ## 0. Data reality check (read this before designing filters)
 
