@@ -209,8 +209,9 @@ def render() -> None:
     with scol:
         # A site appears once in every facet it is old enough for, as a different dot each time.
         # Picking one links those dots together — the facets on their own cannot show a path.
-        site_labels = (cp[["site_key", "site"]].drop_duplicates()
-                         .sort_values("site").set_index("site").site_key.to_dict())
+        # Labels come from `td.site_picker()`, which keys on client_id + site_id: one client here
+        # runs up to six sites, and a name-keyed map would silently merge two of them.
+        site_labels = td.site_picker()
         picked_site = st.selectbox("Follow one site", ["— none —"] + list(site_labels),
                                    index=0, key="tunnel_site_pick")
     pick_key = site_labels.get(picked_site)
@@ -224,50 +225,51 @@ def render() -> None:
 
     hi = float(max(cp.tunnel_ft.max(),
                    cp[list(td.PEAK_BASIS.values())].max().max())) * 1.08
-    present = [c for c in td.COHORTS if (cp.cohort == c).any()]
-    cols = st.columns(len(present))
-    for col, coh in zip(cols, present):
-        g = cp[cp.cohort == coh]
-        with col:
-            fig = go.Figure()
-            fig.add_scatter(x=[0, hi], y=[0, hi], mode="lines", showlegend=False,
-                            line=dict(color=STATUS["Overbuilt"], width=1.5, dash="dash"),
-                            hoverinfo="skip")
-            for lvl in show:
-                c = td.PEAK_BASIS[lvl]
-                fig.add_scatter(x=g.tunnel_ft, y=g[c], mode="markers", name=lvl,
-                                marker=dict(size=8, color=shade[lvl],
-                                            opacity=0.28 if pick_key else 1.0,
-                                            line=dict(width=1, color=SURFACE)),
-                                customdata=np.stack([g.site, g[c] / g.tunnel_ft], axis=-1),
-                                hovertemplate="<b>%{customdata[0]}</b><br>"
-                                              + lvl + ": %{y:.0f} cars<br>"
-                                              "Tunnel %{x:.0f} ft<br>"
-                                              "→ uses %{customdata[1]:.0%} of it<extra></extra>",
-                                showlegend=(coh == present[0]))
+    present = td.cohorts()
+    if pick_key:
+        st.caption(f"Showing **{picked_site}** only. Every other site is hidden; the dashed line is "
+                   "still the sizing rule, so a dot below it is tunnel left unused that year.")
+
+    # Seven facets now (years 1–6 plus the folded tail) rather than four, because years 4 through 9
+    # were the range that answered the question and used to sit in one lumped panel. Wrapped four
+    # to a row — seven side by side leaves each one too narrow to read.
+    PER_ROW = 4
+    for start in range(0, len(present), PER_ROW):
+        chunk = present[start:start + PER_ROW]
+        cols = st.columns(PER_ROW)                       # pad the short row so widths stay equal
+        for col, coh in zip(cols, chunk):
+            g = cp[cp.cohort == coh]
             if pick_key:
-                # The chosen site drawn on top at full strength, ringed so it reads against the
-                # dimmed field without needing a colour of its own.
-                sel = g[g.site_key == pick_key]
+                g = g[g.site_key == pick_key]
+            with col:
+                fig = go.Figure()
+                fig.add_scatter(x=[0, hi], y=[0, hi], mode="lines", showlegend=False,
+                                line=dict(color=STATUS["Overbuilt"], width=1.5, dash="dash"),
+                                hoverinfo="skip")
                 for lvl in show:
                     c = td.PEAK_BASIS[lvl]
-                    fig.add_scatter(x=sel.tunnel_ft, y=sel[c], mode="markers", showlegend=False,
-                                    marker=dict(size=15, color=shade[lvl], symbol="circle",
-                                                line=dict(width=2.5, color=INK)),
-                                    customdata=np.stack([sel.site, sel[c] / sel.tunnel_ft],
-                                                        axis=-1),
+                    fig.add_scatter(x=g.tunnel_ft, y=g[c], mode="markers", name=lvl,
+                                    marker=dict(size=15 if pick_key else 8, color=shade[lvl],
+                                                line=dict(width=2.5 if pick_key else 1,
+                                                          color=INK if pick_key else SURFACE)),
+                                    customdata=np.stack([g.site, g[c] / g.tunnel_ft], axis=-1)
+                                    if len(g) else None,
                                     hovertemplate="<b>%{customdata[0]}</b><br>"
                                                   + lvl + ": %{y:.0f} cars<br>"
                                                   "Tunnel %{x:.0f} ft<br>"
-                                                  "→ uses %{customdata[1]:.0%}<extra></extra>")
-            st.plotly_chart(style(fig, height=370,
-                                  title=dict(text=f"{coh} (n={g.site_key.nunique()})",
-                                             font=dict(size=13)),
-                                  xaxis_title="Tunnel (ft)", yaxis_title="Peak cars",
-                                  xaxis=dict(range=[0, hi]), yaxis=dict(range=[0, hi]),
-                                  margin=dict(l=48, r=12, t=104, b=45),
-                                  legend=dict(orientation="h", y=1.30, x=0, font=dict(size=9))),
-                            width="stretch")
+                                                  "→ uses %{customdata[1]:.0%} of it<extra></extra>",
+                                    showlegend=(coh == present[0]))
+                n = g.site_key.nunique()
+                head = f"{coh} (n={n})" if not pick_key else (
+                    coh if n else f"{coh} — not open yet")
+                st.plotly_chart(style(fig, height=370,
+                                      title=dict(text=head, font=dict(size=13)),
+                                      xaxis_title="Tunnel (ft)", yaxis_title="Peak cars",
+                                      xaxis=dict(range=[0, hi]), yaxis=dict(range=[0, hi]),
+                                      margin=dict(l=48, r=12, t=104, b=45),
+                                      legend=dict(orientation="h", y=1.30, x=0,
+                                                  font=dict(size=9))),
+                                width="stretch")
 
     if pick_key:
         su = _site_util(pick_key)
@@ -296,15 +298,26 @@ def render() -> None:
                                   yaxis=dict(tickformat=".0%", range=[0, 1.08]),
                                   xaxis=dict(dtick=1),
                                   legend=dict(orientation="h", y=1.02, x=0)), width="stretch")
-            best = su[su.peak_level == (show[-1] if show else td.DEFAULT_BASIS)]
+            lvl = show[-1] if show else td.DEFAULT_BASIS
+            best = su[su.peak_level == lvl].sort_values("opyear")
             if not best.empty:
+                # A one-year site has no "from → to". The old wording read "from 49% in year 1 to
+                # 45% in year 1", which was the duplicate-calendar-row bug showing through; the
+                # data layer no longer produces two rows for one operating year, and this branch
+                # keeps the sentence honest when there is genuinely only one.
+                if len(best) == 1:
+                    move = (f"has only **one** usable trading year here (year "
+                            f"{int(best.opyear.iloc[0])}), in which its {lvl.lower()} used "
+                            f"**{best.share.iloc[0]:.0%}** of that tunnel. Too early to say whether "
+                            "the gap closes.")
+                else:
+                    move = (f"has **{len(best)}** usable trading years here. On its {lvl.lower()} "
+                            f"it went from **{best.share.iloc[0]:.0%}** of that tunnel in year "
+                            f"{int(best.opyear.iloc[0])} to **{best.share.iloc[-1]:.0%}** in year "
+                            f"{int(best.opyear.iloc[-1])}.")
                 st.caption(f"**{picked_site}** has a **{su.attrs['tunnel_ft']:.0f} ft** tunnel and "
-                           f"{su.opyear.nunique()} usable trading years here. On its "
-                           f"{(show[-1] if show else td.DEFAULT_BASIS).lower()} it went from "
-                           f"**{best.share.iloc[0]:.0%}** of that tunnel in year "
-                           f"{int(best.opyear.iloc[0])} to **{best.share.iloc[-1]:.0%}** in year "
-                           f"{int(best.opyear.iloc[-1])}. The year-by-year peak is the site's own "
-                           "peak scaled by how busy that year was — see the method note above.")
+                           f"{move} The year-by-year peak is the site's own peak scaled by how busy "
+                           "that year was — see the method note above.")
 
     piv = (_cohort_util().pivot(index="peak_level", columns="cohort", values="median_share")
            .reindex([l for l in td.PEAK_ORDER]))
@@ -340,11 +353,12 @@ def render() -> None:
 
     labels = [f"{str(r.site)[:30]}" for r in v.itertuples()]
     fige = go.Figure()
-    fige.add_bar(y=labels, x=v.required_ft, orientation="h", name="length its busiest day needs",
+    fige.add_bar(y=labels, x=v.required_ft, orientation="h",
+                 name="length recommended by its busiest day",
                  marker=dict(color=S1, line=dict(width=0.6, color=SURFACE)),
                  customdata=np.stack([v["where"], v.peak_cars_per_hour], axis=-1),
                  hovertemplate="<b>%{y}</b> · %{customdata[0]}<br>Its busiest day pushed "
-                               "%{customdata[1]:.0f} cars/hr → needs <b>%{x:.0f} ft</b>"
+                               "%{customdata[1]:.0f} cars/hr → recommended <b>%{x:.0f} ft</b>"
                                "<extra></extra>")
     fige.add_bar(y=labels, x=v.excess_ft, orientation="h", name="spare length",
                  marker=dict(color=STATUS["Overbuilt"], line=dict(width=0.6, color=SURFACE)),

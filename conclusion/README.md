@@ -61,6 +61,22 @@ per car/hour, no +20).
 **Units matter.** `tunnel_length_actual_ft` is whole **metres × 3.2**; the true factor is 3.28084, so
 that column understates length by ~2.5%. We recover the metres and convert properly.
 
+**One row per operating year, not per calendar year.** A site that opened in October has two
+calendar rows — the stub of its opening year and most of the next — that both fall inside operating
+year 1. Left alone that draws the same site twice in one facet at two different heights and makes
+its "path" look like it moved. `cohort_peaks()` folds the fragments coverage-weighted
+(`rate = Σ washes ÷ Σ coverage`) before anything else. 20 of 306 site-years needed it; 326 rows → 301.
+
+**Facets are derived, not fixed.** The old `["Year 1", "Year 2", "Year 3", "Year 4+"]` buried
+operating years 4–9 in one panel — exactly the range where "does under-use close with age?" is
+answered. Years now get their own facet while they hold ≥10 sites (**Year 1–6**), and the thin tail
+folds into **Year 7+**, where each site appears once at its most mature year.
+
+**The site key is `client_id + site_id`.** The picker maps label → `site_key` via
+`td.site_picker()`. An earlier version keyed the map on the site's *name*, so two sites sharing a
+name would silently collapse. 78 rows carry 78 names but only **64 client_ids** — one client runs up
+to six sites — so name-uniqueness was an accident, not a property.
+
 **No CAPEX.** This file carries no cost data, so the finding stops at feet.
 
 ## Section ② — Proforma backtest: how close did the projection land?

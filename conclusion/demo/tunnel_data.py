@@ -320,11 +320,14 @@ def headline(d: pd.DataFrame) -> dict:
 # =================================================================================================
 # Chart A — peak demand against tunnel length, grouped by how mature the site is
 # =================================================================================================
-COHORTS = ["Year 1", "Year 2", "Year 3", "Year 4+"]
+# A year gets its own facet while it still holds this many sites; the thin tail folds into one
+# "Year N+" facet rather than being drawn as a panel of four dots that reads as solid as a panel
+# of forty.
+MIN_COHORT_SITES = 10
 
 
 def cohort_peaks() -> pd.DataFrame:
-    """One row per site × operating year: the peak demand IN THAT YEAR, against tunnel length.
+    """One row per site × **operating year**: the peak demand in that year, against tunnel length.
 
     Everything comes from `tunnel_length_with_wash.csv`. That file gives one peak figure per site
     per level (median / p75 / p90 / highest daily peak) measured across all of the site's trading
@@ -337,24 +340,87 @@ def cohort_peaks() -> pd.DataFrame:
     in proportion to its volume. This is arithmetic on that one file — no outside assumption about
     hours or seasonality.
 
+    **One row per operating year, not per calendar year.** A site that opened in October has two
+    calendar rows — the stub of its opening year and most of the next — that both sit inside
+    operating year 1. Left alone that puts the same site on the chart twice in one facet, at two
+    different heights, and makes its "path" look like it moved when it did not. The calendar
+    fragments are folded together first, coverage-weighted: `rate = Σ washes ÷ Σ coverage`, which
+    is the annualised run-rate over the whole operating year. 20 of 306 site-years need this.
+
     **This is the one chart that uses all sites in the file rather than the 3-year analysis set** —
     the question is whether under-use shrinks with age, which cannot be seen without young sites.
     """
     fp = full_panel()
-    g = fp[fp.usable].copy()
-    best = g.groupby("site_key").rate.max()
-    g["vol_share"] = g.rate / g.site_key.map(best)
+    g = fp[fp.usable]
+
+    per = (g.groupby(["site_key", "opyear"])
+             .agg(washes=("washes", "sum"), coverage=("coverage", "sum"),
+                  site=("site", "first"), calendar_years=("year", "nunique"),
+                  first_year=("year", "min"), last_year=("year", "max"))
+             .reset_index())
+    per["rate"] = per.washes / per.coverage
+
+    best = per.groupby("site_key").rate.max()
+    per["vol_share"] = per.rate / per.site_key.map(best)
 
     raw = load_raw().set_index("site_key")
-    # `full_panel` already carries `site`; join only what it lacks
-    g = g.join(raw[["where", "tunnel_ft", "tunnel_m"] + list(PEAK_BASIS.values())], on="site_key")
+    per = per.join(raw[["where", "tunnel_ft", "tunnel_m", "client_id", "site_id"]
+                       + list(PEAK_BASIS.values())], on="site_key")
     for col in PEAK_BASIS.values():
-        g[col] = g[col] * g.vol_share
+        per[col] = per[col] * per.vol_share
 
-    g["cohort"] = pd.Categorical(
-        np.where(g.opyear >= 4, "Year 4+", "Year " + g.opyear.astype(int).astype(str)),
-        COHORTS, ordered=True)
-    return g[g.cohort.notna()].reset_index(drop=True)
+    per["cohort"] = _cohort_labels(per)
+    per = per[per.cohort.notna()].copy()
+    # Inside the folded tail facet a site could otherwise appear once per year it has beyond the
+    # fold point. Keep its most mature year there — the facet's question is "where has this site
+    # got to", not "every year it has been open".
+    fold = per.cohort.cat.categories[-1]
+    tail = per[per.cohort == fold]
+    if len(tail):
+        keep = tail.groupby("site_key").opyear.idxmax()
+        per = pd.concat([per[per.cohort != fold], per.loc[keep]])
+    return per.sort_values(["site_key", "opyear"]).reset_index(drop=True)
+
+
+def _cohort_labels(per: pd.DataFrame) -> pd.Categorical:
+    """Solo facets while a year is well populated, then one folded tail facet.
+
+    The old fixed `["Year 1", "Year 2", "Year 3", "Year 4+"]` buried years 4 through 9 in a single
+    panel, which is exactly the range where the "does under-use close with age?" question is
+    answered. The cut is derived from the data instead: the tail starts at the first year too thin
+    to stand on its own.
+    """
+    counts = per.groupby("opyear").site_key.nunique()
+    solo = [int(y) for y in sorted(counts.index) if counts[y] >= MIN_COHORT_SITES]
+    fold_at = (max(solo) if solo else 1)          # last well-populated year opens the tail facet
+    labels = [f"Year {y}" for y in range(1, fold_at)] + [f"Year {fold_at}+"]
+    assigned = np.where(per.opyear >= fold_at, f"Year {fold_at}+",
+                        "Year " + per.opyear.astype(int).astype(str))
+    return pd.Categorical(assigned, labels, ordered=True)
+
+
+def cohorts() -> list[str]:
+    """The facet labels actually present, in order — the section reads this rather than a constant."""
+    c = cohort_peaks()
+    return [str(x) for x in c.cohort.cat.categories if (c.cohort == x).any()]
+
+
+def site_picker() -> dict[str, str]:
+    """Label → `site_key`, guaranteed one-to-one.
+
+    **The site key is `client_id + site_id`.** An earlier version built this map with the site's
+    *name* as the dict key, so two sites sharing a name would silently collapse into one and the
+    picker would quietly point at the wrong dots. Names happen to be unique in this file today
+    (78 rows, 78 names, but only 64 client_ids — one client runs up to 6 sites), which is exactly
+    the kind of accident that stops being true after the next data refresh. The label carries the
+    real key so the reader can see which site they are looking at.
+    """
+    raw = load_raw()
+    out: dict[str, str] = {}
+    for r in raw.sort_values(["name", "site_id"]).itertuples():
+        label = f"{r.site} — {r.where}  ·  {r.client_id} #{int(r.site_id)}"
+        out[label] = r.site_key
+    return out
 
 
 def site_utilisation(site_key: str,
