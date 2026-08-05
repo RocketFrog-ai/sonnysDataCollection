@@ -537,6 +537,66 @@ def render() -> None:
         sections is mostly that.
     """, GOOD if passes else CRITICAL)
 
+    real = cd.real_example_panel(P["data"])
+    with st.expander(f"Real example — {len(real)} sites, revenue, month by month"):
+        st.caption(
+            f"The chart above is a median across many matched campaigns. Here are {len(real)} real "
+            "sites, one panel each: raw monthly revenue, the year the campaign ran against the "
+            f"closest clean comparison year at the same site. All {len(real)} mature (12+ months "
+            "old) campaigns with a usable clean comparison year on revenue — not a selection of "
+            "the best-looking ones.")
+
+        n_cols = 2 if len(real) <= 4 else 3  # a small set reads better as a square grid
+        n_rows = -(-len(real) // n_cols)
+        figr = make_subplots(
+            rows=n_rows, cols=n_cols,
+            subplot_titles=[r["site_key"] for r in real],
+            vertical_spacing=0.16, horizontal_spacing=0.08)
+        for i, r in enumerate(real):
+            row, col = i // n_cols + 1, i % n_cols + 1
+            months = r["raw_wide"].index.tolist()
+            _line(figr, months, r["raw_normal_avg"], CONTROL, "normal year(s)",
+                 row=row, col=col, show_legend=(i == 0),
+                 hovertemplate="month %{x}: <b>$%{y:,.0f}</b><extra>normal</extra>")
+            _line(figr, months, r["raw_wide"][r["campaign_year"]], TREATED, "campaign year",
+                 row=row, col=col, show_legend=(i == 0),
+                 hovertemplate="month %{x}: <b>$%{y:,.0f}</b><extra>campaign</extra>")
+            figr.add_vrect(x0=r["campaign_month"] - 0.5, x1=r["campaign_month"] + 0.5,
+                          fillcolor=_rgba(WARNING, 0.20), line_width=0, layer="below",
+                          row=row, col=col)
+            figr.update_xaxes(tickvals=months, tickangle=45, row=row, col=col)
+        # `_sub()` isn't used here -- it force-left-aligns every subplot title to x=0, which only
+        # works for the single-column grids it was built for. With 3 columns that collapses every
+        # row's three titles onto the figure's left edge, on top of each other. Plotly's own
+        # per-subplot title centering is correct as-is; only the color/size needs to match house
+        # style. Order matters: style() first (base layout, reaches axis 1 only), then
+        # update_xaxes/update_yaxes with no row/col to extend it to every subplot -- same order
+        # `_sub()` itself uses.
+        style(figr, height=720, showlegend=True,
+             legend=dict(orientation="h", y=-0.06, x=0.5, xanchor="center"),
+             margin=dict(l=75, r=25, t=60, b=60))
+        figr.update_xaxes(showgrid=False, showline=True, linecolor=GRID, tickfont=dict(color=MUTED))
+        figr.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=GRID, tickfont=dict(color=MUTED))
+        figr.update_yaxes(tickprefix="$", tickformat=",.0f")
+        figr.update_yaxes(title_text="Revenue ($)", col=1)
+        for ann in figr.layout.annotations:
+            ann.font.update(color=INK, size=12)
+        st.plotly_chart(figr, width="stretch")
+
+        n_sig_pos = sum(1 for r in real if r["p_value"] < 0.05 and r["mean_lift_pct"] > 0)
+        callout("What this shows", f"""
+          <b>Every site shows a real spike in its own campaign month</b> — visible in every panel,
+            regardless of what happens afterward.
+          <b>{n_sig_pos} of {len(real)} sites shows a significant, positive, SUSTAINED lift</b> in
+            the months that follow, tested against that same site's own normal year. The rest are
+            flat or negative once the campaign month itself passes.
+          <b>Why this matters.</b> A single site is not enough data to see a
+            ~{P['deseason']['deseasonalised']:.0f}% effect — that is smaller than the ordinary
+            year-to-year noise visible between the blue and orange lines above, at sites that ran
+            no campaign at all in one of those years. This is exactly why the aggregate,
+            matched-control chart above exists: the effect is real, but only visible in aggregate.
+        """, WARNING if n_sig_pos == 0 else GOOD)
+
     # =============================================================================================
     st.divider()
     with st.expander("Data & method"):

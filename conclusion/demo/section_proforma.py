@@ -12,12 +12,29 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import proforma_data as pf
-from ui import (CRITICAL, INK, INK2, MUTED, S1, S2, S3, SURFACE, WARNING, callout, html_table,
-                style)
+from ui import (CRITICAL, DARK, INK, INK2, MUTED, S1, S2, S3, SURFACE, WARNING, callout,
+                html_table, style)
 
 # One fixed hue per forecaster, assigned in order and never cycled.
 FCOLOR = {"proforma": S2, "coldstart": S3, "model5": S1}
 GOOD, WARN, BAD = "#0ca30c", "#fab219", "#d03b3b"
+
+# Traffic speed bands, one fixed hue + marker shape per band, assigned in order and never cycled.
+# Deliberately NOT S1/S2/S3 -- those already carry a different meaning on the traffic chart itself
+# (S1 = "Each site" baseline, S2/S3 = the two reference lines) and as the forecaster identity
+# (FCOLOR) everywhere else in this file; reusing them here would make the same hue mean two
+# different things on one screen. Color and shape are both varied so identity never rests on hue
+# alone.
+SPEED_COLOR = {
+    "Under 30 mph": "#c98500" if DARK else "#eda100",   # yellow
+    "30–40 mph":    "#d55181" if DARK else "#e87ba4",   # magenta
+    "40–50 mph":    "#9085e9" if DARK else "#4a3aa7",   # violet
+    "Over 50 mph":  "#008300",                          # green (mode-invariant)
+}
+SPEED_SYMBOL = {
+    "Under 30 mph": "circle", "30–40 mph": "square",
+    "40–50 mph": "diamond", "Over 50 mph": "triangle-up",
+}
 
 
 @st.cache_data(show_spinner=False)
@@ -93,7 +110,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("1 · Every projection against what actually happened")
+    st.header("1 · Are we underestimating the business?")
     st.caption("One dot per site. The dashed line is a perfect projection — anything above it was "
                "over-projected.")
 
@@ -567,20 +584,32 @@ def render() -> None:
                      line=dict(color=S3, width=2.5, dash="dash"),
                      hovertemplate="%{x:,.0f} cars a day → really "
                                    "<b>%{y:,.0f} washes a day</b><extra></extra>")
-    figt.add_scatter(x=tf[pf.TRAFFIC_KEY], y=tf.daily_washes, mode="markers", name="Each site",
-                     marker=dict(size=9, color=S1, line=dict(width=1.5, color=SURFACE)),
-                     customdata=np.stack([tf.site, tf.capture, tf.pf_capture,
-                                          tf.actual_mature_wash], axis=-1),
-                     hovertemplate="<b>%{customdata[0]}</b><br>%{x:,.0f} cars a day<br>"
-                                   "<b>%{y:,.0f} washes a day</b> "
-                                   "(%{customdata[3]:,.0f} a month)<br>"
-                                   "caught %{customdata[1]:.2%} of the traffic — "
-                                   "the sheet assumed %{customdata[2]:.2%}<extra></extra>")
-    st.plotly_chart(style(figt, height=430,
+    # One trace per speed band -- Plotly only builds a categorical legend from separate traces,
+    # and the fixed SPEED_COLOR/SPEED_SYMBOL order keeps a given band the same hue+shape wherever
+    # it's plotted, rather than depending on which bands happen to be present.
+    for band in pf.SPEED_BANDS:
+        g = tf[tf.speed_band == band]
+        if g.empty:
+            continue
+        figt.add_scatter(x=g[pf.TRAFFIC_KEY], y=g.daily_washes, mode="markers",
+                         name=f"{band} ({len(g)} sites)",
+                         marker=dict(size=9, color=SPEED_COLOR[band], symbol=SPEED_SYMBOL[band],
+                                     line=dict(width=1.5, color=SURFACE)),
+                         customdata=np.stack([g.site, g.capture, g.pf_capture,
+                                              g.actual_mature_wash], axis=-1),
+                         hovertemplate="<b>%{customdata[0]}</b><br>%{x:,.0f} cars a day<br>"
+                                       "<b>%{y:,.0f} washes a day</b> "
+                                       "(%{customdata[3]:,.0f} a month)<br>"
+                                       "caught %{customdata[1]:.2%} of the traffic — "
+                                       "the sheet assumed %{customdata[2]:.2%}<br>"
+                                       f"<span style='opacity:.7'>{band}</span><extra></extra>")
+    st.plotly_chart(style(figt, height=490,
                           xaxis_title="Vehicles a day past the site",
                           yaxis_title="Washes a day, at maturity",
-                          xaxis=dict(tickformat=","), margin=dict(t=86),
-                          legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
+                          xaxis=dict(tickformat=","), margin=dict(t=130),
+                          # 6 legend entries (2 reference lines + 4 speed bands) wrap onto two
+                          # rows at typical chart widths -- the taller top margin above makes room.
+                          legend=dict(orientation="h", y=1.1, x=0)), width="stretch")
 
     callout("What the orange line is, and why the dots are not on it", f"""
       <b>The old proforma is, in effect, one multiplication.</b> Across all

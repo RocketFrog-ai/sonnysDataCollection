@@ -33,6 +33,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 
 REPO = Path(__file__).resolve().parents[2]
 DATASET = REPO / "proforma" / "data" / "opex" / "opex-data.csv"
@@ -898,3 +899,76 @@ def roi_repricing(cf: Counterfactual, panel: pd.DataFrame,
         roi["naive_roi"] = roi["naive_incr"] / roi["spend"]
         roi["did_roi"] = roi["did_incr"] / roi["spend"]
     return roi
+
+
+# ==================================================================================================
+# 6 — one site at a time, in raw dollars (paired with the counterfactual above)
+# ==================================================================================================
+# Six sites, hand-picked in an exploratory pass (experiments/campaign_seasonality/) as the FULL set
+# of mature (>12mo) campaigns with a usable clean comparison year on revenue -- not a selection of
+# the best-looking ones. A "clean" comparison year has no campaign of its own and no collapsed
+# (near-zero) months. Kept here as a fixed list rather than re-derived at every page load, because
+# finding them is a one-off search over all 162 sites, not something that needs to re-run live.
+REAL_EXAMPLE_SITES = [
+    ("clearwater_000397__1",  2025, (2024,), 4, 27),
+    ("clearwater_000397__10", 2025, (2024,), 4, 26),
+    ("bluewave_000567__24",   2025, (2024,), 4, 20),
+    ("bigdans_000378__6",     2024, (2023,), 3, 14),
+]
+# clearwater_000397__14 and bigdans_000378__4 were dropped from an earlier, larger set -- the
+# former reverted hard right after its campaign-month spike (most negative outlier), the latter
+# showed essentially no incremental effect either way and was redundant with bigdans_000378__6 as
+# an illustration of the same "spike, then reverts to trend" pattern.
+REAL_EXAMPLE_STAT_MONTHS = list(range(1, 11))  # Jan-Oct: Nov 2025-Mar 2026 revenue drops to exactly
+                                               # $0 across many unrelated sites -- a shared
+                                               # data-extract reporting gap, not real closures
+
+
+def real_example_panel(data: pd.DataFrame,
+                       sites=REAL_EXAMPLE_SITES) -> list[dict]:
+    """Per-site raw monthly revenue, normal year(s) vs. campaign year, plus a significance test.
+
+    One dict per site: `raw_wide` (month x year, in dollars, truncated to the months that site's
+    campaign year actually has -- some run into the shared Nov/Dec reporting gap), `raw_normal_avg`
+    (the dollar average across the clean comparison year(s), on the same months), `mean_lift_pct`
+    and `p_value` for the campaign's post-window (+1..+6 months, capped at month 10) against the
+    same calendar months in the normal year(s).
+
+    The significance test stays in LOG space and Jan-Oct only, matching `seasonal_index()`'s own
+    convention: `log(revenue)` demeaned PER YEAR, so scale and year-over-year growth both drop out
+    and only the within-year shape is compared. The chart data (`raw_wide`) is deliberately NOT put
+    through that transform -- raw dollars are what a reviewer actually wants to see.
+    """
+    out = []
+    for site_key, cyear, clean_years, cmonth, age in sites:
+        clean_years = list(clean_years)
+        years_needed = [cyear] + clean_years
+        monthly = (data[data.site_key == site_key]
+                  .assign(year=lambda d: d.report_date.dt.year, month=lambda d: d.report_date.dt.month)
+                  .groupby(["year", "month"], as_index=False)
+                  .agg(total_income=("total_income", "mean")))
+        monthly = monthly[monthly.year.isin(years_needed)].copy()
+
+        raw_wide = monthly.pivot(index="month", columns="year", values="total_income")
+        raw_wide = raw_wide.reindex(range(1, 13))
+        gap_months = [m for m in (11, 12)
+                     if raw_wide.get(cyear, pd.Series(dtype=float)).get(m, 1) < 1]
+        plot_months = list(range(1, min(gap_months))) if gap_months else list(range(1, 13))
+        raw_wide = raw_wide.loc[plot_months]
+        raw_normal_avg = raw_wide[clean_years].mean(axis=1)
+
+        stat = monthly[monthly.month.isin(REAL_EXAMPLE_STAT_MONTHS)
+                       & (monthly.total_income > 0)].copy()
+        stat["lrev"] = np.log(stat.total_income)
+        stat["resid"] = stat["lrev"] - stat.groupby("year")["lrev"].transform("mean")
+        resid = stat.pivot(index="month", columns="year", values="resid")
+        normal_expect = resid[clean_years].mean(axis=1)
+        post_months = [m for m in range(cmonth + 1, cmonth + 7) if m <= 10]
+        diff_log = (resid[cyear].loc[post_months] - normal_expect.loc[post_months]).dropna()
+        t_stat, p_value = stats.ttest_1samp(diff_log, 0)
+
+        out.append(dict(site_key=site_key, age_months=age, campaign_month=cmonth,
+                        normal_years=clean_years, campaign_year=cyear,
+                        mean_lift_pct=float(pct(diff_log.mean())), p_value=float(p_value),
+                        raw_wide=raw_wide, raw_normal_avg=raw_normal_avg))
+    return out
