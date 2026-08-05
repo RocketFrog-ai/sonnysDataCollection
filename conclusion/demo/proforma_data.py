@@ -639,6 +639,54 @@ def traffic_elasticity(d: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
+def traffic_elasticity_robustness(d: pd.DataFrame) -> pd.DataFrame:
+    """The same slope, five other ways — because 0.25 is the low end of the defensible range.
+
+    The drawn line is ordinary least squares on log(washes) vs log(traffic), which is the standard
+    elasticity estimator and the one the confidence interval and the tests against 0 and 1 are
+    computed from. It is also the *most pessimistic* member of its family, and a reader who
+    recomputes this will land on 0.34 and reasonably ask why the number moved. So the alternatives
+    are stated rather than left to be discovered.
+
+    Every one of them is far below the proforma's 0.95, which is the only thing the conclusion
+    rests on.
+    """
+    s = traffic_frame(d)
+    x, y = s[TRAFFIC_KEY].values.astype(float), s.daily_washes.values.astype(float)
+    lx, ly = np.log(x), np.log(y)
+    b, a = np.polyfit(lx, ly, 1)
+    rows = [dict(method="Least squares on logs (the line drawn)", b=float(b), note="standard "
+                 "elasticity estimator; the CI and p-values quoted above come from this")]
+
+    ts = stats.theilslopes(ly, lx)
+    rows.append(dict(method="Theil–Sen on logs", b=float(ts[0]),
+                     note="median-of-slopes; ignores outliers rather than being pulled by them"))
+
+    resid = np.abs(ly - (a + b * lx))
+    keep = resid < np.sort(resid)[-4]
+    rows.append(dict(method="Least squares on logs, 3 worst outliers dropped",
+                     b=float(np.polyfit(lx[keep], ly[keep], 1)[0]),
+                     note=f"n={int(keep.sum())} instead of {len(lx)}"))
+
+    q = pd.qcut(s[TRAFFIC_KEY], 4)
+    g = s.groupby(q, observed=True).agg(t=(TRAFFIC_KEY, "median"), w=("daily_washes", "median"))
+    rows.append(dict(method="Busiest quarter vs quietest quarter, medians only",
+                     b=float(np.log(g.w.iloc[-1] / g.w.iloc[0]) / np.log(g.t.iloc[-1] / g.t.iloc[0])),
+                     note="no model at all — two medians and a ratio"))
+
+    sl = np.polyfit(x, y, 1)[0]
+    rows.append(dict(method="Least squares on raw levels", b=float(sl * np.median(x) / np.median(y)),
+                     note="most outlier-sensitive of the set; answers a mean-site question"))
+
+    out = pd.DataFrame(rows)
+    out["double"] = 2 ** out.b - 1
+    core = out[out.method != "Least squares on raw levels"].b
+    out.attrs.update(lo=float(core.min()), hi=float(core.max()),
+                     double_lo=float(2 ** core.min() - 1), double_hi=float(2 ** core.max() - 1),
+                     widest=float(out.b.max()))
+    return out
+
+
 def traffic_variance(d: pd.DataFrame) -> pd.DataFrame:
     """Share of the variation each forecast — and reality — takes from the road.
 

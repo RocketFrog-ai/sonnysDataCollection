@@ -46,6 +46,11 @@ def _mix() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def _basis() -> dict:
+    return gd.same_site_basis()
+
+
+@st.cache_data(show_spinner=False)
 def _mix_states() -> pd.DataFrame:
     return gd.mix_by_state_year()
 
@@ -254,9 +259,37 @@ def render() -> None:
                           xaxis=dict(dtick=1, range=[mx.year.min() - 0.2, mx.year.max() + 0.9]),
                           margin=dict(r=90),
                           legend=dict(orientation="h", y=1.02, x=0)), width="stretch")
-    st.caption(f"{int(mx.year.max())} is a half year — the panel ends in June. A *share* is still "
-               "readable on six months; a total would not be. Site-years with fewer than six "
-               "months of trading are excluded throughout.")
+    bs = _basis()
+    st.caption(
+        f"**What the {bs['n']} are.** A site counts in a calendar year if it traded at least "
+        f"**{bs['min_months']} months** of it. The dashed line keeps only the sites that clear that "
+        f"bar in **every one of the {bs['n_years']} years** ({bs['years'][0]}–{bs['years'][-1]}) — "
+        f"{bs['n']} of {bs['eligible']:,}, or {bs['share_of_panel']:.0%} of the panel. "
+        f"{int(mx.year.max())} is a half year (the panel ends in June); a *share* is still readable "
+        "on six months, a total would not be.")
+    st.caption(
+        f"**They are the oldest sites, and survivors.** Every one of the {bs['n']} has "
+        f"{bs['cohort_year']} as its first qualifying year — {bs['n']} of the "
+        f"{bs['opened_that_year']} sites trading back then are still here "
+        f"({bs['survival']:.0%}). So the dashed line is what happened to the "
+        f"**{bs['cohort_year']}-and-earlier estate**; it says nothing about sites opened since, "
+        "which is the point of having the pooled line beside it.")
+
+    with st.expander(f"Does the answer depend on the {bs['n']} being the sites it is?"):
+        sens = bs["sensitivity"].copy()
+        sens.columns = ["Window", "Years", "Sites in the balanced set",
+                        "Membership share, first year", "…last year", "Move"]
+        html_table(sens.set_index("Window"), index_label="Window",
+                   fmt={"Membership share, first year": "{:.1%}", "…last year": "{:.1%}",
+                        "Move": "{:+.1f} pp"})
+        st.caption(
+            f"Shortening the window more than quadruples the sample — {bs['n']} sites becomes "
+            f"{int(sens['Sites in the balanced set'].iloc[-1]):,} — and the same-site move stays "
+            f"between **+{sens['Move'].min():.0f}** and **+{sens['Move'].max():.0f} points**, "
+            f"always far below the pooled line's **+{bs['pooled_move_pp']:.0f}**. The count is very "
+            "sensitive to the window; the conclusion is not. Note the shortest windows start at an "
+            "already-high membership share — later cohorts open membership-led, which is the "
+            "compositional effect the two lines exist to separate.")
 
     comp = (mxh["last_share"] - mxh["first_share"]) - (mxh["last_same"] - mxh["first_same"])
     callout("What this shows", f"""

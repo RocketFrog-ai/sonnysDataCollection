@@ -344,6 +344,215 @@ def own_fact_quintiles(factor: str = "Membership customers",
     return out
 
 
+# --- the correlation grids -----------------------------------------------------------------------
+
+REGION_ORDER = ["South", "West", "Midwest", "Northeast"]
+
+
+@lru_cache(maxsize=1)
+def target_grid() -> pd.DataFrame:
+    """31 measures × 3 wash types, as rank correlations. Rows ordered by strongest cell.
+
+    Worth its own exhibit rather than three clicks of a radio, because the interesting structure is
+    *between* the columns: the market has noticeably more to say about a retail wash — a stranger
+    driving in — than about a membership wash, which is a subscription already sold.
+    """
+    cols = {t: correlations(t).set_index("feature").rho for t in TARGETS}
+    G = pd.DataFrame(cols)
+    G["family"] = [FEATURES[f][1] for f in G.index]
+    G["max_abs"] = G[list(TARGETS)].abs().max(axis=1)
+    G = G.sort_values("max_abs", ascending=False)
+    vals = G[list(TARGETS)].abs().values
+    G.attrs.update(
+        max_abs=float(vals.max()), cells=int(vals.size),
+        under_10=float((vals < .10).mean()),
+        retail_median=float(G["Retail washes"].abs().median()),
+        member_median=float(G["Membership washes"].abs().median()),
+        agree=float((np.sign(G["Membership washes"]) == np.sign(G["Retail washes"])).mean()))
+    return G
+
+
+@lru_cache(maxsize=8)
+def region_grid(target: str = "Retail washes") -> pd.DataFrame:
+    """The same 31 measures, one column per census region.
+
+    This is the robustness check the headline needs: "demographics say nothing" could be an average
+    hiding a real signal in one part of the country. It is not — but it is not uniform either, and
+    the section says so.
+    """
+    d = cohort()
+    tcol = TARGETS[target]
+    out = {}
+    for reg in REGION_ORDER:
+        g = d[d.region == reg]
+        col = {}
+        for lab, (c, _) in FEATURES.items():
+            x, y = g[c].astype(float), g[tcol].astype(float)
+            ok = x.notna() & y.notna()
+            col[lab] = stats.spearmanr(x[ok], y[ok]).statistic if ok.sum() >= 20 else np.nan
+        out[reg] = pd.Series(col)
+    G = pd.DataFrame(out)
+    G["family"] = [FEATURES[f][1] for f in G.index]
+    G["max_abs"] = G[REGION_ORDER].abs().max(axis=1)
+    G = G.sort_values("max_abs", ascending=False)
+    G.attrs["sites"] = {r: int((d.region == r).sum()) for r in REGION_ORDER}
+    return G
+
+
+NOISE_PERMS = 400          # permutations for the per-region null
+BALANCE_DRAWS = 300        # subsamples when every region is cut to the smallest one's n
+
+
+@lru_cache(maxsize=8)
+def region_noise_floor(target: str = "Retail washes") -> pd.DataFrame:
+    """The sample-size correction: how much of each region's apparent signal is just small n?
+
+    The four regions are wildly unequal — 823 sites against 95 — and a rank correlation drifts
+    further from zero the fewer sites you have. Read raw, the heatmap flatters the small regions:
+    at n=95 the *typical* |rho| you get from pure chance is 0.07, against 0.02 at n=823. Three
+    corrections, all reported:
+
+      • **noise floor** — permute the wash counts within the region (which breaks any real
+        relationship while preserving the collinearity among the 31 measures exactly) and record
+        the median |rho|. That is what nothing looks like at this n.
+      • **excess** — observed median |rho| minus that floor. The comparable number.
+      • **balanced** — cut every region to the smallest region's n and re-measure, so all four are
+        estimated with identical power.
+
+    The permutation p-value is also a proper omnibus test: it asks whether the *whole grid* for a
+    region beats chance, which sidesteps the "31 measures are really 7–9 things" problem that makes
+    counting individually-significant measures misleading.
+
+    Ranks are computed once and the permutation runs on them, so this is Pearson-on-ranks (identical
+    to Spearman) in one matrix multiply per draw rather than 31 separate calls.
+    """
+    d = cohort()
+    tcol = TARGETS[target]
+    cols = [c for c, _ in FEATURES.values()]
+    rng = np.random.default_rng(0)
+    smallest = min((d.region == r).sum() for r in REGION_ORDER)
+
+    def med_max(R: np.ndarray, ry: np.ndarray):
+        """Median and max |Spearman| of every column of pre-ranked R against pre-ranked ry."""
+        A = R - R.mean(0)
+        b = ry - ry.mean()
+        r = (A * b[:, None]).sum(0) / np.sqrt((A ** 2).sum(0) * (b ** 2).sum())
+        a = np.abs(r)
+        return float(np.median(a)), float(np.max(a))
+
+    rows = []
+    for reg in REGION_ORDER:
+        g = d[d.region == reg]
+        g = g[g[cols].notna().all(axis=1)]          # 0–4 sites per region; keeps the matrix clean
+        R = g[cols].rank().to_numpy(float)
+        ry = g[tcol].rank().to_numpy(float)
+        n = len(g)
+
+        obs_med, obs_max = med_max(R, ry)
+        null = np.array([med_max(R, rng.permutation(ry)) for _ in range(NOISE_PERMS)])
+        floor_med = float(np.median(null[:, 0]))
+
+        if n > smallest:
+            bal = []
+            for _ in range(BALANCE_DRAWS):
+                idx = rng.choice(n, smallest, replace=False)
+                bal.append(med_max(R[idx], ry[idx])[0])
+            bal = np.array(bal)
+            bal_med, bal_lo, bal_hi = (float(np.median(bal)), float(np.percentile(bal, 10)),
+                                       float(np.percentile(bal, 90)))
+        else:
+            # The smallest region IS the reference: subsampling it to its own size returns itself,
+            # so it has a point estimate and no spread. Say that rather than drawing a fake band.
+            bal_med, bal_lo, bal_hi = obs_med, np.nan, np.nan
+
+        rows.append(dict(
+            region=reg, n=n, observed=obs_med, noise_floor=floor_med,
+            excess=obs_med - floor_med,
+            p_perm=float((null[:, 0] >= obs_med).mean()),
+            observed_max=obs_max, null_max_p95=float(np.percentile(null[:, 1], 95)),
+            p_perm_max=float((null[:, 1] >= obs_max).mean()),
+            balanced=bal_med, balanced_lo=bal_lo, balanced_hi=bal_hi))
+
+    out = pd.DataFrame(rows)
+    out.attrs.update(balanced_n=int(smallest), perms=NOISE_PERMS, draws=BALANCE_DRAWS)
+    return out
+
+
+@lru_cache(maxsize=8)
+def region_verdict(target: str = "Retail washes") -> pd.DataFrame:
+    """Per region: how strong the correlations look, and whether they actually forecast.
+
+    The two columns disagree on purpose. Correlations can be respectable inside a region and the
+    held-out model still lands below zero — which is the whole point, and the reason the section
+    leads on prediction rather than on correlation.
+
+    `components` counts how many independent things the 31 measures really are (principal
+    components covering 90% of their shared variance). It is the honest denominator for
+    "how many measures cleared significance": they are not 31 separate facts.
+    """
+    d = cohort()
+    tcol = TARGETS[target]
+    rows = []
+    for reg in REGION_ORDER:
+        g = d[d.region == reg]
+        y = g[tcol].astype(float)
+        rs, ps, within = [], [], []
+        big = g.state.map(g.state.value_counts()) >= 10
+        for lab, (c, _) in FEATURES.items():
+            x = g[c].astype(float)
+            ok = x.notna() & y.notna()
+            if ok.sum() < 20:
+                rs.append(np.nan); ps.append(1.0); within.append(np.nan); continue
+            rs.append(stats.spearmanr(x[ok], y[ok]).statistic)
+            ps.append(stats.spearmanr(x[ok], y[ok]).pvalue)
+            m = ok & big
+            within.append(stats.spearmanr(
+                x[m].groupby(g.loc[m, "state"]).rank(pct=True),
+                y[m].groupby(g.loc[m, "state"]).rank(pct=True)).statistic
+                if m.sum() > 30 else np.nan)
+        q = _bh(np.asarray(ps))
+        M = g[[c for c, _ in FEATURES.values()]].astype(float)
+        M = M.loc[:, M.notna().all()]
+        ev = np.linalg.eigvalsh(M.rank().corr().values)[::-1]
+        best = int(np.nanargmax(np.abs(rs)))
+
+        # Does it hold without the region's dominant state? Every region here is carried by one.
+        top = g.state.value_counts().index[0]
+        g2 = g[g.state != top]
+        bc = FEATURES[list(FEATURES)[best]][0]
+        ok2 = g2[bc].notna() & g2[tcol].notna()
+        r2, p2 = (stats.spearmanr(g2.loc[ok2, bc].astype(float),
+                                  g2.loc[ok2, tcol].astype(float))
+                  if ok2.sum() >= 20 else (np.nan, np.nan))
+
+        rows.append(dict(
+            region=reg, sites=len(g), states=int(g.state.nunique()),
+            strongest=list(FEATURES)[best], rho=float(rs[best]),
+            n_sig=int((q <= .05).sum()),
+            median_abs=float(np.nanmedian(np.abs(rs))),
+            median_within_state=float(np.nanmedian(np.abs(within))),
+            components=int((ev.cumsum() / ev.sum() < .90).sum()) + 1,
+            biggest_state=str(top), without_state_rho=float(r2), without_state_p=float(p2),
+            without_state_n=int(len(g2)),
+            oos_r2=_region_oos(g)))
+    return pd.DataFrame(rows)
+
+
+def _region_oos(g: pd.DataFrame) -> float:
+    """Held-out R² inside one region, folds split by state. NaN if the region is too thin to split
+    honestly — better a blank cell than a number built on three states."""
+    if len(g) < 120 or g.state.nunique() < 5:
+        return float("nan")
+    X = g[[c for c, _ in FEATURES.values()]].astype(float).values
+    y = np.log1p(g.total_washes.astype(float).values)
+    pred = np.zeros(len(y))
+    for tr, te in GroupKFold(n_splits=min(5, g.state.nunique())).split(X, y, g.state.values):
+        m = HistGradientBoostingRegressor(max_depth=3, learning_rate=.05, max_iter=300,
+                                          random_state=0).fit(X[tr], y[tr])
+        pred[te] = m.predict(X[te])
+    return float(1 - np.sum((y - pred) ** 2) / np.sum((y - y.mean()) ** 2))
+
+
 def own_facts_correlations() -> pd.DataFrame:
     """The site's own trading facts against total washes — the contrast to the market table."""
     d = cohort()

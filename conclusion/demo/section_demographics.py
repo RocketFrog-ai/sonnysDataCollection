@@ -7,10 +7,13 @@ Vertical scroll, same as the other sections. The order is the order of the argum
   2  every measure's quintile curve on ONE axis — the exhibit that needs no statistics. It is a
      single static plot on purpose: any one measure shown alone through a dropdown looks like it
      might be doing something, and the finding is that they are all flat together.
-  3  every feature ranked, three ways (raw, within state, within operator)
-  4  give a model all 31 features at once and score it on markets it has never seen
-  5  so what *does* explain volume
-  6  the whole table
+  3  the full correlation grid — measures × wash types, then measures × region. The regional cut
+     is the honest robustness check: a flat national average can hide a real signal somewhere.
+  4  every feature ranked, three ways (raw, within state, within operator)
+  5  give a model all 31 features at once and score it on markets it has never seen
+  6  so what *does* explain volume
+  7  state by state
+  8  the whole table
 """
 from __future__ import annotations
 
@@ -64,8 +67,60 @@ def _curves() -> pd.DataFrame:
     return dd.quintile_curves()
 
 
+@st.cache_data(show_spinner=False)
+def _target_grid() -> pd.DataFrame:
+    return dd.target_grid()
+
+
+@st.cache_data(show_spinner=False)
+def _region_grid() -> pd.DataFrame:
+    return dd.region_grid("Retail washes")
+
+
+@st.cache_data(show_spinner="Scoring each region on its own held-out states…")
+def _region_verdict() -> pd.DataFrame:
+    return dd.region_verdict("Retail washes")
+
+
+@st.cache_data(show_spinner="Working out what noise alone gives at each sample size…")
+def _noise_floor() -> pd.DataFrame:
+    return dd.region_noise_floor("Retail washes")
+
+
 def _k(v: float) -> str:
     return f"{v/1000:,.0f}k"
+
+
+# A correlation is signed and zero is the meaningful midpoint, so this is a diverging ramp: two
+# hues meeting at a neutral grey, never a rainbow. Symmetric range so +0.20 and −0.20 read equally
+# strong, and capped at ±0.40 rather than the data max — an auto-scaled ramp would paint a grid
+# whose largest cell is 0.16 in full saturation and make nothing look like something.
+DIVERGING = [[0.0, "#b04a1e"], [0.25, "#e0a487"], [0.5, "#9c9c96"],
+             [0.75, "#7fa9e0"], [1.0, "#1a5fb4"]]
+HEAT_LIMIT = 0.40
+
+
+def _heatmap(grid: pd.DataFrame, cols: list[str], title: str, height: int = 720,
+             col_note: dict[str, str] | None = None) -> None:
+    """One measures × columns correlation grid, rows already ordered by the caller."""
+    z = grid[cols].to_numpy()
+    xlab = [c if not col_note else f"{c}<br><span style='font-size:10px;opacity:.65'>"
+            f"{col_note[c]}</span>" for c in cols]
+    fig = go.Figure(go.Heatmap(
+        z=z, x=xlab, y=list(grid.index), colorscale=DIVERGING,
+        zmin=-HEAT_LIMIT, zmax=HEAT_LIMIT, xgap=2, ygap=2,
+        colorbar=dict(title=dict(text="rank<br>correlation", font=dict(size=10)),
+                      thickness=11, len=.5, tickvals=[-.4, -.2, 0, .2, .4],
+                      ticktext=["−0.40", "−0.20", "0", "+0.20", "+0.40"],
+                      tickfont=dict(size=9)),
+        customdata=np.stack([np.tile(np.array(grid.family)[:, None], (1, len(cols)))], axis=-1),
+        hovertemplate="<b>%{y}</b><br>%{x}: <b>%{z:+.3f}</b><br>"
+                      "<span style='opacity:.7'>%{customdata[0]}</span><extra></extra>"))
+    st.plotly_chart(style(fig, height=height, title=dict(text=title, font=dict(size=13)),
+                          xaxis=dict(side="top", showgrid=False, tickfont=dict(size=11)),
+                          yaxis=dict(autorange="reversed", showgrid=False,
+                                     tickfont=dict(size=10)),
+                          margin=dict(l=250, r=25, t=90, b=20)), width="stretch")
 
 
 def render() -> None:
@@ -240,7 +295,7 @@ def render() -> None:
         <b>Put it against the gap we are trying to explain.</b> Our busiest sites do
             <b>{h['spread']:.1f}×</b> what our quietest do. A measure that moves the median by
             {qc.attrs['median_spread']:.2f}× cannot account for a {h['spread']:.1f}× gap — not
-            individually, and (section 4) not collectively either.
+            individually, and (section 5) not collectively either.
         <b>Why lines and not a dropdown.</b> Any one of these measures shown on its own looks like
             it might be doing something. The finding is that they are <i>all</i> flat, and that
             only shows up when you put them on one axis.
@@ -248,7 +303,167 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("3 · Every market measure, ranked")
+    st.header("3 · The whole correlation grid")
+    st.markdown("Every measure against every wash type, in one grid. Blue is a positive "
+                "relationship, orange negative, grey nothing. **A grid with real structure in it "
+                "would have strong colour somewhere.**")
+
+    tg = _target_grid()
+    _heatmap(tg, list(dd.TARGETS), "Rank correlation with wash volume, all 1,263 sites",
+             height=740)
+
+    callout("Two things worth seeing here", f"""
+        <b>The grid is grey.</b> The strongest of all {tg.attrs['cells']} cells is
+            <b>{tg.attrs['max_abs']:.2f}</b>, and <b>{tg.attrs['under_10']:.0%}</b> of them sit
+            under 0.10. Nothing in the neighbourhood is strongly attached to wash volume.
+        <b>But the columns are not the same.</b> Compare the middle and right columns: the typical
+            measure correlates <b>{tg.attrs['retail_median']:.2f}</b> with retail washes and only
+            <b>{tg.attrs['member_median']:.2f}</b> with membership washes — nearly three times
+            weaker. That direction makes sense: a retail wash is a stranger driving past who
+            decides to pull in, so the neighbourhood gets a say. A membership wash is a
+            subscription that was already sold, and the neighbourhood does not.
+        <b>Income is the clearest case.</b> Households in the $150–250k bands correlate
+            <b>+0.15</b> with retail washes and <b>−0.02</b> with membership washes — the sign
+            actually flips. Only {tg.attrs['agree']:.0%} of the 31 measures even agree on direction
+            between the two.
+        <b>So what.</b> If the market matters anywhere, it matters to the drive-up half of the
+            business — which is the half that is shrinking (see ⓪ General). It has almost nothing
+            to say about the subscription half, which is where the volume now is.
+    """, accent=S1)
+
+    st.markdown("#### Does the same grid hold in every region?")
+    st.markdown("The flat result above is a national average, and an average can hide a real "
+                "signal in one part of the country. Same 31 measures, same **retail washes** — the "
+                "column where the market had most to say — split by census region.")
+
+    rg = _region_grid()
+    nf = _noise_floor().set_index("region")
+    # The column header carries the noise floor, because the raw grid flatters the small regions:
+    # at n=95 the typical |rho| from pure chance is 0.07, against 0.02 at n=823. Without it a
+    # reader compares four columns that were never on the same footing.
+    _heatmap(rg, dd.REGION_ORDER,
+             "Rank correlation with retail washes, by region", height=740,
+             col_note={r: f"n={rg.attrs['sites'][r]} · chance alone gives "
+                          f"±{nf.loc[r, 'noise_floor']:.2f}" for r in dd.REGION_ORDER})
+
+    st.markdown("##### Correcting for the fact that the regions are wildly unequal")
+    st.markdown("823 sites against 95. A correlation drifts further from zero the fewer sites you "
+                "have, so the small regions get a head start. Three ways of taking it away.")
+
+    fn = go.Figure()
+    nfr = _noise_floor()
+    fn.add_bar(x=nfr.region, y=nfr.observed, name="What the grid shows",
+               marker=dict(color=S1, line=dict(width=2, color=SURFACE)),
+               customdata=np.stack([nfr.n], axis=-1),
+               hovertemplate="<b>%{x}</b><br>typical |correlation| = <b>%{y:.3f}</b>"
+                             "<br><span style='opacity:.7'>%{customdata[0]:.0f} sites</span>"
+                             "<extra></extra>")
+    fn.add_bar(x=nfr.region, y=nfr.noise_floor, name="What pure chance gives at that n",
+               marker=dict(color=MUTED, line=dict(width=2, color=SURFACE)),
+               hovertemplate="<b>%{x}</b><br>noise floor = <b>%{y:.3f}</b><extra></extra>")
+    fn.add_bar(x=nfr.region, y=nfr.balanced,
+               name=f"Every region cut to {nfr.attrs['balanced_n']} sites",
+               marker=dict(color=S3, line=dict(width=2, color=SURFACE)),
+               error_y=dict(type="data", symmetric=False,
+                            array=(nfr.balanced_hi - nfr.balanced).fillna(0),
+                            arrayminus=(nfr.balanced - nfr.balanced_lo).fillna(0),
+                            color=MUTED, thickness=1.5, width=5),
+               hovertemplate="<b>%{x}</b><br>at equal sample size = <b>%{y:.3f}</b>"
+                             "<extra></extra>")
+    st.plotly_chart(style(fn, height=380, barmode="group",
+                          yaxis_title="Typical |rank correlation| across the 31 measures",
+                          xaxis=dict(type="category", title=""), margin=dict(t=86),
+                          legend=dict(orientation="h", y=1.07, x=0)), width="stretch")
+
+    nt = nfr[["region", "n", "observed", "noise_floor", "excess", "balanced", "p_perm"]].copy()
+    nt.columns = ["Region", "Sites", "Typical |rho| observed", "Noise floor at that n",
+                  "Excess over noise", f"Balanced to {nfr.attrs['balanced_n']} sites",
+                  "Permutation p"]
+    html_table(nt.set_index("Region"), index_label="Region",
+               fmt={"Typical |rho| observed": "{:.3f}", "Noise floor at that n": "{:.3f}",
+                    "Excess over noise": "{:.3f}",
+                    f"Balanced to {nfr.attrs['balanced_n']} sites": "{:.3f}",
+                    "Permutation p": "{:.3f}"})
+
+    so_n = nfr[nfr.region == "South"].iloc[0]
+    ne_n = nfr[nfr.region == "Northeast"].iloc[0]
+    we_n = nfr[nfr.region == "West"].iloc[0]
+    callout("The sample-size objection, tested", f"""
+        <b>The objection is right that the floor moves.</b> Permuting the wash counts inside each
+            region — which destroys any real relationship but keeps the 31 measures as tangled as
+            they really are — gives a typical |rho| of <b>{ne_n.noise_floor:.2f}</b> at
+            n&nbsp;=&nbsp;{int(ne_n.n)} and only <b>{so_n.noise_floor:.2f}</b> at
+            n&nbsp;=&nbsp;{int(so_n.n)}. Small regions really do start
+            <b>{ne_n.noise_floor / so_n.noise_floor:.0f}×</b> further from zero for free.
+        <b>It does not explain the gap.</b> Subtract each region's own floor and the excess is
+            <b>{so_n.excess:.2f}</b> in the South against <b>{we_n.excess:.2f}</b> in the West and
+            <b>{ne_n.excess:.2f}</b> in the Northeast — still a 4–5× difference.
+        <b>Nor does equalising the samples.</b> Cut every region to
+            {nfr.attrs['balanced_n']} sites and re-measure {nfr.attrs['draws']} times: the South
+            comes out at <b>{so_n.balanced:.2f}</b> [{so_n.balanced_lo:.2f}–{so_n.balanced_hi:.2f}]
+            against the Northeast's <b>{ne_n.balanced:.2f}</b>. Same power, same ordering. (The
+            Northeast has no band because it <i>is</i> the reference size.)
+        <b>Note the South's green bar sits above its blue one.</b> That is not an error — it is the
+            whole effect in one place. Shrinking a region from {int(so_n.n)} sites to
+            {nfr.attrs['balanced_n']} <i>raises</i> its measured correlation, from
+            {so_n.observed:.2f} to {so_n.balanced:.2f}, purely because small samples wander further
+            from zero. It is the reason the four columns of the grid above could never be compared
+            as they stood.
+        <b>All four regions beat their own noise, including the South.</b> Permutation
+            p&nbsp;=&nbsp;{so_n.p_perm:.3f} / {we_n.p_perm:.3f} / {ne_n.p_perm:.3f}. This is an
+            omnibus test on the whole grid at once, so it is not vulnerable to the "31 measures are
+            really 7–9 things" problem that counting individually-significant measures has.
+            There is something everywhere; it is just far smaller in the South.
+    """, accent=S3)
+
+    rv = _region_verdict()
+    vt = rv[["region", "sites", "states", "strongest", "rho", "n_sig", "median_abs",
+             "median_within_state", "components", "oos_r2"]].copy()
+    vt.columns = ["Region", "Sites", "States", "Strongest measure", "Its rho",
+                  "Measures clearing FDR", "Typical |rho|", "Typical |rho| within state",
+                  "Independent factors", "Held-out R² (total washes)"]
+    html_table(vt.set_index("Region"), index_label="Region",
+               fmt={"Its rho": "{:+.2f}", "Typical |rho|": "{:.2f}",
+                    "Typical |rho| within state": "{:.2f}",
+                    "Held-out R² (total washes)": "{:+.3f}"})
+
+    ne = rv[rv.region == "Northeast"].iloc[0]
+    we = rv[rv.region == "West"].iloc[0]
+    so = rv[rv.region == "South"].iloc[0]
+    callout("This one qualifies the headline — read it", f"""
+        <b>Outside the South, the market does say something about retail washes.</b> In the
+            <b>Northeast</b> the strongest measure reaches <b>{ne.rho:+.2f}</b> with
+            {int(ne.n_sig)} of 31 clearing significance; in the <b>West</b>,
+            <b>{we.rho:+.2f}</b> with {int(we.n_sig)}. Both survive holding the state fixed
+            (typical |rho| {ne.median_within_state:.2f} and {we.median_within_state:.2f}), so it is
+            not simply "one good state". That is a real, if weak, relationship and the section
+            would be wrong to bury it.
+        <b>The South — our biggest and best-measured region — has none of it.</b>
+            {int(so.sites)} sites across {int(so.states)} states, and the strongest measure is
+            <b>{so.rho:+.2f}</b> with a typical |rho| of {so.median_abs:.2f}. The regions where
+            something shows up are the three where we hold the fewest sites.
+        <b>It is one factor, not fifteen.</b> Read the "measures clearing FDR" column with care:
+            the 31 measures are only about <b>{int(ne.components)}–{int(we.components)} independent
+            things</b> (they share ~40% of their variance in a single component). What the Northeast
+            and West are really showing is one thing — <i>how big the local market is</i> — counted
+            many times over. The permutation test above is the honest version of that column: it
+            asks whether the whole grid beats chance, once.
+        <b>And it leans on one state each.</b> Drop {ne.biggest_state} from the Northeast and the
+            strongest correlation falls to {ne.without_state_rho:+.2f}
+            (p&nbsp;=&nbsp;{ne.without_state_p:.2f}, n&nbsp;=&nbsp;{int(ne.without_state_n)}); drop
+            {we.biggest_state} from the West and it falls to {we.without_state_rho:+.2f}
+            (p&nbsp;=&nbsp;{we.without_state_p:.2f}).
+        <b>None of it forecasts.</b> The last column is the test that matters: a model trained
+            inside a single region, scored on states it has not seen, is <b>negative in every
+            region</b> ({so.oos_r2:+.2f} South, {we.oos_r2:+.2f} West,
+            {rv[rv.region == 'Midwest'].oos_r2.iloc[0]:+.2f} Midwest; the Northeast has too few
+            states to split honestly). Correlation in a sample of 95 and the ability to rank two
+            candidate sites are different things, and only the second one buys anything.
+    """, accent=WARNING)
+
+    # =============================================================================================
+    st.divider()
+    st.header("4 · Every market measure, ranked")
     st.markdown("All 31 measures against one wash type, scored three ways. The third column is the "
                 "one that matters for site selection.")
 
@@ -308,7 +523,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("4 · Give a model everything at once")
+    st.header("5 · Give a model everything at once")
     st.markdown("The measures are weak one at a time — but a scoring model uses all of them "
                 "together. So: hand a model **all 31 measures** and ask it to forecast a site it "
                 "has never seen, in a **state it has never seen**. Two different model types, so "
@@ -363,7 +578,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("5 · So what does explain volume?")
+    st.header("6 · So what does explain volume?")
     st.markdown("Same question, same honest scoring — each candidate explanation is asked to "
                 "predict a site it has not seen.")
 
@@ -419,7 +634,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("6 · State by state")
+    st.header("7 · State by state")
 
     stt = _states()
     ranked = stt[stt.enough_sites].copy()
@@ -466,7 +681,7 @@ def render() -> None:
 
     # =============================================================================================
     st.divider()
-    st.header("7 · All the data")
+    st.header("8 · All the data")
     st.markdown("Every site in the cohort, sortable, with the market measures behind it.")
 
     d = _cohort()

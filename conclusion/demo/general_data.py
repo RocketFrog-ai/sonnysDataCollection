@@ -133,6 +133,58 @@ def mix_by_year(min_months: int = 6) -> pd.DataFrame:
     return out
 
 
+def same_site_basis(min_months: int = 6) -> dict:
+    """What earns a site a place in the balanced "same sites throughout" line — and how fragile it is.
+
+    The chart labels that line with a bare site count, which invites exactly one question: *why that
+    number?* It is not a threshold anyone chose. A site qualifies for a calendar year if it has
+    `min_months` of trading in it; the balanced line keeps only sites that qualify in **every** year
+    of the panel. Everything below is derived so the caption cannot drift from the chart.
+
+    Two things the reader should know and cannot see:
+
+      • the balanced set is a **survivor cohort** — every member's first qualifying year is the
+        first year of the panel, so it is the pre-window estate that was still trading at the end,
+        and it excludes by construction every site opened since;
+      • the count is **very** sensitive to how long the window is, and the conclusion is not. The
+        sensitivity table says so in numbers rather than asking to be trusted.
+    """
+    g = _site_years(min_months)
+    years = sorted(int(y) for y in g.year.unique())
+    per_site = g.groupby("site_key").year.nunique()
+
+    def window(yrs: list[int]) -> dict:
+        s = g[g.year.isin(yrs)]
+        k = s.groupby("site_key").year.nunique()
+        ids = k[k == len(yrs)].index
+        sub = s[s.site_key.isin(ids)]
+        r = sub.groupby("year").agg(mem=("mem", "sum"), ret=("ret", "sum"))
+        share = r.mem / (r.mem + r.ret)
+        return dict(label=f"{yrs[0]}–{yrs[-1]}", years=len(yrs), sites=int(len(ids)),
+                    first=float(share.iloc[0]), last=float(share.iloc[-1]),
+                    move_pp=float((share.iloc[-1] - share.iloc[0]) * 100))
+
+    full = window(years)
+    sens = [full] + [window(years[i:]) for i in range(1, len(years) - 2)]
+
+    balanced = per_site[per_site == len(years)].index
+    first_year = g.groupby("site_key").year.min()
+    pooled = mix_by_year(min_months)
+    return dict(
+        n=full["sites"], min_months=min_months, years=years, n_years=len(years),
+        eligible=int(len(per_site)),
+        share_of_panel=full["sites"] / len(per_site),
+        by_years_held={int(k): int(v) for k, v in per_site.value_counts().sort_index().items()},
+        all_start_first_year=bool((first_year[balanced] == years[0]).all()),
+        cohort_year=years[0],
+        opened_that_year=int((first_year == years[0]).sum()),
+        survival=full["sites"] / max(int((first_year == years[0]).sum()), 1),
+        sensitivity=pd.DataFrame(sens),
+        pooled_move_pp=float((pooled.share.iloc[-1] - pooled.share.iloc[0]) * 100),
+        same_move_pp=full["move_pp"],
+    )
+
+
 def mix_by_state_year(min_sites: int = 4, min_months: int = 6) -> pd.DataFrame:
     """Membership share per state per year — the grid the heat map is drawn on.
 

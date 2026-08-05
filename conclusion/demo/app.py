@@ -38,6 +38,7 @@ st.set_page_config(page_title="Proforma Hypothesis Testing (final)", page_icon="
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ui  # noqa: E402
 import section_campaign  # noqa: E402
+import section_cluster  # noqa: E402
 import section_demographics  # noqa: E402
 import section_general  # noqa: E402
 import section_proforma  # noqa: E402
@@ -57,6 +58,8 @@ SECTIONS = [
      "a counterfactual?", section_campaign.render),
     ("④ Demographics", "Does the market a site sits in explain how much it washes?",
      section_demographics.render),
+    ("⑥ Operator clusters", "One operator, several washes, one town. How close, in what order, "
+     "and what each one does.", section_cluster.render),
 ]
 
 # ⑤ Competition is HIDDEN, not deleted. `section_competition.py` and `competition_data.py` are

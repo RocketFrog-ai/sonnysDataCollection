@@ -78,6 +78,11 @@ def _traffic_var() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def _traffic_robust() -> pd.DataFrame:
+    return pf.traffic_elasticity_robustness(_load())
+
+
+@st.cache_data(show_spinner=False)
 def _traffic_capture() -> pd.DataFrame:
     return pf.traffic_capture(_load())
 
@@ -561,6 +566,7 @@ def render() -> None:
     # what that does to the forecast → and the speed box, which is the other half of the question.
     tf, tel, tvar, tcap = _traffic_frame(), _traffic_elast(), _traffic_var(), _traffic_capture()
     tov, tsp, tspt = _traffic_over(), _traffic_speed(), _traffic_speed_test()
+    tres = _traffic_robust()
     act, pfe = tel.attrs["actual"], tel.attrs["proforma"]
 
     st.markdown("#### Traffic: the number the sheet leans on hardest")
@@ -632,7 +638,25 @@ def render() -> None:
         <b>{act['double']:+.0%}</b> more washes — and the honest interval runs from
         {act['double_lo']:+.0%} to {act['double_hi']:+.0%}. The sheet pays for
         <b>{pfe['double']:+.0%}</b>. Pay a premium for a busier road accordingly.
+      <b>0.25 is the cautious end of the range, not a cherry-pick.</b> Five other ways of measuring
+        the same slope land between <b>{tres.attrs['lo']:.2f}</b> and
+        <b>{tres.attrs['hi']:.2f}</b> — doubling traffic buys {tres.attrs['double_lo']:+.0%} to
+        {tres.attrs['double_hi']:+.0%} — with the most outlier-sensitive of them reaching
+        {tres.attrs['widest']:.2f}. Every one is far below the sheet's {pfe['b']:.2f}, which is all
+        the conclusion rests on. The workings are in the expander below.
     """, S3)
+
+    with st.expander("Every way we measured that slope"):
+        rt = tres[["method", "b", "double", "note"]].copy()
+        rt.columns = ["How it was measured", "Slope", "Doubling traffic buys", "What it is"]
+        html_table(rt.set_index("How it was measured"), index_label="How it was measured",
+                   fmt={"Slope": "{:.3f}", "Doubling traffic buys": "{:+.0%}"})
+        st.caption("The drawn line uses least squares on logs because it is the standard elasticity "
+                   "estimator and because the confidence interval and the tests against 0 and 1 are "
+                   "computed from it. It also happens to give the lowest number in the set, so it "
+                   "is stated here rather than left for a reader to find. What none of these "
+                   "methods can fix is the fit itself: R² is "
+                   f"{act['r2']:.3f} — the trend is close to flat however you draw it.")
 
     st.markdown("##### How many of those cars actually convert?")
     st.markdown("Same question, stated as the sheet states it: of the cars going past, what share "

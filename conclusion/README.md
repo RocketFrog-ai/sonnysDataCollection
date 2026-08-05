@@ -11,11 +11,13 @@ conclusion/
   demo/section_campaign.py ③ Streamlit rendering
   demo/section_demographics.py ④ Streamlit rendering
   demo/section_competition.py  ⑤ Streamlit rendering
+  demo/section_cluster.py  ⑥ Streamlit rendering
   demo/tunnel_data.py      ① the maths — Streamlit-free
   demo/proforma_data.py    ② the maths — Streamlit-free
   demo/campaign_data.py    ③ the maths — Streamlit-free
   demo/demographics_data.py    ④ the maths — Streamlit-free
   demo/competition_data.py     ⑤ the maths — Streamlit-free
+  demo/cluster_data.py     ⑥ the maths — Streamlit-free
   notebook/conclusions.ipynb    sections ① ②, static plots + written insights
   notebook/book_v4_revolt.ipynb section ③'s working notebook — the source `campaign_data.py`
                                 was ported from
@@ -24,7 +26,7 @@ conclusion/
 
 The app and the notebook import the **same** analysis modules, so they cannot report different
 numbers. Adding a section is: one `*_data.py`, one `section_*.py`, one line in `app.py`'s `SECTIONS`,
-and one block appended to the notebook. (The notebook currently carries ① and ②; ③, ④ and ⑤ are
+and one block appended to the notebook. (The notebook currently carries ① and ②; ③, ④, ⑤ and ⑥ are
 app-only so far.)
 
 ## Run it
@@ -107,7 +109,7 @@ The old sheet is, arithmetically, **one multiplication**: traffic count × a nea
 | Share of the proforma's own projection explained by traffic alone | **90%** (98% unique to traffic once the scores are in); the nine scored boxes + the whole demographic block explain **0.9%** |
 | Share of **actual** volume explained by traffic alone | **2.2%**; rho **+0.22, p = 0.07** — not significant |
 | Elasticity of washes to traffic — proforma | **0.95** → doubling traffic buys **+93%** |
-| Elasticity — **actual** | **0.25** [95% CI −0.14, +0.65] → doubling buys **+19%**. Slope = 1 rejected (**p = 0.0005**); slope = 0 **not** rejected (p = 0.23) |
+| Elasticity — **actual** | **0.25** [95% CI −0.14, +0.65] → doubling buys **+19%**. Slope = 1 rejected (**p = 0.0005**); slope = 0 **not** rejected (p = 0.23). Robust variants (Theil–Sen 0.34, outliers dropped 0.37, model-free quartile ratio 0.36) put the range at **0.25–0.37**; the drawn line is the cautious end and the app says so |
 | Elasticity — Model 5 / cold-start | 0.33 / 0.15 — both far closer to reality than the sheet |
 | Capture rate assumed vs achieved | assumed **1.17%** median, p90÷p10 = **1.4×**; achieved **0.79%** median, p90÷p10 = **8.2×**. Only **19 of 68** sites beat their own assumption; median site hit **73%** of it |
 | Over-projection by traffic quartile | **0.93× → 1.42× → 1.61× → 2.03×** (rho +0.37, p = 0.0022). On a quiet road the sheet is right; on a busy one it projects double |
@@ -197,6 +199,50 @@ gate means every annual total is a real sum — no site looks small for having o
 | Median of the 10 nearest neighbours | **5.2%** — small, but positive, which demographics are not |
 | Across the 30 rankable states, population vs volume | **+0.00**; membership share vs volume **+0.41** (p = 0.026) |
 
+### The correlation grid, and the one place it is not flat
+
+31 measures × 3 wash types = 93 cells. Strongest is **0.157**; **84%** sit under 0.10. But the
+columns differ in a way that makes sense: the typical measure correlates **0.07** with retail washes
+and only **0.02** with membership washes. The $150–250k income bands run **+0.15** with retail and
+**−0.02** with membership — the sign flips. Only 74% of measures agree on direction between the two.
+**If the market matters at all, it matters to the drive-up half — the half that is shrinking.**
+
+Split by census region (retail washes), the national flat line turns out to hide something:
+
+| Region | Sites | Strongest | Clearing FDR | Typical \|rho\| | …within state | Independent factors | Held-out R² |
+|---|---|---|---|---|---|---|---|
+| South | 823 | grocery +0.12 | 7 of 31 | 0.05 | 0.05 | 9 | **−0.163** |
+| West | 190 | grocery +0.34 | 16 of 31 | 0.17 | 0.17 | 9 | **−0.188** |
+| Midwest | 144 | 1-vehicle HH +0.25 | 8 of 31 | 0.18 | 0.09 | 8 | **−0.363** |
+| Northeast | 95 | $100–125k HH +0.36 | 15 of 31 | 0.22 | 0.24 | 7 | too few states |
+
+**The regions are wildly unequal (823 vs 95), so the raw grid is not comparable.** Corrected three
+ways — permuting wash counts inside each region (destroys the relationship, keeps the 31 measures as
+collinear as they really are), subtracting the resulting floor, and cutting every region to 95 sites:
+
+| Region | Sites | Typical \|rho\| | Noise floor at that n | Excess | Balanced to n=95 | Permutation p |
+|---|---|---|---|---|---|---|
+| South | 820 | 0.055 | 0.025 | **0.030** | 0.083 | 0.030 |
+| West | 186 | 0.168 | 0.052 | **0.116** | 0.172 | 0.003 |
+| Midwest | 142 | 0.170 | 0.056 | **0.114** | 0.165 | 0.000 |
+| Northeast | 95 | 0.220 | 0.070 | **0.150** | 0.220 | 0.000 |
+
+Small regions really do start **3× further from zero for free** — but it does not explain the gap.
+The excess is still 4–5× larger outside the South, and equalising the samples preserves the ordering
+(the South's measured correlation *rises* from 0.055 to 0.083 when cut to 95 sites, which is the
+noise inflation itself). The permutation p is an omnibus test on the whole grid, so it sidesteps the
+"31 measures are really 7–9 things" problem; all four regions beat their own noise.
+
+Four qualifications, all in the app:
+1. Outside the South the relationship is **real, survives holding the state fixed, and survives the
+   sample-size correction**. The section says so rather than burying it.
+2. The South — biggest sample, best measured — has **almost none of it** (excess 0.03). The regions
+   where something appears are the three where we hold the fewest sites.
+3. "15 of 31 cleared significance" overstates it: the 31 measures are only **7–9 independent
+   things** (~40% of their variance in one component). It is *market size*, counted many times.
+4. **None of it forecasts.** A model trained inside one region and scored on states it has not seen
+   is negative in every region.
+
 **The modelling read-through:** anchor a new-site forecast on **how comparable nearby sites actually
 trade** and on **who will run it**, not on a trade-area score. This is not a claim that markets are
 irrelevant to a car wash — it is a claim that these measures, at this resolution, cannot rank two
@@ -276,6 +322,51 @@ finding. A single case is not an attribution.
 
 **Section ⑤ shares no data with ②, ③ or ④** — it reads the same monthly panel as ⓪, which is the
 panel, not a section-specific extract.
+
+---
+
+## Section ⑥ — Operator clusters: one operator, several washes, one town
+
+**One input**, the monthly panel (`conclusion/data/historical_data_5yrs_monthly.csv`, byte-identical
+to `proforma/data/panel/main-data-v2-stitched.csv`). Nothing is joined in.
+
+Where §⓪ maps the estate nationally, this drops to street level: a **cluster** is a set of sites
+sharing a `client_id` that all sit within a slider distance of each other — complete-linkage on
+great-circle distance, so the slider caps the cluster's **diameter**, not just each site's nearest
+hop. Single linkage was tried and chains: the Rio Grande Valley joins into one 120 km "place"
+through a string of 15 km hops. Distances are straight-line, **not** drive time.
+
+| At 25 km, 3+ sites | |
+|---|---|
+| Clusters | **110**, across **62 operators** |
+| Sites inside one | **424** — 22% of placeable sites, **27% of all washing** |
+| Typical site's nearest sibling | **6.0 km (3.8 mi)** |
+| Typical cluster's build-out, first opening → last | **18 months** |
+| Tightest pair in the estate | **0.06 km** (Living Water, CO) |
+| Neighbours' washes when the operator opens another, vs its sites elsewhere | **−3.0pp** median over 100 openings; 62% negative |
+
+The per-cluster view is a zoomed tile map (opening order numbered inside each disc, pale = first),
+a full pairwise distance matrix, a sitewise table, one small-multiple panel per site of washes per
+calendar year on a shared scale, and the cluster's combined monthly total with every opening marked.
+
+**A coordinate defect this section had to work around, stated in its method tab rather than hidden.**
+**100 sites across 27 coordinate points carry a placeholder lat/lon** — one coordinate shared by
+several sites of the same operator whose street addresses all differ. BlueWave stamps 21
+Houston-area sites on a single point; Buckeye stamps 10 sites spread over six Ohio towns on another.
+Their wash data is real, their location is not, and all 100 (5.1% of washes) are dropped before
+clustering. Sites sharing a coordinate **and** an address are a different thing — a second tunnel or
+an operator handoff — and are kept at a true distance of 0; there are 95.
+
+Section 5's before/after is **descriptive, not identified** — openings inside one cluster are months
+apart so their windows overlap. Two guards are load-bearing anyway: an incumbent needs 12 months of
+trading (§⓪ puts a new wash at ~98% of eventual volume only by year 2), and both the neighbour and
+control sums are balanced across the two windows with the control held to the same settled test.
+Without them the control pool reads **+13%** growth that is only the operator's own new sites
+elsewhere ramping — which would be charged to the new neighbour as cannibalization. §⑤ is where
+entry is estimated properly.
+
+**Section ⑥ shares no data with ①–⑤** — it reads the same monthly panel as ⓪, which is the panel,
+not a section-specific extract.
 
 ---
 
