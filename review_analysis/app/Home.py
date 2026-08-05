@@ -28,7 +28,6 @@ if str(_ROOT) not in sys.path:
 import pandas as pd
 import streamlit as st
 
-from app.utils import ai as AI
 from app.utils import reviews_ui as RU
 from app.utils import theme as T
 from app.utils.data_loader import SITE_COL, get_kpis
@@ -105,11 +104,14 @@ df_all = load_scored_data()
 all_sites = sorted(df_all[SITE_COL].dropna().unique().tolist())
 
 T.page_heading("Reviews", "Big Dan's Car Wash")
-T.tab_strip([
-    ("All Sites", True, None),
+
+# Read the toggle before drawing the tabs (the widget itself lives in the
+# filter row below): demo mode is one page, so it hides the drill-down tabs.
+demo_view = T.demo_mode()
+T.tab_strip([("All Sites", True, None)] + ([] if demo_view else [
     ("Insights", False, INSIGHTS_PAGE),
     ("Site Breakdown", False, DETAIL_PAGE),
-])
+]))
 
 # ---------------------------------------------------------------------------
 # Filter row — location popover on the left, period pill on the right
@@ -119,7 +121,9 @@ chosen_sites = [s for s in chosen_sites if s in all_sites] or all_sites
 
 period_choice = st.session_state.get(SESSION_PERIOD, "Current month")
 
-left, spacer, right = st.columns([2.4, 6.4, 1.7])
+DEMO_TILES = ["rating", "reviews"]   # Average Rating, New Reviews
+
+left, spacer, demo_col, right = st.columns([2.4, 4.6, 1.7, 1.8])
 with left:
     with st.container(key="qfilter_loc"):
         with st.popover(f"Location ({len(chosen_sites)})"):
@@ -132,6 +136,12 @@ with left:
                 st.rerun()
             elif not picked:
                 st.caption("Nothing selected — showing all 25 locations.")
+with demo_col:
+    # The toggle only exists when the lock is off; otherwise demo view is the
+    # app, and there is nothing to switch.
+    if not T.demo_locked():
+        with st.container(key="qfilter_demo"):
+            demo_view = st.toggle("Demo view", value=demo_view, key="demo_view")
 with right:
     with st.container(key="qfilter_period"):
         with st.popover(f"🗓  {period_choice}"):
@@ -151,13 +161,6 @@ m_cur, m_prior = period_metrics(cur), period_metrics(prior)
 monthly = monthly_series(df, months=8)
 kpis = get_kpis(df)
 
-st.markdown(
-    f'<div class="q-note" style="margin:-6px 0 14px;">Showing <b>{window_label}</b> · '
-    f'{len(chosen_sites)} of {len(all_sites)} locations · {m_cur["n_reviews"]:,} reviews in period '
-    f'· {len(df):,} reviews in current selection</div>',
-    unsafe_allow_html=True,
-)
-
 if m_cur["n_reviews"] == 0:
     st.warning("No reviews in the selected period for these locations.")
     st.stop()
@@ -167,18 +170,30 @@ def delta(cur_val, prior_val, higher_is_better: bool = True) -> str:
     return T.delta_html(T.pct_change(cur_val, prior_val), caption, higher_is_better)
 
 
+def point_delta(cur_val, prior_val, higher_is_better: bool = True) -> str:
+    """Delta for a value that is already a percentage.
+
+    A response rate moving 69.2% -> 53.9% is a 15.3 *point* fall; rendering it
+    as "-22%" (the percent change of a percentage) reads as a different, and
+    smaller-sounding, number than it is.
+    """
+    if cur_val is None or prior_val is None:
+        return T.delta_html(None, caption, higher_is_better)
+    return T.delta_html_points(cur_val - prior_val, caption, higher_is_better)
+
+
 # ---------------------------------------------------------------------------
 # Tile definitions — 3 x 3, in reading order
 # ---------------------------------------------------------------------------
 days_in_window = max(1, (cur["reviewDate"].max() - cur["reviewDate"].min()).days + 1)
 rating_mix = [(m_cur["rating_counts"][r], RATING_MINI_COLORS[r]) for r in (5, 4, 3, 2, 1)]
 month_counts = monthly["n_reviews"].tolist() if not monthly.empty else [0]
-month_neg = [
-    (p or 0) / 100 * n for p, n in zip(monthly.get("pct_negative", []), monthly.get("n_reviews", []))
-] if not monthly.empty else [0]
-month_pos = [
-    (p or 0) / 100 * n for p, n in zip(monthly.get("pct_positive", []), monthly.get("n_reviews", []))
-] if not monthly.empty else [0]
+month_labels = monthly["label"].tolist() if not monthly.empty else [""]
+# Counts straight from monthly_series. Deriving them as pct * n_reviews mixed
+# an n_scored-denominated share with a total, so the sparkline (and its hover
+# tooltip) disagreed with the count printed on the same tile.
+month_neg = monthly["negative"].tolist() if not monthly.empty else [0]
+month_pos = monthly["positive"].tolist() if not monthly.empty else [0]
 
 # Best / worst location, over sites with enough scored reviews to mean
 # anything. Without the floor a site with 13 reviews and no complaints wins
@@ -243,7 +258,7 @@ TILES = [
         key="sentiment",
         title="Review Sentiment",
         value=(f"{m_cur['net_sentiment']:.2f}%" if m_cur["net_sentiment"] is not None else "--"),
-        delta=delta(m_cur["net_sentiment"], m_prior["net_sentiment"]),
+        delta=point_delta(m_cur["net_sentiment"], m_prior["net_sentiment"]),
         subs=[(f"{m_cur['positive']:,} / {m_cur['negative']:,}", "Positive / negative"),
               (f"{m_cur['avg_score']:+.2f}" if m_cur["avg_score"] is not None else "--",
                "Avg VADER score")],
@@ -275,7 +290,7 @@ TILES = [
         key="response",
         title="Owner Response Rate",
         value=f"{m_cur['pct_response']:.2f}%",
-        delta=delta(m_cur["pct_response"], m_prior["pct_response"]),
+        delta=point_delta(m_cur["pct_response"], m_prior["pct_response"]),
         subs=[(resp_str, "Median time to reply"),
               (f"{m_cur['n_reviews'] - round(m_cur['n_reviews'] * m_cur['pct_response'] / 100):,}",
                "Awaiting a reply")],
@@ -357,17 +372,9 @@ DESTINATIONS = {
               f"Read {worst_site}'s negative reviews" if worst_site else "Open the site breakdown"),
 }
 
-def tile_ai(tile_key: str, target: dict):
-    """AI-insights popover for one tile, over the reviews that tile counted."""
-    lens = target.get("review_filter") or "All"
-    scope = RU.apply_filter(cur, lens)
-    site = target.get("open_site")
-    if site and tile_key in {"best", "worst"}:
-        scope = scope[scope[SITE_COL] == site]
-    label = (f"{window_label} · {site or f'{len(chosen_sites)} location(s)'}"
-             + (f" · {lens.lower()} reviews only" if lens != "All" else ""))
-    AI.insight_button(f"tile_{tile_key}", scope, label, tile_key, button_label="✨ AI")
-
+if demo_view:
+    order = {k: i for i, k in enumerate(DEMO_TILES)}
+    TILES = sorted([t for t in TILES if t["key"] in order], key=lambda t: order[t["key"]])
 
 for row_start in range(0, len(TILES), 3):
     cols = st.columns(3, gap="medium")
@@ -380,6 +387,5 @@ for row_start in range(0, len(TILES), 3):
                                 tile["chart"], tile["subs"]),
                 on_click=(lambda t=target, k=tile["key"]: drill_to(focus=k, **t)),
                 help_text=tip,
-                footer=(lambda k=tile["key"], t=target: tile_ai(k, t)),
             )
     st.write("")

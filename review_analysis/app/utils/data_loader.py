@@ -76,12 +76,18 @@ KEY FINDINGS THAT SHAPE THIS MODULE (see dataset_schema.md for evidence):
    an absolute date.
 
 9. rating is a clean int 1-5, zero nulls. reviewText is null for 28.0% of
-   rows (1,740) -- these are legitimate rating-only reviews (Google allows
+   raw rows -- these are legitimate rating-only reviews (Google allows
    posting a star rating with no text), not a data error; sentiment/text
    logic must treat them as "no text", not crash or coerce to empty string
-   silently. ownerResponseText/ownerResponseDate are null for 11.2% (697)
-   -- most reviews got a reply (88.8% response rate), useful for a future
-   "reply rate" metric per Agent 6's deferred-metrics note.
+   silently. Post-load (after the three dedup passes, 6,209 -> 6,087 rows)
+   the figures are: reviewText null 1,700 (27.9%), ownerResponseText null
+   604 -- a 90.5% owner reply rate.
+
+10. Time-series caveat beyond note 8: the own_crawler_crawler rows carry the
+   *scrape-batch* date rather than the review date (123 rows on 2026-06-22
+   alone), and 12 of 25 sites have no rows at all before 2026-04. Monthly
+   volume therefore tracks scrape coverage as much as review activity. See
+   docs/dataset_schema.md section 9.
 """
 
 from __future__ import annotations
@@ -332,10 +338,30 @@ def _dedupe_cross_scrape(df: pd.DataFrame) -> pd.DataFrame:
     keyed = df.loc[has_text, _CROSS_SCRAPE_KEY].assign(_text=text[has_text])
     drop.loc[has_text] = keyed.duplicated(keep="first")
 
-    rating_only = df.loc[~has_text, [*_CROSS_SCRAPE_KEY, DATE_COL]].sort_values(DATE_COL)
+    # Rating-only copies: same reviewer/site/rating within a week. Which copy
+    # survives matters -- the own_crawler_api row is date-only (so it parses to
+    # midnight and always sorts first) but carries no reviewId, no placeId and
+    # no ownerResponseText, while the v1_v2_scrape row of the same day carries
+    # all three. Keeping the earliest silently discarded 29 owner replies and
+    # moved the all-time reply rate from 90.55% to 90.08%. Rank each group by
+    # (has a reviewId, has an owner reply) first and keep that row, using the
+    # date only to decide which rows are the same review.
+    rating_only = df.loc[~has_text, [*_CROSS_SCRAPE_KEY, DATE_COL]].copy()
+    rating_only["_richer"] = (df.loc[~has_text, REVIEW_ID_COL].notna().astype(int)
+                              + df.loc[~has_text, OWNER_RESPONSE_TEXT_COL].notna().astype(int))
+    rating_only = rating_only.sort_values(DATE_COL, kind="mergesort")
+
     prev_date = rating_only.groupby(_CROSS_SCRAPE_KEY, observed=True)[DATE_COL].shift(1)
-    within_window = (rating_only[DATE_COL] - prev_date).dt.days.le(_RATING_ONLY_WINDOW_DAYS)
-    drop.loc[within_window.fillna(False)[lambda s: s].index] = True
+    same_review = (rating_only[DATE_COL] - prev_date).dt.days.le(_RATING_ONLY_WINDOW_DAYS)
+    # Number each run of same-review rows, counting *within* the key: a global
+    # cumsum would be incremented by every other reviewer's rows in between, so
+    # a pair's two rows landed in different runs and neither was deduped.
+    starts = (~same_review.fillna(False)).astype(int)
+    run_id = starts.groupby([rating_only[c] for c in _CROSS_SCRAPE_KEY], observed=True).cumsum()
+    keep = (rating_only.assign(_run=run_id)
+            .sort_values("_richer", ascending=False, kind="mergesort")
+            .drop_duplicates(subset=[*_CROSS_SCRAPE_KEY, "_run"], keep="first").index)
+    drop.loc[rating_only.index.difference(keep)] = True
 
     return df.loc[~drop]
 
@@ -472,8 +498,13 @@ def get_kpis(df: pd.DataFrame) -> dict:
     if not rated.empty and float(rated["g_count"].sum()) > 0:
         weighted = float((rated["g_rating"] * rated["g_count"]).sum() / rated["g_count"].sum())
         google_total = int(rated["g_count"].sum())
+        # Coverage must compare like with like: `google_total` only covers the
+        # sites that publish a count, so the numerator has to exclude rows from
+        # the sites that do not (it read 41.5% against a true 39.1%).
+        covered = df[SITE_COL].isin(rated[SITE_COL])
+        scraped_in_scope = int(covered.sum())
     else:
-        weighted, google_total = None, 0
+        weighted, google_total, scraped_in_scope = None, 0, 0
 
     return {
         "total_reviews": n,
@@ -481,7 +512,7 @@ def get_kpis(df: pd.DataFrame) -> dict:
         "avg_rating_weighted": weighted,
         "avg_rating_display": weighted if weighted is not None else sample_avg,
         "google_review_total": google_total,
-        "coverage_pct": (float(n / google_total * 100) if google_total else None),
+        "coverage_pct": (float(scraped_in_scope / google_total * 100) if google_total else None),
         "sites_without_google_rating": int(len(per_site) - len(rated)),
         "total_sites": int(df[SITE_COL].nunique()),
         "pct_5_star": float((df[RATING_COL] == 5).mean() * 100),

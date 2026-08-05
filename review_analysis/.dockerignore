@@ -1,0 +1,19 @@
+# Credentials must never enter an image layer — the key comes from the
+# environment at runtime instead (see Dockerfile).
+.streamlit/secrets.toml
+.env
+
+# Local environments and build noise
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+
+# Not needed to run the app
+code/
+docs/
+*.md
+!README.md

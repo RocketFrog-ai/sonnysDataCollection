@@ -70,8 +70,12 @@ def clear_branch_state() -> None:
     A reader arriving with a fresh lens should start at the first page of
     results, not wherever an earlier visit had paged to.
     """
+    # The control widgets go too: Streamlit keeps a widget's value across page
+    # switches once its key exists, and that stale value would beat the `index=`
+    # seeding and override the lens the tile just handed over.
     for key in [k for k in st.session_state
                 if k.startswith(("filt_", "n_shown_"))
+                or k in {"rv_sort_widget", "rv_filter_widget", "rv_search_widget"}
                 or (k.startswith("sort_") and not k.startswith("sortbtn_"))]:
         del st.session_state[key]
 
@@ -101,17 +105,38 @@ def review_controls(is_open: bool) -> None:
 
     Only drawn when something is actually expanded — controls for a review
     list that isn't on screen are noise.
+
+    The lens lives in plain session keys, and the widgets are keyed separately
+    and seeded from them with `index=`. This is not ceremony: Streamlit drops
+    the state of any widget it did not render, so when the reader collapsed
+    every row (no controls on screen) the lens a tile had handed over was
+    discarded, and re-expanding a row rebuilt the widgets at their first
+    option — "All" / "most positive" — which is how a negative-reviews tile
+    ended up showing five-star reviews.
     """
     if not is_open:
         return
 
+    sort_value = st.session_state.get(DEFAULT_SORT_KEY, list(REVIEW_SORTS)[0])
+    filter_value = st.session_state.get(DEFAULT_FILTER_KEY, "All")
+    sort_index = list(REVIEW_SORTS).index(sort_value) if sort_value in REVIEW_SORTS else 0
+    filter_index = list(REVIEW_FILTERS).index(filter_value) if filter_value in REVIEW_FILTERS else 0
+
     c1, c2, c3 = st.columns([2.6, 2.6, 2.2])
     with c1:
-        st.selectbox("Sort reviews by", options=list(REVIEW_SORTS), key=DEFAULT_SORT_KEY)
+        chosen_sort = st.selectbox("Sort reviews by", options=list(REVIEW_SORTS),
+                                   index=sort_index, key="rv_sort_widget")
     with c2:
-        st.text_input("Search text", key=SEARCH_KEY, placeholder="e.g. wait, staff, vacuum")
+        typed = st.text_input("Search text", value=st.session_state.get(SEARCH_KEY, ""),
+                              key="rv_search_widget", placeholder="e.g. wait, staff, vacuum")
     with c3:
-        st.selectbox("Show", options=list(REVIEW_FILTERS), key=DEFAULT_FILTER_KEY)
+        chosen_filter = st.selectbox("Show", options=list(REVIEW_FILTERS),
+                                     index=filter_index, key="rv_filter_widget")
+
+    # The canonical values, which survive a run that drew no controls at all.
+    st.session_state[DEFAULT_SORT_KEY] = chosen_sort
+    st.session_state[DEFAULT_FILTER_KEY] = chosen_filter
+    st.session_state[SEARCH_KEY] = typed
 
 
 def cell(value, kind: str = "num", indent: int = 0) -> str:
@@ -172,9 +197,6 @@ def render_reviews(scope_key: str, reviews: pd.DataFrame, caption: str = "") -> 
     `review_controls`) rather than rendering its own copy of them.
     """
     key = safe_key(scope_key)
-    if caption:
-        st.markdown(f'<div class="q-note" style="margin:6px 0 10px;">{caption}</div>',
-                    unsafe_allow_html=True)
 
     sort_choice = st.session_state.get(DEFAULT_SORT_KEY, list(REVIEW_SORTS)[0])
     which = st.session_state.get(DEFAULT_FILTER_KEY, "All")
@@ -187,10 +209,6 @@ def render_reviews(scope_key: str, reviews: pd.DataFrame, caption: str = "") -> 
     view = sort_reviews(view, sort_choice)
 
     shown = st.session_state.get(f"n_shown_{key}", PAGE_SIZE)
-    lens = "" if which == "All" else f" · {which.lower()} only"
-    st.markdown(
-        f'<div class="q-note" style="margin:2px 0 10px;">{len(view):,} of {len(reviews):,} '
-        f'reviews{lens} · sorted by {sort_choice.lower()}</div>', unsafe_allow_html=True)
 
     cards = []
     for _, r in view.head(shown).iterrows():

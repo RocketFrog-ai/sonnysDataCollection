@@ -34,6 +34,76 @@ project folder — no external network calls, no files outside `review_analysis/
 OS color-scheme preference and renders the dashboard dark, which fights every color the UI
 sets. Don't delete it.
 
+## Run it in Docker
+
+Everything needed is in this folder — the review CSV, the precomputed AI
+answers, the theme. The only thing from outside is the Azure key, and the app
+runs without one (only the AI button reports it has nothing to call).
+
+```bash
+cd review_analysis
+docker build -t review-analysis .
+docker run -p 8501:8501 -e AZURE_OPENAI_API_KEY=... review-analysis
+```
+
+or, with the key in a local `.env` (copy `.env.example`):
+
+```bash
+docker compose up --build
+```
+
+Then open `http://localhost:8501`.
+
+- The key is **never** baked into an image: `.streamlit/secrets.toml` and `.env`
+  are in `.dockerignore`, and `app/utils/ai.py` falls back to the
+  `AZURE_OPENAI_API_KEY` / `AZURE_OPENAI_ENDPOINT` / `AZURE_OPENAI_DEPLOYMENT`
+  environment variables.
+- The image runs as a non-root user and exposes Streamlit's `/_stcore/health`
+  endpoint as its `HEALTHCHECK`.
+- The one file written at runtime is `data/ai_insights_cache.json` (new AI
+  answers). `docker-compose.yml` mounts it so those survive a restart; without
+  the mount the container still ships with the 18 precomputed ones.
+
+## Deploy to the Azure Web App
+
+The existing `proforma-demo-2` app (RG `son_eastus2_proforma_rg02`, Linux
+container, pulling from `proformaacr.azurecr.io`) can run this instead:
+
+```bash
+cd review_analysis
+export AZURE_OPENAI_API_KEY=...        # optional; enables the AI button
+./scripts/deploy_azure.sh
+```
+
+It builds `proformaacr.azurecr.io/review-analysis:<timestamp>`, pushes it,
+repoints the web app, sets the app settings and restarts. It pushes a **new
+repository** rather than overwriting `proforma-demo-2:latest`, so the image
+that app runs today is untouched and rollback is one command (printed at the
+end of the run).
+
+Four things App Service needs that the script handles, and that are the usual
+causes of a container that "deploys" but never serves:
+
+| Setting | Why |
+|---|---|
+| `--platform linux/amd64` | App Service is x86_64; an arm64 image built on an Apple-silicon Mac starts and dies with an exec-format error visible only in the container log |
+| `WEBSITES_PORT=8501` | Without it the platform probes 8080 and returns 504 while the app is healthy |
+| Web sockets enabled | Streamlit drives the page over a websocket; without it the page loads and sits on "connecting" |
+| `healthCheckPath=/_stcore/health` | The app currently shows Health Check "Not Configured" |
+
+The image also reads `PORT` if the platform injects one, so the same image runs
+unchanged on Cloud Run or Fly.
+
+Secrets go in as **app settings**, never in the image: `AZURE_OPENAI_API_KEY`,
+`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT`. `REVIEW_ANALYSIS_DEMO_LOCKED`
+defaults to `1` (locked demo view); set it to `0` for the full build.
+
+Watch the rollout:
+
+```bash
+az webapp log tail --name proforma-demo-2 --resource-group son_eastus2_proforma_rg02
+```
+
 ## Pages
 
 ### `app/Home.py` — dashboard
@@ -78,16 +148,36 @@ with none of what you asked for (4 of 25 locations have a negative review this m
 
 ## AI insights
 
-Every tile carries a **✨ AI insights** popover, and each drill-down table has one in its header.
-It asks gpt-4o (Azure OpenAI) a question about *exactly the reviews that tile counted* — the
-negative tile opens with "What are the main concerns customers raise in these negative reviews?",
-and the question is editable. Nothing is sent until you press **Generate**; answers are cached for
-an hour per selection.
+Every tile carries a **✨ AI** button in its top-right corner, and each drill-down table has one
+in its header. One press summarises *exactly the reviews that tile counted* — no second click —
+and opens a dialog laid out as:
 
-The model only ever reads review text and is instructed to name recurring themes, say how many of
-the shown reviews mention each, and quote a short phrase as evidence. **It never produces a
-number on the page** — every figure still comes from `metrics.py`, so a wrong summary can't
-corrupt a metric.
+- a **headline** answering the tile's question in one sentence;
+- **Key points** — each with the number of reviews that mention it and verbatim quotes as
+  evidence;
+- **Recommendations** — 2–4 concrete actions, each tied back to a key point.
+
+Long selections are handled with map-reduce: reviews are chunked 45 at a time, each chunk is
+summarised into themes, and a second call merges them. A 400-review selection is ~10 calls. The
+model returns JSON, so the page lays the answer out rather than rendering a markdown blob.
+
+**Answers are saved.** Each is keyed by a hash of (question, scope, the exact reviews) and written
+to `data/ai_insights_cache.json`, so the same selection is never paid for twice — across restarts,
+not just reruns.
+
+```bash
+python scripts/precompute_insights.py                    # 9 tiles x 2 windows
+python scripts/precompute_insights.py --window "Current month"
+python scripts/precompute_insights.py --force            # regenerate
+```
+
+That has been run for **Current month** and **Last 3 months**, so those tiles open in ~0.3s off
+the cache. Other windows generate on demand (a few seconds to ~90s depending on size) and are
+cached from then on.
+
+The model only ever reads review text. **It never produces a number on the page** — every figure
+still comes from `metrics.py`, so a wrong summary cannot corrupt a metric. Transient Azure 429/5xx
+responses are retried three times with backoff.
 
 Credentials live in `.streamlit/secrets.toml`, which is **gitignored**:
 
@@ -97,59 +187,15 @@ azure_openai_endpoint = "https://<resource>.openai.azure.com"
 azure_openai_deployment = "gpt-4o"
 ```
 
-`AZURE_OPENAI_API_KEY` etc. work as environment variables too. Without a key the popover says so
-and the rest of the app is unaffected.
-
-### `app/pages/2_📊_Insights.py` — period drill-down
-The three-level view. A chart card (**Monthly / Quarterly / Yearly** selector) over grouped
-bars with dashed trend lines, then a table whose rows are calendar periods:
-
-```
-Jul-26            355 reviews   4.79★   223 pos   22 neu   8 neg   85.0% net   45.4% replied
-  └ Big Dan's Kissimmee OBT    32       4.88★    15       2        1       77.8%      0.0%
-      └ the 32 reviews themselves, sorted by sentiment score / date / rating
-```
-
-Expanding a period lists the locations that reported in it; expanding a location opens its
-reviews for that period with the same sort / search / sentiment-filter controls as below.
-A period row and a site row are the same `metrics._row_stats` over a different slice, so a
-month's totals are exactly what its locations add up to.
-
-### `app/pages/1_📍_Location_Detail.py` — site breakdown
-- **Sentiment & Rating By Month** — grouped bars with dashed least-squares trend lines;
-  toggle between the positive/negative split and volume-vs-rating.
-- **Reviews By Site** — one row per site (reviews, avg rating, Google rating, positive /
-  neutral / negative counts, net sentiment, response rate). Every column header sorts;
-  clicking it again reverses.
-- **Expanding a row** shows that site's reviews with three controls:
-  - **Sort by** — sentiment score most positive, sentiment score most negative, most recent,
-    oldest, rating highest, rating lowest;
-  - **Search text** — substring match on review text;
-  - **Show** — all / positive / neutral / negative / rating-only / 1–2 star / awaiting owner reply.
-
-  Reviews render 15 at a time with a "Show more" button, each carrying its stars, date,
-  sentiment chip, compound score, text, and the owner's reply.
-
-## Two things about the numbers
-
-**Average rating.** `businessAvgRating` (Google's published per-site rating) was documented as a
-float but never actually cast, so it stayed a string and no code could use it. It is now cast,
-and the chain-level figure is Google's rating **weighted by each site's own review count** —
-not the mean over scraped rows, which weights sites by how many reviews we happened to collect
-(Rome contributes 912 rows, Muscle Shoals 17). Both numbers are exposed:
-`get_kpis()["avg_rating"]` is the sample mean, `["avg_rating_weighted"]` the real one, and
-`["avg_rating_display"]` picks the best available. The per-site table shows both alongside the
-capture rate, so a site's rating can be read next to how much of it we actually have.
-
-**Sentiment denominators.** 28% of reviews are rating-only. VADER scores an empty string as
-0.0 — indistinguishable from a genuinely even-handed review — so those get a dedicated
-`no_text` label and are excluded from every sentiment share. `n_scored` carries that
-denominator so it can't be divided by the wrong number.
+`AZURE_OPENAI_API_KEY` etc. work as environment variables too. Without a key the button reports
+that and the rest of the app is unaffected.
 
 ## Project structure
 
 ```
 review_analysis/
+├── Dockerfile / docker-compose.yml      # self-contained deployment
+├── .dockerignore / .env.example         # keeps the key out of the image
 ├── .streamlit/config.toml               # pins the light theme
 ├── .streamlit/secrets.toml              # Azure OpenAI key (gitignored)
 ├── app/
@@ -158,15 +204,16 @@ review_analysis/
 │   │   ├── 1_📍_Location_Detail.py     # site table -> reviews
 │   │   └── 2_📊_Insights.py            # period -> site -> reviews
 │   └── utils/
-│       ├── ai.py                       # Azure OpenAI summaries of a review selection
+│       ├── ai.py                       # Azure OpenAI insights (map-reduce + disk cache)
 │       ├── data_loader.py              # CSV load/clean/filter/KPIs (the only CSV reader)
 │       ├── metrics.py                  # row stats, period/site rollups, review sorts
 │       ├── reviews_ui.py               # shared table rows + expanded review list
 │       ├── sentiment.py                # VADER score + label
 │       ├── theme.py                    # CSS shell, KPI cards, mini charts
 │       └── time_utils.py               # generic month/day aggregation helpers
+├── scripts/precompute_insights.py       # fills the AI cache for the default windows
 ├── code/                                # exploratory notebook (source of the VADER logic)
-├── data/                                # final_reviews.csv (source data)
+├── data/                                # final_reviews.csv + ai_insights_cache.json
 ├── docs/                                # architecture, dataset schema, QA checklist
 ├── requirements.txt
 └── README.md
@@ -188,3 +235,8 @@ The entrypoint is `Home.py`, not `app.py`, on purpose: `app/` is also a Python p
   rerun. Removing that line brings the crash back.
 - Sentiment is scored once for the whole file (~0.25s) and cached in
   `metrics.load_scored_data()`, so a review's score never depends on which filter surfaced it.
+- **The review lens lives in plain session keys, not widget keys.** Streamlit discards the state
+  of any widget it did not render, so when every row was collapsed (no controls on screen) a lens
+  handed over by a tile was thrown away, and re-expanding rebuilt the controls at their first
+  option — which is how a negative-reviews tile ended up showing five-star reviews. The widgets
+  are keyed separately and seeded with `index=` from the canonical values.

@@ -30,6 +30,7 @@ from app.utils import reviews_ui as RU
 from app.utils import theme as T
 from app.utils.data_loader import ADDRESS_COL, RATING_COL, SITE_COL
 from app.utils.metrics import (
+    MONTH_COL,
     PERIOD_WINDOWS,
     load_scored_data,
     monthly_series,
@@ -46,11 +47,19 @@ df_all = load_scored_data()
 all_sites = sorted(df_all[SITE_COL].dropna().unique().tolist())
 
 T.page_heading("Reviews", "Big Dan's Car Wash")
-T.tab_strip([
-    ("All Sites", False, "Home.py"),
-    ("Insights", False, "pages/2_📊_Insights.py"),
-    ("Site Breakdown", True, None),
-])
+demo_view = T.demo_mode()
+if demo_view:
+    # A tile's drill-down is standalone in demo mode: no sibling tabs, just the
+    # way back to the dashboard.
+    with st.container(key="qback"):
+        if st.button("← Back to dashboard", key="back_home_top"):
+            st.switch_page("Home.py")
+else:
+    T.tab_strip([
+        ("All Sites", False, "Home.py"),
+        ("Insights", False, "pages/2_📊_Insights.py"),
+        ("Site Breakdown", True, None),
+    ])
 
 # ---------------------------------------------------------------------------
 # Filter row
@@ -91,7 +100,13 @@ if cur.empty:
 m = period_metrics(cur)
 lens = st.session_state.get(RU.DEFAULT_FILTER_KEY, "All")
 ai_reviews = RU.apply_filter(cur, lens)
-scope_label = (f"{window_label} · {len(chosen)} location(s)"
+# The leaderboard tiles are about one location, so their insight is too — and
+# this is the label scripts/precompute_insights.py keys its cache on.
+ai_site = (st.session_state.get("open_site")
+           if st.session_state.get("rv_focus") in {"best", "worst"} else None)
+if ai_site:
+    ai_reviews = ai_reviews[ai_reviews[SITE_COL] == ai_site]
+scope_label = (f"{window_label} · {ai_site or f'{len(chosen)} location(s)'}"
                + (f" · {lens.lower()} reviews only" if lens != "All" else ""))
 net_txt = f' · net sentiment {m["net_sentiment"]:.1f}%' if m["net_sentiment"] is not None else ""
 st.markdown(
@@ -111,70 +126,122 @@ with T.panel_start("chart"):
         title = ("Average Rating By Location"
                  if st.session_state.get("chart_metric") == "Avg rating by location"
                  else "Sentiment &amp; Rating By Month")
+        show_rating_chart = st.session_state.get("chart_metric") == "Avg rating by location"
         st.markdown(f'<div class="q-panel-title">{title}</div>', unsafe_allow_html=True)
     with head_r:
+        # Canonical value in a plain key; the widget is keyed separately and
+        # seeded from it. Changing the period calls st.rerun() before this
+        # selectbox is reached, and Streamlit drops the state of widgets a run
+        # did not render -- which silently reset the chart to "Sentiment split".
+        mode_value = st.session_state.get("chart_metric", CHART_MODES[0])
+        if mode_value not in CHART_MODES:
+            mode_value = CHART_MODES[0]
         chart_metric = st.selectbox(
-            "Metric", options=CHART_MODES, key="chart_metric", label_visibility="collapsed",
+            "Metric", options=CHART_MODES, index=CHART_MODES.index(mode_value),
+            key="chart_mode_widget", label_visibility="collapsed",
         )
+        st.session_state["chart_metric"] = chart_metric
 
     if chart_metric == "Avg rating by location":
         # Per-location ratings, not a time series: the dashboard's rating tile
         # lands here, and the question it raises is "which locations", not
         # "which months". Google's own published rating rides alongside as
         # markers, since the bars are only the reviews this file captured.
-        rank = site_table(cur).sort_values("avg_rating", ascending=False)
-        # Numeric x positions rather than the category axis, so the Google
-        # marker can sit *beside* its bar instead of on top of it, and the
-        # value label can sit inside the bar instead of colliding with both.
+        # Horizontal bars: 25 location names cannot be read on a vertical
+        # axis without rotating them, and rotated labels forced the value
+        # labels to rotate too. Sorted worst-at-the-bottom so the eye lands on
+        # the leaders first, with Google's own rating as a diamond alongside.
+        rank = site_table(cur).sort_values("avg_rating", ascending=True)
+        names = [str(s).replace("Big Dan's ", "") for s in rank["site"]]
         idx = list(range(len(rank)))
-        short = [s.replace("Big Dan's ", "") for s in rank["site"]]  # chain name is in the page title
-        low = float(rank["avg_rating"].min())
+        values = [float(v) for v in rank["avg_rating"]]
+        chain = float(pd.to_numeric(cur[RATING_COL], errors="coerce").mean())
+
+        # Ratings cluster between ~4.2 and 5.0, so a 0-5 axis draws 24
+        # near-identical full-width bars. Zoom to the pack and call out anything
+        # that falls below the floor rather than clipping it silently.
+        floor = 4.0 if float(rank["avg_rating"].median()) > 4.4 else 0.0
+        below = [(n_, v) for n_, v in zip(names, values) if v < floor]
 
         fig = go.Figure()
         fig.add_bar(
-            x=idx, y=rank["avg_rating"].tolist(), width=0.52,
-            name="Avg rating (captured reviews)", marker_color=T.BLUE,
-            text=[f"{v:.2f}" for v in rank["avg_rating"]],
-            textposition="inside", insidetextanchor="end",
-            textfont=dict(color="#ffffff", size=11.5),
-            hovertemplate="%{customdata}: %{y:.2f}<extra></extra>", customdata=short,
+            x=values, y=idx, orientation="h", width=0.68,
+            name="Average rating (this selection)", cliponaxis=False,
+            # Two tones, not two colours: behind-average locations recede
+            # instead of shouting, and the dotted line says where the bar is.
+            marker=dict(color=[T.BLUE if v >= chain else "#a9c3e4" for v in values],
+                        cornerradius=4),
+            text=[f"{v:.2f}" for v in values], textposition="outside",
+            textfont=dict(color=T.INK, size=11.5),
+            hovertemplate="%{customdata}: %{x:.2f} ★<extra></extra>", customdata=names,
         )
+
+        google = rank["google_rating"].tolist()
         if rank["google_rating"].notna().any():
+            # An invisible-ish chip carries the hover; the logo itself is drawn
+            # on top as a layout image, so the mark is Google's own rather than
+            # a diamond the reader has to decode from a legend.
             fig.add_trace(go.Scatter(
-                x=[i + 0.33 for i in idx], y=rank["google_rating"].tolist(),
-                name="Google's published rating", mode="markers",
-                marker=dict(color=T.ORANGE, size=9, symbol="diamond"),
-                hovertemplate="%{customdata} on Google: %{y:.1f}<extra></extra>",
-                customdata=short,
+                x=google, y=idx, mode="markers", name="Google rating",
+                marker=dict(symbol="circle", size=19, color="#ffffff",
+                            line=dict(color="#e3e6ec", width=1)),
+                hovertemplate="%{customdata} on Google: %{x:.1f} ★<extra></extra>",
+                customdata=names,
             ))
-        chain = float(pd.to_numeric(cur[RATING_COL], errors="coerce").mean())
-        # Annotation parked outside the plotting area (paper coords) so it can
-        # never sit over a bar or a value label.
-        fig.add_hline(y=chain, line=dict(color=T.MUTED, width=1, dash="dot"))
-        fig.add_annotation(xref="paper", x=1.0, y=chain, xanchor="left", yanchor="middle",
+            for i, g in enumerate(google):
+                if g is None or pd.isna(g):
+                    continue
+                fig.add_layout_image(dict(
+                    source=T.GOOGLE_LOGO_URI, xref="x", yref="y", x=float(g), y=i,
+                    sizex=0.030, sizey=0.62, xanchor="center", yanchor="middle",
+                    layer="above", sizing="contain",
+                ))
+
+        fig.add_vline(x=chain, line=dict(color=T.MUTED, width=1, dash="dot"))
+        fig.add_annotation(yref="paper", y=1.03, x=chain, xanchor="center", yanchor="bottom",
                            text=f"avg {chain:.2f}", showarrow=False,
-                           font=dict(color=T.MUTED, size=12))
+                           font=dict(color=T.MUTED, size=11.5))
+        for i, v in enumerate(values):
+            if v < floor:
+                fig.add_annotation(x=floor, y=i, xanchor="left", yanchor="middle",
+                                   text=f"  {v:.2f} — below the axis", showarrow=False,
+                                   font=dict(color=T.NEG_COLOR, size=11))
+
         fig.update_layout(
-            height=470, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
-            margin=dict(l=10, r=70, t=18, b=10), font=dict(color=T.MUTED, size=13),
-            xaxis=dict(tickmode="array", tickvals=idx, ticktext=short,
-                       range=[-0.7, len(idx) - 0.1], showgrid=False, linecolor=T.LINE,
-                       tickfont=dict(color=T.INK_SOFT, size=11.5), tickangle=-38),
-            # Zoomed, but never clipped: a hard 3.8 floor made a location
-            # averaging 1.0 render as no bar at all.
-            yaxis=dict(title=dict(text="Average rating", font=dict(color=T.MUTED)),
-                       range=[min(4.0, low - 0.25), 5.12],
-                       showgrid=True, gridcolor="#eef1f6", zeroline=False),
-            legend=dict(orientation="h", yanchor="top", y=-0.42, xanchor="left", x=0.02,
-                        font=dict(color=T.INK_SOFT, size=13)),
+            height=max(340, 23 * len(rank) + 96), plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
+            margin=dict(l=10, r=34, t=44, b=8), font=dict(color=T.MUTED, size=12),
+            bargap=0.32,
+            yaxis=dict(tickmode="array", tickvals=idx, ticktext=names, showgrid=False,
+                       tickfont=dict(color=T.INK_SOFT, size=11.5), linecolor=T.LINE,
+                       ticklabelstandoff=8),
+            xaxis=dict(title=dict(text="Average rating", font=dict(color=T.MUTED)),
+                       range=[floor, 5.08], showgrid=True, gridcolor="#eef1f6",
+                       zeroline=False, dtick=0.2, tickfont=dict(size=11)),
+            legend=dict(orientation="h", yanchor="bottom", y=1.03, xanchor="right", x=1,
+                        font=dict(color=T.INK_SOFT, size=12.5)),
         )
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
         st.markdown(
-            '<div class="q-note">Bars are the mean of the reviews captured for each location; '
-            'diamonds are the rating Google publishes over every review it holds. Filter the '
-            'locations with the pill above.</div>', unsafe_allow_html=True)
-    else:
-        series = monthly_series(cur, months=14)
+            '<div class="q-note">Bars are the mean of the reviews captured for this selection; '
+            f'<img src="{T.GOOGLE_LOGO_URI}" style="height:13px;vertical-align:-2px;"> is the '
+            'rating Google publishes over every review it holds. Paler bars sit below the '
+            'selection average.'
+            + (f' Axis starts at {floor:.1f}; ' + ", ".join(f"{n_} ({v:.2f})" for n_, v in below)
+               + " sits below it." if below else "")
+            + '</div>', unsafe_allow_html=True)
+        st.write("")
+        st.markdown('<div class="q-panel-title" style="font-size:20px;">'
+                    'Sentiment &amp; Rating By Month</div>', unsafe_allow_html=True)
+
+    # The rating view shows this trend too -- both readings of "how are we
+    # rated" are useful, so the rating tile gets location ranking *and* history.
+    if True:
+        trend_mode = "Volume & rating" if chart_metric == "Avg rating by location" else chart_metric
+        # The chart follows the selection. A one-month window would draw a
+        # single bar, so it falls back to twelve months of context -- and says
+        # so, rather than quietly showing months the filter excludes.
+        chart_extended = cur[MONTH_COL].nunique() < 3
+        series = monthly_series(df if chart_extended else cur, months=12)
         if series.empty:
             st.info("Not enough dated reviews to plot a trend.")
         else:
@@ -195,18 +262,28 @@ with T.panel_start("chart"):
                     hoverinfo="skip",
                 ))
 
-            if chart_metric == "Sentiment split (%)":
+            window_labels = (set(monthly_series(cur, months=14)["label"])
+                             if chart_extended else set(x))
+            opacity = [1.0 if lbl in window_labels else 0.32 for lbl in x]
+
+            if trend_mode == "Sentiment split (%)":
                 neg = series["pct_negative"].tolist()
                 pos = series["pct_positive"].tolist()
-                fig.add_bar(x=x, y=neg, name="Negative %", marker_color=T.ORANGE)
-                fig.add_bar(x=x, y=pos, name="Positive %", marker_color=T.BLUE)
+                neu = [max(0.0, 100 - (p or 0) - (n or 0)) for p, n in zip(pos, neg)]
+                fig.add_bar(x=x, y=neg, name="Negative %", marker_color=T.ORANGE,
+                            marker_opacity=opacity)
+                fig.add_bar(x=x, y=pos, name="Positive %", marker_color=T.BLUE,
+                            marker_opacity=opacity)
+                fig.add_bar(x=x, y=neu, name="Neutral %", marker_color=T.NEU_COLOR,
+                            marker_opacity=opacity)
                 trendline(neg, "#f7d3a6", "Negative trend")
                 trendline(pos, "#c3dcf5", "Positive trend")
                 y_title = "Percentage"
             else:
                 counts = series["n_reviews"].tolist()
                 ratings = series["avg_rating"].tolist()
-                fig.add_bar(x=x, y=counts, name="Reviews", marker_color=T.BLUE, yaxis="y")
+                fig.add_bar(x=x, y=counts, name="Reviews", marker_color=T.BLUE, yaxis="y",
+                            marker_opacity=opacity)
                 fig.add_trace(go.Scatter(
                     x=x, y=ratings, name="Avg rating", mode="lines+markers", yaxis="y2",
                     line=dict(color=T.ORANGE, width=2.5),
@@ -216,7 +293,7 @@ with T.panel_start("chart"):
                 y_title = "Reviews"
 
             fig.update_layout(
-                barmode="group", bargap=0.55, bargroupgap=0.03,
+                barmode="stack", bargap=0.42,
                 height=420, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
                 margin=dict(l=10, r=10, t=18, b=10),
                 font=dict(color=T.MUTED, size=13),
@@ -237,6 +314,11 @@ with T.panel_start("chart"):
                 fig.update_traces(selector=dict(type="bar"), width=0.3)
                 fig.update_xaxes(range=[-0.5 - pad, len(x) - 0.5 + pad])
             st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+            if chart_extended:
+                st.markdown(
+                    f'<div class="q-note">Showing 12 months for context; '
+                    f'<b>{window_label}</b> — your selection — is the solid bar, and the '
+                    f'table below covers it alone.</div>', unsafe_allow_html=True)
 
 st.write("")
 
@@ -347,16 +429,19 @@ with T.panel_start("table"):
             addr = sub[ADDRESS_COL].dropna().iloc[0] if sub[ADDRESS_COL].notna().any() else ""
             # Coverage can exceed 100%: Google's own review count is a snapshot
             # taken at scrape time and drifts from the rows actually collected.
-            coverage = (f" \u00b7 {int(row['n_reviews']):,} reviews captured, "
-                        f"Google reports {int(row['google_review_count']):,} "
-                        f"({row['coverage_pct']:.0f}%)"
-                        if pd.notna(row.get("coverage_pct")) else
-                        " \u00b7 no Google review count published for this site")
+            # Google's count is all-time, so a share of it only means anything
+            # when the window is too; on a one-month view it read "3 reviews
+            # captured, Google reports 907 (0%)".
+            if pd.isna(row.get("google_review_count")):
+                coverage = " \u00b7 no Google review count published for this site"
+            elif period_choice == "All time":
+                coverage = (f" \u00b7 {int(row['n_reviews']):,} reviews captured, "
+                            f"Google reports {int(row['google_review_count']):,} "
+                            f"({row['coverage_pct']:.0f}%)")
+            else:
+                coverage = (f" \u00b7 {int(row['n_reviews']):,} reviews in this period "
+                            f"\u00b7 Google reports {int(row['google_review_count']):,} all-time")
             RU.render_reviews(site, sub, caption=f"{html.escape(str(addr))}{coverage}")
             st.write("")
 
-st.write("")
-# A button + switch_page rather than st.page_link: page_link renders the
-# hidden sidebar nav entry, and the shell hides that nav entirely.
-if st.button("← Back to dashboard", key="back_home"):
-    st.switch_page("Home.py")
+

@@ -258,3 +258,26 @@ Implemented at `app/utils/data_loader.py`. Public surface:
    caption/tooltip caveat about `reviewDate` reflecting edit time for the
    ~8% of reviews that were edited, or whether this level of precision is
    out of scope for the MVP.
+
+## 9. Scrape artefacts that distort any time series (added 2026-08-05)
+
+Three findings from an independent audit of the loaded panel. None is a bug in
+the code; all three change how the charts should be read.
+
+- **`own_crawler_crawler` dates are scrape-batch dates, not review dates.** Of
+  its 364 rows, 123 carry `2026-06-22`, 80 carry `2026-04-23` and 77 carry
+  `2026-05-23` — three collection runs, 77% of that source. 314 loaded rows sit
+  on one of those three days. The five own_crawler sites (St Pete 73, Academy
+  66, Kissimmee OBT 61, Fountain Inn 53, Muscle Shoals) therefore have no
+  meaningful day- or month-level history. This is separate from the edited-review
+  caveat in note 8.
+- **The monthly volume "growth" is coverage, not demand.** Sites reporting per
+  month: 13 in Mar-2026 → 24 in Apr-2026 → 25 in Jun. Volume 193 → 500 (+159%)
+  at that seam, because **12 of 25 sites have zero rows before 2026-04** and
+  Academy none before 2026-06. Per-site capture ranges from 7.3% (Bradenton 301)
+  to ~100% (Rome, Woodstock), so raw counts compare scrape depth as much as
+  anything else.
+- **Owner response rate is right-censored.** Monthly: Feb-26 100.0%, Mar 99.0%,
+  Apr 83.0%, May 82.5%, Jun 69.2%, Jul 53.9%. The last review is 2026-07-22 and
+  the last owner reply 2026-07-21 — recent reviews simply have not been answered
+  yet, so the current month always looks worst.

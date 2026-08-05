@@ -96,15 +96,41 @@ def sentiment_score(text: str) -> float | None:
     return float(get_analyzer().polarity_scores(text)["compound"])
 
 
-def label_from_score(score: float | None) -> str:
-    """Bucket an already-computed compound score with the standard thresholds."""
+# A star rating this high (or low) is the customer's own explicit verdict, and
+# it overrules VADER when the two disagree on polarity.
+RATING_TRUSTED_HIGH = 4
+RATING_TRUSTED_LOW = 2
+
+
+def label_from_score(score: float | None, rating: float | None = None) -> str:
+    """Bucket a compound score, reconciled against the star rating.
+
+    VADER reads words, not intent, and on this corpus it contradicts the
+    reviewer 141 times: "no wait time, every employee jumps into action" (5★)
+    scores -0.30 because of "no", and "my paint was completely ruined" (1★)
+    scores +0.84 because of the polite phrasing around it. Where the text
+    polarity contradicts a 4-5★ or 1-2★ rating, the rating wins — a customer
+    who awarded five stars did not leave a negative review, whatever the
+    lexicon says. 3★ reviews have no clear verdict, so the text decides.
+    """
     if score is None or pd.isna(score):
         return NO_TEXT_LABEL
+
     if score >= POSITIVE_THRESHOLD:
+        label = "positive"
+    elif score <= NEGATIVE_THRESHOLD:
+        label = "negative"
+    else:
+        label = "neutral"
+
+    if rating is None or pd.isna(rating):
+        return label
+    rating = float(rating)
+    if label == "negative" and rating >= RATING_TRUSTED_HIGH:
         return "positive"
-    if score <= NEGATIVE_THRESHOLD:
+    if label == "positive" and rating <= RATING_TRUSTED_LOW:
         return "negative"
-    return "neutral"
+    return label
 
 
 def add_sentiment_scores(
@@ -112,11 +138,13 @@ def add_sentiment_scores(
     text_col: str = "reviewText",
     score_col: str = "sentiment_score",
     label_col: str = "sentiment",
+    rating_col: str = "rating",
 ) -> pd.DataFrame:
-    """Return a copy of df with both the compound score and its label.
+    """Return a copy of df with the compound score and its reconciled label.
 
-    One VADER pass produces both columns (scoring then bucketing), instead of
-    `add_sentiment_column` + a second pass for the score.
+    One VADER pass produces both columns. The label is reconciled against
+    `rating_col` when present (see `label_from_score`), so no review is ever
+    filed under a polarity its own star rating contradicts.
     """
     if text_col not in df.columns:
         raise KeyError(f"'{text_col}' not found in dataframe columns: {list(df.columns)}")
@@ -124,7 +152,9 @@ def add_sentiment_scores(
     out = df.copy()
     scores = out[text_col].map(sentiment_score)
     out[score_col] = pd.to_numeric(scores, errors="coerce")
-    out[label_col] = [label_from_score(s) for s in scores]
+    ratings = (pd.to_numeric(out[rating_col], errors="coerce") if rating_col in out.columns
+               else pd.Series([None] * len(out), index=out.index))
+    out[label_col] = [label_from_score(sc, rt) for sc, rt in zip(scores, ratings)]
     return out
 
 

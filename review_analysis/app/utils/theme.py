@@ -19,6 +19,7 @@ target possible.
 
 from __future__ import annotations
 
+import os
 from typing import Callable, Iterable, Sequence
 
 import streamlit as st
@@ -54,6 +55,30 @@ NEU_COLOR = "#c7cede"
 NEG_COLOR = "#f2825f"
 
 BRAND = "Quivio Metrix"
+
+# Demo view is locked on by default: the deployed app shows the two-tile story
+# and no toggle to leave it. The full nine-tile build, the drill-down tabs and
+# the provenance captions are all still here -- set this to 0 to get them back.
+#
+#   REVIEW_ANALYSIS_DEMO_LOCKED=0 streamlit run app/Home.py
+#   (or the same variable in docker-compose.yml)
+DEMO_LOCK_ENV = "REVIEW_ANALYSIS_DEMO_LOCKED"
+
+
+def demo_locked() -> bool:
+    """True when the viewer cannot switch out of demo view."""
+    return os.getenv(DEMO_LOCK_ENV, "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def demo_mode() -> bool:
+    """The single source of truth for which build is on screen."""
+    if demo_locked():
+        return True
+    return bool(st.session_state.get("demo_view", True))
+
+# Google's "G" as a data URI, so the ratings chart can mark Google's own
+# figure with the mark itself rather than a diamond that needs a legend.
+GOOGLE_LOGO_URI = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZmlsbD0iI0VBNDMzNSIgZD0iTTI0IDkuNWMzLjU0IDAgNi43MSAxLjIyIDkuMjEgMy42bDYuODUtNi44NUMzNS45IDIuMzggMzAuNDcgMCAyNCAwIDE0LjYyIDAgNi41MSA1LjM4IDIuNTYgMTMuMjJsNy45OCA2LjE5QzEyLjQzIDEzLjcyIDE3Ljc0IDkuNSAyNCA5LjV6Ii8+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTQ2Ljk4IDI0LjU1YzAtMS41Ny0uMTUtMy4wOS0uMzgtNC41NUgyNHY5LjAyaDEyLjk0Yy0uNTggMi45Ni0yLjI2IDUuNDgtNC43OCA3LjE4bDcuNzMgNmM0LjUxLTQuMTggNy4wOS0xMC4zNiA3LjA5LTE3LjY1eiIvPjxwYXRoIGZpbGw9IiNGQkJDMDUiIGQ9Ik0xMC41MyAyOC41OWMtLjQ4LTEuNDUtLjc2LTIuOTktLjc2LTQuNTlzLjI3LTMuMTQuNzYtNC41OWwtNy45OC02LjE5Qy45MiAxNi40NiAwIDIwLjEyIDAgMjRjMCAzLjg4LjkyIDcuNTQgMi41NiAxMC43OGw3Ljk3LTYuMTl6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTI0IDQ4YzYuNDggMCAxMS45My0yLjEzIDE1Ljg5LTUuODFsLTcuNzMtNmMtMi4xNSAxLjQ1LTQuOTIgMi4zLTguMTYgMi4zLTYuMjYgMC0xMS41Ny00LjIyLTEzLjQ3LTkuOTFsLTcuOTggNi4xOUM2LjUxIDQyLjYyIDE0LjYyIDQ4IDI0IDQ4eiIvPjwvc3ZnPg=="
 
 
 # ---------------------------------------------------------------------------
@@ -139,8 +164,9 @@ def _css() -> str:
   .qcard-head {{ display: flex; align-items: flex-start; }}
   .qcard-title {{
       font-size: 19px; font-weight: 600; color: {INK}; line-height: 1.2;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 78%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 88%;
   }}
+  .qcard-kebab {{ margin-left: auto; color: #9aa3b5; font-size: 17px; line-height: 1; letter-spacing: 1px; }}
   .qcard-delta {{ font-size: 14px; color: {MUTED}; margin-top: 7px; }}
   .qcard-delta b {{ font-weight: 600; }}
   .qcard-body {{ display: flex; align-items: flex-end; flex: 1; gap: 10px; margin-top: 6px; }}
@@ -167,8 +193,7 @@ def _css() -> str:
      card's top-left corner and the tile only "works" if you happen to hit it. */
   div[class*="st-key-qtile_"] {{ position: relative; }}
   /* covers the card only -- the AI button sits below it and must stay clickable */
-  div[class*="st-key-qhit_"] {{ position: absolute; top: 0; left: 0; right: 0;
-                                height: 236px; z-index: 3; }}
+  div[class*="st-key-qhit_"] {{ position: absolute; inset: 0; z-index: 3; }}
   div[class*="st-key-qhit_"] > div,
   div[class*="st-key-qhit_"] .stElementContainer,
   div[class*="st-key-qhit_"] .stTooltipHoverTarget,
@@ -274,30 +299,68 @@ def _css() -> str:
   .q-review-owner b {{ color: {INK}; }}
 
   /* --- per-tile AI action + generated answer --- */
-  /* Sits inside the card, top-right (where the kebab used to be). z-index 4
-     puts it above the full-card click overlay, so pressing it opens the
-     popover instead of navigating. */
-  div[class*="st-key-qai_"] {{
-      position: absolute; top: 12px; right: 14px; z-index: 4; width: auto !important;
-  }}
+  /* AI action in a panel header (drill-downs only -- the tiles carry no
+     buttons of their own; pressing a tile is what opens its insights). */
   div[class*="st-key-qai_"] button {{
-      background: transparent; border: none; color: #9aa3b5; font-size: 13px;
-      min-height: 0; padding: 2px 4px; border-radius: 7px;
+      background: #eef3fc; border: 1px solid #d6e2f8; color: {ACCENT}; font-size: 13.5px;
+      min-height: 0; padding: 7px 14px; border-radius: 9px; width: 100%;
   }}
-  div[class*="st-key-qai_"] button p {{ font-size: 13px; margin: 0; }}
-  div[class*="st-key-qai_"] button:hover {{ background: #eef3fc; color: {ACCENT}; }}
-  div[class*="st-key-qtile_"]:hover div[class*="st-key-qai_"] button {{ color: {ACCENT}; }}
-  div[class*="st-key-qaibox_"] {{
-      background: #f4f8ff; border: 1px solid #dbe6fb; border-radius: 10px;
-      padding: 14px 18px 6px; margin: 4px 0 2px;
+  div[class*="st-key-qai_"] button:hover {{ background: #e2ecfd; color: {INK}; }}
+  /* A five-key-point answer is taller than a laptop viewport; without this the
+     dialog centres and its title bar -- including the close button -- lands
+     above the fold with nothing to scroll. */
+  div[data-testid="stDialog"] > div, div[role="dialog"] {{
+      max-height: 86vh; overflow-y: auto;
   }}
-  div[class*="st-key-qaibox_"] p,
-  div[class*="st-key-qaibox_"] li {{
-      font-size: 14.5px; color: {INK_SOFT}; line-height: 1.6; margin-bottom: 6px;
+
+  div[class*="st-key-qfilter_demo"] {{ padding-top: 6px; }}
+  div[class*="st-key-qfilter_demo"] label p {{ font-size: 14px; color: {INK_SOFT}; }}
+
+  div[class*="st-key-qback"] {{ margin: -6px 0 14px; }}
+  div[class*="st-key-qback"] button {{
+      background: transparent; border: none; color: {ACCENT}; font-size: 14.5px;
+      min-height: 0; padding: 2px 0; justify-content: flex-start;
   }}
-  div[class*="st-key-qaibox_"] ul {{ margin: 0 0 4px; padding-left: 20px; }}
-  div[class*="st-key-qaibox_"] li::marker {{ color: {ACCENT}; }}
-  div[class*="st-key-qaibox_"] strong {{ color: {INK}; font-weight: 600; }}
+  div[class*="st-key-qback"] button:hover {{ background: transparent; color: {INK}; }}
+
+  /* --- AI insight panel --- */
+  .q-ai-headline {{
+      font-size: 16px; color: {INK}; font-weight: 600; line-height: 1.5;
+      background: #f4f8ff; border-left: 3px solid {ACCENT}; border-radius: 8px;
+      padding: 12px 16px; margin: 2px 0 14px;
+  }}
+  .q-ai-section {{
+      font-size: 12.5px; font-weight: 700; color: {MUTED}; letter-spacing: .06em;
+      text-transform: uppercase; margin: 16px 0 8px;
+  }}
+  .q-ai-point {{
+      border: 1px solid {LINE}; border-radius: 10px; padding: 11px 14px; margin-bottom: 8px;
+      background: #ffffff;
+  }}
+  .q-ai-point-head {{ display: flex; align-items: center; gap: 10px; margin-bottom: 3px; }}
+  .q-ai-point-title {{ font-size: 15px; font-weight: 600; color: {INK}; }}
+  .q-ai-count {{
+      font-size: 11.5px; font-weight: 600; color: {ACCENT}; background: #e9f0fe;
+      border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+  }}
+  .q-ai-point-detail {{ font-size: 14px; color: {INK_SOFT}; line-height: 1.55; }}
+  .q-ai-evidence {{ margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }}
+  .q-ai-quote {{
+      font-size: 12.5px; color: {INK_SOFT}; background: #f4f6fa; border-radius: 6px;
+      padding: 3px 8px; font-style: italic;
+  }}
+  .q-ai-recs {{ display: flex; flex-direction: column; gap: 8px; }}
+  .q-ai-rec {{
+      display: flex; gap: 12px; align-items: flex-start; background: #f6fbf8;
+      border: 1px solid #d7ecdf; border-radius: 10px; padding: 11px 14px;
+  }}
+  .q-ai-rec-n {{
+      flex: 0 0 22px; height: 22px; border-radius: 50%; background: {POS_COLOR};
+      color: #fff; font-size: 12px; font-weight: 700; display: flex;
+      align-items: center; justify-content: center;
+  }}
+  .q-ai-rec-action {{ font-size: 14.5px; color: {INK}; font-weight: 600; line-height: 1.45; }}
+  .q-ai-rec-why {{ font-size: 13px; color: {MUTED}; line-height: 1.5; margin-top: 2px; }}
 
   /* --- generic bits --- */
   .q-note {{ font-size: 13px; color: {MUTED}; }}
@@ -463,6 +526,18 @@ def delta_html(pct: float | None, comparison: str = "from last month",
             f'&nbsp; {comparison}</div>')
 
 
+def delta_html_points(points: float | None, comparison: str = "from last month",
+                      higher_is_better: bool = True) -> str:
+    """Delta line for percentage-valued metrics, in points rather than %."""
+    if points is None:
+        return f'<div class="qcard-delta">--&nbsp; {comparison}</div>'
+    good = (points >= 0) if higher_is_better else (points <= 0)
+    color = UP if good else DOWN
+    arrow = "↑" if points >= 0 else "↓"
+    return (f'<div class="qcard-delta"><b style="color:{color}">{arrow} {abs(points):.1f} pts</b>'
+            f'&nbsp; {comparison}</div>')
+
+
 def kpi_card_html(title: str, value: str, delta: str = "", chart: str = "",
                   subs: Sequence[tuple[str, str]] = ()) -> str:
     """One dashboard tile. `subs` is [(value, label), ...] (max 2 render well)."""
@@ -472,7 +547,7 @@ def kpi_card_html(title: str, value: str, delta: str = "", chart: str = "",
     )
     return f"""
 <div class="qcard">
-  <div class="qcard-head"><div class="qcard-title">{title}</div></div>
+  <div class="qcard-head"><div class="qcard-title">{title}</div><div class="qcard-kebab">⋮</div></div>
   {delta}
   <div class="qcard-body">
     <div class="qcard-left">
@@ -486,21 +561,14 @@ def kpi_card_html(title: str, value: str, delta: str = "", chart: str = "",
 
 
 def clickable_card(key: str, html: str, on_click: Callable[[], None] | None = None,
-                   help_text: str = "Open drill-down",
-                   footer: Callable[[], None] | None = None) -> None:
-    """Render a KPI card with an invisible full-bleed button on top of it.
-
-    `footer` draws below the card (the AI-insights action). It sits outside
-    the click overlay on purpose, so pressing it does not also navigate.
-    """
+                   help_text: str = "Open drill-down") -> None:
+    """Render a KPI card with an invisible full-bleed button on top of it."""
     with st.container(key=f"qtile_{key}"):
         st.markdown(html, unsafe_allow_html=True)
         if on_click is not None:
             with st.container(key=f"qhit_{key}"):
                 if st.button("Open", key=f"qbtn_{key}", help=help_text):
                     on_click()
-        if footer is not None:
-            footer()
 
 
 def panel_start(key: str):

@@ -49,11 +49,19 @@ df_all = load_scored_data()
 all_sites = sorted(df_all[SITE_COL].dropna().unique().tolist())
 
 T.page_heading("Reviews", "Big Dan's Car Wash")
-T.tab_strip([
-    ("All Sites", False, "Home.py"),
-    ("Insights", True, None),
-    ("Site Breakdown", False, "pages/1_📍_Location_Detail.py"),
-])
+demo_view = T.demo_mode()
+if demo_view:
+    # A tile's drill-down is standalone in demo mode: no sibling tabs, just the
+    # way back to the dashboard.
+    with st.container(key="qback"):
+        if st.button("← Back to dashboard", key="back_home_top"):
+            st.switch_page("Home.py")
+else:
+    T.tab_strip([
+        ("All Sites", False, "Home.py"),
+        ("Site Breakdown", False, "pages/1_📍_Location_Detail.py"),
+        ("Insights", True, None),
+    ])
 
 # ---------------------------------------------------------------------------
 # Filter row
@@ -108,17 +116,31 @@ with T.panel_start("inschart"):
             key="ins_granularity", label_visibility="collapsed",
         )
     rows = period_table(cur, granularity, last_n=14)
+    # The chart follows the selection; a one-period window would be a single
+    # bar, so it falls back to twelve periods of context and says so below.
+    chart_extended = len(rows) < 3
+    chart_rows = period_table(df, granularity, last_n=12) if chart_extended else rows
 
-    if rows.empty:
+    if chart_rows.empty:
         st.info("Not enough dated reviews to plot a trend.")
     else:
-        x = rows["label"].tolist()
-        pos_pct = [v if pd.notna(v) else None for v in rows["pct_positive"]]
-        neg_pct = [v if pd.notna(v) else None for v in rows["pct_negative"]]
+        x = chart_rows["label"].tolist()
+        pos_pct = [v if pd.notna(v) else None for v in chart_rows["pct_positive"]]
+        neg_pct = [v if pd.notna(v) else None for v in chart_rows["pct_negative"]]
+        neu_pct = [max(0.0, 100 - (p or 0) - (n or 0)) for p, n in zip(pos_pct, neg_pct)]
+
+        # In the extended view the selected window stays solid and the context
+        # periods are dimmed, so "why am I seeing 2025?" answers itself.
+        in_window = set(rows["label"]) if chart_extended else set(x)
+        opacity = [1.0 if lbl in in_window else 0.32 for lbl in x]
 
         fig = go.Figure()
-        fig.add_bar(x=x, y=neg_pct, name="Negative Rate", marker_color=T.ORANGE)
-        fig.add_bar(x=x, y=pos_pct, name="Positive Rate", marker_color=T.BLUE)
+        fig.add_bar(x=x, y=neg_pct, name="Negative Rate", marker_color=T.ORANGE,
+                    marker_opacity=opacity)
+        fig.add_bar(x=x, y=pos_pct, name="Positive Rate", marker_color=T.BLUE,
+                    marker_opacity=opacity)
+        fig.add_bar(x=x, y=neu_pct, name="Neutral %", marker_color=T.NEU_COLOR,
+                    marker_opacity=opacity)
 
         def trendline(y_vals, color):
             """Least-squares fit across the plotted periods."""
@@ -136,7 +158,7 @@ with T.panel_start("inschart"):
         trendline(pos_pct, "#c3dcf5")
 
         fig.update_layout(
-            barmode="group", bargap=0.55, bargroupgap=0.03,
+            barmode="stack", bargap=0.42,
             height=420, plot_bgcolor="#ffffff", paper_bgcolor="#ffffff",
             margin=dict(l=10, r=10, t=18, b=10), font=dict(color=T.MUTED, size=13),
             xaxis=dict(type="category", showgrid=False, linecolor=T.LINE,
@@ -156,6 +178,12 @@ with T.panel_start("inschart"):
             fig.update_traces(selector=dict(type="bar"), width=0.3)
             fig.update_xaxes(range=[-0.5 - pad, len(x) - 0.5 + pad])
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+        if chart_extended:
+            st.markdown(
+                f'<div class="q-note">Showing 12 periods for context; '
+                f'<b>{window_label}</b> — your selection — is the solid bar, and the table '
+                f'below covers it alone.</div>',
+                unsafe_allow_html=True)
 
 st.write("")
 
@@ -253,7 +281,7 @@ with T.panel_start("instable"):
                     "ins_open_site") == skey else skey
 
             RU.table_row(f"s_{skey}", row_values(srow, site), WIDTHS,
-                         site_open, toggle_site, indent=26)
+                         site_open, toggle_site, indent=26, highlight=site_open)
 
             if site_open:
                 # --- level 3: the reviews themselves ------------------------
@@ -268,6 +296,4 @@ with T.panel_start("instable"):
                 )
                 st.write("")
 
-st.write("")
-if st.button("← Back to dashboard", key="ins_back"):
-    st.switch_page("Home.py")
+

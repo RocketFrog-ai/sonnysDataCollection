@@ -1,0 +1,22 @@
+# One-command run:  docker compose up --build
+#
+# The Azure key comes from a local .env file (copy .env.example), never from
+# the image. Everything else the app needs is already inside it.
+
+services:
+  review-analysis:
+    build: .
+    image: review-analysis:latest
+    ports:
+      - "8501:8501"
+    environment:
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY:-}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT:-https://soneastus2proformaai.openai.azure.com}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT:-gpt-4o}
+      # 1 = locked demo view (two tiles, no toggle). 0 = full build.
+      REVIEW_ANALYSIS_DEMO_LOCKED: ${REVIEW_ANALYSIS_DEMO_LOCKED:-1}
+    volumes:
+      # Keep AI answers generated at runtime across container restarts. Drop
+      # this line and the image still ships with the precomputed ones.
+      - ./data/ai_insights_cache.json:/app/data/ai_insights_cache.json
+    restart: unless-stopped

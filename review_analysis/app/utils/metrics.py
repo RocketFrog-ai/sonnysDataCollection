@@ -188,6 +188,7 @@ def monthly_series(df: pd.DataFrame, months: int = 8) -> pd.DataFrame:
     """
     if df.empty:
         return pd.DataFrame(columns=["period", "label", "n_reviews", "avg_rating",
+                                     "positive", "negative", "n_scored",
                                      "pct_positive", "pct_negative", "net_sentiment"])
 
     rows = []
@@ -200,6 +201,13 @@ def monthly_series(df: pd.DataFrame, months: int = 8) -> pd.DataFrame:
             "label": period.strftime("%b-%y"),
             "n_reviews": len(grp),
             "avg_rating": float(pd.to_numeric(grp[RATING_COL], errors="coerce").mean()),
+            # Raw counts as well as shares: the shares have an n_scored
+            # denominator, so callers that need counts must not reconstruct
+            # them from pct * n_reviews (that inflates by the rating-only
+            # share -- it drew 222 positives on a tile reading 162).
+            "positive": sent["positive"],
+            "negative": sent["negative"],
+            "n_scored": sent["n_scored"],
             "pct_positive": sent["pct_positive"],
             "pct_negative": sent["pct_negative"],
             "net_sentiment": sent["net_sentiment"],
