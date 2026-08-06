@@ -77,6 +77,9 @@ KM_PER_MILE = cd.KM_PER_MILE
 # Above this many sites, per-site panels stop being readable and the heatmap takes over.
 PANEL_LIMIT = 12
 
+# The operator the section opens on — the worked example the write-up is built around.
+DEFAULT_OPERATOR = "americanpride_000238"
+
 # Hues for RIVAL COMPANIES on the trajectory chart — one per company, against the blue ORDER_RAMP
 # that this operator's own sites use. Validated with the dataviz skill's checker on BOTH surfaces
 # alongside the ramp's mid-blue: lightness band, chroma floor, CVD separation, normal-vision floor
@@ -353,7 +356,12 @@ def render() -> None:
     c1, c2, c3 = st.columns([3, 2, 2])
     with c1:
         labels = dict(zip(ops.client_id, ops.label))
-        pick = st.selectbox(f"Operator — {len(ops)} qualify", list(ops.client_id),
+        choices = list(ops.client_id)
+        # The section opens on American Pride: it is the cleanest worked example of the pattern this
+        # page is about (one operator, one town, built out in sequence). Falls back to the list's own
+        # order -- biggest first -- if the sliders filter it out.
+        start = choices.index(DEFAULT_OPERATOR) if DEFAULT_OPERATOR in choices else 0
+        pick = st.selectbox(f"Operator — {len(ops)} qualify", choices, index=start,
                             format_func=lambda c: labels.get(c, c))
     with c2:
         radius_mi = st.slider("Trade-area radius (miles)", 1.0, 6.0, float(cd.TRADE_AREA_MI), 0.5,

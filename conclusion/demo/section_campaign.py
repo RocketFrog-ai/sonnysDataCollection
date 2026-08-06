@@ -27,6 +27,9 @@ from ui import (BORDER, CRITICAL, DARK, GOOD, GRID, INK, INK2, MUTED, S1, S2, S3
 # through the palette validator against their own surface: all six checks pass in both modes.
 S4 = "#a97ae0" if DARK else "#8e58c8"
 
+MONTH_ABBR = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+              "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
 FOCAL, NEIGHBOUR, SHARE = S1, S2, S4
 TREATED, CONTROL, GAP = S1, S2, S4
 
@@ -548,10 +551,15 @@ def render() -> None:
 
         n_cols = 2 if len(real) <= 4 else 3  # a small set reads better as a square grid
         n_rows = -(-len(real) // n_cols)
+        # Second title line: when the campaign ran and how old the site was then -- the two facts a
+        # reviewer needs to read the shaded band, kept on the panel rather than in a table below it.
+        titles = [f"{r['site_key']}<br><span style='font-size:11px;color:{MUTED}'>"
+                  f"{MONTH_ABBR[r['campaign_month']]} {r['campaign_year']} · "
+                  f"{r['age_months']} months old</span>" for r in real]
         figr = make_subplots(
             rows=n_rows, cols=n_cols,
-            subplot_titles=[r["site_key"] for r in real],
-            vertical_spacing=0.16, horizontal_spacing=0.08)
+            subplot_titles=titles,
+            vertical_spacing=0.19, horizontal_spacing=0.08)  # 2-line titles grow upward
         for i, r in enumerate(real):
             row, col = i // n_cols + 1, i % n_cols + 1
             months = r["raw_wide"].index.tolist()
@@ -572,9 +580,9 @@ def render() -> None:
         # style. Order matters: style() first (base layout, reaches axis 1 only), then
         # update_xaxes/update_yaxes with no row/col to extend it to every subplot -- same order
         # `_sub()` itself uses.
-        style(figr, height=720, showlegend=True,
+        style(figr, height=760, showlegend=True,
              legend=dict(orientation="h", y=-0.06, x=0.5, xanchor="center"),
-             margin=dict(l=75, r=25, t=60, b=60))
+             margin=dict(l=75, r=25, t=75, b=60))
         figr.update_xaxes(showgrid=False, showline=True, linecolor=GRID, tickfont=dict(color=MUTED))
         figr.update_yaxes(gridcolor=GRID, zeroline=False, linecolor=GRID, tickfont=dict(color=MUTED))
         figr.update_yaxes(tickprefix="$", tickformat=",.0f")
