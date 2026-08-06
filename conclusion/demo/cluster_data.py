@@ -3,17 +3,30 @@ Operator clusters — where one operator has packed several sites into a single 
 
 The question this answers is not "where are our sites" (§⓪ does that, nationally) but "when an
 operator builds **five washes inside one town**, what does that look like from the inside?" —
-how far apart they sit, in what order they were opened, and what each one has washed since.
+how far apart they sit, in what order they were opened, whose catchment is whose, and what each
+one has washed since.
 
-The unit is an **operator cluster**: a set of sites that share a `client_id` and all sit within
-`max_km` of each other. Clustering is complete-linkage on great-circle distance, so `max_km` is a
-hard cap on the cluster's *diameter* — every site in a cluster is within `max_km` of every other
-one, not merely of its nearest neighbour. Single linkage would chain: the Rio Grande Valley would
-join up into one 120 km "place" through a string of 15 km hops, which is not a place you can put on
-one screen. See `docs/DIVERGENCES.md` for the repo's other clustering (20 km complete-linkage on
-KPIs, same reasoning).
+The unit the reader picks is an **operator**; the unit the maths works in is a **market**: sites
+that share a `client_id` and all sit within `max_km` of each other. Clustering is complete-linkage
+on great-circle distance, so `max_km` is a hard cap on the market's *diameter* — every site is
+within `max_km` of every other one, not merely of its nearest neighbour. Single linkage would
+chain: the Rio Grande Valley would join up into one 120 km "place" through a string of 15 km hops,
+which is not a place you can put on one screen. See `docs/DIVERGENCES.md` for the repo's other
+clustering (20 km complete-linkage on KPIs, same reasoning).
 
-**A coordinate defect this module has to work around.** 93 sites in the panel carry a *placeholder*
+**Two filters, applied in this order and for a reason** (`MIN_FULL_YEARS`, `MIN_MARKET_SITES`):
+a site needs whole calendar years behind it before it can carry a year-on-year comparison, and a
+location needs three or more sites in it before it is a cluster rather than a pair. The year filter
+runs *first*, so a market that only reaches three sites by counting one that opened last month does
+not qualify.
+
+**Trade areas.** `trade_area()` joins `historical_data_sitewise.csv` — the same vendor pull behind
+§④ — for population, income, vehicles, traffic and competitors around each site. The file records
+no radius, so the 3-mile circle drawn in the UI is a stated convention rather than something read
+out of the data. `overlap_fraction()` then measures how much of one site's circle a sibling's also
+covers, which is the mechanism by which an operator's own two sites get handed the same households.
+
+**A coordinate defect this module has to work around.** 100 sites in the panel carry a *placeholder*
 latitude/longitude: an identical coordinate pair shared by several sites of the same operator whose
 street addresses are all different. BlueWave stamps 21 Houston-area sites on one point; Buckeye
 stamps 10 sites spread over six Ohio towns (Norwalk, Ontario, Mansfield, Ashland, Lorain, Elyria)
@@ -25,9 +38,10 @@ the app can say so out loud rather than quietly showing 21 sites as one dot.
 Sites that share a coordinate **and** a street address are a different thing — a genuine
 second tunnel at one address, or an operator handoff — and are kept, at a true distance of 0.
 
-Input: `conclusion/data/historical_data_5yrs_monthly.csv`, the monthly wash panel. It is
-byte-identical to `proforma/data/panel/main-data-v2-stitched.csv`; this module reads it through
-`conclusion/data/` because every other section's data module does, not because they differ.
+Inputs: `conclusion/data/historical_data_5yrs_monthly.csv`, the monthly wash panel (byte-identical
+to `proforma/data/panel/main-data-v2-stitched.csv`), and `conclusion/data/historical_data_sitewise.csv`
+for the trade areas. Both are read through `conclusion/data/` because every other section's data
+module does, not because they differ from copies elsewhere.
 
 Streamlit-free, so the notebook can import it unchanged.
 """
@@ -45,6 +59,13 @@ from scipy.spatial.distance import squareform
 
 REPO = Path(__file__).resolve().parents[2]
 PANEL = REPO / "conclusion" / "data" / "historical_data_5yrs_monthly.csv"
+SITEWISE = REPO / "conclusion" / "data" / "historical_data_sitewise.csv"
+
+# A location only counts as one if the operator put at least this many sites in it, and a site only
+# counts once it has this many complete calendar years behind it. Both are defaults the UI can
+# raise; neither can be lowered past the point where the question stops making sense.
+MIN_MARKET_SITES = 3
+MIN_FULL_YEARS = 1
 
 # Continental-US bounding box. A handful of rows carry 0/0, 90/180 or otherwise impossible
 # coordinates; §⓪ uses the same gate.
@@ -152,6 +173,75 @@ def _short_name(site_name: str, brand: str) -> str:
 # Sites, and the coordinate defect
 # =================================================================================================
 
+# The six StreetLight day-part columns; their sum is the site's all-day traffic.
+TRAFFIC_COLS = [f"Nearest StreetLight US Hourly-ttl_{p}" for p in
+                ("overnight", "breakfast", "lunch", "afternoon", "dinner", "night")]
+
+# Vendor fields where a zero is a failed lookup rather than a real measurement — a trade area with
+# no people, no vehicles and no income in it does not exist. §④ sets aside the same four.
+ZERO_IS_MISSING = ["population", "vehicles", "median_income", "traffic"]
+
+
+@lru_cache(maxsize=1)
+def trade_area() -> pd.DataFrame:
+    """The per-site trade-area measures, keyed `client_id` + `site_id`.
+
+    `historical_data_sitewise.csv` is the vendor pull that sits behind §④ — population, income,
+    vehicles, competitors and traffic for the catchment around each site. It carries **no radius
+    field**, so the 3-mile circle this section draws is the stated convention, not something read
+    out of the file.
+
+    **Joined on `client_id`, not `client_id_1`.** The file carries site ids in two styles — one
+    name-first (`bluewave_000567`), one number-first (`000003_hurricane`) — split across those two
+    columns, and the monthly panel uses both. `client_id` matches 1,988 of the panel's 2,077 sites
+    and `client_id_1` only 1,914; joining on both and coalescing adds nothing, and where a site is
+    reachable by either key the two rows agree on every value (checked: zero disagreements). §④
+    keys on `client_id_1` and so drops BlueWave and the other name-first operators from its cohort
+    entirely — deliberately not changed here, because §④'s published numbers hang off that cohort.
+
+    A competitor "distance" under 0.05 miles is the **site itself** showing up in its own competitor
+    list — true of 76% of the nearest-competitor rows — so the nearest genuine competitor is the
+    first of the three ranked distances that clears that threshold.
+    """
+    sw = pd.read_csv(SITEWISE, low_memory=False)
+    out = pd.DataFrame({
+        "client_id": sw.client_id.astype(str), "site_id": sw.site_id,
+        "population": sw["2025 Estimate"],
+        "pop_growth": sw["Growth 2025-2020"],
+        "avg_age": sw["2025 Average Age"],
+        "median_income": sw["Median Household Income"],
+        "income_50k_pct": sw["2025 % HH with Income $50K+"],
+        "vehicles": sw["Total Vehicles Available in the Market"],
+        "vehicles_per_hh": sw["Average Number of Vehicles Available"],
+        "competitors": sw["Count of Car Wash Competitors"],
+        "traffic": sw[TRAFFIC_COLS].sum(axis=1),
+    })
+    dist = [sw[c] for c in ("Nearest Car Wash Competitors-Distance",
+                            "2nd Nearest Car Wash Competitors-Distance",
+                            "3rd Nearest Car Wash Competitors-Distance")]
+    nearest = pd.Series(np.nan, index=sw.index)
+    for col in dist:
+        nearest = nearest.where(nearest.notna(), col.where(col > 0.05))
+    out["nearest_competitor_mi"] = nearest
+
+    for c in ZERO_IS_MISSING:
+        out.loc[out[c] <= 0, c] = np.nan
+    return out.drop_duplicates(["client_id", "site_id"]).reset_index(drop=True)
+
+
+@lru_cache(maxsize=1)
+def full_years() -> pd.Series:
+    """Complete calendar years behind each site — twelve months traded, all in one year.
+
+    A site's opening year is a stub and its final year may be one too; counting only whole years is
+    what makes "year on year" a comparison rather than a shape. Indexed by `site_key`.
+    """
+    d = _panel()
+    per = d.groupby(["site_key", "year"]).month.nunique()
+    return (per[per >= MONTHS_IN_YEAR].groupby("site_key").size()
+                                     .rename("full_years"))
+
+
 @lru_cache(maxsize=1)
 def site_index() -> pd.DataFrame:
     """One row per site: identity, location, opening, and lifetime trading.
@@ -194,6 +284,12 @@ def site_index() -> pd.DataFrame:
     # Fall back to the first month that actually washed a car — a few sites have no start stamp.
     g["opened_ym"] = g.opened_ym.fillna(g.first_ym)
     g["opened"] = g.opened_ym.map(_ym_label)
+
+    g["full_years"] = g.site_key.map(full_years()).fillna(0).astype(int)
+    g = g.merge(trade_area(), on=["client_id", "site_id"], how="left")
+    # Washes per head of the trade area. Descriptive only — §② shows capture rate is a ratio that
+    # falls mechanically as its denominator rises, so it is never bucketed or plotted here.
+    g["washes_per_capita"] = g.washes_per_year / g.population
     return g
 
 
@@ -562,78 +658,101 @@ def overlap_fraction(gap_km: np.ndarray | float, radius_km: float) -> np.ndarray
     return float(out) if np.isscalar(gap_km) else out
 
 
-@lru_cache(maxsize=1)
-def operator_index() -> pd.DataFrame:
-    """Every operator holding two or more placeable sites — the dropdown's contents.
+@lru_cache(maxsize=32)
+def operator_index(max_km: float = 25.0, min_market_sites: int = MIN_MARKET_SITES,
+                   min_full_years: int = MIN_FULL_YEARS) -> pd.DataFrame:
+    """The dropdown's contents: operators that actually clustered somewhere.
 
-    Single-site operators are excluded because every question this section asks (how far apart, in
-    what order, who ate whose catchment) needs at least two.
+    An operator qualifies only if, after the full-year filter, it holds `min_market_sites` or more
+    sites inside a single market. Two sites in a town is a pair, not a cluster, and an operator
+    with twenty sites scattered one-per-city has no location to look at — neither can answer the
+    questions this section asks, so neither is offered.
+
+    The counts reported here are **post-filter**: `sites` is what the operator has left in
+    qualifying markets, not its total estate. `dropped_sites` says what the filters took.
     """
+    rows = []
     s = site_index()
-    u = s[s.in_us & ~s.placeholder_coord]
-    g = (u.groupby("client_id")
-           .agg(operator=("operator", "first"), sites=("site_key", "size"),
-                states=("state", "nunique"), state=("state", lambda x: x.mode().iloc[0]),
-                washes=("washes", "sum"), washes_per_year=("washes_per_year", "sum"),
-                median_site=("washes_per_year", "median"),
-                first_open=("opened_ym", "min"), last_open=("opened_ym", "max"))
-           .reset_index())
-    g = g[g.sites >= 2].copy()
-    # Sites dropped for an unusable coordinate are counted, not hidden: an operator showing 67 of
-    # its 92 sites has to say so on the page rather than quietly under-report itself.
-    dropped = (s[s.placeholder_coord | ~s.in_us].groupby("client_id").size()
-                .rename("unplaceable"))
-    g = g.merge(dropped, left_on="client_id", right_index=True, how="left")
-    g["unplaceable"] = g.unplaceable.fillna(0).astype(int)
-    g["label"] = (g.operator + " · " + g.sites.astype(str) + " sites · "
-                  + np.where(g.states > 1, g.states.astype(str) + " states", g.state))
+    placeable = s[s.in_us & ~s.placeholder_coord]
+    for cid, g in placeable.groupby("client_id"):
+        if len(g) < min_market_sites:
+            continue
+        m = operator_sites(cid, max_km, TRADE_AREA_MI, min_market_sites, min_full_years)
+        if m.empty:
+            continue
+        rows.append(dict(
+            client_id=cid, operator=m.operator.iloc[0], sites=int(len(m)),
+            markets=int(m.market_id.nunique()), states=int(m.state.nunique()),
+            state=m.state.mode().iloc[0] if m.state.notna().any() else "—",
+            washes=float(m.washes.sum()), washes_per_year=float(m.washes_per_year.sum()),
+            median_site=float(m.washes_per_year.median()),
+            biggest_market=int(m.market_id.value_counts().iloc[0]),
+            # Everything the two filters and the coordinate gate removed, so the page can say so.
+            dropped_sites=int(len(g) - len(m)),
+            unplaceable=int((s.client_id == cid).sum() - len(g)),
+        ))
+    if not rows:
+        return pd.DataFrame(columns=["client_id", "label"])
+    g = pd.DataFrame(rows)
+    g["label"] = (g.operator + " · " + g.sites.astype(str) + " sites in "
+                  + g.markets.astype(str) + " market" + np.where(g.markets > 1, "s", "")
+                  + " · " + np.where(g.states > 1, g.states.astype(str) + " states", g.state))
     return g.sort_values(["sites", "washes_per_year"], ascending=False).reset_index(drop=True)
 
 
-@lru_cache(maxsize=32)
-def operator_sites(client_id: str, max_km: float = 25.0,
-                   radius_mi: float = TRADE_AREA_MI) -> pd.DataFrame:
-    """Every placeable site of one operator, in the order it opened them.
+@lru_cache(maxsize=64)
+def operator_sites(client_id: str, max_km: float = 25.0, radius_mi: float = TRADE_AREA_MI,
+                   min_market_sites: int = MIN_MARKET_SITES,
+                   min_full_years: int = MIN_FULL_YEARS) -> pd.DataFrame:
+    """One operator's sites, in the order it opened them, after both filters.
 
-    `open_rank` is operator-wide here, not cluster-wide — the story is the company's build-out
-    sequence. `market` groups the sites the same way `build()` does but with **no minimum size**,
-    so a lone site in a state is its own market rather than being dropped; that is the right call
-    for a company view and the wrong one for the estate-wide league table, which is why the two
-    do not share a code path.
+    Order of operations matters and is deliberate:
+
+      1. drop sites without `min_full_years` complete calendar years — a site with only a stub of a
+         year has no year-on-year to compare, and leaving it in makes every chart it appears in a
+         mix of full and part years;
+      2. cluster what is left into markets at `max_km`;
+      3. **drop whole markets holding fewer than `min_market_sites` sites.**
+
+    Clustering *after* the year filter is the point: a market that only reaches three sites by
+    counting one that opened last month is not three sites in a location yet.
+
+    `open_rank` is operator-wide, not per market — the story is the company's build-out sequence.
     """
     s = site_index()
     m = s[(s.client_id == client_id) & s.in_us & ~s.placeholder_coord].copy()
-    if m.empty:
-        return m
+    m = m[m.full_years >= int(min_full_years)]
+    if len(m) < int(min_market_sites):
+        return m.iloc[0:0]
     m = m.reset_index(drop=True)
     r_km = float(radius_mi) * KM_PER_MILE
 
     d = haversine_matrix(m.lat.values, m.lon.values)
-    if len(m) > 1:
-        near = d.copy()
-        np.fill_diagonal(near, np.inf)
-        m["nearest_km"] = near.min(axis=1)
-        m["nearest_site"] = [m.site.iloc[int(i)] for i in near.argmin(axis=1)]
-        m["overlap_nearest"] = overlap_fraction(m.nearest_km.values, r_km)
-        # How many siblings sit close enough for the two 3-mile circles to intersect at all.
-        m["n_overlapping"] = ((d < 2 * r_km) & (d > 0)).sum(axis=1) + (
-            np.isclose(d, 0).sum(axis=1) - 1)
-        labels = fcluster(linkage(squareform(d, checks=False), method="complete"),
-                          t=float(max_km), criterion="distance")
-    else:
-        m["nearest_km"], m["nearest_site"] = np.nan, "—"
-        m["overlap_nearest"], m["n_overlapping"] = 0.0, 0
-        labels = np.array([1])
+    labels = fcluster(linkage(squareform(d, checks=False), method="complete"),
+                      t=float(max_km), criterion="distance")
+    keep = pd.Series(labels).value_counts()
+    keep = set(keep[keep >= int(min_market_sites)].index)
+    if not keep:
+        return m.iloc[0:0]
+    sel = np.array([lab in keep for lab in labels])
+    m, labels, d = m[sel].reset_index(drop=True), labels[sel], d[np.ix_(sel, sel)]
+
+    near = d.copy()
+    np.fill_diagonal(near, np.inf)
+    m["nearest_km"] = near.min(axis=1)
+    m["nearest_site"] = [m.site.iloc[int(i)] for i in near.argmin(axis=1)]
+    m["overlap_nearest"] = overlap_fraction(m.nearest_km.values, r_km)
+    # How many siblings sit close enough for the two trade-area circles to intersect at all.
+    m["n_overlapping"] = ((d < 2 * r_km) & (d > 0)).sum(axis=1) + np.isclose(d, 0).sum(axis=1) - 1
+    # The slice of this site's own catchment its nearest sibling also claims, in people.
+    m["shared_population"] = m.overlap_nearest * m.population
 
     m["market_id"] = [f"{client_id}::{int(k)}" for k in labels]
-    sizes = pd.Series(labels).value_counts()
     names = {}
     for k in np.unique(labels):
         sub = m[labels == k]
         state = sub.state.mode().iloc[0] if sub.state.notna().any() else "—"
-        anchor = sub.sort_values("opened_ym").site.iloc[0]
-        names[f"{client_id}::{int(k)}"] = (f"{state} · {anchor}" if sizes[k] > 1
-                                           else f"{state} · {anchor} (single site)")
+        names[f"{client_id}::{int(k)}"] = f"{state} · {sub.sort_values('opened_ym').site.iloc[0]}"
     m["market"] = m.market_id.map(names)
     m["open_rank"] = m.opened_ym.rank(method="first").astype(int)
     m["maps_url"] = ["https://www.google.com/maps/search/?api=1&query="
@@ -681,17 +800,29 @@ def operator_years(client_id: str, site_keys: tuple | None = None,
     return y
 
 
-def operator_headline(client_id: str, max_km: float = 25.0,
-                      radius_mi: float = TRADE_AREA_MI) -> dict:
+def operator_headline(client_id: str, max_km: float = 25.0, radius_mi: float = TRADE_AREA_MI,
+                      min_market_sites: int = MIN_MARKET_SITES,
+                      min_full_years: int = MIN_FULL_YEARS) -> dict:
     """The numbers that open an operator's page."""
-    m = operator_sites(client_id, max_km, radius_mi)
+    m = operator_sites(client_id, max_km, radius_mi, min_market_sites, min_full_years)
     if m.empty:
         return {}
-    idx = operator_index().set_index("client_id")
+    idx = operator_index(max_km, min_market_sites, min_full_years).set_index("client_id")
     unplaceable = int(idx.unplaceable.get(client_id, 0))
+    dropped = int(idx.dropped_sites.get(client_id, 0))
     opened = m.opened_ym.dropna()
     overlapping = int((m.n_overlapping > 0).sum())
+    pop = m.population.dropna()
     return dict(
+        n_dropped=dropped,
+        population=float(pop.sum()) if len(pop) else np.nan,
+        median_population=float(pop.median()) if len(pop) else np.nan,
+        shared_population=float(m.shared_population.sum(skipna=True)),
+        median_income=float(m.median_income.median()),
+        median_traffic=float(m.traffic.median()),
+        median_competitors=float(m.competitors.median()),
+        median_full_years=float(m.full_years.median()),
+        with_trade_area=int(m.population.notna().sum()),
         operator=str(m.operator.iloc[0]), client_id=client_id,
         n_sites=int(len(m)), n_states=int(m.state.nunique()),
         n_markets=int(m.market_id.nunique()), unplaceable=unplaceable,

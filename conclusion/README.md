@@ -330,25 +330,48 @@ panel, not a section-specific extract.
 **One input**, the monthly panel (`conclusion/data/historical_data_5yrs_monthly.csv`, byte-identical
 to `proforma/data/panel/main-data-v2-stitched.csv`). Nothing is joined in.
 
-The reader picks a **company**, not a place — a dropdown of the **221 operators holding two or more
-placeable sites**. Everything then shown is that one operator: every site on a zoomed tile map with
-its **3-mile trade-area circle** drawn, a sitewise table whose addresses link straight to Google
-Maps, washes **month on month** (total, plus a site × month heatmap), washes **year on year**
-(total, plus one small-multiple panel per site on a shared scale), and what the settled neighbours
-did each time the operator opened another site. A market sub-selector groups their sites by
-complete-linkage distance so a 5-state operator can be zoomed to one town.
+The reader picks a **company**, not a place — and only companies that **actually clustered**. Two
+filters, applied in this order and defaulting to 15 miles / 3 sites / 1 complete year, cut the 221
+multi-site operators to **42**:
 
-**The 3-mile circle is the point.** A site's demographics, traffic and competitor counts are pulled
-for a trade area of about that radius, so where two of one operator's circles overlap both sites are
-being credited with the same households. `overlap_fraction()` is the exact circle-circle lens area
-over circle area — pairwise against the nearest sibling, not a union across all siblings (no
-`shapely` in `sonnys`), so it **understates** where three or more circles pile up.
+1. a site needs **whole calendar years** behind it, or it has no year-on-year to compare;
+2. a **location** needs **3+ sites** in it, or it is a pair, not a cluster — and markets below the
+   threshold are dropped whole, along with operators left with none.
 
-| Luvcarwash, the largest operator, at a 3-mile radius | |
+The year filter runs *first*, so a market that only reaches three sites by counting one that opened
+last month does not qualify.
+
+Everything then shown is that one operator: every site on a zoomed tile map with its **3-mile
+trade-area circle** drawn, a sitewise table whose addresses link straight to Google Maps, washes
+**month on month** (total, plus a site × month heatmap), washes **year on year** (total, plus one
+small-multiple panel per site on a shared scale), and what the settled neighbours did each time the
+operator opened another site. A market sub-selector zooms a 5-state operator to one town. Distances
+are in **miles** throughout, including the grouping slider.
+
+**The 3-mile circle is the point.** `historical_data_sitewise.csv` — the same vendor trade-area pull
+behind §④ — supplies population, income, traffic and competitors for the catchment around each site,
+and those figures sit in the map's hover box next to the wash counts they are meant to explain. The
+file records **no radius**, so the 3-mile circle is a stated convention, not something read out of
+the data. Where two of one operator's circles overlap, both sites are credited with the same
+households. `overlap_fraction()` is the exact circle-circle lens area over circle area — pairwise
+against the nearest sibling, not a union across all siblings (no `shapely` in `sonnys`), so it
+**understates** where three or more circles pile up.
+
+It joins on **`client_id`**, not `client_id_1`. The file carries ids in two styles split across
+those columns and the panel uses both: `client_id` matches 1,988 of 2,077 panel sites, `client_id_1`
+only 1,914, coalescing adds nothing, and the two agree wherever both resolve. §④ keys on
+`client_id_1` and so drops BlueWave and the other name-first operators from its cohort — left alone
+on purpose, since §④'s published numbers hang off that cohort.
+
+| Trade-area double-counting, at a 3-mile radius | |
 |---|---|
-| Sites / states / markets | **79 / 5 / 32** |
-| Sites whose catchment overlaps a sibling's | **67%** (53 of 79) |
-| Median overlapping pair shares | **39%** of a site's trade area; worst **88%** |
+| Across the 42 qualifying operators (261 sites) | **34%** of counted trade-area population is claimed by two sites at once — 7.5M of 21.7M people |
+| The median operator | **67%** of its sites overlap a sibling's catchment |
+| Luvcarwash (37 sites, 9 markets) | **92%** of sites overlap; median pair shares **34%**, worst **81%**; **36%** of its 3.8M counted people double-counted |
+
+A competitor "distance" under 0.05 miles is the **site itself** in its own competitor list — true of
+76% of the nearest-competitor rows — so the nearest genuine competitor is the first ranked distance
+that clears that threshold.
 
 | Estate-wide, at 25 km, 3+ sites | |
 |---|---|

@@ -1,16 +1,21 @@
 """
 Section — Operator clusters. Pick a multi-site operator; get their whole story.
 
-The reader picks a company, not a place. Everything below is that one operator: every site it owns
-on a map, the **3-mile trade-area circle** around each pin, how far apart it built them and in what
-order, what each site has washed month on month and year on year, and what the sites already
-trading did each time it opened another.
+The reader picks a company, not a place — and only companies that **actually clustered**: three or
+more sites inside one location, each with whole calendar years behind it. Everything below is that
+one operator: every site it owns on a map, the **3-mile trade-area circle** around each pin, how
+far apart it built them and in what order, what each site has washed month on month and year on
+year, and what the sites already trading did each time it opened another.
 
-Why the 3-mile circle is the point. A site's demographics, traffic counts and competitor counts are
+Why the 3-mile circle is the point. A site's population, income, traffic and competitor counts are
 pulled for a trade area of about that radius — so where two of one operator's circles overlap, both
-sites are being credited with the same households. §④ finds the trade area explains none of the
+sites are being credited with the same households, and the hover box puts those vendor figures next
+to the wash counts they are supposed to explain. §④ finds the trade area explains none of the
 variance in wash volume; this section shows one mechanical reason that can happen inside a single
 company's own estate.
+
+Distances are shown in **miles** throughout, including the market-grouping slider; the maths
+underneath is in kilometres because the haversine is.
 
 The maths is in `cluster_data.py` and is Streamlit-free, so the notebook reports the same numbers.
 
@@ -62,18 +67,20 @@ PANEL_LIMIT = 12
 # =================================================================================================
 
 @st.cache_data(show_spinner=False)
-def _operators() -> pd.DataFrame:
-    return cd.operator_index()
+def _operators(max_km: float, min_market: int, min_years: int) -> pd.DataFrame:
+    return cd.operator_index(max_km, min_market, min_years)
 
 
 @st.cache_data(show_spinner=False)
-def _sites(client_id: str, max_km: float, radius_mi: float) -> pd.DataFrame:
-    return cd.operator_sites(client_id, max_km, radius_mi)
+def _sites(client_id: str, max_km: float, radius_mi: float, min_market: int,
+           min_years: int) -> pd.DataFrame:
+    return cd.operator_sites(client_id, max_km, radius_mi, min_market, min_years)
 
 
 @st.cache_data(show_spinner=False)
-def _headline(client_id: str, max_km: float, radius_mi: float) -> dict:
-    return cd.operator_headline(client_id, max_km, radius_mi)
+def _headline(client_id: str, max_km: float, radius_mi: float, min_market: int,
+              min_years: int) -> dict:
+    return cd.operator_headline(client_id, max_km, radius_mi, min_market, min_years)
 
 
 @st.cache_data(show_spinner=False)
@@ -87,8 +94,9 @@ def _years(client_id: str, keys: tuple) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def _effect(client_id: str, keys: tuple, max_km: float, radius_mi: float) -> pd.DataFrame:
-    m = cd.operator_sites(client_id, max_km, radius_mi)
+def _effect(client_id: str, keys: tuple, max_km: float, radius_mi: float, min_market: int,
+            min_years: int) -> pd.DataFrame:
+    m = cd.operator_sites(client_id, max_km, radius_mi, min_market, min_years)
     return cd.effect_for(m[m.site_key.isin(keys)])
 
 
@@ -175,34 +183,52 @@ def _view(m: pd.DataFrame, radius_mi: float) -> tuple[dict, float]:
 # =================================================================================================
 
 def render() -> None:
-    ops = _operators()
-
     st.markdown("<div class='kicker'>Evidence pack · ⑥</div>", unsafe_allow_html=True)
     st.title("Operator clusters")
-    st.markdown("Pick a **multi-site operator** and get their whole story: every site on a map with "
-                "its **3-mile trade area** drawn, how far apart they sit and in what order they "
+    st.markdown("Pick an operator that has **genuinely clustered somewhere** — three or more sites "
+                "inside one location — and get their whole story: every site on a map with its "
+                "**3-mile trade area** drawn, how far apart they sit and in what order they "
                 "opened, what each one washes month on month and year on year, and what the sites "
                 "already trading did each time another one arrived.")
 
-    c1, c2, c3 = st.columns([3, 2, 2])
+    g1, g2, g3 = st.columns(3)
+    with g1:
+        market_mi = st.slider("Sites count as one market within (miles)", 2, 40, 15, 1,
+                              help="Complete linkage: every site in a market is within this "
+                                   "distance of every other one, not just of its nearest "
+                                   "neighbour.")
+    with g2:
+        min_market = st.slider("Fewest sites to count as a location", 3, 8, 3, 1,
+                               help="Markets smaller than this are dropped entirely, and so are "
+                                    "operators left with none.")
+    with g3:
+        min_years = st.slider("Fewest complete years a site must have", 0, 4, 1, 1,
+                              help="A site with only a stub of a year has no year-on-year to "
+                                   "compare. Filtered before the sites are grouped into markets.")
+    max_km = float(market_mi) * KM_PER_MILE
+
+    ops = _operators(max_km, int(min_market), int(min_years))
+    if ops.empty:
+        st.warning("No operator has that many sites that close together with that much trading "
+                   "history. Loosen one of the three sliders above.")
+        return
+
+    c1, c2 = st.columns([3, 2])
     with c1:
         labels = dict(zip(ops.client_id, ops.label))
-        pick = st.selectbox(f"Operator ({len(ops)} hold more than one site)",
-                            list(ops.client_id), format_func=lambda c: labels.get(c, c))
+        pick = st.selectbox(f"Operator — {len(ops)} qualify", list(ops.client_id),
+                            format_func=lambda c: labels.get(c, c))
     with c2:
         radius_mi = st.slider("Trade-area radius (miles)", 1.0, 6.0, float(cd.TRADE_AREA_MI), 0.5,
-                              help="The circle drawn around each site. A site's demographics and "
-                                   "traffic are pulled for about a 3-mile radius.")
-    with c3:
-        max_km = st.slider("Group sites into a market within (km)", 5, 60, 25, 1,
-                           help="Complete linkage: every site in a market is within this distance "
-                                "of every other one, not just of its nearest neighbour.")
+                              help="The circle drawn around each site. A site's demographics, "
+                                   "traffic and competitor counts are pulled for roughly a 3-mile "
+                                   "radius.")
 
-    m_all = _sites(pick, float(max_km), float(radius_mi))
+    m_all = _sites(pick, max_km, float(radius_mi), int(min_market), int(min_years))
     if m_all.empty:
-        st.warning("This operator has no site with a usable coordinate. See “Data & method”.")
+        st.warning("Nothing left for this operator at these settings. Loosen a slider.")
         return
-    h = _headline(pick, float(max_km), float(radius_mi))
+    h = _headline(pick, max_km, float(radius_mi), int(min_market), int(min_years))
 
     markets = (m_all.groupby(["market_id", "market"]).size().rename("sites")
                     .reset_index().sort_values("sites", ascending=False))
@@ -223,18 +249,33 @@ def render() -> None:
     st.header(f"1 · {h['operator']} — the whole estate")
 
     k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Sites", f"{h['n_sites']:,}",
-              f"{h['n_states']} state{'s' if h['n_states'] != 1 else ''} · "
-              f"{h['n_markets']} markets", delta_color="off")
+    k1.metric("Sites in clustered locations", f"{h['n_sites']:,}",
+              f"{h['n_markets']} markets · {h['n_states']} "
+              f"state{'s' if h['n_states'] != 1 else ''}", delta_color="off")
     k2.metric("Washes a year", f"{h['washes_per_year']:,.0f}",
               f"typical site {h['median_site']:,.0f}", delta_color="off")
-    k3.metric("Built out over", f"{h['build_out_months']:,.0f} mo",
-              f"{h['first_open']} → {h['last_open']}", delta_color="off")
-    k4.metric(f"Sites sharing a {radius_mi:g}-mile catchment", f"{h['share_overlapping']:.0%}",
-              f"{h['n_overlapping']} of {h['n_sites']}", delta_color="off")
-    st.caption(f"`client_id` **{pick}** · {h['states']}"
-               + (f" · **{h['unplaceable']} further site(s) are not shown** — their coordinate is "
-                  "a placeholder, see “Data & method”." if h["unplaceable"] else ""))
+    k3.metric("Trade-area population", f"{h['population']:,.0f}"
+              if pd.notna(h["population"]) else "—",
+              f"typical site {h['median_population']:,.0f}" if pd.notna(h["median_population"])
+              else "no trade-area data", delta_color="off")
+    k4.metric("Of that, double-counted",
+              f"{h['shared_population'] / h['population']:.0%}"
+              if pd.notna(h["population"]) and h["population"] else "—",
+              f"{h['shared_population']:,.0f} people", delta_color="off")
+    dropped = []
+    if h.get("n_dropped"):
+        dropped.append(f"**{h['n_dropped']}** more sites fall outside a "
+                       f"{min_market}-site location or have under {min_years} complete "
+                       f"year{'s' if min_years != 1 else ''}")
+    if h.get("unplaceable"):
+        dropped.append(f"**{h['unplaceable']}** carry a placeholder coordinate")
+    st.caption(f"`client_id` **{pick}** · {h['states']} · a typical site here has "
+               f"**{h['median_full_years']:.0f}** complete years behind it."
+               + (" Not shown: " + "; ".join(dropped) + ". See “Data & method”."
+                  if dropped else ""))
+    st.caption("“Trade-area population” is the sum of every site's own catchment, so it "
+               "**double-counts wherever two circles overlap** — which is exactly what the fourth "
+               "figure measures, against each site's nearest sibling.")
 
     # =============================================================================================
     st.divider()
@@ -249,17 +290,37 @@ def render() -> None:
     mm["shade"] = [_shade(int(r), n_all) for r in mm.open_rank]
     mm["disc"] = np.sqrt(mm.washes_per_year.clip(lower=1)) / 24 + 18
 
-    HOVER = ("<b>%{customdata[0]}</b><br>%{customdata[1]}<br>"
-             "Opened <b>%{customdata[2]}</b> — the operator's #%{customdata[5]}<br>"
-             "<b>%{customdata[3]:,.0f}</b> washes a year "
-             "<span style='opacity:.7'>(%{customdata[6]:.0f} months trading)</span><br>"
-             "Nearest sibling %{customdata[4]:.1f} km — <b>%{customdata[7]:.0%}</b> of this "
-             "catchment shared<extra></extra>")
+    # The hover box is the section's densest surface, so it is ordered the way the question gets
+    # asked: which site, when did it open, what does it wash, who lives around it, who else is
+    # after them, and whose catchment is it really. Trade-area figures come from
+    # `historical_data_sitewise.csv`; a site the vendor pull missed shows an em dash rather than a
+    # zero, because zero people is a failed lookup, not a place.
+    HOVER = (
+        "<b>%{customdata[0]}</b> — the operator's #%{customdata[5]}<br>"
+        "<span style='opacity:.75'>%{customdata[1]}</span><br>"
+        "<br><b>Opened %{customdata[2]}</b> · %{customdata[6]:.0f} months trading · "
+        "%{customdata[11]:.0f} full years<br>"
+        "<b>%{customdata[3]:,.0f}</b> washes a year · %{customdata[12]:,.0f} to date<br>"
+        "%{customdata[13]:.0%} membership · $%{customdata[14]:,.2f} a wash<br>"
+        "<br><b>Trade area</b><br>"
+        "Population <b>%{customdata[8]}</b> · median income %{customdata[9]}<br>"
+        "Traffic %{customdata[15]} a day · %{customdata[16]} car-wash competitors<br>"
+        "<br><b>Nearest sibling</b> %{customdata[4]:.1f} mi (%{customdata[10]})<br>"
+        "<b>%{customdata[7]:.0%}</b> of this catchment is shared with it"
+        "<extra></extra>")
+
+    def _num(s: pd.Series, fmt: str = "{:,.0f}") -> list:
+        """Vendor figures that are missing print as an em dash, never as 0."""
+        return [fmt.format(v) if pd.notna(v) else "—" for v in s]
 
     def _cd(f: pd.DataFrame) -> np.ndarray:
-        return np.stack([f.site, f.address, f.opened, f.washes_per_year,
-                         f.nearest_km.fillna(0), f.open_rank, f.months, f.overlap_nearest],
-                        axis=-1)
+        return np.stack([
+            f.site, f.address, f.opened, f.washes_per_year,
+            f.nearest_km.fillna(0) / KM_PER_MILE, f.open_rank, f.months, f.overlap_nearest,
+            _num(f.population), _num(f.median_income, "${:,.0f}"), f.nearest_site, f.full_years,
+            f.washes, f.mem_share.fillna(0), f.asp.fillna(0), _num(f.traffic),
+            _num(f.competitors),
+        ], axis=-1)
 
     centre, zoom = _view(m, float(radius_mi))
     figm = go.Figure()
@@ -325,23 +386,35 @@ def render() -> None:
     # Column order is priority order, because the table is wider than the page and scrolls: the
     # opening date, the volume and the catchment overlap have to be visible before the reader has
     # to drag anything. ZIP and market are in the CSV, not on screen.
-    show = m[["open_rank", "site", "address", "state", "opened", "months", "washes_per_year",
-              "overlap_nearest", "nearest_site", "nearest_km", "washes", "mem_share",
-              "asp"]].copy()
+    show = m[["open_rank", "site", "address", "state", "opened", "full_years", "washes_per_year",
+              "population", "median_income", "traffic", "competitors", "nearest_competitor_mi",
+              "overlap_nearest", "shared_population", "nearest_site", "nearest_km", "washes",
+              "mem_share", "asp"]].copy()
+    show["nearest_km"] = show.nearest_km / KM_PER_MILE
     show["address"] = [f"<a href='{u}' target='_blank' rel='noopener'>{a}</a>"
                        for a, u in zip(show.address, m.maps_url)]
     show.columns = ["Opened #", "Site", "Address (opens Google Maps)", "State", "Opened",
-                    "Months trading", "Washes a year", "Catchment shared", "Nearest sibling",
-                    "Nearest (km)", "Washes to date", "Membership share", "Revenue per wash"]
+                    "Full years", "Washes a year", "Trade-area population", "Median income",
+                    "Traffic a day", "Competitors", "Nearest competitor (mi)", "Catchment shared",
+                    "People double-counted", "Nearest sibling", "Nearest sibling (mi)",
+                    "Washes to date", "Membership share", "Revenue per wash"]
     show.index = range(1, len(show) + 1)
-    html_table(show, fmt={"Opened #": "{:,.0f}", "Months trading": "{:,.0f}",
+    html_table(show, fmt={"Opened #": "{:,.0f}", "Full years": "{:,.0f}",
                           "Washes to date": "{:,.0f}", "Washes a year": "{:,.0f}",
+                          "Trade-area population": "{:,.0f}", "Median income": "${:,.0f}",
+                          "Traffic a day": "{:,.0f}", "Competitors": "{:,.0f}",
+                          "Nearest competitor (mi)": "{:,.2f}",
+                          "People double-counted": "{:,.0f}",
                           "Membership share": "{:.0%}", "Revenue per wash": "${:,.2f}",
-                          "Nearest (km)": "{:,.2f}", "Catchment shared": "{:.0%}"})
+                          "Nearest sibling (mi)": "{:,.2f}", "Catchment shared": "{:.0%}"})
     st.caption("“Washes a year” is the site's own rate — total washes ÷ months trading × 12 — so a "
-               "site opened last year is comparable with one opened in 2020. “Catchment shared” is "
-               f"the share of this site's {radius_mi:g}-mile circle that its **nearest** sibling "
-               "also covers; it is pairwise, not the union of every sibling.")
+               "site opened last year is comparable with one opened in 2020. Population, income, "
+               "traffic and competitors come from `historical_data_sitewise.csv`, the same vendor "
+               "trade-area pull §④ uses; **a dash means the vendor returned nothing, not zero.** "
+               f"“Catchment shared” is the share of this site's {radius_mi:g}-mile circle that its "
+               "**nearest** sibling also covers, and “people double-counted” applies that share to "
+               "this site's own population — both pairwise, not a union across every sibling. "
+               "A competitor closer than 0.05 miles is the site itself and is skipped.")
     st.download_button("Download these sites (CSV)", m.to_csv(index=False),
                        f"operator_sites_{pick}.csv", "text/csv", key=f"dl_sites_{pick}")
 
@@ -486,8 +559,8 @@ def render() -> None:
     # =============================================================================================
     st.divider()
     st.header("6 · What happened when they opened the next one")
-    eff = _effect(pick, keys, float(max_km), float(radius_mi))
-    all_eff = _effect_all(float(max_km), 3)
+    eff = _effect(pick, keys, max_km, float(radius_mi), int(min_market), int(min_years))
+    all_eff = _effect_all(max_km, int(min_market))
 
     if eff.empty:
         st.info("No opening in this selection has a settled neighbour to compare against — the "
@@ -509,13 +582,13 @@ def render() -> None:
         figE.add_bar(x=lbl, y=e.incumbent_change * 100, name="neighbours here",
                      marker=dict(color=[S2 if v < 0 else S3 for v in e.incumbent_change],
                                  line=dict(color=SURFACE, width=1)),
-                     customdata=np.stack([e.n_incumbents, e.nearest_km, e.opened,
+                     customdata=np.stack([e.n_incumbents, e.nearest_km / KM_PER_MILE, e.opened,
                                           e.excess * 100], axis=-1),
                      hovertemplate="<b>%{x}</b> opened %{customdata[2]}<br>"
                                    "neighbours here: <b>%{y:+.1f}%</b><br>"
                                    "after taking off elsewhere: <b>%{customdata[3]:+.1f}pp</b><br>"
                                    "<span style='opacity:.7'>%{customdata[0]:.0f} settled "
-                                   "neighbours · nearest %{customdata[1]:.1f} km</span>"
+                                   "neighbours · nearest %{customdata[1]:.1f} mi</span>"
                                    "<extra></extra>")
         figE.add_hline(y=0, line=dict(color=MUTED, width=1))
         st.plotly_chart(style(figE, height=380, barmode="group", bargap=0.3,
@@ -526,11 +599,11 @@ def render() -> None:
 
         et = e[["open_rank", "site", "opened", "n_incumbents", "nearest_km", "incumbent_change",
                 "control_change", "excess"]].copy()
-        et.columns = ["Opened #", "New site", "Opened", "Settled neighbours", "Nearest (km)",
+        et.columns = ["Opened #", "New site", "Opened", "Settled neighbours", "Nearest (mi)",
                       "Neighbours here", "Operator elsewhere", "Difference"]
         et.index = range(1, len(et) + 1)
         html_table(et, fmt={"Opened #": "{:,.0f}", "Settled neighbours": "{:,.0f}",
-                            "Nearest (km)": "{:,.2f}", "Neighbours here": "{:+.1%}",
+                            "Nearest (mi)": "{:,.2f}", "Neighbours here": "{:+.1%}",
                             "Operator elsewhere": "{:+.1%}", "Difference": "{:+.1%}"})
 
     if not all_eff.empty:
@@ -564,7 +637,7 @@ def render() -> None:
 
     # =============================================================================================
     with st.expander("The estate-wide picture — every operator's clustered markets"):
-        cl = _clusters(float(max_km), 3)
+        cl = _clusters(max_km, int(min_market))
         if cl.empty:
             st.info("No operator has three or more sites that close together at this setting.")
         else:
