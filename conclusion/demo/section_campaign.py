@@ -583,20 +583,6 @@ def render() -> None:
             ann.font.update(color=INK, size=12)
         st.plotly_chart(figr, width="stretch")
 
-        n_sig_pos = sum(1 for r in real if r["p_value"] < 0.05 and r["mean_lift_pct"] > 0)
-        callout("What this shows", f"""
-          <b>Every site shows a real spike in its own campaign month</b> — visible in every panel,
-            regardless of what happens afterward.
-          <b>{n_sig_pos} of {len(real)} sites shows a significant, positive, SUSTAINED lift</b> in
-            the months that follow, tested against that same site's own normal year. The rest are
-            flat or negative once the campaign month itself passes.
-          <b>Why this matters.</b> A single site is not enough data to see a
-            ~{P['deseason']['deseasonalised']:.0f}% effect — that is smaller than the ordinary
-            year-to-year noise visible between the blue and orange lines above, at sites that ran
-            no campaign at all in one of those years. This is exactly why the aggregate,
-            matched-control chart above exists: the effect is real, but only visible in aggregate.
-        """, WARNING if n_sig_pos == 0 else GOOD)
-
     # =============================================================================================
     st.divider()
     with st.expander("Data & method"):
