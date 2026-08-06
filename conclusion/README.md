@@ -341,12 +341,33 @@ multi-site operators to **42**:
 The year filter runs *first*, so a market that only reaches three sites by counting one that opened
 last month does not qualify.
 
-Everything then shown is that one operator: every site on a zoomed tile map with its **3-mile
-trade-area circle** drawn, a sitewise table whose addresses link straight to Google Maps, washes
-**month on month** (total, plus a site × month heatmap), washes **year on year** (total, plus one
-small-multiple panel per site on a shared scale), and what the settled neighbours did each time the
-operator opened another site. A market sub-selector zooms a 5-state operator to one town. Distances
-are in **miles** throughout, including the grouping slider.
+The reader then picks **one of that operator's localities** — there is deliberately **no
+whole-estate roll-up**, because a national view answers "how big are they" and this section exists
+to answer "what did they do to one town". Everything shown is that operator in that town: their
+sites on a zoomed tile map with **3-mile trade-area circles**, a sitewise table whose addresses link
+straight to Google Maps, washes **month on month** (total, plus a site × month heatmap) and **year
+on year** (total, plus one small-multiple panel per site on a shared scale), and then **who else
+washes cars there**. Distances are in **miles** throughout, including the grouping slider.
+
+### Section 6 — the competition in the same locality
+
+Every other operator in the panel with a site within a slider distance (default 5 miles) of any of
+this operator's sites, drawn on the same map in **orange against the operator's blue**, with the
+same 3-mile circles. Then their monthly trajectory on **one axis** beside the operator's — not an
+index, so the heights compare directly — and what the already-settled rivals did in the six months
+either side of each of this operator's openings, against **those same rival companies' sites outside
+the locality** over the identical months.
+
+Of 67 localities, 48 have at least one visible rival and 27 support a measurable before/after.
+Gate Express in Jacksonville is the clearest: as it added sites 6 → 16, the nearby rivals' response
+walked from **+8.1pp to −11.4pp**, median **−8.3pp**, 67% of openings leaving the neighbours worse
+off than their own other branches.
+
+**The panel is Sonny's customers only**, which bounds this in one direction and is stated on the
+page. A rival we do not sell to is invisible, so a locality can look emptier than it is and the
+effect is measured on the *visible* competition — biased toward zero if unseen rivals absorbed the
+hit. What is not bounded is the other direction: where a rival is in the panel, these are its real
+monthly wash counts, over the same months, in the same few square miles.
 
 **The 3-mile circle is the point.** `historical_data_sitewise.csv` — the same vendor trade-area pull
 behind §④ — supplies population, income, traffic and competitors for the catchment around each site,

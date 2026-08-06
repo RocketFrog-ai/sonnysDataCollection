@@ -839,3 +839,166 @@ def operator_headline(client_id: str, max_km: float = 25.0, radius_mi: float = T
         radius_mi=float(radius_mi), states=", ".join(sorted(m.state.dropna().unique())),
         mem_share=float(m.mem_washes.sum() / m.washes.sum()) if m.washes.sum() else np.nan,
     )
+
+
+# =================================================================================================
+# Who else is in the same locality
+#
+# The panel is Sonny's customers only, so "competitor" here means **another operator we also hold
+# wash data for**, not every wash in the town. That is a real and one-directional limitation: the
+# rivals we can see are a subset, so a market that looks empty may not be. What we can do for the
+# ones we do see is the thing nobody can do from the outside — put their actual monthly wash counts
+# beside the operator's, over the same months, in the same few square miles.
+# =================================================================================================
+
+def region_competitors(client_id: str, market_id: str, max_km: float = 25.0,
+                       radius_mi: float = TRADE_AREA_MI,
+                       min_market_sites: int = MIN_MARKET_SITES,
+                       min_full_years: int = MIN_FULL_YEARS,
+                       within_mi: float = 5.0) -> pd.DataFrame:
+    """Every OTHER operator's site within `within_mi` of any of this operator's sites in `market_id`.
+
+    Distance is to the nearest of the selected operator's sites, not to the market centroid: a
+    rival across the road from the newest site is in this locality even if the market's middle is
+    six miles away.
+
+    No full-year filter is applied to rivals. The filter exists so a *subject* site can carry a
+    year-on-year comparison; a rival that opened last month is still competition, and dropping it
+    would quietly make the locality look emptier than it is.
+    """
+    mine = operator_sites(client_id, max_km, radius_mi, min_market_sites, min_full_years)
+    mine = mine[mine.market_id == market_id]
+    if mine.empty:
+        return mine.iloc[0:0]
+
+    s = site_index()
+    others = s[(s.client_id != client_id) & s.in_us & ~s.placeholder_coord].copy()
+    if others.empty:
+        return others
+    d = haversine_matrix(
+        np.concatenate([others.lat.values, mine.lat.values]),
+        np.concatenate([others.lon.values, mine.lon.values]))[:len(others), len(others):]
+    near_km = d.min(axis=1)
+    keep = near_km <= float(within_mi) * KM_PER_MILE
+    out = others[keep].copy()
+    if out.empty:
+        return out
+    out["km_to_operator"] = near_km[keep]
+    out["nearest_ours"] = [mine.site.iloc[int(i)] for i in d[keep].argmin(axis=1)]
+    out["overlap_ours"] = overlap_fraction(out.km_to_operator.values,
+                                           float(radius_mi) * KM_PER_MILE)
+    return out.sort_values("km_to_operator").reset_index(drop=True)
+
+
+def competitor_months(client_id: str, market_id: str, **kw) -> pd.DataFrame:
+    """Monthly washes for the rival sites in this locality, one row per site per month."""
+    c = region_competitors(client_id, market_id, **kw)
+    if c.empty:
+        return c
+    d = _panel()
+    d = d[d.site_key.isin(set(c.site_key))].copy()
+    if d.empty:
+        return d
+    d["date"] = pd.to_datetime(dict(year=d.year, month=d.month, day=1))
+    g = (d.groupby(["site_key", "date"]).agg(washes=("washes", "sum"),
+                                             revenue=("revenue", "sum")).reset_index())
+    return g.merge(c[["site_key", "site", "operator", "km_to_operator"]], on="site_key", how="left")
+
+
+def competitor_effect(client_id: str, market_id: str, max_km: float = 25.0,
+                      radius_mi: float = TRADE_AREA_MI,
+                      min_market_sites: int = MIN_MARKET_SITES,
+                      min_full_years: int = MIN_FULL_YEARS, within_mi: float = 5.0,
+                      window: int = 6, settled_months: int = 12) -> pd.DataFrame:
+    """What the RIVAL sites in this locality did either side of each of the operator's openings.
+
+    Same shape as `effect_for`, and the same two guards, pointed at somebody else's sites:
+
+      • a rival counts only once it has `settled_months` of trading behind it, so its own opening
+        ramp is not read as a reaction to the newcomer;
+      • the control is **those same rival operators' sites outside this locality**, over the very
+        same months, balanced and settled identically. Without it a regional or seasonal move gets
+        charged to the new arrival.
+
+    Descriptive, not identified — and weaker than the same measurement on an operator's own sites,
+    because the rivals we can see are only the ones that are also Sonny's customers.
+    """
+    mine = operator_sites(client_id, max_km, radius_mi, min_market_sites, min_full_years)
+    mine = mine[mine.market_id == market_id]
+    rivals = region_competitors(client_id, market_id, max_km=max_km, radius_mi=radius_mi,
+                                min_market_sites=min_market_sites,
+                                min_full_years=min_full_years, within_mi=within_mi)
+    if mine.empty or rivals.empty:
+        return pd.DataFrame()
+
+    d = _panel()
+    local = set(rivals.site_key)
+    rival_clients = set(rivals.client_id)
+    # Their own sites elsewhere: same companies, outside this locality.
+    elsewhere = set(d[d.client_id.isin(rival_clients)].site_key.unique()) - local
+    starts = site_index().set_index("site_key").opened_ym
+
+    rows = []
+    for _, new in mine.sort_values("open_rank").iterrows():
+        m0 = new.opened_ym
+        if pd.isna(m0):
+            continue
+        settled = set(starts[starts <= m0 - settled_months].index)
+        before, after, n_riv = _balanced_window(d, local & settled, m0, window)
+        if before <= 0 or after <= 0:
+            continue
+        c_before, c_after, n_ctl = _balanced_window(d, elsewhere & settled, m0, window)
+        control = (c_after / c_before - 1) if c_before > 0 and c_after > 0 else np.nan
+        change = after / before - 1
+        rows.append(dict(
+            site=new.site, opened=new.opened, opened_ym=float(m0), open_rank=int(new.open_rank),
+            n_rivals=n_riv, rival_before=float(before), rival_after=float(after),
+            rival_change=float(change), control_sites=n_ctl,
+            control_change=float(control) if pd.notna(control) else np.nan,
+            excess=float(change - control) if pd.notna(control) else np.nan,
+        ))
+    return pd.DataFrame(rows)
+
+
+def locality_headline(client_id: str, market_id: str, max_km: float = 25.0,
+                      radius_mi: float = TRADE_AREA_MI,
+                      min_market_sites: int = MIN_MARKET_SITES,
+                      min_full_years: int = MIN_FULL_YEARS, within_mi: float = 5.0) -> dict:
+    """The numbers that open one locality — the operator's sites in it, and the rivals around them."""
+    m = operator_sites(client_id, max_km, radius_mi, min_market_sites, min_full_years)
+    m = m[m.market_id == market_id]
+    if m.empty:
+        return {}
+    c = region_competitors(client_id, market_id, max_km=max_km, radius_mi=radius_mi,
+                           min_market_sites=min_market_sites, min_full_years=min_full_years,
+                           within_mi=within_mi)
+    opened = m.opened_ym.dropna()
+    d = haversine_matrix(m.lat.values, m.lon.values)
+    off = d[np.triu_indices(len(m), 1)] if len(m) > 1 else np.array([0.0])
+    pop = m.population.dropna()
+    return dict(
+        market=str(m.market.iloc[0]), operator=str(m.operator.iloc[0]),
+        state=str(m.state.mode().iloc[0]) if m.state.notna().any() else "—",
+        n_sites=int(len(m)),
+        diameter_mi=float(d.max() / KM_PER_MILE),
+        median_gap_mi=float(np.median(off) / KM_PER_MILE),
+        nearest_gap_mi=float(off[off > 0].min() / KM_PER_MILE) if (off > 0).any() else 0.0,
+        first_open=_ym_label(opened.min()) if len(opened) else "—",
+        last_open=_ym_label(opened.max()) if len(opened) else "—",
+        build_out_months=int(opened.max() - opened.min()) if len(opened) else 0,
+        washes_per_year=float(m.washes_per_year.sum()),
+        median_site=float(m.washes_per_year.median()),
+        population=float(pop.sum()) if len(pop) else np.nan,
+        shared_population=float(m.shared_population.sum(skipna=True)),
+        n_overlapping=int((m.n_overlapping > 0).sum()),
+        share_overlapping=float((m.n_overlapping > 0).mean()),
+        median_overlap=float(m[m.n_overlapping > 0].overlap_nearest.median())
+        if (m.n_overlapping > 0).any() else 0.0,
+        max_overlap=float(m.overlap_nearest.max()),
+        n_rivals=int(len(c)), n_rival_operators=int(c.client_id.nunique()) if len(c) else 0,
+        rival_washes_per_year=float(c.washes_per_year.sum()) if len(c) else 0.0,
+        nearest_rival_mi=float(c.km_to_operator.min() / KM_PER_MILE) if len(c) else np.nan,
+        rival_share=float(c.washes_per_year.sum()
+                          / (c.washes_per_year.sum() + m.washes_per_year.sum())) if len(c) else 0.0,
+        within_mi=float(within_mi), radius_mi=float(radius_mi),
+    )
