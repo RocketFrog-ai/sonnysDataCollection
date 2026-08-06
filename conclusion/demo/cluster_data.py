@@ -760,21 +760,53 @@ def operator_sites(client_id: str, max_km: float = 25.0, radius_mi: float = TRAD
     return m.sort_values("open_rank").reset_index(drop=True)
 
 
+# Revenue that collapses to ~0 while the wash count holds. These are the thresholds and the rule
+# from `proforma/pnl/opex.py::_drop_corrupt_asp_rows`, restated here rather than imported because
+# `conclusion/` is a standalone tree — if they are ever retuned, retune them in both places. The
+# defect is real and large: 8.2% of site-months, 315 sites, 95 operators, and it drags the 5th
+# percentile of $/wash from $10.30 to $5.95. Any chart of $/wash that leaves these in shows the
+# affected sites diving to zero, which did not happen to their prices.
+ASP_MIN_WASH = 200
+ASP_FLOOR_MEM = 4.0
+ASP_FLOOR_RET = 5.0
+
+
+def _corrupt_asp(d: pd.DataFrame) -> pd.Series:
+    """Site-months whose $/wash is impossible at material volume."""
+    mw = d.mem_wash_count.replace(0, np.nan)
+    rw = d.ret_wash_count.replace(0, np.nan)
+    return (((d.mem_wash_count >= ASP_MIN_WASH) & (d.mem_revenue / mw < ASP_FLOOR_MEM))
+            | ((d.ret_wash_count >= ASP_MIN_WASH) & (d.ret_revenue / rw < ASP_FLOOR_RET))
+            ).fillna(False)
+
+
+def _monthly(d: pd.DataFrame) -> pd.DataFrame:
+    """One row per site per month: washes, the membership split, revenue, and an ASP flag."""
+    d = d.copy()
+    d["date"] = pd.to_datetime(dict(year=d.year, month=d.month, day=1))
+    d["corrupt_asp"] = _corrupt_asp(d)
+    g = (d.groupby(["site_key", "date"])
+           .agg(washes=("washes", "sum"), mem=("mem_wash_count", "sum"),
+                ret=("ret_wash_count", "sum"), revenue=("revenue", "sum"),
+                corrupt_asp=("corrupt_asp", "any"))
+           .reset_index())
+    g["mem_share"] = g.mem / g.washes.replace(0, np.nan)
+    # `asp` is NaN on a corrupt month on purpose, so a line plotted from it breaks rather than
+    # dropping to the floor — a gap says "not known", a zero says "they gave the washes away".
+    g["asp"] = np.where(g.corrupt_asp, np.nan,
+                        g.revenue / g.washes.replace(0, np.nan))
+    return g
+
+
 def operator_months(client_id: str, site_keys: tuple | None = None) -> pd.DataFrame:
-    """Washes per site per month — the month-on-month view, over the full panel.
+    """Washes, membership share and $/wash per site per month, over the full panel.
 
     A monthly axis needs no part-year guard: the last month is simply the last month.
     """
     d = _panel()
     keys = set(site_keys) if site_keys else set(operator_sites(client_id).site_key)
-    d = d[d.site_key.isin(keys)].copy()
-    if d.empty:
-        return d
-    d["date"] = pd.to_datetime(dict(year=d.year, month=d.month, day=1))
-    return (d.groupby(["site_key", "date"])
-              .agg(washes=("washes", "sum"), mem=("mem_wash_count", "sum"),
-                   ret=("ret_wash_count", "sum"), revenue=("revenue", "sum"))
-              .reset_index())
+    d = d[d.site_key.isin(keys)]
+    return _monthly(d) if not d.empty else d.copy()
 
 
 def operator_years(client_id: str, site_keys: tuple | None = None,
@@ -891,17 +923,19 @@ def region_competitors(client_id: str, market_id: str, max_km: float = 25.0,
 
 
 def competitor_months(client_id: str, market_id: str, **kw) -> pd.DataFrame:
-    """Monthly washes for the rival sites in this locality, one row per site per month."""
+    """Monthly washes, membership share and $/wash for the rival sites in this locality.
+
+    Same columns as `operator_months`, so the two can be charted against each other without the
+    caller having to remember which side it is holding.
+    """
     c = region_competitors(client_id, market_id, **kw)
     if c.empty:
         return c
     d = _panel()
-    d = d[d.site_key.isin(set(c.site_key))].copy()
+    d = d[d.site_key.isin(set(c.site_key))]
     if d.empty:
-        return d
-    d["date"] = pd.to_datetime(dict(year=d.year, month=d.month, day=1))
-    g = (d.groupby(["site_key", "date"]).agg(washes=("washes", "sum"),
-                                             revenue=("revenue", "sum")).reset_index())
+        return d.copy()
+    g = _monthly(d)
     return g.merge(c[["site_key", "site", "operator", "km_to_operator"]], on="site_key", how="left")
 
 
@@ -1002,3 +1036,138 @@ def locality_headline(client_id: str, market_id: str, max_km: float = 25.0,
                           / (c.washes_per_year.sum() + m.washes_per_year.sum())) if len(c) else 0.0,
         within_mi=float(within_mi), radius_mi=float(radius_mi),
     )
+
+
+# =================================================================================================
+# Google Earth export
+# =================================================================================================
+
+def _kml_colour(hex_rgb: str, alpha: str = "ff") -> str:
+    """KML wants `aabbggrr` — alpha first, and the RGB bytes reversed. Getting this backwards is
+    the classic KML bug: it does not error, it just renders every layer the wrong colour."""
+    r, g, b = hex_rgb[1:3], hex_rgb[3:5], hex_rgb[5:7]
+    return f"{alpha}{b}{g}{r}".lower()
+
+
+def _xml(text) -> str:
+    """Escape for XML text. Addresses carry `&` often enough that skipping this produces a file
+    Google Earth refuses to open, with an error that points at the wrong line."""
+    s = "" if text is None or (isinstance(text, float) and np.isnan(text)) else str(text)
+    return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+             .replace('"', "&quot;"))
+
+
+def _ring_coords(lat: float, lon: float, radius_mi: float, points: int = 72) -> str:
+    """A closed circle of `radius_mi` around one point, as KML `lon,lat,alt` triples.
+
+    Same geometry as the map's rings: longitude stretched by 1/cos(lat) so the circle is round on
+    the ground rather than an ellipse. The ring is explicitly closed by repeating the first point,
+    which `LinearRing` requires.
+    """
+    r_km = radius_mi * KM_PER_MILE
+    dlat = r_km / 111.32
+    dlon = dlat / max(np.cos(np.radians(lat)), 1e-6)
+    ang = np.linspace(0, 2 * np.pi, points, endpoint=False)
+    pts = [f"{lon + dlon * np.cos(a):.6f},{lat + dlat * np.sin(a):.6f},0" for a in ang]
+    return " ".join(pts + [pts[0]])
+
+
+def kml(client_id: str, market_id: str, max_km: float = 25.0, radius_mi: float = TRADE_AREA_MI,
+        min_market_sites: int = MIN_MARKET_SITES, min_full_years: int = MIN_FULL_YEARS,
+        within_mi: float = 5.0) -> str:
+    """One locality as a Google Earth `.kml` — pins, trade-area circles, and togglable layers.
+
+    Four top-level folders, so the reader can switch parts of the picture on and off in Earth's
+    sidebar: this operator's sites, this operator's circles, the rivals' sites (one sub-folder per
+    company), and the rivals' circles. Every placemark carries the same figures as the map's hover
+    box, because someone looking at this in Earth has no hover box.
+
+    Returned as a string; the caller writes it or hands it to a download button.
+    """
+    m = operator_sites(client_id, max_km, radius_mi, min_market_sites, min_full_years)
+    m = m[m.market_id == market_id]
+    if m.empty:
+        return ""
+    rivals = region_competitors(client_id, market_id, max_km, radius_mi, min_market_sites,
+                                min_full_years, within_mi)
+    operator = str(m.operator.iloc[0])
+    place = str(m.market.iloc[0])
+    OURS, THEIRS = "#3987e5", "#d95926"
+
+    def describe(r, ours: bool) -> str:
+        bits = [f"<b>{_xml(r.address)}</b>", ""]
+        if ours:
+            bits.append(f"Opened {_xml(r.opened)} — {_xml(operator)}'s #{int(r.open_rank)}")
+        else:
+            bits.append(f"{_xml(r.operator)} · opened {_xml(r.opened)}")
+        bits.append(f"{r.washes_per_year:,.0f} washes a year "
+                    f"({int(r.months)} months trading, {int(r.full_years)} full years)")
+        if pd.notna(r.get("population")):
+            bits.append(f"Trade-area population {r.population:,.0f}")
+        if pd.notna(r.get("median_income")):
+            bits.append(f"Median household income ${r.median_income:,.0f}")
+        if ours and pd.notna(r.get("nearest_km")):
+            bits.append(f"Nearest sibling {r.nearest_km / KM_PER_MILE:.1f} mi "
+                        f"({_xml(r.nearest_site)}) — {r.overlap_nearest:.0%} of catchment shared")
+        if not ours:
+            bits.append(f"{r.km_to_operator / KM_PER_MILE:.1f} mi from {_xml(r.nearest_ours)} — "
+                        f"{r.overlap_ours:.0%} catchment overlap")
+        return "<![CDATA[" + "<br/>".join(bits) + "]]>"
+
+    def placemark(name, desc, lat, lon, style) -> str:
+        return (f"    <Placemark><name>{_xml(name)}</name>"
+                f"<description>{desc}</description><styleUrl>#{style}</styleUrl>"
+                f"<Point><coordinates>{lon:.6f},{lat:.6f},0</coordinates></Point></Placemark>")
+
+    def area(name, lat, lon, style) -> str:
+        return (f"    <Placemark><name>{_xml(name)}</name><styleUrl>#{style}</styleUrl>"
+                "<Polygon><tessellate>1</tessellate><outerBoundaryIs><LinearRing><coordinates>"
+                f"{_ring_coords(lat, lon, radius_mi)}"
+                "</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>")
+
+    head = (f"{len(m)} sites, {len(rivals)} rival sites within {within_mi:g} mi, "
+            f"{radius_mi:g}-mile trade areas")
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<kml xmlns="http://www.opengis.net/kml/2.2"><Document>',
+           f"<name>{_xml(operator)} — {_xml(place)}</name>",
+           f"<description>{_xml(head)}</description>"]
+    for sid, hexc in (("ours", OURS), ("theirs", THEIRS)):
+        out.append(
+            f'<Style id="pin_{sid}"><IconStyle><color>{_kml_colour(hexc)}</color><scale>1.1</scale>'
+            '<Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href>'
+            '</Icon></IconStyle><LabelStyle><scale>0.9</scale></LabelStyle></Style>')
+        out.append(
+            f'<Style id="area_{sid}"><LineStyle><color>{_kml_colour(hexc)}</color><width>2</width>'
+            f'</LineStyle><PolyStyle><color>{_kml_colour(hexc, "26")}</color></PolyStyle></Style>')
+
+    out.append(f"  <Folder><name>{_xml(operator)} — sites ({len(m)})</name><open>1</open>")
+    for _, r in m.sort_values("open_rank").iterrows():
+        out.append(placemark(f"{int(r.open_rank)} · {r.site}", describe(r, True),
+                             r.lat, r.lon, "pin_ours"))
+    out.append("  </Folder>")
+
+    out.append(f"  <Folder><name>{_xml(operator)} — {radius_mi:g}-mile trade areas</name>"
+               "<open>0</open>")
+    for _, r in m.sort_values("open_rank").iterrows():
+        out.append(area(f"{r.site} — {radius_mi:g} mi", r.lat, r.lon, "area_ours"))
+    out.append("  </Folder>")
+
+    if not rivals.empty:
+        out.append(f"  <Folder><name>Other operators — sites ({len(rivals)})</name><open>1</open>")
+        for op_name, grp in rivals.groupby("operator"):
+            out.append(f"   <Folder><name>{_xml(op_name)} ({len(grp)})</name><open>0</open>")
+            for _, r in grp.iterrows():
+                out.append(placemark(f"{op_name} · {r.site}", describe(r, False),
+                                     r.lat, r.lon, "pin_theirs"))
+            out.append("   </Folder>")
+        out.append("  </Folder>")
+
+        out.append(f"  <Folder><name>Other operators — {radius_mi:g}-mile trade areas</name>"
+                   "<open>0</open>")
+        for _, r in rivals.iterrows():
+            out.append(area(f"{r.operator} · {r.site} — {radius_mi:g} mi", r.lat, r.lon,
+                            "area_theirs"))
+        out.append("  </Folder>")
+
+    out.append("</Document></kml>")
+    return "\n".join(out)

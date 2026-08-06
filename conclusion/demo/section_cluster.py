@@ -135,6 +135,12 @@ def _rival_months(client_id: str, market_id: str, max_km: float, radius_mi: floa
 
 
 @st.cache_data(show_spinner=False)
+def _kml(client_id: str, market_id: str, max_km: float, radius_mi: float, min_market: int,
+         min_years: int, within_mi: float) -> str:
+    return cd.kml(client_id, market_id, max_km, radius_mi, min_market, min_years, within_mi)
+
+
+@st.cache_data(show_spinner=False)
 def _coords() -> dict:
     return cd.coord_quality()
 
@@ -185,6 +191,119 @@ def _rings(m: pd.DataFrame, radius_mi: float, points: int = 64) -> tuple[list, l
         lats.extend(list(la + dlat * np.sin(ang)) + [None])
         lons.extend(list(lo + dlon * np.cos(ang)) + [None])
     return lats, lons
+
+
+# The three trajectories, drawn identically so they can be read against each other:
+#   (subheader, column, y-axis title, hover format, how to pool the folded rival tail)
+# Volume pools by SUM; a price and a share pool by wash-weighted MEAN, because averaging an average
+# over sites of different sizes would let a tiny site swing the line as hard as a busy one.
+TRAJECTORIES = [
+    ("Wash-count trajectory — every site in this locality",
+     "washes", "Washes a month", "{:,.0f} washes", "sum"),
+    ("Price trajectory — revenue per wash",
+     "asp", "Revenue per wash ($)", "${:,.2f} a wash", "weighted"),
+    ("Membership trajectory — share of washes sold on a plan",
+     "mem_share", "Membership share of washes", "{:.0%} on a plan", "weighted"),
+]
+
+
+def _pool(frame: pd.DataFrame, col: str, how: str) -> pd.DataFrame:
+    """Collapse several sites into one series — summed for volume, wash-weighted for rates."""
+    if how == "sum":
+        return frame.groupby("date")[col].sum().reset_index()
+    f = frame.dropna(subset=[col]).copy()
+    f["_w"] = f[col] * f.washes
+    g = f.groupby("date").agg(_w=("_w", "sum"), washes=("washes", "sum")).reset_index()
+    g[col] = g._w / g.washes.replace(0, np.nan)
+    return g[["date", col]]
+
+
+def _trajectory(mo_sites: pd.DataFrame, rm: pd.DataFrame, m: pd.DataFrame, h: dict, n_all: int,
+                named: list, tail: list, col: str, fmt: str, pooled: str) -> go.Figure:
+    """One line per site for a single measure, this operator's against its rivals'.
+
+    Two colour families, so a line's side is legible before any label is read:
+
+      • this operator's sites take the blue opening-order ramp — the SAME shade as the site's pin
+        on the map, with the legend leading on the same number, so a line matches a pin without a
+        lookup;
+      • rival sites take the validated warm hues, one hue per rival COMPANY, and where a company
+        has more than one site here they share the hue and differ by dash. A company is a real
+        grouping; giving its two sites unrelated colours would invent a distinction the town does
+        not have. Companies past `RIVAL_LINES` fold into one grey line.
+
+    Gaps are never bridged (`connectgaps=False`). A missing month is a month the site did not trade
+    or — for revenue per wash — one whose revenue is known to be corrupt; joining across it would
+    draw a straight line through data that does not exist.
+    """
+    hov = "<br>%{x|%b %Y}<br><b>" + fmt.replace("{:,.0f}", "%{y:,.0f}").replace(
+        "{:,.2f}", "%{y:,.2f}").replace("{:.0%}", "%{y:.0%}") + "</b><extra></extra>"
+    fig = go.Figure()
+
+    for _, r in m.sort_values("open_rank").iterrows():
+        sub = mo_sites[mo_sites.site_key == r.site_key].sort_values("date")
+        if sub.empty or sub[col].notna().sum() == 0:
+            continue
+        fig.add_scatter(
+            x=sub.date, y=sub[col], mode="lines", connectgaps=False,
+            name=f"{int(r.open_rank)} · {r.site}",
+            line=dict(color=_shade(int(r.open_rank), n_all), width=2),
+            legendgroup="ours", legendgrouptitle_text=h["operator"],
+            hovertemplate=f"<b>{r.site}</b> · {h['operator']} #{int(r.open_rank)}" + hov)
+
+    DASHES = ["solid", "dash", "dot", "dashdot", "longdash"]
+    for i, op_name in enumerate(named):
+        sites = rm[rm.operator == op_name]
+        for j, (_, sub) in enumerate(sites.groupby("site_key")):
+            sub = sub.sort_values("date")
+            if sub[col].notna().sum() == 0:
+                continue
+            label = sub.site.iloc[0]
+            fig.add_scatter(
+                x=sub.date, y=sub[col], mode="lines", connectgaps=False,
+                name=f"{op_name} · {label}" if sites.site_key.nunique() > 1 else op_name,
+                line=dict(color=RIVAL_HUES[i], width=1.8, dash=DASHES[j % len(DASHES)]),
+                legendgroup="rivals", legendgrouptitle_text="Other operators",
+                hovertemplate=f"<b>{label}</b> · {op_name}" + hov)
+    if tail:
+        sub = _pool(rm[rm.operator.isin(tail)], col, pooled)
+        if sub[col].notna().any():
+            fig.add_scatter(
+                x=sub.date, y=sub[col], mode="lines", connectgaps=False,
+                name=f"{len(tail)} smaller operators, combined",
+                line=dict(color=MUTED, width=1.6), legendgroup="rivals",
+                legendgrouptitle_text="Other operators",
+                hovertemplate="<b>" + ", ".join(tail[:4]) + ("…" if len(tail) > 4 else "") + hov)
+    return fig
+
+
+def _mark_openings(fig: go.Figure, m: pd.DataFrame, mo_ours: pd.DataFrame,
+                   rm: pd.DataFrame) -> None:
+    """A dotted rule at each of this operator's openings, numbered as on the map.
+
+    Openings are grouped by month first: five sites opened in one month would otherwise stack five
+    labels on one pixel column. Past fourteen opening months the rules stop being a reading aid and
+    become a picket fence, so they are dropped entirely rather than thinned into something
+    misleading.
+    """
+    opens = m.dropna(subset=["opened_ym"])
+    groups = list(opens.groupby("opened_ym"))
+    if len(groups) > 14:
+        return
+    lo = min(mo_ours.date.min(), rm.date.min())
+    hi = max(mo_ours.date.max(), rm.date.max())
+    for ym, grp in groups:
+        yr, mth = divmod(int(ym), 12)
+        when = pd.Timestamp(year=yr, month=mth + 1, day=1)
+        if not (lo <= when <= hi):
+            continue
+        ranks = sorted(int(v) for v in grp.open_rank)
+        tag = (f"{ranks[0]}–{ranks[-1]}"
+               if len(ranks) > 2 and ranks[-1] - ranks[0] == len(ranks) - 1
+               else ",".join(str(v) for v in ranks))
+        fig.add_vline(x=when, line=dict(color=MUTED, width=1, dash="dot"))
+        fig.add_annotation(x=when, y=1.0, yref="paper", text=tag, showarrow=False,
+                           yanchor="bottom", font=dict(size=10, color=MUTED))
 
 
 def _view(m: pd.DataFrame, radius_mi: float) -> tuple[dict, float]:
@@ -399,6 +518,24 @@ def render() -> None:
                                       bgcolor="rgba(0,0,0,0.35)" if DARK
                                       else "rgba(255,255,255,0.75)")), width="stretch")
 
+    # The same locality as a Google Earth file. Earth gives what a flat basemap cannot — real
+    # imagery, the actual forecourts and queue lanes, and a layer tree the reader can switch on and
+    # off: this operator's pins, their circles, each rival company as its own sub-folder, and the
+    # rivals' circles. Every pin carries the figures the hover box shows here, because in Earth
+    # there is no hover box.
+    d1, d2 = st.columns([1, 3])
+    with d1:
+        st.download_button(
+            "⬇︎ Open this locality in Google Earth (.kml)",
+            _kml(pick, chosen, max_km, float(radius_mi), int(min_market), int(min_years),
+                 float(within_mi)),
+            f"{pick}_{chosen.split('::')[-1]}_{radius_mi:g}mi.kml",
+            "application/vnd.google-earth.kml+xml", key=f"kml_{pick}_{chosen}")
+    with d2:
+        st.markdown("Drag the file onto **earth.google.com/web**, or open it in Google Earth Pro. "
+                    "The sidebar tree lets you toggle this operator's pins, their "
+                    f"{radius_mi:g}-mile circles, and each rival company separately.")
+
     if (m.n_overlapping > 0).any():
         callout("What this shows", f"""
           <b>{h['share_overlapping']:.0%} of {h['operator']}'s sites sit inside another one's
@@ -609,89 +746,41 @@ def render() -> None:
                            int(min_years), float(within_mi))
         mo_ours = _months(pick, keys)
         if not rm.empty and not mo_ours.empty:
-            st.subheader("Wash-count trajectory — every site in this locality")
-            a = mo_ours.groupby("date").washes.sum().reset_index()
-            figc = go.Figure()
-
-            # ONE LINE PER SITE, on two colour families that say which side it is on before the
-            # reader has read a single label:
-            #
-            #   • this operator's sites take the blue opening-order ramp — the SAME shade as the
-            #     site's pin on the map, and the legend leads with the same number, so a line can
-            #     be matched to a pin without a lookup;
-            #   • rival sites take the validated warm hues, one hue per rival COMPANY, and where a
-            #     company has more than one site here they share the hue and differ by dash. A
-            #     company is a real grouping; giving its two sites unrelated colours would invent
-            #     a distinction the town does not have.
-            #
-            # Rival companies past RIVAL_LINES fold into grey rather than getting generated hues.
             mo_sites = mo_ours.merge(m[["site_key", "site", "open_rank"]], on="site_key")
-            for _, r in m.sort_values("open_rank").iterrows():
-                sub = mo_sites[mo_sites.site_key == r.site_key].sort_values("date")
-                if sub.empty:
-                    continue
-                figc.add_scatter(
-                    x=sub.date, y=sub.washes, mode="lines",
-                    name=f"{int(r.open_rank)} · {r.site}",
-                    line=dict(color=_shade(int(r.open_rank), n_all), width=2),
-                    legendgroup="ours", legendgrouptitle_text=h["operator"],
-                    hovertemplate=f"<b>{r.site}</b> · {h['operator']} #{int(r.open_rank)}"
-                                  "<br>%{x|%b %Y}<br><b>%{y:,.0f}</b> washes<extra></extra>")
-
-            DASHES = ["solid", "dash", "dot", "dashdot", "longdash"]
             by_op = rm.groupby("operator").washes.sum().sort_values(ascending=False)
-            named = list(by_op.index[:RIVAL_LINES])
-            tail = list(by_op.index[RIVAL_LINES:])
-            for i, op_name in enumerate(named):
-                sites = rm[rm.operator == op_name]
-                for j, (skey, sub) in enumerate(sites.groupby("site_key")):
-                    sub = sub.sort_values("date")
-                    label = sub.site.iloc[0]
-                    figc.add_scatter(
-                        x=sub.date, y=sub.washes, mode="lines",
-                        name=f"{op_name} · {label}" if sites.site_key.nunique() > 1 else op_name,
-                        line=dict(color=RIVAL_HUES[i], width=1.8,
-                                  dash=DASHES[j % len(DASHES)]),
-                        legendgroup="rivals", legendgrouptitle_text="Other operators",
-                        hovertemplate=f"<b>{label}</b> · {op_name}<br>%{{x|%b %Y}}<br>"
-                                      "<b>%{y:,.0f}</b> washes<extra></extra>")
-            if tail:
-                sub = rm[rm.operator.isin(tail)].groupby("date").washes.sum().reset_index()
-                figc.add_scatter(
-                    x=sub.date, y=sub.washes, mode="lines",
-                    name=f"{len(tail)} smaller operators, combined",
-                    line=dict(color=MUTED, width=1.6), legendgroup="rivals",
-                    legendgrouptitle_text="Other operators",
-                    hovertemplate="<b>" + ", ".join(tail[:4]) + ("…" if len(tail) > 4 else "")
-                                  + "</b><br>%{x|%b %Y}<br><b>%{y:,.0f}</b> washes<extra></extra>")
-            b = rm.groupby("date").washes.sum().reset_index()
-            opens = m.dropna(subset=["opened_ym"])
-            groups = list(opens.groupby("opened_ym"))
-            if len(groups) <= 14:
-                for ym, grp in groups:
-                    yr, mth = divmod(int(ym), 12)
-                    when = pd.Timestamp(year=yr, month=mth + 1, day=1)
-                    lo = min(a.date.min(), b.date.min())
-                    hi = max(a.date.max(), b.date.max())
-                    if not (lo <= when <= hi):
-                        continue
-                    ranks = sorted(int(v) for v in grp.open_rank)
-                    tag = (f"{ranks[0]}\u2013{ranks[-1]}"
-                           if len(ranks) > 2 and ranks[-1] - ranks[0] == len(ranks) - 1
-                           else ",".join(str(v) for v in ranks))
-                    figc.add_vline(x=when, line=dict(color=MUTED, width=1, dash="dot"))
-                    figc.add_annotation(x=when, y=1.0, yref="paper", text=tag, showarrow=False,
-                                        yanchor="bottom", font=dict(size=10, color=MUTED))
-            # One line per site means the legend can run to twenty-odd entries, which no horizontal
-            # strip can hold. It moves to a scrollable column on the right, grouped into "ours" and
-            # "theirs", and the plot keeps the full width minus that column.
+            named, tail = list(by_op.index[:RIVAL_LINES]), list(by_op.index[RIVAL_LINES:])
             n_lines = len(m) + int(rm.site_key.nunique()) + (1 if tail else 0)
-            st.plotly_chart(style(figc, height=max(430, 190 + 17 * min(n_lines, 26)),
-                                  yaxis_title="Washes a month", xaxis_title=None,
-                                  margin=dict(l=70, r=10, t=40, b=40),
-                                  legend=dict(orientation="v", y=1, x=1.01, xanchor="left",
-                                              font=dict(size=10), groupclick="toggleitem")),
-                            width="stretch")
+
+            for title, col, y_title, fmt, pooled in TRAJECTORIES:
+                st.subheader(title)
+                # An operator whose revenue never reaches the panel gets an empty price chart, and
+                # an empty chart with no explanation reads as a bug. Say whose data is missing and
+                # keep the chart, because the rivals in the same town usually do have prices.
+                if col == "asp":
+                    bad = int(mo_sites.corrupt_asp.sum())
+                    if mo_sites.asp.notna().sum() == 0:
+                        st.info(f"**{h['operator']} reports no usable revenue in this panel** — "
+                                f"{bad} of {len(mo_sites)} of their site-months carry washes with "
+                                "the revenue recorded as zero, so revenue per wash cannot be "
+                                "computed for them. Their rivals' prices are still drawn below. "
+                                "See “Data & method”.")
+                    elif bad:
+                        st.info(f"**{bad} of {len(mo_sites)}** of {h['operator']}'s site-months "
+                                "record washes against zero revenue and are left as gaps rather "
+                                "than plotted at zero.")
+                figc = _trajectory(mo_sites, rm, m, h, n_all, named, tail, col, fmt, pooled)
+                _mark_openings(figc, m, mo_ours, rm)
+                # One line per site means the legend can run past twenty entries, which no
+                # horizontal strip holds. It becomes a grouped column on the right, and the plot
+                # keeps the full width minus that column.
+                st.plotly_chart(style(figc, height=max(430, 190 + 17 * min(n_lines, 26)),
+                                      yaxis_title=y_title, xaxis_title=None,
+                                      margin=dict(l=75, r=10, t=40, b=40),
+                                      legend=dict(orientation="v", y=1, x=1.01, xanchor="left",
+                                                  font=dict(size=10),
+                                                  groupclick="toggleitem")),
+                                width="stretch")
+
 
     with st.expander("Data & method"):
         cq = _coords()
@@ -718,9 +807,13 @@ pile up.
 
 **The basemap is CARTO/OpenStreetMap, not Google.** Google's tiles cannot be used as a raster tile
 source outside their own Maps JavaScript API, so a Google basemap is not something a Plotly chart
-can legally draw. Instead every address in the sitewise table links to **that exact coordinate in
-Google Maps**, which needs no API key. The pins, circles and distances here are all computed from
-the panel's own lat/lon.
+can legally draw. Two things close that gap without a key: every address in the sitewise tables
+links to **that exact coordinate in Google Maps**, and the **`.kml` download** opens the whole
+locality in **Google Earth** — pins, {cd.TRADE_AREA_MI:g}-mile circles as real polygons, and a
+layer tree with this operator, their circles, and one sub-folder per rival company, each togglable.
+The circles in that file are generated by the same geometry as the ones on screen and measure
+2.996–2.997 miles from pin to ring. The pins, circles and distances here are all computed from the
+panel's own lat/lon.
 
 **A coordinate defect, stated rather than hidden.** {cq['n_placeholder']} sites across
 {cq['n_placeholder_points']} coordinate points carry a **placeholder** latitude/longitude — one
@@ -761,6 +854,19 @@ The identical guards, on the operator's own siblings, move a naive control from 
 Openings inside one locality are only months apart, so their six-month windows overlap and the
 events are not independent. This is descriptive; **§⑤ Competition is where entry is estimated
 properly.**
+
+**Revenue per wash, and where it goes missing.** A site-month is set aside when it records
+**{cd.ASP_MIN_WASH}+ washes against a price below ${cd.ASP_FLOOR_MEM:.0f} a membership wash or
+${cd.ASP_FLOOR_RET:.0f} a retail wash** — the rule and the thresholds come from
+`proforma/pnl/opex.py::_drop_corrupt_asp_rows`, restated in `cluster_data.py` because
+`conclusion/` is standalone. It is not a rounding problem: **8.2% of all site-months, 315 sites
+across 95 operators** carry a normal wash count with revenue recorded as **zero**, and Luvcarwash —
+the largest operator here — does it in 99% of its months, membership revenue absent while thousands
+of membership washes are logged. Left in, those months drag the 5th percentile of $/wash from
+$10.30 to $5.95 and draw the affected sites diving toward zero, which is not what happened to their
+prices. They are plotted as **gaps, never as zeros**, and lines never bridge a gap.
+
+Membership share is unaffected — it is a ratio of two wash counts and needs no revenue at all.
 
 **Known gaps.** Straight-line distance is not drive time, and a 3-mile circle is not a real
 catchment — it has no roads, rivers or county lines in it. The panel is Sonny's customers only, so
