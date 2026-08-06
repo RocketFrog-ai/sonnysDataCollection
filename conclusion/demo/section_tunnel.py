@@ -12,11 +12,16 @@ import plotly.graph_objects as go
 import streamlit as st
 
 import tunnel_data as td
-from ui import DARK, INK, INK2, S1, S2, S3, SURFACE, callout, html_table, style
+from ui import DARK, INK, INK2, MUTED, S1, S2, S3, SURFACE, callout, html_table, style
 
-STATUS = {"Overbuilt": "#d03b3b", "Right-sized": "#0ca30c", "At capacity": "#fab219"}
-ICON = {"Overbuilt": "▼", "Right-sized": "●", "At capacity": "▲"}
-ORDER = ["Overbuilt", "Right-sized", "At capacity"]
+# "Censored" is deliberately MUTED, not a fourth capacity-verdict color: it isn't a read on the
+# good/bad capacity axis at all, it's "this site's peak can't be trusted either way" (see
+# tunnel_data.build()'s comment) -- reusing a status hue for it would imply a verdict it doesn't
+# have.
+STATUS = {"Overbuilt": "#d03b3b", "Right-sized": "#0ca30c", "At capacity": "#fab219",
+          "Censored": MUTED}
+ICON = {"Overbuilt": "▼", "Right-sized": "●", "At capacity": "▲", "Censored": "◇"}
+ORDER = ["Overbuilt", "Right-sized", "At capacity", "Censored"]
 MAT_COLOR = {"5+ years observed": S1, "3–4 years observed": S3}
 
 
@@ -78,6 +83,12 @@ def render() -> None:
     st.markdown(f"**{h['n_sites']} sites analysed** — every site with a measured tunnel, measured "
                 f"hourly throughput and at least three years of trading. "
                 f"{h['n_observed5']} of them have reached year 5.")
+    if h["n_censored"]:
+        st.caption(f"{h['n_censored']} of those {h['n_sites']} have a **censored** peak reading — "
+                   f"their busiest hours cluster too tightly to tell a capacity ceiling from real "
+                   f"unclipped demand — and are excluded from the capacity-verdict figures below "
+                   f"(utilisation, overbuilt share), though not from the length-vs-volume or "
+                   f"ramp analysis, which don't depend on that reading.")
 
     # =============================================================================================
     st.divider()
@@ -380,15 +391,17 @@ def render() -> None:
 
     m1, m2, m3 = st.columns(3)
     m1.metric("Sites under half their rating", f"{h['n_overbuilt']}",
-              f"of {h['n_sites']}", delta_color="off")
+              f"of {h['n_assessable']} assessable", delta_color="off")
     m2.metric("Median spare length", f"{h['median_excess_ft']:.0f} ft",
               f"{h['median_excess_ft']/td.FT_PER_M:.0f} m", delta_color="off")
     m3.metric("Spare share of the tunnel", f"{h['median_excess_share']*100:.0f}%")
 
+    censored_note = (f" ({h['n_censored']} more sites are excluded here — their peak reading is "
+                     f"censored, see the note at the top of the page.)" if h["n_censored"] else "")
     callout("What this shows", f"""
-      <b>How many sites are clearly too big?</b> <b>{h['n_overbuilt']} of {h['n_sites']}</b> never
-        get past half their tunnel, and that is measured on their <i>best day ever</i>, not an
-        average one.
+      <b>How many sites are clearly too big?</b> <b>{h['n_overbuilt']} of {h['n_assessable']}
+        assessable sites</b> never get past half their tunnel, and that is measured on their
+        <i>best day ever</i>, not an average one.{censored_note}
       <b>How much tunnel is going spare?</b> A typical one of them has
         <b>{h['median_excess_ft']:.0f} ft ({h['median_excess_ft']/td.FT_PER_M:.0f} m)</b> it has
         never needed: <b>{h['median_excess_share']*100:.0f}% of the whole tunnel</b>.

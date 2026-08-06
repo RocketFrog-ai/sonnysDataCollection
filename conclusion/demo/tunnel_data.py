@@ -92,6 +92,11 @@ def load_raw() -> pd.DataFrame:
     d["tunnel_ft"] = d.tunnel_m * FT_PER_M
     d["site"] = d.name.fillna(d.site_key)
     d["where"] = d.city.fillna("—").astype(str) + ", " + d.state.fillna("—").astype(str)
+    # A site's own top-10 peak-hour readings clustering too tightly (the same measurement the
+    # sourcing notebook flags, book_v2.ipynb §7) means the recorded peak is a capacity CEILING,
+    # not necessarily unclipped demand -- 32 of 88 sites in this file read this way. Carried
+    # through as data, not derived here, so the app and the notebook cannot disagree on it.
+    d["is_censored"] = d["is_censored"].astype(bool)
     return d
 
 
@@ -225,9 +230,13 @@ def build(basis: str = DEFAULT_BASIS,
     out["required_ft"] = (out.peak_cars_per_hour / cars_per_hour_per_ft).clip(lower=MIN_VIABLE_FT)
     out["excess_ft"] = (out.tunnel_ft - out.required_ft).clip(lower=0)
     out["excess_share"] = out.excess_ft / out.tunnel_ft
+    # Censored sites take priority over the numeric read: a clustered-ceiling peak cannot be
+    # trusted to say "over capacity" OR "under capacity" (book_v2.ipynb's own conclusion), so
+    # they get their own verdict rather than being sorted into Overbuilt/Right-sized/At capacity
+    # on a number that may just be measuring the ceiling, not the demand.
     out["verdict"] = np.select(
-        [out.utilisation < BAND_OVERBUILT, out.utilisation < BAND_TIGHT],
-        ["Overbuilt", "Right-sized"], default="At capacity")
+        [out.is_censored, out.utilisation < BAND_OVERBUILT, out.utilisation < BAND_TIGHT],
+        ["Censored", "Overbuilt", "Right-sized"], default="At capacity")
 
     out["washes_per_ft"] = out.year5_washes / out.tunnel_ft
     out["growth_y1_to_y5"] = out.year5_washes / out.first_year_rate
@@ -301,16 +310,24 @@ def length_vs_volume(d: pd.DataFrame) -> dict:
 
 
 def headline(d: pd.DataFrame) -> dict:
-    over = d[d.verdict == "Overbuilt"]
+    # Capacity-verdict stats (utilisation, overbuilt share/excess) are computed on the
+    # NON-censored sites only -- a clustered-ceiling peak can't be used as evidence of over- OR
+    # under-capacity (book_v2.ipynb's own conclusion), so it would misstate both a median and a
+    # max to leave it in. Sample-size descriptives (n_sites, tunnel length, year-5 volume,
+    # growth) keep every analysed site, censored or not -- those aren't a capacity claim.
+    clean = d[~d.is_censored]
+    over = clean[clean.verdict == "Overbuilt"]
     obs = d[d.year5_source == "Observed"]
     return dict(
         n_sites=int(len(d)),
+        n_censored=int(d.is_censored.sum()),
+        n_assessable=int(len(clean)),
         n_observed5=int(len(obs)),
         median_tunnel_ft=float(d.tunnel_ft.median()),
         median_year5=float(d.year5_washes.median()),
-        median_utilisation=float(d.utilisation.median()),
-        max_utilisation=float(d.utilisation.max()),
-        pct_overbuilt=float((d.verdict == "Overbuilt").mean()),
+        median_utilisation=float(clean.utilisation.median()),
+        max_utilisation=float(clean.utilisation.max()),
+        pct_overbuilt=float((clean.verdict == "Overbuilt").mean()) if len(clean) else float("nan"),
         n_overbuilt=int(len(over)),
         median_excess_ft=float(over.excess_ft.median()) if len(over) else 0.0,
         median_excess_share=float(over.excess_share.median()) if len(over) else 0.0,
