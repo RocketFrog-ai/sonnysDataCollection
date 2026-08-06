@@ -53,6 +53,11 @@ LAT_RANGE, LON_RANGE = (20.0, 50.0), (-130.0, -65.0)
 EARTH_KM = 6371.0088
 KM_PER_MILE = 1.609344
 
+# A site's demographics, traffic and competitor counts are all pulled for a trade area of roughly
+# this radius, so it is the circle worth drawing around a pin: where two of one operator's circles
+# overlap, the two sites are being credited with the same households.
+TRADE_AREA_MI = 3.0
+
 # The panel runs to 2026-06. Calendar-year charts stop at the last year with all twelve months in
 # it, so a half-collected 2026 cannot be read as a collapse. Derived, never hard-coded — see
 # `last_complete_year()`.
@@ -451,13 +456,22 @@ def opening_effect(cluster_id: str, max_km: float = 25.0, min_sites: int = 3,
     their windows overlap and the events are not independent. §⑤ Competition is where entry is
     identified properly.
     """
-    m = cluster_sites(cluster_id, max_km, min_sites)
+    return effect_for(cluster_sites(cluster_id, max_km, min_sites), window, settled_months)
+
+
+def effect_for(m: pd.DataFrame, window: int = 6, settled_months: int = 12) -> pd.DataFrame:
+    """`opening_effect` over an explicit set of sibling sites.
+
+    Split out so the same measurement serves both the estate-wide cluster league table and one
+    operator's market, which are grouped differently (the league table imposes a minimum cluster
+    size; a company view must keep a lone site). Same guards, one implementation.
+    """
     if m.empty or len(m) < 2:
         return pd.DataFrame()
     client_id = m.client_id.iloc[0]
+    in_cluster = set(m.site_key)
 
     d = _panel()
-    in_cluster = set(m.site_key)
     fam = d[d.client_id == client_id]
     starts = site_index().set_index("site_key").opened_ym
 
@@ -521,3 +535,176 @@ def opening_effect_all(max_km: float = 25.0, min_sites: int = 3, window: int = 6
             e["cluster_id"], e["label"] = cid, label
             out.append(e)
     return pd.concat(out, ignore_index=True) if out else pd.DataFrame()
+
+
+# =================================================================================================
+# One operator, end to end
+#
+# The cluster is a lens on a *place*; this is the lens on a *company*. An operator's sites can span
+# nine states, so "their story" is one map, one sitewise table and two time views over everything
+# they own — with the clusters above available as a market-by-market zoom inside it.
+# =================================================================================================
+
+def overlap_fraction(gap_km: np.ndarray | float, radius_km: float) -> np.ndarray | float:
+    """Share of one 3-mile trade area that a second, equal circle `gap_km` away also covers.
+
+    Closed-form circle-circle lens area over circle area — exact, and with no shapely in the
+    `sonnys` env there is nothing to install for it. This is **pairwise**: it answers "how much of
+    this site's catchment does that one sit on top of", not "how much of it is covered by all
+    siblings at once", which would need a polygon union.
+    """
+    d = np.asarray(gap_km, dtype=float)
+    r = float(radius_km)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        lens = (2 * r ** 2 * np.arccos(np.clip(d / (2 * r), -1.0, 1.0))
+                - 0.5 * d * np.sqrt(np.clip(4 * r ** 2 - d ** 2, 0.0, None)))
+    out = np.where(d >= 2 * r, 0.0, lens / (np.pi * r ** 2))
+    return float(out) if np.isscalar(gap_km) else out
+
+
+@lru_cache(maxsize=1)
+def operator_index() -> pd.DataFrame:
+    """Every operator holding two or more placeable sites — the dropdown's contents.
+
+    Single-site operators are excluded because every question this section asks (how far apart, in
+    what order, who ate whose catchment) needs at least two.
+    """
+    s = site_index()
+    u = s[s.in_us & ~s.placeholder_coord]
+    g = (u.groupby("client_id")
+           .agg(operator=("operator", "first"), sites=("site_key", "size"),
+                states=("state", "nunique"), state=("state", lambda x: x.mode().iloc[0]),
+                washes=("washes", "sum"), washes_per_year=("washes_per_year", "sum"),
+                median_site=("washes_per_year", "median"),
+                first_open=("opened_ym", "min"), last_open=("opened_ym", "max"))
+           .reset_index())
+    g = g[g.sites >= 2].copy()
+    # Sites dropped for an unusable coordinate are counted, not hidden: an operator showing 67 of
+    # its 92 sites has to say so on the page rather than quietly under-report itself.
+    dropped = (s[s.placeholder_coord | ~s.in_us].groupby("client_id").size()
+                .rename("unplaceable"))
+    g = g.merge(dropped, left_on="client_id", right_index=True, how="left")
+    g["unplaceable"] = g.unplaceable.fillna(0).astype(int)
+    g["label"] = (g.operator + " · " + g.sites.astype(str) + " sites · "
+                  + np.where(g.states > 1, g.states.astype(str) + " states", g.state))
+    return g.sort_values(["sites", "washes_per_year"], ascending=False).reset_index(drop=True)
+
+
+@lru_cache(maxsize=32)
+def operator_sites(client_id: str, max_km: float = 25.0,
+                   radius_mi: float = TRADE_AREA_MI) -> pd.DataFrame:
+    """Every placeable site of one operator, in the order it opened them.
+
+    `open_rank` is operator-wide here, not cluster-wide — the story is the company's build-out
+    sequence. `market` groups the sites the same way `build()` does but with **no minimum size**,
+    so a lone site in a state is its own market rather than being dropped; that is the right call
+    for a company view and the wrong one for the estate-wide league table, which is why the two
+    do not share a code path.
+    """
+    s = site_index()
+    m = s[(s.client_id == client_id) & s.in_us & ~s.placeholder_coord].copy()
+    if m.empty:
+        return m
+    m = m.reset_index(drop=True)
+    r_km = float(radius_mi) * KM_PER_MILE
+
+    d = haversine_matrix(m.lat.values, m.lon.values)
+    if len(m) > 1:
+        near = d.copy()
+        np.fill_diagonal(near, np.inf)
+        m["nearest_km"] = near.min(axis=1)
+        m["nearest_site"] = [m.site.iloc[int(i)] for i in near.argmin(axis=1)]
+        m["overlap_nearest"] = overlap_fraction(m.nearest_km.values, r_km)
+        # How many siblings sit close enough for the two 3-mile circles to intersect at all.
+        m["n_overlapping"] = ((d < 2 * r_km) & (d > 0)).sum(axis=1) + (
+            np.isclose(d, 0).sum(axis=1) - 1)
+        labels = fcluster(linkage(squareform(d, checks=False), method="complete"),
+                          t=float(max_km), criterion="distance")
+    else:
+        m["nearest_km"], m["nearest_site"] = np.nan, "—"
+        m["overlap_nearest"], m["n_overlapping"] = 0.0, 0
+        labels = np.array([1])
+
+    m["market_id"] = [f"{client_id}::{int(k)}" for k in labels]
+    sizes = pd.Series(labels).value_counts()
+    names = {}
+    for k in np.unique(labels):
+        sub = m[labels == k]
+        state = sub.state.mode().iloc[0] if sub.state.notna().any() else "—"
+        anchor = sub.sort_values("opened_ym").site.iloc[0]
+        names[f"{client_id}::{int(k)}"] = (f"{state} · {anchor}" if sizes[k] > 1
+                                           else f"{state} · {anchor} (single site)")
+    m["market"] = m.market_id.map(names)
+    m["open_rank"] = m.opened_ym.rank(method="first").astype(int)
+    m["maps_url"] = ["https://www.google.com/maps/search/?api=1&query="
+                     f"{la:.6f},{lo:.6f}" for la, lo in zip(m.lat, m.lon)]
+    return m.sort_values("open_rank").reset_index(drop=True)
+
+
+def operator_months(client_id: str, site_keys: tuple | None = None) -> pd.DataFrame:
+    """Washes per site per month — the month-on-month view, over the full panel.
+
+    A monthly axis needs no part-year guard: the last month is simply the last month.
+    """
+    d = _panel()
+    keys = set(site_keys) if site_keys else set(operator_sites(client_id).site_key)
+    d = d[d.site_key.isin(keys)].copy()
+    if d.empty:
+        return d
+    d["date"] = pd.to_datetime(dict(year=d.year, month=d.month, day=1))
+    return (d.groupby(["site_key", "date"])
+              .agg(washes=("washes", "sum"), mem=("mem_wash_count", "sum"),
+                   ret=("ret_wash_count", "sum"), revenue=("revenue", "sum"))
+              .reset_index())
+
+
+def operator_years(client_id: str, site_keys: tuple | None = None,
+                   through: int | None = None) -> pd.DataFrame:
+    """Washes per site per calendar year, complete panel years only.
+
+    The site's own opening year stays in and is flagged `part_year` — that stub is what the site
+    actually did. What is cut is the year the panel itself is only half-collected for.
+    """
+    cut = last_complete_year() if through is None else through
+    d = _panel()
+    keys = set(site_keys) if site_keys else set(operator_sites(client_id).site_key)
+    d = d[d.site_key.isin(keys) & (d.year <= cut)]
+    if d.empty:
+        return d
+    y = (d.groupby(["site_key", "year"])
+           .agg(washes=("washes", "sum"), mem=("mem_wash_count", "sum"),
+                ret=("ret_wash_count", "sum"), revenue=("revenue", "sum"),
+                months=("washes", "size"))
+           .reset_index())
+    y["part_year"] = y.months < MONTHS_IN_YEAR
+    y.attrs["through"] = cut
+    return y
+
+
+def operator_headline(client_id: str, max_km: float = 25.0,
+                      radius_mi: float = TRADE_AREA_MI) -> dict:
+    """The numbers that open an operator's page."""
+    m = operator_sites(client_id, max_km, radius_mi)
+    if m.empty:
+        return {}
+    idx = operator_index().set_index("client_id")
+    unplaceable = int(idx.unplaceable.get(client_id, 0))
+    opened = m.opened_ym.dropna()
+    overlapping = int((m.n_overlapping > 0).sum())
+    return dict(
+        operator=str(m.operator.iloc[0]), client_id=client_id,
+        n_sites=int(len(m)), n_states=int(m.state.nunique()),
+        n_markets=int(m.market_id.nunique()), unplaceable=unplaceable,
+        washes=float(m.washes.sum()), washes_per_year=float(m.washes_per_year.sum()),
+        median_site=float(m.washes_per_year.median()),
+        first_open=_ym_label(opened.min()) if len(opened) else "—",
+        last_open=_ym_label(opened.max()) if len(opened) else "—",
+        build_out_months=int(opened.max() - opened.min()) if len(opened) else 0,
+        median_nearest=float(m.nearest_km.median()) if m.nearest_km.notna().any() else np.nan,
+        n_overlapping=overlapping, share_overlapping=overlapping / len(m),
+        max_overlap=float(m.overlap_nearest.max()),
+        median_overlap=float(m[m.n_overlapping > 0].overlap_nearest.median())
+        if overlapping else 0.0,
+        radius_mi=float(radius_mi), states=", ".join(sorted(m.state.dropna().unique())),
+        mem_share=float(m.mem_washes.sum() / m.washes.sum()) if m.washes.sum() else np.nan,
+    )

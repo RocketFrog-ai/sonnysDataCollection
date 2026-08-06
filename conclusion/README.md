@@ -325,29 +325,48 @@ panel, not a section-specific extract.
 
 ---
 
-## Section ⑥ — Operator clusters: one operator, several washes, one town
+## Section ⑥ — Operator clusters: pick a multi-site operator, get their whole story
 
 **One input**, the monthly panel (`conclusion/data/historical_data_5yrs_monthly.csv`, byte-identical
 to `proforma/data/panel/main-data-v2-stitched.csv`). Nothing is joined in.
 
-Where §⓪ maps the estate nationally, this drops to street level: a **cluster** is a set of sites
-sharing a `client_id` that all sit within a slider distance of each other — complete-linkage on
-great-circle distance, so the slider caps the cluster's **diameter**, not just each site's nearest
-hop. Single linkage was tried and chains: the Rio Grande Valley joins into one 120 km "place"
-through a string of 15 km hops. Distances are straight-line, **not** drive time.
+The reader picks a **company**, not a place — a dropdown of the **221 operators holding two or more
+placeable sites**. Everything then shown is that one operator: every site on a zoomed tile map with
+its **3-mile trade-area circle** drawn, a sitewise table whose addresses link straight to Google
+Maps, washes **month on month** (total, plus a site × month heatmap), washes **year on year**
+(total, plus one small-multiple panel per site on a shared scale), and what the settled neighbours
+did each time the operator opened another site. A market sub-selector groups their sites by
+complete-linkage distance so a 5-state operator can be zoomed to one town.
 
-| At 25 km, 3+ sites | |
+**The 3-mile circle is the point.** A site's demographics, traffic and competitor counts are pulled
+for a trade area of about that radius, so where two of one operator's circles overlap both sites are
+being credited with the same households. `overlap_fraction()` is the exact circle-circle lens area
+over circle area — pairwise against the nearest sibling, not a union across all siblings (no
+`shapely` in `sonnys`), so it **understates** where three or more circles pile up.
+
+| Luvcarwash, the largest operator, at a 3-mile radius | |
 |---|---|
-| Clusters | **110**, across **62 operators** |
+| Sites / states / markets | **79 / 5 / 32** |
+| Sites whose catchment overlaps a sibling's | **67%** (53 of 79) |
+| Median overlapping pair shares | **39%** of a site's trade area; worst **88%** |
+
+| Estate-wide, at 25 km, 3+ sites | |
+|---|---|
+| Clustered markets | **110**, across **62 operators** |
 | Sites inside one | **424** — 22% of placeable sites, **27% of all washing** |
 | Typical site's nearest sibling | **6.0 km (3.8 mi)** |
-| Typical cluster's build-out, first opening → last | **18 months** |
-| Tightest pair in the estate | **0.06 km** (Living Water, CO) |
+| Typical market's build-out, first opening → last | **18 months** |
 | Neighbours' washes when the operator opens another, vs its sites elsewhere | **−3.0pp** median over 100 openings; 62% negative |
 
-The per-cluster view is a zoomed tile map (opening order numbered inside each disc, pale = first),
-a full pairwise distance matrix, a sitewise table, one small-multiple panel per site of washes per
-calendar year on a shared scale, and the cluster's combined monthly total with every opening marked.
+**The catchment overlap is far larger than the wash loss** — sites routinely share 30–90% of a
+3-mile circle for a measured hit of a few points. Either the real trade area is wider than 3 miles,
+or a second site brings enough new demand to cover most of what it takes; both readings argue
+against sizing a site on its circle alone.
+
+**The basemap is CARTO/OpenStreetMap, not Google.** Google's tiles cannot be used as a raster tile
+source outside their own Maps JavaScript API, so a Plotly chart cannot legally draw a Google
+basemap. Every address in the sitewise table instead links to that exact coordinate in Google Maps,
+which needs no API key.
 
 **A coordinate defect this section had to work around, stated in its method tab rather than hidden.**
 **100 sites across 27 coordinate points carry a placeholder lat/lon** — one coordinate shared by
