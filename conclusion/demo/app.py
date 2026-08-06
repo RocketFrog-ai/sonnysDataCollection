@@ -58,8 +58,8 @@ SECTIONS = [
      "a counterfactual?", section_campaign.render),
     ("④ Demographics", "Does the market a site sits in explain how much it washes?",
      section_demographics.render),
-    ("⑥ Operator clusters", "One operator, several washes, one town. How close, in what order, "
-     "and what each one does.", section_cluster.render),
+    ("⑥ Operator clusters", "One operator, one town: how close they built, in what order, what "
+     "each one washes, and who else is in there.", section_cluster.render),
 ]
 
 # ⑤ Competition is HIDDEN, not deleted. `section_competition.py` and `competition_data.py` are

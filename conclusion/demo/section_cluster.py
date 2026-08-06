@@ -73,6 +73,16 @@ KM_PER_MILE = cd.KM_PER_MILE
 # Above this many sites, per-site panels stop being readable and the heatmap takes over.
 PANEL_LIMIT = 12
 
+# Categorical palette for the trajectory chart: the subject operator plus one line per rival
+# company. Validated with the dataviz skill's checker on BOTH surfaces at exactly five slots —
+# lightness band, chroma floor, CVD separation, normal-vision floor and 3:1 contrast all pass.
+# A sixth hue fails the lightness band, which is why the rival tail folds into one grey line
+# instead of being handed a generated colour.
+SUBJECT_HUE = "#3987e5" if DARK else "#2a78d6"
+RIVAL_HUES = (["#d95926", "#199e70", "#a879e6", "#c08a1e"] if DARK
+              else ["#c74e1f", "#158a61", "#9a63d8", "#a97a1a"])
+RIVAL_LINES = len(RIVAL_HUES)
+
 
 # =================================================================================================
 # Cached wrappers — the module memoises too, but Streamlit's cache also survives a widget change.
@@ -87,12 +97,6 @@ def _operators(max_km: float, min_market: int, min_years: int) -> pd.DataFrame:
 def _sites(client_id: str, max_km: float, radius_mi: float, min_market: int,
            min_years: int) -> pd.DataFrame:
     return cd.operator_sites(client_id, max_km, radius_mi, min_market, min_years)
-
-
-@st.cache_data(show_spinner=False)
-def _headline(client_id: str, max_km: float, radius_mi: float, min_market: int,
-              min_years: int) -> dict:
-    return cd.operator_headline(client_id, max_km, radius_mi, min_market, min_years)
 
 
 @st.cache_data(show_spinner=False)
@@ -257,7 +261,6 @@ def render() -> None:
     if m_all.empty:
         st.warning("Nothing left for this operator at these settings. Loosen a slider.")
         return
-    h_op = _headline(pick, max_km, float(radius_mi), int(min_market), int(min_years))
 
     # ONE locality at a time, deliberately. A national roll-up of an operator answers "how big are
     # they"; this section is here to answer "what did they do to one town", and those want different
@@ -284,10 +287,6 @@ def render() -> None:
     # =============================================================================================
     st.divider()
     st.header(f"1 · {h['operator']} in {h['market']}")
-    st.caption(f"One locality. **{h['n_sites']} of this operator's {h_op['n_sites']}** qualifying "
-               f"sites are here, the furthest two **{h['diameter_mi']:.1f} miles** apart, opened "
-               f"between **{h['first_open']}** and **{h['last_open']}** — a build-out of "
-               f"**{h['build_out_months']} months**. `client_id` **{pick}**.")
 
     k1, k2, k3, k4 = st.columns(4)
     k1.metric("Their sites here", f"{h['n_sites']}",
@@ -302,18 +301,10 @@ def render() -> None:
     k4.metric(f"Other operators within {within_mi:g} mi", f"{h['n_rivals']}",
               f"{h['n_rival_operators']} companies" if h["n_rivals"]
               else "none in the panel", delta_color="off")
-    st.caption("“Catchment they share” sums each site's own trade-area population and asks how much "
-               "of it the site's **nearest sibling** also claims — so it is the share of this "
-               "locality's counted people that this operator is billing twice.")
 
     # =============================================================================================
     st.divider()
     st.header("2 · Where they are, and whose catchment is whose")
-    st.caption(f"Every selected site, with a **{radius_mi:g}-mile circle** around it — roughly the "
-               "trade area a site's demographics, traffic and competitor counts are pulled for. "
-               "**Where two circles overlap, both sites are being credited with the same "
-               "households.** The number inside a pin is the order this operator opened it, "
-               f"1 to {n_all}; pins darken as they get newer.")
 
     mm = m.copy()
     mm["shade"] = [_shade(int(r), n_all) for r in mm.open_rank]
@@ -417,11 +408,6 @@ def render() -> None:
                           legend=dict(orientation="h", y=0.99, x=0.01,
                                       bgcolor="rgba(0,0,0,0.35)" if DARK
                                       else "rgba(255,255,255,0.75)")), width="stretch")
-    st.caption(f"**Blue is {h['operator']}; orange is every other operator we hold wash data for "
-               f"within {within_mi:g} miles.** Both carry the same {radius_mi:g}-mile circle. Pin "
-               "size is washes a year. The circles are drawn in real geography, so they stay the "
-               "same width in miles at every zoom. Every address links to Google Maps in the "
-               "tables below.")
 
     if (m.n_overlapping > 0).any():
         callout("What this shows", f"""
@@ -469,14 +455,6 @@ def render() -> None:
                           "People double-counted": "{:,.0f}",
                           "Membership share": "{:.0%}", "Revenue per wash": "${:,.2f}",
                           "Nearest sibling (mi)": "{:,.2f}", "Catchment shared": "{:.0%}"})
-    st.caption("“Washes a year” is the site's own rate — total washes ÷ months trading × 12 — so a "
-               "site opened last year is comparable with one opened in 2020. Population, income, "
-               "traffic and competitors come from `historical_data_sitewise.csv`, the same vendor "
-               "trade-area pull §④ uses; **a dash means the vendor returned nothing, not zero.** "
-               f"“Catchment shared” is the share of this site's {radius_mi:g}-mile circle that its "
-               "**nearest** sibling also covers, and “people double-counted” applies that share to "
-               "this site's own population — both pairwise, not a union across every sibling. "
-               "A competitor closer than 0.05 miles is the site itself and is skipped.")
     st.download_button("Download these sites (CSV)", m.to_csv(index=False),
                        f"operator_sites_{pick}.csv", "text/csv", key=f"dl_sites_{pick}")
 
@@ -514,11 +492,6 @@ def render() -> None:
         st.plotly_chart(style(figt, height=330, yaxis_title="Washes a month", xaxis_title=None,
                               showlegend=False, margin=dict(l=70, r=20, t=30, b=40)),
                         width="stretch")
-        st.caption("Total washes across the selected sites." + (
-            " Each dotted rule is an opening, numbered as on the map."
-            if len(groups) <= 14 else
-            f" Opening rules are omitted — {len(groups)} separate opening months would fence the "
-            "chart. Zoom to a single market to see them."))
 
         # One row per site scales to 79 sites; 79 overlaid lines do not.
         piv = (mo.merge(m[["site_key", "site", "open_rank"]], on="site_key")
@@ -544,12 +517,8 @@ def render() -> None:
         st.info("No complete calendar year yet — every selected site opened after "
                 f"{cd.last_complete_year()}.")
     else:
-        through = y.attrs.get("through", cd.last_complete_year())
         y = y.merge(m[["site_key", "site", "open_rank", "opened_ym"]], on="site_key", how="left")
         years = sorted(int(v) for v in y.year.unique())
-        st.caption(f"Years run to **{through}** — the panel only holds part of {through + 1}, and "
-                   "half a year plotted against full ones reads as a collapse that did not happen. "
-                   "A site's **own** opening year is genuinely partial and stays in, marked.")
 
         tot_y = y.groupby("year").agg(washes=("washes", "sum"),
                                       sites=("site_key", "nunique")).reset_index()
@@ -562,8 +531,6 @@ def render() -> None:
         st.plotly_chart(style(figy, height=300, yaxis_title="Washes a year", bargap=0.35,
                               xaxis=dict(dtick=1), showlegend=False,
                               margin=dict(l=70, r=20, t=25, b=40)), width="stretch")
-        st.caption("The whole selection. It grows partly because each site grows and partly "
-                   "because there are more of them — the per-site view below separates the two.")
 
         order = m.sort_values("open_rank")
         if len(order) <= PANEL_LIMIT:
@@ -600,21 +567,14 @@ def render() -> None:
                               range=[0, ymax])
             st.plotly_chart(style(figp, height=205 * rows + 80, bargap=0.25,
                                   margin=dict(l=60, r=15, t=40, b=35)), width="stretch")
-            st.caption("One panel per site, in the order the operator opened them, **all on the "
-                       "same vertical scale**. An outlined bar is a part year.")
-        else:
-            st.caption(f"{len(order)} sites is past the point where one panel each can be read — "
-                       "the table below carries every number, and the month-by-month heatmap above "
-                       "shows the same thing at higher resolution. Zoom to a single market for the "
-                       "per-site panels.")
+        # Past PANEL_LIMIT sites there are no per-site panels — one panel each stops being
+        # readable, and the table below plus the month-by-month heatmap already carry every number.
 
         piv_y = (y.pivot_table(index="site_key", columns="year", values="washes", aggfunc="sum")
                   .reindex(order.site_key.values))
         piv_y.index = order.site.values
         piv_y.columns = [str(int(c)) for c in piv_y.columns]
         html_table(piv_y, fmt={c: "{:,.0f}" for c in piv_y.columns}, index_label="Site")
-        st.caption("Washes per calendar year, one row per site, in opening order. Blank = the site "
-                   "was not trading that year.")
         st.download_button("Download year-by-year (CSV)", piv_y.to_csv(),
                            f"operator_years_{pick}.csv", "text/csv", key=f"dl_years_{pick}")
     # =============================================================================================
@@ -627,12 +587,6 @@ def render() -> None:
                 "holds Sonny's customers, so a rival we do not sell to is invisible here. Widen "
                 "the “other operators within” slider to look further out.")
     else:
-        st.caption(f"Every other operator we hold wash data for with a site within "
-                   f"**{within_mi:g} miles** of one of {h['operator']}'s. **The panel is Sonny's "
-                   "customers only**, so these are the rivals we can see, not all of them — a "
-                   "locality that looks thin here may not be. What is real is the other direction: "
-                   "where a rival *is* in the panel, we have its actual monthly wash counts over "
-                   "the same months, in the same few square miles.")
 
         r1, r2, r3, r4 = st.columns(4)
         r1.metric("Rival sites", f"{h['n_rivals']}",
@@ -665,16 +619,40 @@ def render() -> None:
                            int(min_years), float(within_mi))
         mo_ours = _months(pick, keys)
         if not rm.empty and not mo_ours.empty:
-            st.subheader("How the two sides moved, month by month")
+            st.subheader("Wash-count trajectory — this operator against each rival")
             a = mo_ours.groupby("date").washes.sum().reset_index()
-            b = rm.groupby("date").washes.sum().reset_index()
             figc = go.Figure()
-            figc.add_scatter(x=b.date, y=b.washes, mode="lines", name="other operators here",
-                             line=dict(color=S2, width=2.5),
-                             hovertemplate="%{x|%b %Y}<br><b>%{y:,.0f}</b> washes<extra></extra>")
-            figc.add_scatter(x=a.date, y=a.washes, mode="lines", name=h["operator"],
-                             line=dict(color=S1, width=2.5),
-                             hovertemplate="%{x|%b %Y}<br><b>%{y:,.0f}</b> washes<extra></extra>")
+
+            # One line per RIVAL COMPANY, not one line for all of them: the aggregate hides the
+            # thing worth seeing, which is that rivals in the same town move in different
+            # directions. Ranked by volume and capped at RIVAL_LINES — past that the palette runs
+            # out of hues that stay apart under colour blindness, so the tail folds into one grey
+            # line rather than being given a generated colour or silently dropped.
+            by_op = (rm.groupby("operator").washes.sum().sort_values(ascending=False))
+            named = list(by_op.index[:RIVAL_LINES])
+            tail = list(by_op.index[RIVAL_LINES:])
+            for i, op_name in enumerate(named):
+                sub = rm[rm.operator == op_name].groupby("date").washes.sum().reset_index()
+                sites = rm[rm.operator == op_name].site_key.nunique()
+                figc.add_scatter(
+                    x=sub.date, y=sub.washes, mode="lines",
+                    name=f"{op_name} ({sites})", line=dict(color=RIVAL_HUES[i], width=2),
+                    hovertemplate=f"<b>{op_name}</b><br>%{{x|%b %Y}}<br>"
+                                  "<b>%{y:,.0f}</b> washes<extra></extra>")
+            if tail:
+                sub = rm[rm.operator.isin(tail)].groupby("date").washes.sum().reset_index()
+                figc.add_scatter(
+                    x=sub.date, y=sub.washes, mode="lines",
+                    name=f"{len(tail)} smaller operators", line=dict(color=MUTED, width=1.6),
+                    hovertemplate="<b>" + ", ".join(tail[:4]) + ("…" if len(tail) > 4 else "")
+                                  + "</b><br>%{x|%b %Y}<br><b>%{y:,.0f}</b> washes<extra></extra>")
+            # The subject last, so it draws on top, and thicker — this is the emphasis series.
+            figc.add_scatter(x=a.date, y=a.washes, mode="lines",
+                             name=f"{h['operator']} ({len(m)}) — all their sites here",
+                             line=dict(color=SUBJECT_HUE, width=3.2),
+                             hovertemplate=f"<b>{h['operator']}</b><br>%{{x|%b %Y}}<br>"
+                                           "<b>%{y:,.0f}</b> washes<extra></extra>")
+            b = rm.groupby("date").washes.sum().reset_index()
             opens = m.dropna(subset=["opened_ym"])
             groups = list(opens.groupby("opened_ym"))
             if len(groups) <= 14:
@@ -692,13 +670,10 @@ def render() -> None:
                     figc.add_vline(x=when, line=dict(color=MUTED, width=1, dash="dot"))
                     figc.add_annotation(x=when, y=1.0, yref="paper", text=tag, showarrow=False,
                                         yanchor="bottom", font=dict(size=10, color=MUTED))
-            st.plotly_chart(style(figc, height=360, yaxis_title="Washes a month", xaxis_title=None,
-                                  margin=dict(l=70, r=20, t=60, b=40),
-                                  legend=dict(orientation="h", y=1.10, x=0)), width="stretch")
-            st.caption("Both sides on **one axis**, so the heights are directly comparable — this "
-                       "is not an index. Each dotted rule is one of this operator's openings, "
-                       "numbered as on the map. The rival line steps whenever a rival opens or "
-                       "closes as well, so read the level, not only the slope.")
+            st.plotly_chart(style(figc, height=420, yaxis_title="Washes a month", xaxis_title=None,
+                                  margin=dict(l=70, r=20, t=95, b=40),
+                                  legend=dict(orientation="h", y=1.14, x=0,
+                                              font=dict(size=11))), width="stretch")
 
         # --- what happened to them when this operator opened -------------------------------------
         ce = _rival_effect(pick, chosen, max_km, float(radius_mi), int(min_market),
@@ -709,17 +684,18 @@ def render() -> None:
                     "arrived after this operator did, or the panel does not cover a full six "
                     "months either side of any opening.")
         else:
-            st.caption("For each of this operator's openings: what the **already-settled** rival "
-                       "sites nearby washed in the six months after, against the six months "
-                       "before. The grey bar is the same comparison for **those same rival "
-                       "companies' sites outside this locality** over the identical months, so a "
-                       "regional or seasonal move is subtracted rather than charged to the new "
-                       "arrival.")
+            # A control exists only if those rival companies own sites OUTSIDE this locality. Where
+            # every rival is a single-town operator there is nothing to subtract, and the grey bar
+            # is omitted rather than drawn at zero — a zero would read as "elsewhere was flat",
+            # which is a claim the data cannot make.
+            has_control = bool(ce.control_change.notna().any())
             lbl = [f"{int(r.open_rank)} · {r.site}" for _, r in ce.iterrows()]
             figR = go.Figure()
-            figR.add_bar(x=lbl, y=ce.control_change * 100, name="those rivals' sites elsewhere",
-                         marker=dict(color=GRID, line=dict(color=MUTED, width=1)),
-                         hovertemplate="elsewhere: <b>%{y:+.1f}%</b><extra></extra>")
+            if has_control:
+                figR.add_bar(x=lbl, y=ce.control_change * 100,
+                             name="those rivals' sites elsewhere",
+                             marker=dict(color=GRID, line=dict(color=MUTED, width=1)),
+                             hovertemplate="elsewhere: <b>%{y:+.1f}%</b><extra></extra>")
             figR.add_bar(x=lbl, y=ce.rival_change * 100, name="rivals in this locality",
                          marker=dict(color=[S2 if v < 0 else S3 for v in ce.rival_change],
                                      line=dict(color=SURFACE, width=1)),
@@ -745,13 +721,28 @@ def render() -> None:
                                 "Control sites": "{:,.0f}", "Rivals here": "{:+.1%}",
                                 "Those rivals elsewhere": "{:+.1%}", "Difference": "{:+.1%}"})
 
-            med = float(ce.excess.median())
-            neg = float((ce.excess < 0).mean())
+            # Every figure below is guarded on the control existing. An all-NaN `excess` used to
+            # print a literal "+nanpp", and `(NaN < 0).mean()` is 0, which read as "0% of openings
+            # left the neighbours worse off" — a confident-sounding claim from no data at all.
+            if has_control:
+                med = float(ce.excess.median())
+                neg = float((ce.excess < 0).mean())
+                lead = (f"<b>{h['operator']}'s arrivals in {h['market']} moved the rivals nearby "
+                        f"by a median {med * 100:+.1f}pp</b> over six months, against those same "
+                        f"companies' sites elsewhere. <b>{neg:.0%}</b> of the {len(ce)} openings "
+                        "left the neighbours worse off than their own other branches.")
+            else:
+                raw = float(ce.rival_change.median())
+                down = float((ce.rival_change < 0).mean())
+                lead = (f"<b>The rivals nearby moved a median {raw * 100:+.1f}%</b> in the six "
+                        f"months after each of {h['operator']}'s {len(ce)} openings, and "
+                        f"<b>{down:.0%}</b> of those openings were followed by a fall. "
+                        "<b>There is no control here</b> — every rival company in range owns "
+                        "sites only in this locality, so there is nothing of theirs elsewhere to "
+                        "subtract the season and the wider market with. Read these as raw "
+                        "before-and-after, not as an effect.")
             callout("What this shows", f"""
-              <b>{h['operator']}'s arrivals in {h['market']} moved the rivals nearby by a median
-                {med * 100:+.1f}pp</b> over six months, against those same companies' sites
-                elsewhere. <b>{neg:.0%}</b> of the {len(ce)} openings left the neighbours worse
-                off than their own other branches.
+              {lead}
               <b>Read the level, not just the sign.</b> With {h['n_rivals']} rival sites from
                 {h['n_rival_operators']} compan{'y' if h['n_rival_operators'] == 1 else 'ies'} in
                 range, one closure or one refit moves this number. It is a description of what
