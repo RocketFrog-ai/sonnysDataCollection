@@ -353,15 +353,24 @@ washes cars there**. Distances are in **miles** throughout, including the groupi
 
 Every other operator in the panel with a site within a slider distance (default 5 miles) of any of
 this operator's sites, drawn on the same map in **orange against the operator's blue**, with the
-same 3-mile circles. Then their monthly trajectory on **one axis** beside the operator's — not an
-index, so the heights compare directly — and what the already-settled rivals did in the six months
-either side of each of this operator's openings, against **those same rival companies' sites outside
-the locality** over the identical months.
+same 3-mile circles — then **every individual site's wash-count trajectory on one axis**, this
+operator's beside its rivals'. Not an index, so the heights compare directly. This operator's sites
+take the blue opening-order ramp (the same shade as the site's map pin, and the legend leads with
+the same number, so a line matches a pin without a lookup); rivals take one validated warm hue per
+**company**, with a dash per site of that company, because a company is a real grouping and giving
+its two sites unrelated colours would invent a distinction the town does not have. Companies past
+the fourth fold into a single grey line rather than being handed generated hues.
 
-Of 67 localities, 48 have at least one visible rival and 27 support a measurable before/after.
-Gate Express in Jacksonville is the clearest: as it added sites 6 → 16, the nearby rivals' response
-walked from **+8.1pp to −11.4pp**, median **−8.3pp**, 67% of openings leaving the neighbours worse
-off than their own other branches.
+Of 67 localities, 48 have at least one visible rival.
+
+`competitor_effect()` in `cluster_data.py` measures what the already-settled rivals did in the six
+months either side of each of this operator's openings, against **those same rival companies' sites
+outside the locality** over the identical months. It is no longer surfaced in the app but the
+function and its guards stand: 27 localities support a measurable before/after, and Gate Express in
+Jacksonville is the clearest — as it added sites 6 → 16 the nearby rivals walked from **+8.1pp to
+−11.4pp**, median **−8.3pp**. Where every rival company owns sites *only* in the locality there is
+no control at all, and the function returns `NaN` rather than a number; anything reporting it has to
+branch on that.
 
 **The panel is Sonny's customers only**, which bounds this in one direction and is stated on the
 page. A rival we do not sell to is invisible, so a locality can look emptier than it is and the
