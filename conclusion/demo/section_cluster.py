@@ -209,12 +209,6 @@ def _view(m: pd.DataFrame, radius_mi: float) -> tuple[dict, float]:
 def render() -> None:
     st.markdown("<div class='kicker'>Evidence pack · ⑥</div>", unsafe_allow_html=True)
     st.title("Operator clusters")
-    st.markdown("Pick an operator that has **genuinely clustered somewhere** — three or more sites "
-                "inside one location — and get their whole story: every site on a map with its "
-                "**3-mile trade area** drawn, how far apart they sit and in what order they "
-                "opened, what each one washes month on month and year on year, and what the sites "
-                "already trading did each time another one arrived.")
-
     g1, g2, g3 = st.columns(3)
     with g1:
         market_mi = st.slider("Sites count as one market within (miles)", 2, 40, 15, 1,
