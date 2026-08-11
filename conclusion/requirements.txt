@@ -1,0 +1,13 @@
+# Pinned to the versions this app is developed and tested against (conda env
+# `sonnys`). Loose ranges are not safe here: an image built with `streamlit<2`
+# resolved streamlit 1.61 + starlette 1.4, whose gzip middleware 500s on every
+# browser request (curl, which sends no Accept-Encoding, was fine). Bump
+# deliberately and re-test in a browser.
+streamlit==1.58.0
+starlette==1.3.1        # streamlit subclasses its GZipMiddleware
+uvicorn==0.51.0
+pandas==3.0.2
+numpy==2.4.4
+plotly==6.6.0
+scipy==1.17.1
+scikit-learn==1.8.0

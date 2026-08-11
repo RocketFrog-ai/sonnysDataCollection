@@ -1,0 +1,14 @@
+# This app builds its own palette from `theme.base` (see conclusion/demo/ui.py):
+# dark surfaces, dark-stepped series colours, white ink. The repo root pins
+# dark for exactly that reason, and the container has no repo root — without
+# this file Streamlit reports the default "light" server-side, so the app
+# injects its LIGHT palette (near-black ink) while the browser renders its own
+# dark chrome, and every heading disappears into the background.
+[theme]
+base = "dark"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

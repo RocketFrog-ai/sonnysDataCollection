@@ -233,13 +233,22 @@ def render() -> None:
     hours = t_.attrs.get("open_hours_per_day", float("nan"))
 
     figt = go.Figure()
-    figt.add_bar(x=t_.year, y=t_["actual" + suffix], name="Actually washed",
-                 marker=dict(color=S1, line=dict(width=2, color=SURFACE)),
-                 customdata=t_.observed_months,
-                 hovertemplate=f"Operating year %{{x}}<br>Actually washed: <b>%{{y:{fmt}}}</b>"
-                               f" {unit.lower().replace('per ', 'per ')}<br>"
-                               "<span style='opacity:.7'>%{customdata:.0f} months of data"
-                               "</span><extra></extra>")
+    # A line, like the two projections it is being compared against: bars and
+    # lines on one axis read as two different kinds of quantity.
+    #
+    # Ink, not S1: S1 is Model 5's fixed identity in FCOLOR above, and as a bar
+    # the actual series could share that hue without confusion. As a third line
+    # it cannot — so what actually happened is drawn in the foreground ink, and
+    # the two forecasts keep their own hues.
+    figt.add_scatter(x=t_.year, y=t_["actual" + suffix], mode="lines+markers",
+                     name="Actually washed",
+                     line=dict(color=INK, width=3.5),
+                     marker=dict(size=10, line=dict(width=2, color=SURFACE)),
+                     customdata=t_.observed_months,
+                     hovertemplate=f"Operating year %{{x}}<br>Actually washed: <b>%{{y:{fmt}}}</b>"
+                                   f" {unit.lower().replace('per ', 'per ')}<br>"
+                                   "<span style='opacity:.7'>%{customdata:.0f} months of data"
+                                   "</span><extra></extra>")
     for col, ckey, label in [("proforma", "proforma", "What the proforma promised"),
                              ("model5", "model5", "Model 5")]:
         figt.add_scatter(x=t_.year, y=t_[col + suffix], mode="lines+markers", name=label,
@@ -264,11 +273,8 @@ def render() -> None:
     act_hourly = row.actual_mature_wash * 12 / 365 / hours if hours and np.isfinite(hours) else np.nan
     pro_hourly = row.proforma_y5 * 12 / 365 / hours if hours and np.isfinite(hours) else np.nan
 
-    k1, k2, k3, k4, k5 = st.columns(5)
+    k1, k3, k4, k5 = st.columns(4)
     k1.metric("Actually washes", f"{row.actual_mature_wash:,.0f}", "per month at maturity",
-              delta_color="off")
-    k2.metric("Actually washes / hour", f"{act_hourly:,.1f}" if np.isfinite(act_hourly) else "—",
-              f"average open hour · {hours:.1f} h/day" if np.isfinite(hours) else "no hours on file",
               delta_color="off")
     k3.metric("Proforma promised", f"{row.proforma_y5:,.0f}", f"{row.ratio:.1f}× what it does",
               delta_color="off")
@@ -753,6 +759,16 @@ def render() -> None:
     html_table(ot.set_index("Road (vehicles a day)"), index_label="Road (vehicles a day)",
                fmt={"Projected ÷ actual": "{:.2f}×"})
 
+    # The sheet's own wash-count formula, verbatim. It is the mechanism the
+    # chart above is showing: the projection ends in × Traffic_Count, so it
+    # scales with traffic by construction while the actual washes do not.
+    with st.expander("👁 The formula the proforma projects with"):
+        st.code("(Cumulative_site_score * (1 + cumulative_demographic_score) % 85 "
+                "* (1 * (1 + Year 3 Increase)) * 300) * Traffic_Count", language="text")
+        st.caption("Straight from the sheet. Everything before the last term is a site score, so "
+                   "the projection is proportional to **Traffic_Count** — which is exactly why the "
+                   "orange bars above climb with the road while the blue ones do not.")
+
     callout("The mechanism behind the 58% error", f"""
       <b>On a quiet road the sheet is roughly right; on a busy one it projects double.</b>
         Over-projection climbs {tov.overshoot.iloc[0]:.2f}× → {tov.overshoot.iloc[1]:.2f}× →
@@ -883,7 +899,10 @@ def render() -> None:
     for mask, name, col in [(tl.gap_m > 0, "Built longer than the formula", BAD),
                             (tl.gap_m <= 0, "Built shorter than the formula", S1)]:
         g = tl[mask]
-        figl.add_scatter(x=g.actual_m, y=g.formula_m, mode="markers", name=name,
+        # Formula on x, build on y: the formula is the input being tested and
+        # the build is the outcome, so the "built longer" points now sit above
+        # the parity line rather than below it.
+        figl.add_scatter(x=g.formula_m, y=g.actual_m, mode="markers", name=name,
                          marker=dict(size=11, color=col, line=dict(width=1.6, color=SURFACE)),
                          customdata=np.stack([g.client_name.fillna("—"), g.state.fillna("—"),
                                               g.actual_m, g.formula_m, g.gap_m], axis=-1),
@@ -891,8 +910,8 @@ def render() -> None:
                                        "Built: <b>%{customdata[2]:.0f} m</b><br>"
                                        "Formula asked for: %{customdata[3]:.0f} m<br>"
                                        "→ built %{customdata[4]:+.0f} m longer<extra></extra>")
-    st.plotly_chart(style(figl, height=470, xaxis_title="Tunnel actually built (m)",
-                          yaxis_title="Length the formula calls for (m)",
+    st.plotly_chart(style(figl, height=470, xaxis_title="Length the formula calls for (m)",
+                          yaxis_title="Tunnel actually built (m)",
                           xaxis=dict(range=lim, constrain="domain"),
                           yaxis=dict(range=lim, scaleanchor="x", constrain="domain"),
                           margin=dict(l=60, r=25, t=72, b=50),

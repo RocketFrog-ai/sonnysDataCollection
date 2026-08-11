@@ -1,0 +1,18 @@
+# Allowlist: this repo is ~1.7 GB (venv/, archive/, proforma/artifacts/), and a
+# build context is uploaded to the registry before anything is built. Ignore
+# everything, then re-include only what an image needs. Add a path here when a
+# new image needs it, rather than deleting the `*`.
+*
+!conclusion/demo/**
+!conclusion/.streamlit/**
+!conclusion/data/historical_data_5yrs_monthly.csv
+!conclusion/data/historical_data_sitewise.csv
+!conclusion/data/n70_backtest_dataset.csv
+!conclusion/data/tunnel_length_with_wash.csv
+!conclusion/requirements.txt
+!proforma/data/opex/opex-data.csv
+
+# Never, whatever an allowlist above might catch
+**/__pycache__/
+**/.env
+**/secrets.toml

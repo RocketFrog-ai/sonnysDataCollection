@@ -1,0 +1,11 @@
+# This app selects its own palette from `theme.base` (see viz.py): dark surfaces, dark-stepped
+# series colours, white ink. Pinned dark here so the app and the browser chrome agree — without
+# it Streamlit reports the repo-root default server-side and the app injects the wrong palette.
+[theme]
+base = "dark"
+
+[client]
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

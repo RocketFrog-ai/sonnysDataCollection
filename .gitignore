@@ -85,3 +85,7 @@ carwash_reviews.csv
 
 # Claude Code worktrees (shadow copies of the repo — never search or refactor these)
 .claude/worktrees/
+
+# Streamlit local credentials — never commit (an Azure key was nearly pushed in 76aad3a).
+.streamlit/secrets.toml
+**/.streamlit/secrets.toml

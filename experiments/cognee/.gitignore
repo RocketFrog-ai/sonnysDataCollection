@@ -1,0 +1,8 @@
+# isolated demo env — never commit
+.venv-cognee/
+# cognee local state (graph, vectors, sqlite, cached files)
+.cognee_system/
+.cognee_data/
+# generated demo output
+out/
+_vendor_d3.v7.min.js
