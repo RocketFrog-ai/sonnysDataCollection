@@ -1,5 +1,5 @@
 """
-Customer profiling for the Hurricane Express membership book — preprocessing, features, models.
+Customer profiling for a car-wash membership book — preprocessing, features, models.
 
 Streamlit-free on purpose: `customer_profiling.ipynb` and `app.py` both import this, so the
 notebook's numbers and the demo's numbers cannot drift apart.
@@ -42,14 +42,30 @@ KEY = ["customer_id"]
 # --------------------------------------------------------------------------------------------
 # load & split
 # --------------------------------------------------------------------------------------------
-def load_events(path: Path | str = DATA) -> pd.DataFrame:
-    """Raw export -> tidy event log. One row per (event, vehicle); nothing collapsed yet."""
-    df = pd.read_csv(path)
+_DEFAULT_DROP_COLS = ["vehicle_vin", "vehicle_year", "vehicle_model"]  # >=96% null on the original
+# (Hurricane, CSV) export -- see dataset_schema notes in the notebook. NOT assumed true for any
+# other export; pass `drop_cols=[]` for a new file until its own null-rate audit confirms it.
+
+
+def load_events(path: Path | str = DATA, drop_cols: list[str] | None = None) -> pd.DataFrame:
+    """Raw export -> tidy event log. One row per (event, vehicle); nothing collapsed yet.
+
+    Reader is picked from the file suffix (`.parquet` -> `pd.read_parquet`, everything else ->
+    `pd.read_csv`), so the same function serves both a CSV export and a Parquet one without the
+    caller needing to know which. Parquet already carries real dtypes (datetime64 for event_date,
+    float for amount, ...), so `pd.to_datetime` below is a no-op in that case and only does real
+    work for a CSV's string columns.
+
+    `drop_cols` defaults to `_DEFAULT_DROP_COLS`, which is an empirical finding from the original
+    export, not a structural assumption -- pass `drop_cols=[]` (or your own list) for a different
+    source and let that export's own data-quality audit decide what's actually unusable.
+    """
+    path = Path(path)
+    df = pd.read_parquet(path) if path.suffix.lower() == ".parquet" else pd.read_csv(path)
     df["event_date"] = pd.to_datetime(df["event_date"])
 
-    # `vehicle_vin` is 100% null and `vehicle_year`/`vehicle_model` are >96% null — they carry no
-    # information on this export, so they are dropped rather than silently half-used.
-    df = df.drop(columns=["vehicle_vin", "vehicle_year", "vehicle_model"], errors="ignore")
+    drop_cols = _DEFAULT_DROP_COLS if drop_cols is None else drop_cols
+    df = df.drop(columns=drop_cols, errors="ignore")
 
     # "-" is the export's other spelling of missing.
     for c in ["vehicle_state", "vehicle_type", "vehicle_make", "vehicle_color"]:
@@ -103,12 +119,16 @@ def washes(ev: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------------------------------------------------
 # the renewal panel — one row per paid month, features as known at the moment of the charge
 # --------------------------------------------------------------------------------------------
-def renewal_panel(ev: pd.DataFrame) -> pd.DataFrame:
+def renewal_panel(ev: pd.DataFrame, churn_after: int = CHURN_AFTER) -> pd.DataFrame:
     """Customer-month panel for the churn hazard model.
 
     Each row is a charge. The label is whether the *next* charge arrived. Every feature is
     computed from events at or before that charge — nothing from the cycle being predicted — so
     the model is honest about what it would know at decision time.
+
+    `churn_after` defaults to the module constant (40 days, fit to the original Hurricane export)
+    but is a parameter, not a global, so a different export can override it without changing V1's
+    behavior — see `customer_table` for the same reasoning.
     """
     pay = payments(ev)
     wsh = washes(ev)
@@ -125,7 +145,7 @@ def renewal_panel(ev: pd.DataFrame) -> pd.DataFrame:
     cyc["days_left_in_export"] = (now - cyc["event_date"]).dt.days
     # If the export ends before the decision window closes, a missing next charge means "not yet",
     # not "churned". Those rows are censored and never counted in a renewal rate.
-    cyc["censored"] = (cyc["days_left_in_export"] < CHURN_AFTER) & ~cyc["renewed"]
+    cyc["censored"] = (cyc["days_left_in_export"] < churn_after) & ~cyc["renewed"]
 
     # --- wash behaviour in the 30 days *ending* at this charge ---------------------------------
     m = cyc[["customer_id", "event_date"]].merge(
@@ -184,8 +204,13 @@ LOG_FEATURES = ["amount"]     # long right tail; log1p keeps one $119 household 
 # --------------------------------------------------------------------------------------------
 # customer table — one row per customer, as of the export
 # --------------------------------------------------------------------------------------------
-def customer_table(ev: pd.DataFrame) -> pd.DataFrame:
-    """One row per customer: RFM, utilisation, economics, and current status."""
+def customer_table(ev: pd.DataFrame, churn_after: int = CHURN_AFTER) -> pd.DataFrame:
+    """One row per customer: RFM, utilisation, economics, and current status.
+
+    `churn_after` (days since last payment beyond which a member counts as churned) defaults to
+    the module constant, an empirical fit to the original Hurricane export. Pass a different value
+    for an export where that threshold hasn't been validated -- see the module docstring.
+    """
     pay, wsh, now = payments(ev), washes(ev), asof(ev)
     charges = pay[~pay["is_refund"]]
 
@@ -196,6 +221,9 @@ def customer_table(ev: pd.DataFrame) -> pd.DataFrame:
     t["n_vehicles"] = ev.groupby("customer_id")["vehicle_id"].nunique()
     t["vehicle_type"] = (ev.dropna(subset=["vehicle_type"])
                            .groupby("customer_id")["vehicle_type"].agg(
+                               lambda s: s.mode().iat[0] if len(s.mode()) else np.nan))
+    t["vehicle_make"] = (ev.dropna(subset=["vehicle_make"])
+                           .groupby("customer_id")["vehicle_make"].agg(
                                lambda s: s.mode().iat[0] if len(s.mode()) else np.nan))
     t["state"] = (ev.dropna(subset=["vehicle_state"])
                     .groupby("customer_id")["vehicle_state"].agg(
@@ -222,7 +250,7 @@ def customer_table(ev: pd.DataFrame) -> pd.DataFrame:
     t["arpu"] = t["revenue"] / t["cycles_paid"].clip(lower=1)
     t["cost_per_wash"] = t["revenue"] / t["washes"].clip(lower=1)
 
-    t["active"] = t["days_since_payment"] <= CHURN_AFTER
+    t["active"] = t["days_since_payment"] <= churn_after
     t["churned"] = ~t["active"]
     t["churn_month"] = np.where(t["churned"],
                                 (t["last_payment"] + pd.Timedelta(days=CYCLE_DAYS)).dt.to_period("M").astype(str),
@@ -472,3 +500,266 @@ def dormant_payers(cust: pd.DataFrame, days: int = 45) -> pd.DataFrame:
 def observed_monthly_churn(cust: pd.DataFrame) -> float:
     """Churned members / total member-months — the rate that belongs in a CLV denominator."""
     return float(cust["churned"].sum() / max(cust["tenure_months"].sum(), 1))
+
+
+# --------------------------------------------------------------------------------------------
+# promo economics — discount payback, acquisition timing, win-backs
+# --------------------------------------------------------------------------------------------
+def discount_payback(ev: pd.DataFrame, max_m: int = 8) -> tuple[pd.DataFrame, float]:
+    """Average cumulative revenue per ORIGINAL signup-month member, promo vs full-price joiners.
+
+    Deliberately NOT conditioned on "still paying" — a member who churns keeps contributing $0 in
+    every later month, same censoring convention as `cohort_retention`. That is what makes this a
+    fair payback curve rather than a survivor-only one: a promo cohort where everyone renews once
+    and a promo cohort where half of them vanish at month 0 look very different here, even though
+    a survivor-only curve (average revenue *among renewers*) would look almost identical for both.
+
+    Cell (group, m) is NaN unless every member assigned to `group` has had at least `m` cycles'
+    worth of calendar time since joining — exactly `cohort_retention`'s rule, so the two curves are
+    read the same way: real signal thins out on the right edge, it isn't a value of zero.
+
+    Returns (curve, avg_discount) where avg_discount is the mean (list_price - signup_amount)
+    among promo joiners — the number a payback line is drawn against.
+    """
+    pay = payments(ev)
+    charges = pay[~pay["is_refund"]].sort_values(["customer_id", "event_date"])
+    now = asof(ev)
+
+    first = charges.groupby("customer_id")["event_date"].min().rename("joined")
+    signup0 = charges.groupby("customer_id").first()
+    promo = (signup0["amount"] < 0.6 * signup0["current_package_price"]).rename("joined_on_promo")
+    avg_discount = float((signup0["current_package_price"] - signup0["amount"])[promo].mean())
+
+    c = charges.merge(first, on="customer_id").merge(promo, on="customer_id")
+    c["m"] = ((c["event_date"] - c["joined"]).dt.days / CYCLE_DAYS).round().astype(int)
+    observable_m = ((now - first).dt.days / CYCLE_DAYS).astype(int)
+
+    rows = []
+    for label, flag in [("Promo joiners", True), ("Full-price joiners", False)]:
+        ids = promo[promo == flag].index
+        for m in range(max_m + 1):
+            elig = ids[observable_m.reindex(ids) >= m]
+            if len(elig) == 0:
+                rows.append((label, m, np.nan, 0))
+                continue
+            cum = (c[c["customer_id"].isin(elig) & (c["m"] <= m)]
+                     .groupby("customer_id")["amount"].sum()
+                     .reindex(elig, fill_value=0.0))
+            rows.append((label, m, float(cum.mean()), len(elig)))
+
+    curve = pd.DataFrame(rows, columns=["group", "m", "avg_cum_revenue", "n"])
+    return curve, avg_discount
+
+
+def signup_promo_trend(ev: pd.DataFrame) -> pd.DataFrame:
+    """Monthly signup cohorts: how many joined, what share took the promo, and how deep the
+    average discount was — the acquisition-side view of §5d, over calendar time instead of pooled.
+
+    `discount_depth` is 1 - signup_amount / list_price, averaged over that month's joiners
+    (including full-price joiners at 0), so it moves with BOTH participation and generosity —
+    two months at "90% took the promo" can still differ if one gave everyone $2 off and the other
+    gave everyone $22 off.
+    """
+    pay = payments(ev)
+    charges = pay[~pay["is_refund"]].sort_values(["customer_id", "event_date"])
+    signup0 = charges.groupby("customer_id").first()
+    signup0["joined_on_promo"] = signup0["amount"] < 0.6 * signup0["current_package_price"]
+    signup0["discount_depth"] = (1 - signup0["amount"] / signup0["current_package_price"]).clip(lower=0)
+    signup0["cohort"] = signup0["event_date"].dt.to_period("M").astype(str)
+
+    out = signup0.groupby("cohort").agg(
+        joined=("amount", "size"),
+        promo_share=("joined_on_promo", "mean"),
+        avg_discount_depth=("discount_depth", "mean"),
+        avg_signup_amount=("amount", "mean"),
+    )
+    return out
+
+
+def winback_events(ev: pd.DataFrame) -> pd.DataFrame:
+    """Members who went quiet long enough to count as churned (gap > RENEW_WINDOW between two
+    charges) and then paid again anyway — a real lapse-and-return, not just a slow renewal.
+
+    `discounted_return` flags whether the comeback charge undercuts what they paid right before
+    lapsing, i.e. whether the return looks like it was won with a price move rather than the
+    member simply deciding to come back on their own.
+    """
+    pay = payments(ev)
+    charges = pay[~pay["is_refund"]].sort_values(["customer_id", "event_date"]).copy()
+    charges["gap_days"] = charges.groupby("customer_id")["event_date"].diff().dt.days
+    charges["prev_amount"] = charges.groupby("customer_id")["amount"].shift()
+    charges["prev_date"] = charges.groupby("customer_id")["event_date"].shift()
+
+    wb = charges[charges["gap_days"] > RENEW_WINDOW].copy()
+    wb["discounted_return"] = wb["amount"] < wb["prev_amount"]
+    wb["return_discount_pct"] = 1 - wb["amount"] / wb["prev_amount"]
+    return wb[["customer_id", "prev_date", "event_date", "gap_days", "prev_amount", "amount",
+              "discounted_return", "return_discount_pct"]].reset_index(drop=True)
+
+
+def winback_summary(wb: pd.DataFrame, panel: pd.DataFrame) -> dict:
+    """Headline numbers for the win-back list: how many, how they came back, and whether the
+    comeback stuck (renewed again) or was a one-cycle blip.
+
+    "Stuck" is read straight off the return charge's own row in `panel` — `wb.event_date` is a
+    charge, and every charge already carries whether it renewed, censoring included. Joining on
+    (customer_id, event_date) instead of nearest-date matching also survives a customer having more
+    than one win-back event.
+    """
+    if wb.empty:
+        return {"n_winbacks": 0}
+    # A handful of (customer_id, event_date) pairs repeat in `panel` (same charge, split across
+    # package/payment_type variants that `payments()` didn't need to distinguish) -- dedupe before
+    # the merge or a win-back event with a repeated key gets double-counted.
+    pkey = (panel[["customer_id", "event_date", "renewed", "censored"]]
+            .drop_duplicates(subset=["customer_id", "event_date"]))
+    merged = wb.merge(pkey, on=["customer_id", "event_date"], how="left")
+    resolved = merged[~merged["censored"]]
+    return {
+        "n_winbacks": int(len(wb)),
+        "pct_discounted_return": float(wb["discounted_return"].mean()),
+        "avg_gap_days": float(wb["gap_days"].mean()),
+        "avg_return_discount_pct": float(wb.loc[wb["discounted_return"], "return_discount_pct"].mean()),
+        "pct_stuck_renewed_again": float(resolved["renewed"].mean()) if len(resolved) else np.nan,
+        "n_observed_for_stick_rate": int(len(resolved)),
+    }
+
+
+# --------------------------------------------------------------------------------------------
+# promo-flipper value mismatch — car make vs package tier vs discount depth
+# --------------------------------------------------------------------------------------------
+# Coarse economy/mid/premium tiering by vehicle make. This is a static, general-knowledge mapping
+# — NOT fit to or read off any export's data (there is no price field on the vehicle) — used only
+# to test the "cheap car, premium package" mismatch hypothesis. A make not listed here maps to
+# "Unknown" rather than a guessed tier.
+CAR_VALUE_TIER = {
+    **{m: "Economy" for m in [
+        "Maruti", "Maruti Suzuki", "Tata", "Chevrolet", "Nissan", "Kia", "Hyundai", "Honda",
+        "Toyota", "Mitsubishi", "Renault", "Fiat", "Suzuki", "Dacia", "Skoda", "Mazda", "Ford",
+        "Volkswagen", "Datsun", "Chery", "MG",
+    ]},
+    **{m: "Mid" for m in [
+        "Subaru", "Volvo", "Buick", "Chrysler", "Dodge", "Jeep", "GMC", "Ram", "Peugeot",
+        "Citroen", "Opel", "Seat", "Mini", "Infiniti", "Acura", "Alfa Romeo",
+    ]},
+    **{m: "Premium" for m in [
+        "BMW", "Mercedes-Benz", "Mercedes", "Audi", "Lexus", "Porsche", "Tesla", "Land Rover",
+        "Jaguar", "Cadillac", "Lincoln", "Genesis", "Maserati", "Bentley", "Rolls-Royce",
+        "Ferrari", "Lamborghini", "Aston Martin", "McLaren",
+    ]},
+}
+
+
+def car_value_tier(make: pd.Series) -> pd.Series:
+    """Map a `vehicle_make` column to CAR_VALUE_TIER, case/whitespace-insensitive. Unmapped makes
+    come back as 'Unknown' rather than defaulting into a tier -- a directional proxy for the
+    promo-flipper mismatch question, not a real valuation."""
+    lookup = {k.lower(): v for k, v in CAR_VALUE_TIER.items()}
+    return make.astype(str).str.strip().str.lower().map(lookup).fillna("Unknown")
+
+
+VEHICLE_ATTRS = ["vehicle_make", "vehicle_model", "vehicle_year", "vehicle_type", "vehicle_color"]
+
+
+def vehicle_details(ev: pd.DataFrame, attrs: list[str] | None = None) -> pd.DataFrame:
+    """One row per customer, one column per vehicle attribute -- each cell is the space-joined,
+    de-duplicated values across every vehicle on that customer's account.
+
+    `customer_table()`'s `vehicle_type` collapses a household's fleet down to one mode value; this
+    keeps all of it, e.g. a two-car household shows "Honda Tesla" in `vehicle_make` rather than
+    picking one. `attrs` defaults to `VEHICLE_ATTRS`, filtered to whichever of those columns are
+    actually present in `ev` (drop_cols may have removed some).
+    """
+    attrs = [a for a in (attrs or VEHICLE_ATTRS) if a in ev.columns]
+    v = ev.dropna(subset=["vehicle_id"]).drop_duplicates(["customer_id", "vehicle_id"])
+
+    def _join(s: pd.Series) -> str:
+        vals = {f"{int(x)}" if isinstance(x, float) and x.is_integer() else str(x) for x in s}
+        return " ".join(sorted(vals))
+
+    out = pd.DataFrame(index=pd.Index(sorted(ev["customer_id"].unique()), name="customer_id"))
+    for a in attrs:
+        out[a] = v.dropna(subset=[a]).groupby("customer_id")[a].agg(_join).reindex(out.index)
+    return out.reset_index()
+
+
+# --------------------------------------------------------------------------------------------
+# discount-conditioned win-back mining — recency framing
+# --------------------------------------------------------------------------------------------
+DISCOUNT_BUCKETS = ["No Discount", "Light (<15%)", "Moderate (15-30%)", "Deep (30%+)"]
+
+
+def discount_bucket(pct: pd.Series) -> pd.Series:
+    """Bucket a discount-percentage series into DISCOUNT_BUCKETS -- shared by every lapse/win-back
+    function below so "Light" etc. always mean the same cutoffs."""
+    return pd.cut(pct, bins=[-0.01, 0.001, 0.15, 0.30, 1.01], labels=DISCOUNT_BUCKETS)
+
+
+def lapse_discount_reactivation(ev: pd.DataFrame, churn_after: int = CHURN_AFTER) -> pd.DataFrame:
+    """One row per LAPSE — a charge after which the customer went quiet for longer than
+    `churn_after` days — carrying that charge's own discount depth and whether a later charge ever
+    arrived.
+
+    Mirror image of `winback_events`: that function looks at the RETURN charge (was the comeback
+    itself discounted). This looks at the charge right BEFORE the silence (was THAT one
+    discounted) -- which is what "does discounting someone right before they go quiet make them
+    more likely to come back" actually needs. Every historical lapse in a customer's history
+    counts, not just their most recent one, for more statistical power on the reactivation rate.
+    """
+    pay = payments(ev)
+    now = asof(ev)
+    charges = pay[~pay["is_refund"]].sort_values(["customer_id", "event_date"]).copy()
+    charges["next_date"] = charges.groupby("customer_id")["event_date"].shift(-1)
+    charges["gap_days"] = (charges["next_date"] - charges["event_date"]).dt.days
+    charges["days_since"] = (now - charges["event_date"]).dt.days
+
+    # Two ways a charge counts as a lapse: a next charge exists but arrived late (we KNOW they
+    # went quiet, then came back), or there is no next charge and enough time has passed to rule
+    # out "still mid-cycle" (we know they went quiet; resolved here as "not yet returned", same
+    # censoring convention `renewal_panel` uses for currently-active members).
+    is_lapse = ((charges["next_date"].notna() & (charges["gap_days"] > churn_after)) |
+               (charges["next_date"].isna() & (charges["days_since"] > churn_after)))
+    lapse = charges[is_lapse].copy()
+
+    lapse["discount_pct"] = (1 - lapse["amount"] / lapse["current_package_price"]).clip(lower=0)
+    lapse["discount_bucket"] = discount_bucket(lapse["discount_pct"])
+    lapse["returned"] = lapse["next_date"].notna()
+    lapse["days_quiet"] = np.where(lapse["returned"], lapse["gap_days"], lapse["days_since"])
+    return lapse[["customer_id", "event_date", "amount", "current_package_price", "discount_pct",
+                 "discount_bucket", "days_quiet", "returned"]].reset_index(drop=True)
+
+
+def lapse_discount_summary(lapse: pd.DataFrame) -> pd.DataFrame:
+    """Reactivation rate by discount bucket -- the headline table for "does discounting someone
+    right before they go quiet make them more likely to come back."""
+    g = lapse.groupby("discount_bucket", observed=True).agg(
+        n_lapses=("returned", "size"), n_reactivated=("returned", "sum"),
+        reactivation_rate=("returned", "mean"))
+    g["avg_days_to_return"] = (lapse[lapse["returned"]]
+                               .groupby("discount_bucket", observed=True)["days_quiet"].mean())
+    return g
+
+
+def lapse_transition_matrix(ev: pd.DataFrame, churn_after: int = CHURN_AFTER) -> pd.DataFrame:
+    """Before-vs-after discount bucket for every RESOLVED lapse (one that came back) -- rows are
+    the discount bucket on the charge right before going quiet, columns are the discount bucket on
+    the charge that ended the silence. E.g. row "Deep (30%+)", column "No Discount" = how many people who
+    left after a steep discount came back at full price.
+
+    Open lapses (never returned) have no "after" charge and are excluded -- this only answers "of
+    the people who DID come back, what discount pattern brought them."
+    """
+    pay = payments(ev)
+    charges = pay[~pay["is_refund"]].sort_values(["customer_id", "event_date"]).copy()
+    charges["next_date"] = charges.groupby("customer_id")["event_date"].shift(-1)
+    charges["next_amount"] = charges.groupby("customer_id")["amount"].shift(-1)
+    charges["next_price"] = charges.groupby("customer_id")["current_package_price"].shift(-1)
+    charges["gap_days"] = (charges["next_date"] - charges["event_date"]).dt.days
+
+    resolved = charges[charges["next_date"].notna() & (charges["gap_days"] > churn_after)].copy()
+    resolved["before_bucket"] = discount_bucket(
+        (1 - resolved["amount"] / resolved["current_package_price"]).clip(lower=0))
+    resolved["after_bucket"] = discount_bucket(
+        (1 - resolved["next_amount"] / resolved["next_price"]).clip(lower=0))
+
+    return pd.crosstab(resolved["before_bucket"], resolved["after_bucket"])

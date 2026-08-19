@@ -86,9 +86,12 @@ def layout(t: Theme, **kw) -> dict:
         title=dict(text="", font=dict(color=t.ink, size=15)),
         xaxis=dict(gridcolor=t.grid, zeroline=False, linecolor=t.axis, tickfont=dict(color=t.muted)),
         yaxis=dict(gridcolor=t.grid, zeroline=False, linecolor=t.axis, tickfont=dict(color=t.muted)),
+        # y=1.06 (not 1.02) + a taller top margin -- 1.02 sits close enough to the plot top that a
+        # long title (or a title on a chart with little headroom, e.g. a 3D scene) can collide with
+        # the legend row above it. This gives a guaranteed gap between them on every chart.
         legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(color=t.ink2), orientation="h",
-                    yanchor="bottom", y=1.02, xanchor="left", x=0),
-        margin=dict(l=64, r=28, t=54, b=48), hovermode="closest",
+                    yanchor="bottom", y=1.06, xanchor="left", x=0),
+        margin=dict(l=64, r=28, t=64, b=48), hovermode="closest",
     )
     for k, v in kw.items():
         if isinstance(v, dict) and isinstance(base.get(k), dict):

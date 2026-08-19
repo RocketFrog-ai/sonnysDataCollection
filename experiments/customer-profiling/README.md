@@ -1,4 +1,4 @@
-# Customer profiling — Hurricane Express membership book
+# Customer profiling — membership book
 
 Member-level profiling on `hurricane_customer_profille_data.csv`: an event log of **466 customers /
 587 vehicles** across **two sites**, **2025-09-13 → 2026-08-10**, carrying both what members pay and
