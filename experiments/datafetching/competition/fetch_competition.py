@@ -104,4 +104,6 @@ def run(start_index: int = 0, end_index: int | None = None, fetch_place_details:
 if __name__ == "__main__":
     start = int(sys.argv[1]) if len(sys.argv) > 1 else 0
     end = int(sys.argv[2]) if len(sys.argv) > 2 else None
-    run(start_index=start, end_index=end, api_key="AIzaSyB02AEDngo98265qF9YXiWR-372He5RBRg")
+    if not calib.GOOGLE_MAPS_API_KEY:
+        sys.exit("Set GOOGLE_MAPS_API_KEY in the environment or .env")
+    run(start_index=start, end_index=end, api_key=calib.GOOGLE_MAPS_API_KEY)
